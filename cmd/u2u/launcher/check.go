@@ -6,10 +6,10 @@ import (
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"gopkg.in/urfave/cli.v1"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
 func checkEvm(ctx *cli.Context) error {
@@ -33,7 +33,7 @@ func checkEvm(ctx *cli.Context) error {
 			lastIdx            = gdb.GetLatestBlockIndex()
 			prevPointRootExist bool
 		)
-		gdb.ForEachBlock(func(index idx.Block, block *inter.Block) {
+		gdb.ForEachBlock(func(index idx.Block, block *native.Block) {
 			prevIndex = index
 			found, err := stateOK(common.Hash(block.Root))
 			if found != prevPointRootExist {

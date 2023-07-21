@@ -5,7 +5,7 @@ import (
 
 	"github.com/syndtr/goleveldb/leveldb/opt"
 
-	"github.com/unicornultrafoundation/go-hashgraph/inter/dag"
+	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/cachescale"
 )
 

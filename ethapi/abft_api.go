@@ -5,7 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 )
 
 // PublicAbftAPI provides an API to access consensus related information.

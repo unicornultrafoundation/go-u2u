@@ -5,7 +5,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-hashgraph/emitter/ancestor"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 )
 
 // buildSearchStrategies returns a strategy for each parent search

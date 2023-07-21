@@ -16,7 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/p2p/discover/discfilter"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"gopkg.in/urfave/cli.v1"
 
 	evmetrics "github.com/ethereum/go-ethereum/metrics"

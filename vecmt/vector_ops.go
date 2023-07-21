@@ -1,16 +1,16 @@
 package vecmt
 
 import (
-	"github.com/unicornultrafoundation/go-hashgraph/inter/dag"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/vecengine"
 	"github.com/unicornultrafoundation/go-hashgraph/vecfc"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
 type CreationTimer interface {
-	CreationTime() inter.Timestamp
+	CreationTime() native.Timestamp
 }
 
 func (b *HighestBefore) InitWithEvent(i idx.Validator, e dag.Event) {
@@ -75,7 +75,7 @@ func (self *HighestBefore) GatherFrom(to idx.Validator, _other vecengine.Highest
 	other := _other.(*HighestBefore)
 	// read all branches to find highest event
 	highestBranchSeq := vecfc.BranchSeq{}
-	highestBranchTime := inter.Timestamp(0)
+	highestBranchTime := native.Timestamp(0)
 	for _, branchID := range from {
 		vseq := other.VSeq.Get(branchID)
 		vtime := other.VTime.Get(branchID)

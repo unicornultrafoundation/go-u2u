@@ -9,18 +9,18 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/hashgraph"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/pos"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/memorydb"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
+	"github.com/unicornultrafoundation/go-hashgraph/types"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/memorydb"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/integration/makegenesis"
-	"github.com/unicornultrafoundation/go-u2u/inter"
-	"github.com/unicornultrafoundation/go-u2u/inter/drivertype"
-	"github.com/unicornultrafoundation/go-u2u/inter/iblockproc"
-	"github.com/unicornultrafoundation/go-u2u/inter/ier"
-	"github.com/unicornultrafoundation/go-u2u/inter/validatorpk"
+	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/native/drivertype"
+	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/native/ier"
+	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/driver"
 	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/driver/drivercall"
@@ -35,7 +35,7 @@ import (
 )
 
 var (
-	FakeGenesisTime = inter.Timestamp(1608600000 * time.Second)
+	FakeGenesisTime = native.Timestamp(1608600000 * time.Second)
 )
 
 // FakeKey gets n-th fake private key.
@@ -95,7 +95,7 @@ func FakeGenesisStoreWithRulesAndStart(num idx.Validator, balance, stake *big.In
 				},
 				FinalizedStateRoot:    hash.Hash{},
 				EpochGas:              0,
-				EpochCheaters:         hashgraph.Cheaters{},
+				EpochCheaters:         types.Cheaters{},
 				CheatersWritten:       0,
 				ValidatorStates:       make([]iblockproc.ValidatorBlockState, 0),
 				NextValidatorProfiles: make(map[idx.ValidatorID]drivertype.Validator),

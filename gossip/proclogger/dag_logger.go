@@ -3,7 +3,7 @@ package proclogger
 import (
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/logger"
 	"github.com/unicornultrafoundation/go-u2u/utils"
 )
@@ -16,7 +16,7 @@ func NewLogger() *Logger {
 
 // EventConnectionStarted starts the event logging
 // Not safe for concurrent use
-func (l *Logger) EventConnectionStarted(e inter.EventPayloadI, emitted bool) func() {
+func (l *Logger) EventConnectionStarted(e native.EventPayloadI, emitted bool) func() {
 	l.dagSum.connected++
 
 	start := time.Now()

@@ -19,19 +19,19 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/unicornultrafoundation/go-hashgraph/abft"
+	"github.com/unicornultrafoundation/go-hashgraph/consensus"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/dag"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/cachescale"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip/blockproc"
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter"
 	"github.com/unicornultrafoundation/go-u2u/integration/makefakegenesis"
-	"github.com/unicornultrafoundation/go-u2u/inter"
-	"github.com/unicornultrafoundation/go-u2u/inter/iblockproc"
-	"github.com/unicornultrafoundation/go-u2u/inter/validatorpk"
+	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/utils"
 	"github.com/unicornultrafoundation/go-u2u/utils/adapters/vecmt2dagidx"
@@ -51,8 +51,8 @@ const (
 )
 
 type callbacks struct {
-	buildEvent       func(e *inter.MutableEventPayload)
-	onEventConfirmed func(e inter.EventI)
+	buildEvent       func(e *native.MutableEventPayload)
+	onEventConfirmed func(e native.EventI)
 }
 
 type testEnv struct {
@@ -82,14 +82,14 @@ func (g *testGossipStoreAdapter) GetEvent(id hash.Event) dag.Event {
 	return e
 }
 
-func makeTestEngine(gdb *Store) (*abft.Hashgraph, *vecmt.Index) {
-	cdb := abft.NewMemStore()
-	_ = cdb.ApplyGenesis(&abft.Genesis{
+func makeTestEngine(gdb *Store) (*consensus.Hashgraph, *vecmt.Index) {
+	cdb := consensus.NewMemStore()
+	_ = cdb.ApplyGenesis(&consensus.Genesis{
 		Epoch:      gdb.GetEpoch(),
 		Validators: gdb.GetValidators(),
 	})
 	vecClock := vecmt.NewIndex(panics("Vector clock"), vecmt.LiteConfig())
-	engine := abft.NewHashgraph(cdb, &testGossipStoreAdapter{gdb}, vecmt2dagidx.Wrap(vecClock), panics("Hashgraph"), abft.LiteConfig())
+	engine := consensus.NewHashgraph(cdb, &testGossipStoreAdapter{gdb}, vecmt2dagidx.Wrap(vecClock), panics("Hashgraph"), consensus.LiteConfig())
 	return engine, vecClock
 }
 
@@ -98,22 +98,22 @@ type testEmitterWorldExternal struct {
 	env *testEnv
 }
 
-func (em testEmitterWorldExternal) Build(e *inter.MutableEventPayload, onIndexed func()) error {
-	e.SetCreationTime(inter.Timestamp(em.env.t.UnixNano()))
+func (em testEmitterWorldExternal) Build(e *native.MutableEventPayload, onIndexed func()) error {
+	e.SetCreationTime(native.Timestamp(em.env.t.UnixNano()))
 	if em.env.callback.buildEvent != nil {
 		em.env.callback.buildEvent(e)
 	}
 	return em.External.Build(e, onIndexed)
 }
 
-func (em testEmitterWorldExternal) Broadcast(*inter.EventPayload) {}
+func (em testEmitterWorldExternal) Broadcast(*native.EventPayload) {}
 
 type testConfirmedEventsProcessor struct {
 	blockproc.ConfirmedEventsProcessor
 	env *testEnv
 }
 
-func (p testConfirmedEventsProcessor) ProcessConfirmedEvent(e inter.EventI) {
+func (p testConfirmedEventsProcessor) ProcessConfirmedEvent(e native.EventI) {
 	if p.env.callback.onEventConfirmed != nil {
 		p.env.callback.onEventConfirmed(e)
 	}
@@ -132,7 +132,7 @@ func (m testConfirmedEventsModule) Start(bs iblockproc.BlockState, es iblockproc
 
 func newTestEnv(firstEpoch idx.Epoch, validatorsNum idx.Validator) *testEnv {
 	rules := u2u.FakeNetRules()
-	rules.Epochs.MaxEpochDuration = inter.Timestamp(maxEpochDuration)
+	rules.Epochs.MaxEpochDuration = native.Timestamp(maxEpochDuration)
 	rules.Blocks.MaxEmptyBlockSkipPeriod = 0
 
 	genStore := makefakegenesis.FakeGenesisStoreWithRulesAndStart(validatorsNum, utils.ToFtm(genesisBalance), utils.ToFtm(genesisStake), rules, firstEpoch, 2)
@@ -252,19 +252,19 @@ func (env *testEnv) ApplyTxs(spent time.Duration, txs ...*types.Transaction) (ty
 	return externalReceipts, err
 }
 
-func (env *testEnv) ApplyMPs(spent time.Duration, mps ...inter.MisbehaviourProof) error {
+func (env *testEnv) ApplyMPs(spent time.Duration, mps ...native.MisbehaviourProof) error {
 	env.t = env.t.Add(spent)
 
 	// all callbacks are non-async
 	lastEpoch := idx.Epoch(0)
-	env.callback.buildEvent = func(e *inter.MutableEventPayload) {
+	env.callback.buildEvent = func(e *native.MutableEventPayload) {
 		if e.Epoch() > lastEpoch {
 			e.SetMisbehaviourProofs(mps)
 			lastEpoch = e.Epoch()
 		}
 	}
 	confirmed := false
-	env.callback.onEventConfirmed = func(_e inter.EventI) {
+	env.callback.onEventConfirmed = func(_e native.EventI) {
 		// ensure that not only MPs were confirmed, but also no new MPs will be confirmed in future
 		if _e.AnyMisbehaviourProofs() && _e.Epoch() == lastEpoch {
 			confirmed = true

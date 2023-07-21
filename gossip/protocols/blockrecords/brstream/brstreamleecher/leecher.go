@@ -6,7 +6,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-hashgraph/gossip/basestream/basestreamleecher"
 	"github.com/unicornultrafoundation/go-hashgraph/gossip/basestream/basestreamleecher/basepeerleecher"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/blockrecords/brstream"
 )

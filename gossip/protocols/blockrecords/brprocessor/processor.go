@@ -4,12 +4,12 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/unicornultrafoundation/go-hashgraph/inter/dag"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/datasemaphore"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/workers"
 
-	"github.com/unicornultrafoundation/go-u2u/inter/ibr"
+	"github.com/unicornultrafoundation/go-u2u/native/ibr"
 )
 
 var (

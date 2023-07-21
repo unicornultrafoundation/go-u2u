@@ -12,18 +12,18 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/hashgraph"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/dag"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/pos"
+	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
+	"github.com/unicornultrafoundation/go-hashgraph/types"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/workers"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip/blockproc/verwatcher"
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter"
 	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"
-	"github.com/unicornultrafoundation/go-u2u/inter"
-	"github.com/unicornultrafoundation/go-u2u/inter/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/utils"
 )
@@ -61,8 +61,8 @@ type ExtendedTxPosition struct {
 }
 
 // GetConsensusCallbacks returns single (for Service) callback instance.
-func (s *Service) GetConsensusCallbacks() hashgraph.ConsensusCallbacks {
-	return hashgraph.ConsensusCallbacks{
+func (s *Service) GetConsensusCallbacks() types.ConsensusCallbacks {
+	return types.ConsensusCallbacks{
 		BeginBlock: consensusCallbackBeginBlockFn(
 			s.blockProcTasks,
 			&s.blockProcWg,
@@ -78,7 +78,7 @@ func (s *Service) GetConsensusCallbacks() hashgraph.ConsensusCallbacks {
 }
 
 // consensusCallbackBeginBlockFn takes only necessaries for block processing and
-// makes hashgraph.BeginBlockFn.
+// makes types.BeginBlockFn.
 func consensusCallbackBeginBlockFn(
 	parallelTasks *workers.Workers,
 	wg *sync.WaitGroup,
@@ -89,8 +89,8 @@ func consensusCallbackBeginBlockFn(
 	feed *ServiceFeed,
 	emitters *[]*emitter.Emitter,
 	verWatcher *verwatcher.VerWarcher,
-) hashgraph.BeginBlockFn {
-	return func(cBlock *hashgraph.Block) hashgraph.BlockCallbacks {
+) types.BeginBlockFn {
+	return func(cBlock *types.Block) types.BlockCallbacks {
 		wg.Wait()
 		start := time.Now()
 
@@ -125,9 +125,9 @@ func consensusCallbackBeginBlockFn(
 			mpsCheatersMap[cheater] = struct{}{}
 		}
 
-		return hashgraph.BlockCallbacks{
+		return types.BlockCallbacks{
 			ApplyEvent: func(_e dag.Event) {
-				e := _e.(inter.EventI)
+				e := _e.(native.EventI)
 				if cBlock.Atropos == e.ID() {
 					atroposTime = e.MedianTime()
 					atroposDegenerate = false
@@ -210,7 +210,7 @@ func consensusCallbackBeginBlockFn(
 				// Finalize the progress of eventProcessor
 				bs = eventProcessor.Finalize(blockCtx, skipBlock) // TODO: refactor to not mutate the bs, it is unclear
 				{                                                 // sort and merge MPs cheaters
-					mpsCheaters := make(hashgraph.Cheaters, 0, len(mpsCheatersMap))
+					mpsCheaters := make(types.Cheaters, 0, len(mpsCheatersMap))
 					for vid := range mpsCheatersMap {
 						mpsCheaters = append(mpsCheaters, vid)
 					}
@@ -294,7 +294,7 @@ func consensusCallbackBeginBlockFn(
 					sort.Sort(confirmedEvents)
 
 					// new block
-					var block = &inter.Block{
+					var block = &native.Block{
 						Time:    blockCtx.Time,
 						Atropos: cBlock.Atropos,
 						Events:  hash.Events(confirmedEvents),
@@ -502,8 +502,8 @@ func (s *Service) RecoverEVM() {
 }
 
 // spillBlockEvents excludes first events which exceed MaxBlockGas
-func spillBlockEvents(store *Store, block *inter.Block, network u2u.Rules) (*inter.Block, inter.EventPayloads) {
-	fullEvents := make(inter.EventPayloads, len(block.Events))
+func spillBlockEvents(store *Store, block *native.Block, network u2u.Rules) (*native.Block, native.EventPayloads) {
+	fullEvents := make(native.EventPayloads, len(block.Events))
 	if len(block.Events) == 0 {
 		return block, fullEvents
 	}
@@ -531,7 +531,7 @@ func spillBlockEvents(store *Store, block *inter.Block, network u2u.Rules) (*int
 	return block, fullEvents
 }
 
-func mergeCheaters(a, b hashgraph.Cheaters) hashgraph.Cheaters {
+func mergeCheaters(a, b types.Cheaters) types.Cheaters {
 	if len(b) == 0 {
 		return a
 	}
@@ -539,7 +539,7 @@ func mergeCheaters(a, b hashgraph.Cheaters) hashgraph.Cheaters {
 		return b
 	}
 	aSet := a.Set()
-	merged := make(hashgraph.Cheaters, 0, len(b)+len(a))
+	merged := make(types.Cheaters, 0, len(b)+len(a))
 	for _, v := range a {
 		merged = append(merged, v)
 	}

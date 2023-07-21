@@ -9,8 +9,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/unicornultrafoundation/go-hashgraph/common/bigendian"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/memorydb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/memorydb"
 )
 
 func decodePair(b []byte) (uint32, uint32) {
@@ -20,16 +20,16 @@ func decodePair(b []byte) (uint32, uint32) {
 }
 
 type UncallabaleAfterRelease struct {
-	kvdb.Snapshot
+	u2udb.Snapshot
 	iterators []*uncallabaleAfterReleaseIterator
 	mu        sync.Mutex
 }
 
 type uncallabaleAfterReleaseIterator struct {
-	kvdb.Iterator
+	u2udb.Iterator
 }
 
-func (db *UncallabaleAfterRelease) NewIterator(prefix []byte, start []byte) kvdb.Iterator {
+func (db *UncallabaleAfterRelease) NewIterator(prefix []byte, start []byte) u2udb.Iterator {
 	it := db.Snapshot.NewIterator(prefix, start)
 	wrapped := &uncallabaleAfterReleaseIterator{it}
 

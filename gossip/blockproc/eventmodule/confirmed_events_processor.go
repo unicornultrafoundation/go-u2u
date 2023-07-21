@@ -2,8 +2,8 @@ package eventmodule
 
 import (
 	"github.com/unicornultrafoundation/go-u2u/gossip/blockproc"
-	"github.com/unicornultrafoundation/go-u2u/inter"
-	"github.com/unicornultrafoundation/go-u2u/inter/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 )
 
 type ValidatorEventsModule struct{}
@@ -16,17 +16,17 @@ func (m *ValidatorEventsModule) Start(bs iblockproc.BlockState, es iblockproc.Ep
 	return &ValidatorEventsProcessor{
 		es:                     es,
 		bs:                     bs,
-		validatorHighestEvents: make(inter.EventIs, es.Validators.Len()),
+		validatorHighestEvents: make(native.EventIs, es.Validators.Len()),
 	}
 }
 
 type ValidatorEventsProcessor struct {
 	es                     iblockproc.EpochState
 	bs                     iblockproc.BlockState
-	validatorHighestEvents inter.EventIs
+	validatorHighestEvents native.EventIs
 }
 
-func (p *ValidatorEventsProcessor) ProcessConfirmedEvent(e inter.EventI) {
+func (p *ValidatorEventsProcessor) ProcessConfirmedEvent(e native.EventI) {
 	creatorIdx := p.es.Validators.GetIdx(e.Creator())
 	prev := p.validatorHighestEvents[creatorIdx]
 	if prev == nil || e.Seq() > prev.Seq() {
@@ -48,7 +48,7 @@ func (p *ValidatorEventsProcessor) Finalize(block iblockproc.BlockCtx, _ bool) i
 		if block.Idx <= info.LastBlock+p.es.Rules.Economy.BlockMissedSlack {
 			prevOnlineTime := info.LastOnlineTime
 			if p.es.Rules.Upgrades.Berlin {
-				prevOnlineTime = inter.MaxTimestamp(info.LastOnlineTime, p.es.EpochStart)
+				prevOnlineTime = native.MaxTimestamp(info.LastOnlineTime, p.es.EpochStart)
 			}
 			if e.MedianTime() > prevOnlineTime {
 				info.Uptime += e.MedianTime() - prevOnlineTime

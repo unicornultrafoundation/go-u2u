@@ -31,7 +31,7 @@ import (
 	notify "github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/memorydb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/memorydb"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"

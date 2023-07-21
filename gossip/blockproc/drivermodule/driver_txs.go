@@ -9,13 +9,13 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip/blockproc"
-	"github.com/unicornultrafoundation/go-u2u/inter"
-	"github.com/unicornultrafoundation/go-u2u/inter/drivertype"
-	"github.com/unicornultrafoundation/go-u2u/inter/iblockproc"
-	"github.com/unicornultrafoundation/go-u2u/inter/validatorpk"
+	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/native/drivertype"
+	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/driver"
 	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/driver/drivercall"
@@ -97,13 +97,13 @@ func (p *DriverTxPreTransactor) PopInternalTxs(block iblockproc.BlockCtx, bs ibl
 			// forgive downtime if below BlockMissedSlack
 			missed := u2u.BlocksMissed{
 				BlocksNum: maxBlockIdx(block.Idx, info.LastBlock) - info.LastBlock,
-				Period:    inter.MaxTimestamp(block.Time, info.LastOnlineTime) - info.LastOnlineTime,
+				Period:    native.MaxTimestamp(block.Time, info.LastOnlineTime) - info.LastOnlineTime,
 			}
 			uptime := info.Uptime
 			if missed.BlocksNum <= es.Rules.Economy.BlockMissedSlack {
 				missed = u2u.BlocksMissed{}
-				prevOnlineTime := inter.MaxTimestamp(info.LastOnlineTime, es.EpochStart)
-				uptime += inter.MaxTimestamp(block.Time, prevOnlineTime) - prevOnlineTime
+				prevOnlineTime := native.MaxTimestamp(info.LastOnlineTime, es.EpochStart)
+				uptime += native.MaxTimestamp(block.Time, prevOnlineTime) - prevOnlineTime
 			}
 			metrics[oldValIdx] = drivercall.ValidatorEpochMetric{
 				Missed:          missed,

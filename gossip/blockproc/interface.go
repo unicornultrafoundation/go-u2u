@@ -4,11 +4,11 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
-	"github.com/unicornultrafoundation/go-u2u/inter"
-	"github.com/unicornultrafoundation/go-u2u/inter/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 )
 
@@ -38,7 +38,7 @@ type SealerModule interface {
 }
 
 type ConfirmedEventsProcessor interface {
-	ProcessConfirmedEvent(inter.EventI)
+	ProcessConfirmedEvent(native.EventI)
 	Finalize(block iblockproc.BlockCtx, blockSkipped bool) iblockproc.BlockState
 }
 

@@ -3,12 +3,11 @@ package sealmodule
 import (
 	"math/big"
 
-	"github.com/unicornultrafoundation/go-hashgraph/hashgraph"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/pos"
-
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
+	"github.com/unicornultrafoundation/go-hashgraph/types"
 	"github.com/unicornultrafoundation/go-u2u/gossip/blockproc"
-	"github.com/unicornultrafoundation/go-u2u/inter/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 )
 
 type U2uEpochsSealerModule struct{}
@@ -91,7 +90,7 @@ func (s *U2uEpochsSealer) SealEpoch() (iblockproc.BlockState, iblockproc.EpochSt
 	s.es.EpochStateRoot = s.bs.FinalizedStateRoot
 
 	s.bs.EpochGas = 0
-	s.bs.EpochCheaters = hashgraph.Cheaters{}
+	s.bs.EpochCheaters = types.Cheaters{}
 	s.bs.CheatersWritten = 0
 	newEpoch := s.es.Epoch + 1
 	s.es.Epoch = newEpoch

@@ -4,12 +4,12 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter"
-	"github.com/unicornultrafoundation/go-u2u/inter"
-	"github.com/unicornultrafoundation/go-u2u/inter/ibr"
-	"github.com/unicornultrafoundation/go-u2u/inter/iep"
+	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/native/ibr"
+	"github.com/unicornultrafoundation/go-u2u/native/iep"
 )
 
 // Constants to match up protocol versions and messages
@@ -28,7 +28,7 @@ var ProtocolVersions = []uint{FTM62, FTM63}
 // protocolLengths are the number of implemented message corresponding to different protocol versions.
 var protocolLengths = map[uint]uint64{FTM62: EventsStreamResponse + 1, FTM63: EPsStreamResponse + 1}
 
-const protocolMaxMsgSize = inter.ProtocolMaxMsgSize // Maximum cap on the size of a protocol message
+const protocolMaxMsgSize = native.ProtocolMaxMsgSize // Maximum cap on the size of a protocol message
 
 // protocol message codes
 const (
@@ -139,13 +139,13 @@ type dagChunk struct {
 	SessionID uint32
 	Done      bool
 	IDs       hash.Events
-	Events    inter.EventPayloads
+	Events    native.EventPayloads
 }
 
 type bvsChunk struct {
 	SessionID uint32
 	Done      bool
-	BVs       []inter.LlrSignedBlockVotes
+	BVs       []native.LlrSignedBlockVotes
 }
 
 type brsChunk struct {

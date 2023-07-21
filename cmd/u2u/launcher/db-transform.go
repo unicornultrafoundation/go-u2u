@@ -9,10 +9,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/unicornultrafoundation/go-hashgraph/common/bigendian"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/batched"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/multidb"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/table"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/batched"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/multidb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/table"
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/integration"
@@ -71,7 +71,7 @@ func dbTransform(ctx *cli.Context) error {
 		}
 	}
 
-	// separate entries into inter-linked components
+	// separate entries into native-linked components
 	byComponents := make([]map[string]dbMigrationEntry, 0)
 	for componentI := 0; len(byReq) > 0; componentI++ {
 		var someEntry dbMigrationEntry
@@ -139,7 +139,7 @@ func (ee *dbMigrationEntries) Pop() *dbMigrationEntry {
 
 var dbLocatorOf = multidb.DBLocatorOf
 
-func readRoutes(cfg *config, dbTypes map[multidb.TypeName]kvdb.FullDBProducer) (map[string]dbMigrationEntry, error) {
+func readRoutes(cfg *config, dbTypes map[multidb.TypeName]u2udb.FullDBProducer) (map[string]dbMigrationEntry, error) {
 	router, err := multidb.NewProducer(dbTypes, cfg.DBs.Routing.Table, integration.TablesKey)
 	if err != nil {
 		return nil, err
@@ -176,7 +176,7 @@ func readRoutes(cfg *config, dbTypes map[multidb.TypeName]kvdb.FullDBProducer) (
 	return byReq, nil
 }
 
-func writeCleanTableRecords(dbTypes map[multidb.TypeName]kvdb.FullDBProducer, byReq map[string]dbMigrationEntry) error {
+func writeCleanTableRecords(dbTypes map[multidb.TypeName]u2udb.FullDBProducer, byReq map[string]dbMigrationEntry) error {
 	records := make(map[multidb.DBLocator][]multidb.TableRecord, 0)
 	for _, e := range byReq {
 		records[dbLocatorOf(e.New)] = append(records[dbLocatorOf(e.New)], multidb.TableRecord{
@@ -204,7 +204,7 @@ func writeCleanTableRecords(dbTypes map[multidb.TypeName]kvdb.FullDBProducer, by
 	return nil
 }
 
-func interchangeableType(a_, b_ multidb.TypeName, types map[multidb.TypeName]kvdb.FullDBProducer) bool {
+func interchangeableType(a_, b_ multidb.TypeName, types map[multidb.TypeName]u2udb.FullDBProducer) bool {
 	for t_ := range types {
 		a, b, t := string(a_), string(b_), string(t_)
 		t = strings.TrimSuffix(t, "fsh")
@@ -217,7 +217,7 @@ func interchangeableType(a_, b_ multidb.TypeName, types map[multidb.TypeName]kvd
 	return false
 }
 
-func transformComponent(datadir string, dbTypes, tmpDbTypes map[multidb.TypeName]kvdb.FullDBProducer, byReq map[string]dbMigrationEntry) error {
+func transformComponent(datadir string, dbTypes, tmpDbTypes map[multidb.TypeName]u2udb.FullDBProducer, byReq map[string]dbMigrationEntry) error {
 	byDB := separateIntoDBs(byReq)
 	// if it can be transformed just by DB renaming
 	if len(byDB) == 2 {

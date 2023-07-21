@@ -4,12 +4,12 @@ import (
 	"testing"
 
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/dag"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/dag/tdag"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/pos"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/memorydb"
+	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
+	"github.com/unicornultrafoundation/go-hashgraph/native/dag/tdag"
+	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/memorydb"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
 var (
@@ -34,10 +34,10 @@ a2.1 ──╣      ║      ║      ║
 
 type eventWithCreationTime struct {
 	dag.Event
-	creationTime inter.Timestamp
+	creationTime native.Timestamp
 }
 
-func (e *eventWithCreationTime) CreationTime() inter.Timestamp {
+func (e *eventWithCreationTime) CreationTime() native.Timestamp {
 	return e.creationTime
 }
 
@@ -70,7 +70,7 @@ func BenchmarkIndex_Add(b *testing.B) {
 		vecClock.Reset(validators, memorydb.New(), getEvent)
 		b.StartTimer()
 		for _, e := range ordered {
-			err := vecClock.Add(&eventWithCreationTime{e, inter.Timestamp(e.Seq())})
+			err := vecClock.Add(&eventWithCreationTime{e, native.Timestamp(e.Seq())})
 			if err != nil {
 				panic(err)
 			}

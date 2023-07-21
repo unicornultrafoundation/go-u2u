@@ -5,9 +5,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	base "github.com/unicornultrafoundation/go-hashgraph/eventcheck/epochcheck"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 )
 
@@ -42,7 +42,7 @@ func New(reader Reader) *Checker {
 	}
 }
 
-func CalcGasPowerUsed(e inter.EventPayloadI, rules u2u.Rules) uint64 {
+func CalcGasPowerUsed(e native.EventPayloadI, rules u2u.Rules) uint64 {
 	txsGas := uint64(0)
 	for _, tx := range e.Txs() {
 		txsGas += tx.Gas()
@@ -71,7 +71,7 @@ func CalcGasPowerUsed(e inter.EventPayloadI, rules u2u.Rules) uint64 {
 	return txsGas + parentsGas + extraGas + gasCfg.EventGas + mpsGas + bvsGas + ersGas
 }
 
-func (v *Checker) checkGas(e inter.EventPayloadI, rules u2u.Rules) error {
+func (v *Checker) checkGas(e native.EventPayloadI, rules u2u.Rules) error {
 	if e.GasPowerUsed() > rules.Economy.Gas.MaxEventGas {
 		return ErrTooBigGasUsed
 	}
@@ -101,7 +101,7 @@ func CheckTxs(txs types.Transactions, rules u2u.Rules) error {
 }
 
 // Validate event
-func (v *Checker) Validate(e inter.EventPayloadI) error {
+func (v *Checker) Validate(e native.EventPayloadI) error {
 	if err := v.Base.Validate(e); err != nil {
 		return err
 	}

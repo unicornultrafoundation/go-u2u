@@ -6,15 +6,15 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/pos"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
 
 	"github.com/unicornultrafoundation/go-u2u/eventcheck"
 	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"
-	"github.com/unicornultrafoundation/go-u2u/inter"
-	"github.com/unicornultrafoundation/go-u2u/inter/iblockproc"
-	"github.com/unicornultrafoundation/go-u2u/inter/ibr"
-	"github.com/unicornultrafoundation/go-u2u/inter/ier"
+	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/native/ibr"
+	"github.com/unicornultrafoundation/go-u2u/native/ier"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 )
 
@@ -45,7 +45,7 @@ func (s *Service) processBlockVote(block idx.Block, epoch idx.Epoch, bv hash.Has
 	}
 }
 
-func (s *Service) processBlockVotes(bvs inter.LlrSignedBlockVotes) error {
+func (s *Service) processBlockVotes(bvs native.LlrSignedBlockVotes) error {
 	// engineMu should be locked here
 	if len(bvs.Val.Votes) == 0 {
 		// short circuit if no records
@@ -88,7 +88,7 @@ func (s *Service) processBlockVotes(bvs inter.LlrSignedBlockVotes) error {
 	return nil
 }
 
-func (s *Service) ProcessBlockVotes(bvs inter.LlrSignedBlockVotes) error {
+func (s *Service) ProcessBlockVotes(bvs native.LlrSignedBlockVotes) error {
 	s.engineMu.Lock()
 	defer s.engineMu.Unlock()
 
@@ -125,7 +125,7 @@ func (s *Store) WriteFullBlockRecord(br ibr.LlrIdxFullBlockRecord) {
 			BlockOffset: uint32(i),
 		})
 	}
-	s.SetBlock(br.Idx, &inter.Block{
+	s.SetBlock(br.Idx, &native.Block{
 		Time:        br.Time,
 		Atropos:     br.Atropos,
 		Events:      hash.Events{},
@@ -186,7 +186,7 @@ func (s *Service) processRawEpochVote(epoch idx.Epoch, ev hash.Hash, val idx.Val
 	}
 }
 
-func (s *Service) processEpochVote(ev inter.LlrSignedEpochVote) error {
+func (s *Service) processEpochVote(ev native.LlrSignedEpochVote) error {
 	// engineMu should be locked here
 	if ev.Val.Epoch == 0 {
 		// short circuit if no records
@@ -224,7 +224,7 @@ func (s *Service) processEpochVote(ev inter.LlrSignedEpochVote) error {
 	return nil
 }
 
-func (s *Service) ProcessEpochVote(ev inter.LlrSignedEpochVote) error {
+func (s *Service) ProcessEpochVote(ev native.LlrSignedEpochVote) error {
 	s.engineMu.Lock()
 	defer s.engineMu.Unlock()
 

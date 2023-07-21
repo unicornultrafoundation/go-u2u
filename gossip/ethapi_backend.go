@@ -18,13 +18,13 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/pkg/errors"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/ethapi"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"
-	"github.com/unicornultrafoundation/go-u2u/inter"
-	"github.com/unicornultrafoundation/go-u2u/inter/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 	"github.com/unicornultrafoundation/go-u2u/topicsdb"
 	"github.com/unicornultrafoundation/go-u2u/tracing"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
@@ -178,7 +178,7 @@ func (b *EthAPIBackend) GetFullEventID(shortEventID string) (hash.Event, error) 
 }
 
 // GetEventPayload returns Hashgraph event by hash or short ID.
-func (b *EthAPIBackend) GetEventPayload(ctx context.Context, shortEventID string) (*inter.EventPayload, error) {
+func (b *EthAPIBackend) GetEventPayload(ctx context.Context, shortEventID string) (*native.EventPayload, error) {
 	id, err := b.GetFullEventID(shortEventID)
 	if err != nil {
 		return nil, err
@@ -187,7 +187,7 @@ func (b *EthAPIBackend) GetEventPayload(ctx context.Context, shortEventID string
 }
 
 // GetEvent returns the Hashgraph event header by hash or short ID.
-func (b *EthAPIBackend) GetEvent(ctx context.Context, shortEventID string) (*inter.Event, error) {
+func (b *EthAPIBackend) GetEvent(ctx context.Context, shortEventID string) (*native.Event, error) {
 	id, err := b.GetFullEventID(shortEventID)
 	if err != nil {
 		return nil, err
@@ -239,7 +239,7 @@ func (b *EthAPIBackend) epochWithDefault(ctx context.Context, epoch rpc.BlockNum
 
 // ForEachEpochEvent iterates all the events which are observed by head, and accepted by a filter.
 // filter CANNOT called twice for the same event.
-func (b *EthAPIBackend) ForEachEpochEvent(ctx context.Context, epoch rpc.BlockNumber, onEvent func(event *inter.EventPayload) bool) error {
+func (b *EthAPIBackend) ForEachEpochEvent(ctx context.Context, epoch rpc.BlockNumber, onEvent func(event *native.EventPayload) bool) error {
 	requested, err := b.epochWithDefault(ctx, epoch)
 	if err != nil {
 		return err
@@ -495,7 +495,7 @@ func (b *EthAPIBackend) GetOriginatedFee(ctx context.Context, vid idx.ValidatorI
 	return bs.GetValidatorState(vid, es.Validators).Originated, nil
 }
 
-func (b *EthAPIBackend) GetDowntime(ctx context.Context, vid idx.ValidatorID) (idx.Block, inter.Timestamp, error) {
+func (b *EthAPIBackend) GetDowntime(ctx context.Context, vid idx.ValidatorID) (idx.Block, native.Timestamp, error) {
 	// Note: loads bs and es atomically to avoid a race condition
 	bs, es := b.svc.store.GetBlockEpochState()
 	if !es.Validators.Exists(vid) {
@@ -506,7 +506,7 @@ func (b *EthAPIBackend) GetDowntime(ctx context.Context, vid idx.ValidatorID) (i
 	if bs.LastBlock.Idx > vs.LastBlock {
 		missedBlocks = bs.LastBlock.Idx - vs.LastBlock
 	}
-	missedTime := inter.Timestamp(0)
+	missedTime := native.Timestamp(0)
 	if bs.LastBlock.Time > vs.LastOnlineTime {
 		missedTime = bs.LastBlock.Time - vs.LastOnlineTime
 	}
@@ -532,7 +532,7 @@ func (b *EthAPIBackend) CalcBlockExtApi() bool {
 	return b.svc.config.RPCBlockExt
 }
 
-func (b *EthAPIBackend) SealedEpochTiming(ctx context.Context) (start inter.Timestamp, end inter.Timestamp) {
+func (b *EthAPIBackend) SealedEpochTiming(ctx context.Context) (start native.Timestamp, end native.Timestamp) {
 	es := b.svc.store.GetEpochState()
 	return es.PrevEpochStart, es.EpochStart
 }

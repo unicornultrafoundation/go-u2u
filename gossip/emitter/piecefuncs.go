@@ -2,7 +2,7 @@ package emitter
 
 import (
 	"github.com/unicornultrafoundation/go-hashgraph/emitter/ancestor"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/piecefunc"
 )
 

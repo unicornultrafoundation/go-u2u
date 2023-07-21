@@ -17,7 +17,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/integration/makefakegenesis"
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/utils"
 	"github.com/unicornultrafoundation/go-u2u/utils/signers/gsignercache"
@@ -105,7 +105,7 @@ func makeFuzzedHandler() (h *handler, err error) {
 			checkers: checkers,
 			s:        store,
 			process: processCallback{
-				Event: func(event *inter.EventPayload) error {
+				Event: func(event *native.EventPayload) error {
 					return nil
 				},
 			},

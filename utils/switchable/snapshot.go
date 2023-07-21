@@ -4,15 +4,15 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 )
 
 type Snapshot struct {
-	kvdb.Snapshot
+	u2udb.Snapshot
 	mu sync.RWMutex
 }
 
-func (s *Snapshot) SwitchTo(snap kvdb.Snapshot) kvdb.Snapshot {
+func (s *Snapshot) SwitchTo(snap u2udb.Snapshot) u2udb.Snapshot {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	old := s.Snapshot
@@ -20,7 +20,7 @@ func (s *Snapshot) SwitchTo(snap kvdb.Snapshot) kvdb.Snapshot {
 	return old
 }
 
-func Wrap(snap kvdb.Snapshot) *Snapshot {
+func Wrap(snap u2udb.Snapshot) *Snapshot {
 	s := &Snapshot{}
 	s.SwitchTo(snap)
 	return s
@@ -52,7 +52,7 @@ func (s *Snapshot) Release() {
 // NewIterator creates a binary-alphabetical iterator over a subset
 // of database content with a particular key prefix, starting at a particular
 // initial key (or after, if it does not exist).
-func (s *Snapshot) NewIterator(prefix []byte, start []byte) kvdb.Iterator {
+func (s *Snapshot) NewIterator(prefix []byte, start []byte) u2udb.Iterator {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -72,9 +72,9 @@ func (s *Snapshot) NewIterator(prefix []byte, start []byte) kvdb.Iterator {
 
 type switchableIterator struct {
 	mu       *sync.RWMutex
-	upd      *kvdb.Snapshot
-	cur      kvdb.Snapshot
-	parentIt kvdb.Iterator
+	upd      *u2udb.Snapshot
+	cur      u2udb.Snapshot
+	parentIt u2udb.Iterator
 
 	prefix, start []byte
 	key, value    []byte

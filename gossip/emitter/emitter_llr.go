@@ -4,18 +4,18 @@ import (
 	"math/rand"
 
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/piecefunc"
 
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/basiccheck"
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
-var emptyLlrBlockVotes = inter.LlrBlockVotes{
+var emptyLlrBlockVotes = native.LlrBlockVotes{
 	Votes: []hash.Hash{},
 }
 
-func (em *Emitter) addLlrBlockVotes(e *inter.MutableEventPayload) {
+func (em *Emitter) addLlrBlockVotes(e *native.MutableEventPayload) {
 	if em.skipLlrBlockVote() || e.Version() == 0 {
 		e.SetBlockVotes(emptyLlrBlockVotes)
 		return
@@ -53,14 +53,14 @@ func (em *Emitter) addLlrBlockVotes(e *inter.MutableEventPayload) {
 		e.SetBlockVotes(emptyLlrBlockVotes)
 		return
 	}
-	e.SetBlockVotes(inter.LlrBlockVotes{
+	e.SetBlockVotes(native.LlrBlockVotes{
 		Start: start,
 		Epoch: epoch,
 		Votes: records,
 	})
 }
 
-func (em *Emitter) addLlrEpochVote(e *inter.MutableEventPayload) {
+func (em *Emitter) addLlrEpochVote(e *native.MutableEventPayload) {
 	if em.skipLlrEpochVote() || e.Version() == 0 {
 		return
 	}
@@ -77,7 +77,7 @@ func (em *Emitter) addLlrEpochVote(e *inter.MutableEventPayload) {
 	if vote == nil {
 		return
 	}
-	e.SetEpochVote(inter.LlrEpochVote{
+	e.SetEpochVote(native.LlrEpochVote{
 		Epoch: target,
 		Vote:  *vote,
 	})

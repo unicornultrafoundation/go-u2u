@@ -6,9 +6,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesis/gpos"
 	"github.com/unicornultrafoundation/go-u2u/utils"
@@ -45,7 +45,7 @@ func SealEpochValidators(_validators []idx.ValidatorID) []byte {
 
 type ValidatorEpochMetric struct {
 	Missed          u2u.BlocksMissed
-	Uptime          inter.Timestamp
+	Uptime          native.Timestamp
 	OriginatedTxFee *big.Int
 }
 

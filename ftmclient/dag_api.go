@@ -9,11 +9,11 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
 // GetEvent returns Hashgraph event by hash or short ID.
-func (ec *Client) GetEvent(ctx context.Context, h hash.Event) (e inter.EventI, err error) {
+func (ec *Client) GetEvent(ctx context.Context, h hash.Event) (e native.EventI, err error) {
 	var raw map[string]interface{}
 	err = ec.c.CallContext(ctx, &raw, "dag_getEvent", h.Hex())
 	if err != nil {
@@ -23,12 +23,12 @@ func (ec *Client) GetEvent(ctx context.Context, h hash.Event) (e inter.EventI, e
 		return
 	}
 
-	e = inter.RPCUnmarshalEvent(raw)
+	e = native.RPCUnmarshalEvent(raw)
 	return
 }
 
 // GetEvent returns Hashgraph event by hash or short ID.
-func (ec *Client) GetEventPayload(ctx context.Context, h hash.Event, inclTx bool) (e inter.EventI, txs []common.Hash, err error) {
+func (ec *Client) GetEventPayload(ctx context.Context, h hash.Event, inclTx bool) (e native.EventI, txs []common.Hash, err error) {
 	var raw map[string]interface{}
 	err = ec.c.CallContext(ctx, &raw, "dag_getEventPayload", h.Hex(), inclTx)
 	if err != nil {
@@ -38,7 +38,7 @@ func (ec *Client) GetEventPayload(ctx context.Context, h hash.Event, inclTx bool
 		return
 	}
 
-	e = inter.RPCUnmarshalEvent(raw)
+	e = native.RPCUnmarshalEvent(raw)
 
 	if inclTx {
 		vv := raw["transactions"].([]interface{})
@@ -61,7 +61,7 @@ func (ec *Client) GetHeads(ctx context.Context, epoch *big.Int) (hash.Events, er
 		return nil, err
 	}
 
-	return inter.HexToEventIDs(raw), nil
+	return native.HexToEventIDs(raw), nil
 }
 
 // GetEpochStats returns epoch statistics.

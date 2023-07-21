@@ -5,11 +5,11 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/metrics"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 )
 
 type Producer struct {
-	kvdb.FullDBProducer
+	u2udb.FullDBProducer
 	mu    sync.Mutex
 	dbs   map[string]*store
 	stats metrics.Meter
@@ -17,7 +17,7 @@ type Producer struct {
 	threshold uint64
 }
 
-func Wrap(backend kvdb.FullDBProducer, threshold uint64) *Producer {
+func Wrap(backend u2udb.FullDBProducer, threshold uint64) *Producer {
 	return &Producer{
 		stats:          metrics.NewMeterForced(),
 		FullDBProducer: backend,
@@ -26,7 +26,7 @@ func Wrap(backend kvdb.FullDBProducer, threshold uint64) *Producer {
 	}
 }
 
-func (f *Producer) OpenDB(name string) (kvdb.Store, error) {
+func (f *Producer) OpenDB(name string) (u2udb.Store, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	// open existing DB

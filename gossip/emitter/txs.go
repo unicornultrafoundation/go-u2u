@@ -8,12 +8,12 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/unicornultrafoundation/go-hashgraph/common/bigendian"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/pos"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
 
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/epochcheck"
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/gaspowercheck"
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/utils"
 )
 
@@ -31,7 +31,7 @@ func max64(a, b uint64) uint64 {
 	return b
 }
 
-func (em *Emitter) maxGasPowerToUse(e *inter.MutableEventPayload) uint64 {
+func (em *Emitter) maxGasPowerToUse(e *native.MutableEventPayload) uint64 {
 	rules := em.world.GetRules()
 	maxGasToUse := rules.Economy.Gas.MaxEventGas
 	if maxGasToUse > e.GasPowerLeft().Min() {
@@ -43,9 +43,9 @@ func (em *Emitter) maxGasPowerToUse(e *inter.MutableEventPayload) uint64 {
 		downThreshold := em.config.NoTxsThreshold
 
 		estimatedAlloc := gaspowercheck.CalcValidatorGasPower(e, e.CreationTime(), e.MedianTime(), 0, em.validators, gaspowercheck.Config{
-			Idx:                inter.LongTermGas,
+			Idx:                native.LongTermGas,
 			AllocPerSec:        rules.Economy.LongGasPower.AllocPerSec * 4 / 5,
-			MaxAllocPeriod:     inter.Timestamp(time.Minute),
+			MaxAllocPeriod:     native.Timestamp(time.Minute),
 			MinEnsuredAlloc:    0,
 			StartupAllocPeriod: 0,
 			MinStartupGas:      0,
@@ -150,7 +150,7 @@ func (em *Emitter) isMyTxTurn(txHash common.Hash, sender common.Address, account
 	return validators.GetID(idx.Validator(rounds[roundIndex])) == me
 }
 
-func (em *Emitter) addTxs(e *inter.MutableEventPayload, sorted *types.TransactionsByPriceAndNonce) {
+func (em *Emitter) addTxs(e *native.MutableEventPayload, sorted *types.TransactionsByPriceAndNonce) {
 	maxGasUsed := em.maxGasPowerToUse(e)
 	if maxGasUsed <= e.GasPowerUsed() {
 		return

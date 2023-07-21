@@ -7,8 +7,8 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
 
-	"github.com/unicornultrafoundation/go-u2u/inter/ibr"
-	"github.com/unicornultrafoundation/go-u2u/inter/ier"
+	"github.com/unicornultrafoundation/go-u2u/native/ibr"
+	"github.com/unicornultrafoundation/go-u2u/native/ier"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesis"
 	"github.com/unicornultrafoundation/go-u2u/utils/iodb"
 )

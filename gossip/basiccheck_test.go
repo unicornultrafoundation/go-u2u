@@ -10,17 +10,17 @@ import (
 	"github.com/stretchr/testify/suite"
 	lbasiccheck "github.com/unicornultrafoundation/go-hashgraph/eventcheck/basiccheck"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/basiccheck"
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
 type LLRBasicCheckTestSuite struct {
 	suite.Suite
 
 	env        *testEnv
-	me         *inter.MutableEventPayload
+	me         *native.MutableEventPayload
 	startEpoch idx.Epoch
 }
 
@@ -112,7 +112,7 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidate() {
 				s.me.SetFrame(idx.Frame(1))
 				s.me.SetLamport(idx.Lamport(1))
 
-				s.me.SetGasPowerLeft(inter.GasPowerLeft{Gas: [2]uint64{math.MaxInt64 - 1, math.MaxInt64}})
+				s.me.SetGasPowerLeft(native.GasPowerLeft{Gas: [2]uint64{math.MaxInt64 - 1, math.MaxInt64}})
 			},
 			lbasiccheck.ErrHugeValue,
 		},
@@ -301,7 +301,7 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidate() {
 
 func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateEV() {
 
-	var ev inter.LlrSignedEpochVote
+	var ev native.LlrSignedEpochVote
 
 	testCases := []struct {
 		name    string
@@ -312,8 +312,8 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateEV() {
 			"validateEV returns nil",
 			nil,
 			func() {
-				ev = inter.LlrSignedEpochVote{
-					Val: inter.LlrEpochVote{
+				ev = native.LlrSignedEpochVote{
+					Val: native.LlrEpochVote{
 						Epoch: s.startEpoch,
 						Vote:  hash.HexToHash("0x01"),
 					},
@@ -322,22 +322,22 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateEV() {
 				s.me.SetEpochVote(ev.Val)
 				s.me.SetEpoch(idx.Epoch(s.startEpoch))
 				s.me.SetCreator(3)
-				s.me.SetPayloadHash(inter.CalcPayloadHash(s.me))
+				s.me.SetPayloadHash(native.CalcPayloadHash(s.me))
 
 				sig, err := s.env.signer.Sign(s.env.pubkeys[2], s.me.HashToSign().Bytes())
 				s.Require().NoError(err)
-				sSig := inter.Signature{}
+				sSig := native.Signature{}
 				copy(sSig[:], sig)
 				s.me.SetSig(sSig)
-				ev = inter.AsSignedEpochVote(s.me)
+				ev = native.AsSignedEpochVote(s.me)
 			},
 		},
 		{
 			"validateEventLocator ErrWrongNetForkID",
 			basiccheck.ErrWrongNetForkID,
 			func() {
-				ev = inter.LlrSignedEpochVote{
-					Val: inter.LlrEpochVote{
+				ev = native.LlrSignedEpochVote{
+					Val: native.LlrEpochVote{
 						Epoch: s.startEpoch,
 						Vote:  hash.HexToHash("0x01"),
 					},
@@ -347,22 +347,22 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateEV() {
 				s.me.SetEpochVote(ev.Val)
 				s.me.SetEpoch(idx.Epoch(s.startEpoch))
 				s.me.SetCreator(3)
-				s.me.SetPayloadHash(inter.CalcPayloadHash(s.me))
+				s.me.SetPayloadHash(native.CalcPayloadHash(s.me))
 
 				sig, err := s.env.signer.Sign(s.env.pubkeys[2], s.me.HashToSign().Bytes())
 				s.Require().NoError(err)
-				sSig := inter.Signature{}
+				sSig := native.Signature{}
 				copy(sSig[:], sig)
 				s.me.SetSig(sSig)
-				ev = inter.AsSignedEpochVote(s.me)
+				ev = native.AsSignedEpochVote(s.me)
 			},
 		},
 		{
 			"validateEventLocator ErrHugeValue-1 e.Seq >= math.MaxInt32-1 ",
 			lbasiccheck.ErrHugeValue,
 			func() {
-				ev = inter.LlrSignedEpochVote{
-					Val: inter.LlrEpochVote{
+				ev = native.LlrSignedEpochVote{
+					Val: native.LlrEpochVote{
 						Epoch: s.startEpoch,
 						Vote:  hash.HexToHash("0x01"),
 					},
@@ -372,22 +372,22 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateEV() {
 				s.me.SetEpochVote(ev.Val)
 				s.me.SetEpoch(idx.Epoch(s.startEpoch))
 				s.me.SetCreator(3)
-				s.me.SetPayloadHash(inter.CalcPayloadHash(s.me))
+				s.me.SetPayloadHash(native.CalcPayloadHash(s.me))
 
 				sig, err := s.env.signer.Sign(s.env.pubkeys[2], s.me.HashToSign().Bytes())
 				s.Require().NoError(err)
-				sSig := inter.Signature{}
+				sSig := native.Signature{}
 				copy(sSig[:], sig)
 				s.me.SetSig(sSig)
-				ev = inter.AsSignedEpochVote(s.me)
+				ev = native.AsSignedEpochVote(s.me)
 			},
 		},
 		{
 			"validateEventLocator ErrHugeValue-2 e.Epoch >= math.MaxInt32-1",
 			lbasiccheck.ErrHugeValue,
 			func() {
-				ev = inter.LlrSignedEpochVote{
-					Val: inter.LlrEpochVote{
+				ev = native.LlrSignedEpochVote{
+					Val: native.LlrEpochVote{
 						Epoch: s.startEpoch,
 						Vote:  hash.HexToHash("0x01"),
 					},
@@ -396,22 +396,22 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateEV() {
 				s.me.SetEpochVote(ev.Val)
 				s.me.SetEpoch(idx.Epoch(math.MaxInt32 - 1))
 				s.me.SetCreator(3)
-				s.me.SetPayloadHash(inter.CalcPayloadHash(s.me))
+				s.me.SetPayloadHash(native.CalcPayloadHash(s.me))
 
 				sig, err := s.env.signer.Sign(s.env.pubkeys[2], s.me.HashToSign().Bytes())
 				s.Require().NoError(err)
-				sSig := inter.Signature{}
+				sSig := native.Signature{}
 				copy(sSig[:], sig)
 				s.me.SetSig(sSig)
-				ev = inter.AsSignedEpochVote(s.me)
+				ev = native.AsSignedEpochVote(s.me)
 			},
 		},
 		{
 			"validateEventLocator ErrHugeValue-3 e.Lamport >= math.MaxInt32-1",
 			lbasiccheck.ErrHugeValue,
 			func() {
-				ev = inter.LlrSignedEpochVote{
-					Val: inter.LlrEpochVote{
+				ev = native.LlrSignedEpochVote{
+					Val: native.LlrEpochVote{
 						Epoch: s.startEpoch,
 						Vote:  hash.HexToHash("0x01"),
 					},
@@ -421,22 +421,22 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateEV() {
 				s.me.SetEpochVote(ev.Val)
 				s.me.SetEpoch(idx.Epoch(math.MaxInt32 - 1))
 				s.me.SetCreator(3)
-				s.me.SetPayloadHash(inter.CalcPayloadHash(s.me))
+				s.me.SetPayloadHash(native.CalcPayloadHash(s.me))
 
 				sig, err := s.env.signer.Sign(s.env.pubkeys[2], s.me.HashToSign().Bytes())
 				s.Require().NoError(err)
-				sSig := inter.Signature{}
+				sSig := native.Signature{}
 				copy(sSig[:], sig)
 				s.me.SetSig(sSig)
-				ev = inter.AsSignedEpochVote(s.me)
+				ev = native.AsSignedEpochVote(s.me)
 			},
 		},
 		{
 			"validateEV ErrFutureEVEpoch",
 			basiccheck.FutureEVEpoch,
 			func() {
-				ev = inter.LlrSignedEpochVote{
-					Val: inter.LlrEpochVote{
+				ev = native.LlrSignedEpochVote{
+					Val: native.LlrEpochVote{
 						Epoch: s.startEpoch + 1,
 						Vote:  hash.HexToHash("0x01"),
 					},
@@ -445,22 +445,22 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateEV() {
 				s.me.SetEpochVote(ev.Val)
 				s.me.SetEpoch(s.startEpoch)
 				s.me.SetCreator(3)
-				s.me.SetPayloadHash(inter.CalcPayloadHash(s.me))
+				s.me.SetPayloadHash(native.CalcPayloadHash(s.me))
 
 				sig, err := s.env.signer.Sign(s.env.pubkeys[2], s.me.HashToSign().Bytes())
 				s.Require().NoError(err)
-				sSig := inter.Signature{}
+				sSig := native.Signature{}
 				copy(sSig[:], sig)
 				s.me.SetSig(sSig)
-				ev = inter.AsSignedEpochVote(s.me)
+				ev = native.AsSignedEpochVote(s.me)
 			},
 		},
 		{
 			"validateEV MalformedEV-1",
 			basiccheck.MalformedEV,
 			func() {
-				ev = inter.LlrSignedEpochVote{
-					Val: inter.LlrEpochVote{
+				ev = native.LlrSignedEpochVote{
+					Val: native.LlrEpochVote{
 						Epoch: 0,
 						Vote:  hash.HexToHash("0x01"),
 					},
@@ -469,22 +469,22 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateEV() {
 				s.me.SetEpochVote(ev.Val)
 				s.me.SetEpoch(s.startEpoch)
 				s.me.SetCreator(3)
-				s.me.SetPayloadHash(inter.CalcPayloadHash(s.me))
+				s.me.SetPayloadHash(native.CalcPayloadHash(s.me))
 
 				sig, err := s.env.signer.Sign(s.env.pubkeys[2], s.me.HashToSign().Bytes())
 				s.Require().NoError(err)
-				sSig := inter.Signature{}
+				sSig := native.Signature{}
 				copy(sSig[:], sig)
 				s.me.SetSig(sSig)
-				ev = inter.AsSignedEpochVote(s.me)
+				ev = native.AsSignedEpochVote(s.me)
 			},
 		},
 		{
 			"validateEV MalformedEV-2",
 			basiccheck.MalformedEV,
 			func() {
-				ev = inter.LlrSignedEpochVote{
-					Val: inter.LlrEpochVote{
+				ev = native.LlrSignedEpochVote{
+					Val: native.LlrEpochVote{
 						Epoch: s.startEpoch,
 						Vote:  hash.Zero,
 					},
@@ -493,22 +493,22 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateEV() {
 				s.me.SetEpochVote(ev.Val)
 				s.me.SetEpoch(s.startEpoch)
 				s.me.SetCreator(3)
-				s.me.SetPayloadHash(inter.CalcPayloadHash(s.me))
+				s.me.SetPayloadHash(native.CalcPayloadHash(s.me))
 
 				sig, err := s.env.signer.Sign(s.env.pubkeys[2], s.me.HashToSign().Bytes())
 				s.Require().NoError(err)
-				sSig := inter.Signature{}
+				sSig := native.Signature{}
 				copy(sSig[:], sig)
 				s.me.SetSig(sSig)
-				ev = inter.AsSignedEpochVote(s.me)
+				ev = native.AsSignedEpochVote(s.me)
 			},
 		},
 		{
 			"validateEV ErrHugeValue",
 			lbasiccheck.ErrHugeValue,
 			func() {
-				ev = inter.LlrSignedEpochVote{
-					Val: inter.LlrEpochVote{
+				ev = native.LlrSignedEpochVote{
+					Val: native.LlrEpochVote{
 						Epoch: math.MaxInt32 - 1,
 						Vote:  hash.HexToHash("0x01"),
 					},
@@ -517,22 +517,22 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateEV() {
 				s.me.SetEpochVote(ev.Val)
 				s.me.SetEpoch(idx.Epoch(math.MaxInt32 - 1))
 				s.me.SetCreator(3)
-				s.me.SetPayloadHash(inter.CalcPayloadHash(s.me))
+				s.me.SetPayloadHash(native.CalcPayloadHash(s.me))
 
 				sig, err := s.env.signer.Sign(s.env.pubkeys[2], s.me.HashToSign().Bytes())
 				s.Require().NoError(err)
-				sSig := inter.Signature{}
+				sSig := native.Signature{}
 				copy(sSig[:], sig)
 				s.me.SetSig(sSig)
-				ev = inter.AsSignedEpochVote(s.me)
+				ev = native.AsSignedEpochVote(s.me)
 			},
 		},
 		{
 			"validateEV EmptyEV",
 			basiccheck.EmptyEV,
 			func() {
-				ev = inter.LlrSignedEpochVote{
-					Val: inter.LlrEpochVote{
+				ev = native.LlrSignedEpochVote{
+					Val: native.LlrEpochVote{
 						Epoch: 0,
 						Vote:  hash.Zero,
 					},
@@ -541,14 +541,14 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateEV() {
 				s.me.SetEpochVote(ev.Val)
 				s.me.SetEpoch(idx.Epoch(s.startEpoch))
 				s.me.SetCreator(3)
-				s.me.SetPayloadHash(inter.CalcPayloadHash(s.me))
+				s.me.SetPayloadHash(native.CalcPayloadHash(s.me))
 
 				sig, err := s.env.signer.Sign(s.env.pubkeys[2], s.me.HashToSign().Bytes())
 				s.Require().NoError(err)
-				sSig := inter.Signature{}
+				sSig := native.Signature{}
 				copy(sSig[:], sig)
 				s.me.SetSig(sSig)
-				ev = inter.AsSignedEpochVote(s.me)
+				ev = native.AsSignedEpochVote(s.me)
 			},
 		},
 	}
@@ -573,7 +573,7 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateEV() {
 }
 
 func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateBV() {
-	var bv inter.LlrSignedBlockVotes
+	var bv native.LlrSignedBlockVotes
 
 	testCases := []struct {
 		name    string
@@ -584,8 +584,8 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateBV() {
 			"validateBV returns nil",
 			nil,
 			func() {
-				bv = inter.LlrSignedBlockVotes{
-					Val: inter.LlrBlockVotes{
+				bv = native.LlrSignedBlockVotes{
+					Val: native.LlrBlockVotes{
 						Start: 1,
 						Epoch: s.startEpoch,
 						Votes: []hash.Hash{
@@ -595,23 +595,23 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateBV() {
 					},
 				}
 				s.me.SetBlockVotes(bv.Val)
-				s.me.SetPayloadHash(inter.CalcPayloadHash(s.me))
+				s.me.SetPayloadHash(native.CalcPayloadHash(s.me))
 
 				sig, err := s.env.signer.Sign(s.env.pubkeys[1], s.me.HashToSign().Bytes())
 				s.Require().NoError(err)
-				sSig := inter.Signature{}
+				sSig := native.Signature{}
 				copy(sSig[:], sig)
 				s.me.SetSig(sSig)
 
-				bv = inter.AsSignedBlockVotes(s.me)
+				bv = native.AsSignedBlockVotes(s.me)
 			},
 		},
 		{
 			"validateBV ErrWrongNetForkID",
 			basiccheck.ErrWrongNetForkID,
 			func() {
-				bv = inter.LlrSignedBlockVotes{
-					Val: inter.LlrBlockVotes{
+				bv = native.LlrSignedBlockVotes{
+					Val: native.LlrBlockVotes{
 						Start: 1,
 						Epoch: s.startEpoch,
 						Votes: []hash.Hash{
@@ -621,23 +621,23 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateBV() {
 					},
 				}
 				s.me.SetBlockVotes(bv.Val)
-				s.me.SetPayloadHash(inter.CalcPayloadHash(s.me))
+				s.me.SetPayloadHash(native.CalcPayloadHash(s.me))
 				s.me.SetNetForkID(1)
 				sig, err := s.env.signer.Sign(s.env.pubkeys[1], s.me.HashToSign().Bytes())
 				s.Require().NoError(err)
-				sSig := inter.Signature{}
+				sSig := native.Signature{}
 				copy(sSig[:], sig)
 				s.me.SetSig(sSig)
 
-				bv = inter.AsSignedBlockVotes(s.me)
+				bv = native.AsSignedBlockVotes(s.me)
 			},
 		},
 		{
 			"validateBVs ErrHugeValue e.Seq >= math.MaxInt32-1",
 			lbasiccheck.ErrHugeValue,
 			func() {
-				bv = inter.LlrSignedBlockVotes{
-					Val: inter.LlrBlockVotes{
+				bv = native.LlrSignedBlockVotes{
+					Val: native.LlrBlockVotes{
 						Start: 1,
 						Epoch: s.startEpoch,
 						Votes: []hash.Hash{
@@ -649,23 +649,23 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateBV() {
 
 				s.me.SetSeq(idx.Event(math.MaxInt32 - 1))
 				s.me.SetBlockVotes(bv.Val)
-				s.me.SetPayloadHash(inter.CalcPayloadHash(s.me))
+				s.me.SetPayloadHash(native.CalcPayloadHash(s.me))
 
 				sig, err := s.env.signer.Sign(s.env.pubkeys[1], s.me.HashToSign().Bytes())
 				s.Require().NoError(err)
-				sSig := inter.Signature{}
+				sSig := native.Signature{}
 				copy(sSig[:], sig)
 				s.me.SetSig(sSig)
 
-				bv = inter.AsSignedBlockVotes(s.me)
+				bv = native.AsSignedBlockVotes(s.me)
 			},
 		},
 		{
 			"validateBVs ErrHugeValue e.Epoch >= math.MaxInt32-1",
 			lbasiccheck.ErrHugeValue,
 			func() {
-				bv = inter.LlrSignedBlockVotes{
-					Val: inter.LlrBlockVotes{
+				bv = native.LlrSignedBlockVotes{
+					Val: native.LlrBlockVotes{
 						Start: 1,
 						Epoch: s.startEpoch,
 						Votes: []hash.Hash{
@@ -677,23 +677,23 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateBV() {
 
 				s.me.SetEpoch(idx.Epoch(math.MaxInt32 - 1))
 				s.me.SetBlockVotes(bv.Val)
-				s.me.SetPayloadHash(inter.CalcPayloadHash(s.me))
+				s.me.SetPayloadHash(native.CalcPayloadHash(s.me))
 
 				sig, err := s.env.signer.Sign(s.env.pubkeys[1], s.me.HashToSign().Bytes())
 				s.Require().NoError(err)
-				sSig := inter.Signature{}
+				sSig := native.Signature{}
 				copy(sSig[:], sig)
 				s.me.SetSig(sSig)
 
-				bv = inter.AsSignedBlockVotes(s.me)
+				bv = native.AsSignedBlockVotes(s.me)
 			},
 		},
 		{
 			"validateBVs ErrHugeValue e.Lamport >= math.MaxInt32-1",
 			lbasiccheck.ErrHugeValue,
 			func() {
-				bv = inter.LlrSignedBlockVotes{
-					Val: inter.LlrBlockVotes{
+				bv = native.LlrSignedBlockVotes{
+					Val: native.LlrBlockVotes{
 						Start: 1,
 						Epoch: s.startEpoch,
 						Votes: []hash.Hash{
@@ -705,23 +705,23 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateBV() {
 
 				s.me.SetLamport(idx.Lamport(math.MaxInt32 - 1))
 				s.me.SetBlockVotes(bv.Val)
-				s.me.SetPayloadHash(inter.CalcPayloadHash(s.me))
+				s.me.SetPayloadHash(native.CalcPayloadHash(s.me))
 
 				sig, err := s.env.signer.Sign(s.env.pubkeys[1], s.me.HashToSign().Bytes())
 				s.Require().NoError(err)
-				sSig := inter.Signature{}
+				sSig := native.Signature{}
 				copy(sSig[:], sig)
 				s.me.SetSig(sSig)
 
-				bv = inter.AsSignedBlockVotes(s.me)
+				bv = native.AsSignedBlockVotes(s.me)
 			},
 		},
 		{
 			"validateBVs FutureBVsEpoc",
 			basiccheck.FutureBVsEpoch,
 			func() {
-				bv = inter.LlrSignedBlockVotes{
-					Val: inter.LlrBlockVotes{
+				bv = native.LlrSignedBlockVotes{
+					Val: native.LlrBlockVotes{
 						Start: 1,
 						Epoch: s.startEpoch + 1,
 						Votes: []hash.Hash{
@@ -732,23 +732,23 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateBV() {
 				}
 				s.me.SetEpoch(idx.Epoch(s.startEpoch))
 				s.me.SetBlockVotes(bv.Val)
-				s.me.SetPayloadHash(inter.CalcPayloadHash(s.me))
+				s.me.SetPayloadHash(native.CalcPayloadHash(s.me))
 
 				sig, err := s.env.signer.Sign(s.env.pubkeys[1], s.me.HashToSign().Bytes())
 				s.Require().NoError(err)
-				sSig := inter.Signature{}
+				sSig := native.Signature{}
 				copy(sSig[:], sig)
 				s.me.SetSig(sSig)
 
-				bv = inter.AsSignedBlockVotes(s.me)
+				bv = native.AsSignedBlockVotes(s.me)
 			},
 		},
 		{
 			"validateBVs ErrHugeValue-1",
 			basiccheck.FutureBVsEpoch,
 			func() {
-				bv = inter.LlrSignedBlockVotes{
-					Val: inter.LlrBlockVotes{
+				bv = native.LlrSignedBlockVotes{
+					Val: native.LlrBlockVotes{
 						Start: math.MaxInt64 / 2,
 						Epoch: s.startEpoch + 1,
 						Votes: []hash.Hash{
@@ -759,23 +759,23 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateBV() {
 				}
 				s.me.SetEpoch(idx.Epoch(s.startEpoch))
 				s.me.SetBlockVotes(bv.Val)
-				s.me.SetPayloadHash(inter.CalcPayloadHash(s.me))
+				s.me.SetPayloadHash(native.CalcPayloadHash(s.me))
 
 				sig, err := s.env.signer.Sign(s.env.pubkeys[1], s.me.HashToSign().Bytes())
 				s.Require().NoError(err)
-				sSig := inter.Signature{}
+				sSig := native.Signature{}
 				copy(sSig[:], sig)
 				s.me.SetSig(sSig)
 
-				bv = inter.AsSignedBlockVotes(s.me)
+				bv = native.AsSignedBlockVotes(s.me)
 			},
 		},
 		{
 			"validateBVs ErrHugeValue-2",
 			basiccheck.FutureBVsEpoch,
 			func() {
-				bv = inter.LlrSignedBlockVotes{
-					Val: inter.LlrBlockVotes{
+				bv = native.LlrSignedBlockVotes{
+					Val: native.LlrBlockVotes{
 						Start: 1,
 						Epoch: math.MaxInt32 - 1,
 						Votes: []hash.Hash{
@@ -786,23 +786,23 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateBV() {
 				}
 				s.me.SetEpoch(idx.Epoch(s.startEpoch))
 				s.me.SetBlockVotes(bv.Val)
-				s.me.SetPayloadHash(inter.CalcPayloadHash(s.me))
+				s.me.SetPayloadHash(native.CalcPayloadHash(s.me))
 
 				sig, err := s.env.signer.Sign(s.env.pubkeys[1], s.me.HashToSign().Bytes())
 				s.Require().NoError(err)
-				sSig := inter.Signature{}
+				sSig := native.Signature{}
 				copy(sSig[:], sig)
 				s.me.SetSig(sSig)
 
-				bv = inter.AsSignedBlockVotes(s.me)
+				bv = native.AsSignedBlockVotes(s.me)
 			},
 		},
 		{
 			"validateBVs TooManyBVs",
 			basiccheck.TooManyBVs,
 			func() {
-				bv = inter.LlrSignedBlockVotes{
-					Val: inter.LlrBlockVotes{
+				bv = native.LlrSignedBlockVotes{
+					Val: native.LlrBlockVotes{
 						Start: 1,
 						Epoch: s.startEpoch,
 						Votes: []hash.Hash{
@@ -818,23 +818,23 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateBV() {
 
 				s.me.SetEpoch(idx.Epoch(s.startEpoch))
 				s.me.SetBlockVotes(bv.Val)
-				s.me.SetPayloadHash(inter.CalcPayloadHash(s.me))
+				s.me.SetPayloadHash(native.CalcPayloadHash(s.me))
 
 				sig, err := s.env.signer.Sign(s.env.pubkeys[1], s.me.HashToSign().Bytes())
 				s.Require().NoError(err)
-				sSig := inter.Signature{}
+				sSig := native.Signature{}
 				copy(sSig[:], sig)
 				s.me.SetSig(sSig)
 
-				bv = inter.AsSignedBlockVotes(s.me)
+				bv = native.AsSignedBlockVotes(s.me)
 			},
 		},
 		{
 			"validateBVs MalformedBVs",
 			basiccheck.MalformedBVs,
 			func() {
-				bv = inter.LlrSignedBlockVotes{
-					Val: inter.LlrBlockVotes{
+				bv = native.LlrSignedBlockVotes{
+					Val: native.LlrBlockVotes{
 						Start: 1,
 						Epoch: 0,
 						Votes: []hash.Hash{},
@@ -843,23 +843,23 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateBV() {
 
 				s.me.SetEpoch(idx.Epoch(s.startEpoch))
 				s.me.SetBlockVotes(bv.Val)
-				s.me.SetPayloadHash(inter.CalcPayloadHash(s.me))
+				s.me.SetPayloadHash(native.CalcPayloadHash(s.me))
 
 				sig, err := s.env.signer.Sign(s.env.pubkeys[1], s.me.HashToSign().Bytes())
 				s.Require().NoError(err)
-				sSig := inter.Signature{}
+				sSig := native.Signature{}
 				copy(sSig[:], sig)
 				s.me.SetSig(sSig)
 
-				bv = inter.AsSignedBlockVotes(s.me)
+				bv = native.AsSignedBlockVotes(s.me)
 			},
 		},
 		{
 			"validateBVs EmptyBVs",
 			basiccheck.EmptyBVs,
 			func() {
-				bv = inter.LlrSignedBlockVotes{
-					Val: inter.LlrBlockVotes{
+				bv = native.LlrSignedBlockVotes{
+					Val: native.LlrBlockVotes{
 						Start: 0,
 						Epoch: 0,
 						Votes: []hash.Hash{},
@@ -868,15 +868,15 @@ func (s *LLRBasicCheckTestSuite) TestBasicCheckValidateBV() {
 
 				s.me.SetEpoch(idx.Epoch(s.startEpoch))
 				s.me.SetBlockVotes(bv.Val)
-				s.me.SetPayloadHash(inter.CalcPayloadHash(s.me))
+				s.me.SetPayloadHash(native.CalcPayloadHash(s.me))
 
 				sig, err := s.env.signer.Sign(s.env.pubkeys[1], s.me.HashToSign().Bytes())
 				s.Require().NoError(err)
-				sSig := inter.Signature{}
+				sSig := native.Signature{}
 				copy(sSig[:], sig)
 				s.me.SetSig(sSig)
 
-				bv = inter.AsSignedBlockVotes(s.me)
+				bv = native.AsSignedBlockVotes(s.me)
 			},
 		},
 	}

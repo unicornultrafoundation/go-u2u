@@ -4,11 +4,11 @@ import (
 	"time"
 
 	"github.com/unicornultrafoundation/go-hashgraph/emitter/ancestor"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/pos"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/piecefunc"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
 func scalarUpdMetric(diff idx.Event, weight pos.Weight, totalWeight pos.Weight) ancestor.Metric {
@@ -38,7 +38,7 @@ func eventMetric(orig ancestor.Metric, seq idx.Event) ancestor.Metric {
 	return metric
 }
 
-func (em *Emitter) isAllowedToEmit(e inter.EventI, eTxs bool, metric ancestor.Metric, selfParent *inter.Event) bool {
+func (em *Emitter) isAllowedToEmit(e native.EventI, eTxs bool, metric ancestor.Metric, selfParent *native.Event) bool {
 	passedTime := e.CreationTime().Time().Sub(em.prevEmittedAtTime)
 	if passedTime < 0 {
 		passedTime = 0

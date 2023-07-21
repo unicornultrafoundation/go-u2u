@@ -23,9 +23,9 @@ import (
 	"github.com/ethereum/go-ethereum/p2p/enr"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/hashgraph"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/dag"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/types"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/workers"
 
 	"github.com/unicornultrafoundation/go-u2u/ethapi"
@@ -47,8 +47,8 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/gossip/gasprice"
 	"github.com/unicornultrafoundation/go-u2u/gossip/proclogger"
 	snapsync "github.com/unicornultrafoundation/go-u2u/gossip/protocols/snap"
-	"github.com/unicornultrafoundation/go-u2u/inter"
 	"github.com/unicornultrafoundation/go-u2u/logger"
+	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/utils/signers/gsignercache"
 	"github.com/unicornultrafoundation/go-u2u/utils/wgmutex"
 	"github.com/unicornultrafoundation/go-u2u/valkeystore"
@@ -68,7 +68,7 @@ func (f *ServiceFeed) SubscribeNewEpoch(ch chan<- idx.Epoch) notify.Subscription
 	return f.scope.Track(f.newEpoch.Subscribe(ch))
 }
 
-func (f *ServiceFeed) SubscribeNewEmitted(ch chan<- *inter.EventPayload) notify.Subscription {
+func (f *ServiceFeed) SubscribeNewEmitted(ch chan<- *native.EventPayload) notify.Subscription {
 	return f.scope.Track(f.newEmittedEvent.Subscribe(ch))
 }
 
@@ -112,7 +112,7 @@ type Service struct {
 
 	// application
 	store               *Store
-	engine              hashgraph.Consensus
+	engine              types.Consensus
 	dagIndexer          *vecmt.Index
 	engineMu            *sync.RWMutex
 	emitters            []*emitter.Emitter
@@ -158,7 +158,7 @@ type Service struct {
 }
 
 func NewService(stack *node.Node, config Config, store *Store, blockProc BlockProc,
-	engine hashgraph.Consensus, dagIndexer *vecmt.Index, newTxPool func(evmcore.StateReader) TxPool,
+	engine types.Consensus, dagIndexer *vecmt.Index, newTxPool func(evmcore.StateReader) TxPool,
 	haltCheck func(oldEpoch, newEpoch idx.Epoch, age time.Time) bool) (*Service, error) {
 	if err := config.Validate(); err != nil {
 		return nil, err
@@ -180,7 +180,7 @@ func NewService(stack *node.Node, config Config, store *Store, blockProc BlockPr
 	return svc, nil
 }
 
-func newService(config Config, store *Store, blockProc BlockProc, engine hashgraph.Consensus, dagIndexer *vecmt.Index, newTxPool func(evmcore.StateReader) TxPool) (*Service, error) {
+func newService(config Config, store *Store, blockProc BlockProc, engine types.Consensus, dagIndexer *vecmt.Index, newTxPool func(evmcore.StateReader) TxPool) (*Service, error) {
 	svc := &Service{
 		config:             config,
 		blockProcTasksDone: make(chan struct{}),
@@ -252,7 +252,7 @@ func newService(config Config, store *Store, blockProc BlockProc, engine hashgra
 		checkers: svc.checkers,
 		s:        store,
 		process: processCallback{
-			Event: func(event *inter.EventPayload) error {
+			Event: func(event *native.EventPayload) error {
 				done := svc.procLogger.EventConnectionStarted(event, false)
 				defer done()
 				return svc.processEvent(event)

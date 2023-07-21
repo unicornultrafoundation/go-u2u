@@ -5,10 +5,10 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter"
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/utils/wgmutex"
 	"github.com/unicornultrafoundation/go-u2u/valkeystore"
 	"github.com/unicornultrafoundation/go-u2u/vecmt"
@@ -32,23 +32,23 @@ type emitterWorld struct {
 	types.Signer
 }
 
-func (ew *emitterWorldProc) Check(emitted *inter.EventPayload, parents inter.Events) error {
+func (ew *emitterWorldProc) Check(emitted *native.EventPayload, parents native.Events) error {
 	// sanity check
 	return ew.s.checkers.Validate(emitted, parents.Interfaces())
 }
 
-func (ew *emitterWorldProc) Process(emitted *inter.EventPayload) error {
+func (ew *emitterWorldProc) Process(emitted *native.EventPayload) error {
 	done := ew.s.procLogger.EventConnectionStarted(emitted, true)
 	defer done()
 	return ew.s.processEvent(emitted)
 }
 
-func (ew *emitterWorldProc) Broadcast(emitted *inter.EventPayload) {
+func (ew *emitterWorldProc) Broadcast(emitted *native.EventPayload) {
 	// PM listens and will broadcast it
 	ew.s.feed.newEmittedEvent.Send(emitted)
 }
 
-func (ew *emitterWorldProc) Build(e *inter.MutableEventPayload, onIndexed func()) error {
+func (ew *emitterWorldProc) Build(e *native.MutableEventPayload, onIndexed func()) error {
 	return ew.s.buildEvent(e, onIndexed)
 }
 

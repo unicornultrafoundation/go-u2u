@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	cli "gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/integration/makefakegenesis"

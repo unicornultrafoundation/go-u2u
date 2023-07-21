@@ -8,7 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/metrics"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 )
 
 const (
@@ -18,11 +18,11 @@ const (
 )
 
 type DBProducerWithMetrics struct {
-	kvdb.IterableDBProducer
+	u2udb.IterableDBProducer
 }
 
 type StoreWithMetrics struct {
-	kvdb.Store
+	u2udb.Store
 
 	diskSizeGauge  metrics.Gauge // Gauge for tracking the size of all the levels in the database
 	diskReadMeter  metrics.Meter // Meter for measuring the effective amount of data read
@@ -34,12 +34,12 @@ type StoreWithMetrics struct {
 	log log.Logger // Contextual logger tracking the database path
 }
 
-func WrapDatabaseWithMetrics(db kvdb.IterableDBProducer) kvdb.IterableDBProducer {
+func WrapDatabaseWithMetrics(db u2udb.IterableDBProducer) u2udb.IterableDBProducer {
 	wrapper := &DBProducerWithMetrics{db}
 	return wrapper
 }
 
-func WrapStoreWithMetrics(ds kvdb.Store) *StoreWithMetrics {
+func WrapStoreWithMetrics(ds u2udb.Store) *StoreWithMetrics {
 	wrapper := &StoreWithMetrics{
 		Store:    ds,
 		quitChan: make(chan chan error),
@@ -140,7 +140,7 @@ func (ds *StoreWithMetrics) meter(refresh time.Duration) {
 	errc <- merr
 }
 
-func (db *DBProducerWithMetrics) OpenDB(name string) (kvdb.Store, error) {
+func (db *DBProducerWithMetrics) OpenDB(name string) (u2udb.Store, error) {
 	ds, err := db.IterableDBProducer.OpenDB(name)
 	if err != nil {
 		return nil, err

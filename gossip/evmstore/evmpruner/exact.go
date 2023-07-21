@@ -7,12 +7,12 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/leveldb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/leveldb"
 )
 
 type exactSetStore struct {
-	db kvdb.Store
+	db u2udb.Store
 }
 
 func NewLevelDBSet(name string) (*exactSetStore, io.Closer, error) {

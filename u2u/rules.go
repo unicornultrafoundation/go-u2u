@@ -8,9 +8,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
 	ethparams "github.com/ethereum/go-ethereum/params"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/evmwriter"
 )
 
@@ -56,8 +56,8 @@ type Rules RulesRLP
 // GasPowerRules defines gas power rules in the consensus.
 type GasPowerRules struct {
 	AllocPerSec        uint64
-	MaxAllocPeriod     inter.Timestamp
-	StartupAllocPeriod inter.Timestamp
+	MaxAllocPeriod     native.Timestamp
+	StartupAllocPeriod native.Timestamp
 	MinStartupGas      uint64
 }
 
@@ -77,7 +77,7 @@ type GasRules GasRulesRLPV1
 
 type EpochsRules struct {
 	MaxEpochGas      uint64
-	MaxEpochDuration inter.Timestamp
+	MaxEpochDuration native.Timestamp
 }
 
 // DagRules of Hashgraph DAG (directed acyclic graph).
@@ -90,7 +90,7 @@ type DagRules struct {
 // BlocksMissed is information about missed blocks from a staker
 type BlocksMissed struct {
 	BlocksNum idx.Block
-	Period    inter.Timestamp
+	Period    native.Timestamp
 }
 
 // EconomyRules contains economy constants
@@ -108,7 +108,7 @@ type EconomyRules struct {
 // BlocksRules contains blocks constants
 type BlocksRules struct {
 	MaxBlockGas             uint64 // technical hard limit, gas is mostly governed by gas power allocation
-	MaxEmptyBlockSkipPeriod inter.Timestamp
+	MaxEmptyBlockSkipPeriod native.Timestamp
 }
 
 type Upgrades struct {
@@ -159,7 +159,7 @@ func MainNetRules() Rules {
 		Economy:   DefaultEconomyRules(),
 		Blocks: BlocksRules{
 			MaxBlockGas:             20500000,
-			MaxEmptyBlockSkipPeriod: inter.Timestamp(1 * time.Minute),
+			MaxEmptyBlockSkipPeriod: native.Timestamp(1 * time.Minute),
 		},
 	}
 }
@@ -173,7 +173,7 @@ func TestNetRules() Rules {
 		Economy:   DefaultEconomyRules(),
 		Blocks: BlocksRules{
 			MaxBlockGas:             20500000,
-			MaxEmptyBlockSkipPeriod: inter.Timestamp(1 * time.Minute),
+			MaxEmptyBlockSkipPeriod: native.Timestamp(1 * time.Minute),
 		},
 	}
 }
@@ -187,7 +187,7 @@ func FakeNetRules() Rules {
 		Economy:   FakeEconomyRules(),
 		Blocks: BlocksRules{
 			MaxBlockGas:             20500000,
-			MaxEmptyBlockSkipPeriod: inter.Timestamp(3 * time.Second),
+			MaxEmptyBlockSkipPeriod: native.Timestamp(3 * time.Second),
 		},
 		Upgrades: Upgrades{
 			Berlin: true,
@@ -227,7 +227,7 @@ func DefaultDagRules() DagRules {
 func DefaultEpochsRules() EpochsRules {
 	return EpochsRules{
 		MaxEpochGas:      1500000000,
-		MaxEpochDuration: inter.Timestamp(4 * time.Hour),
+		MaxEpochDuration: native.Timestamp(4 * time.Hour),
 	}
 }
 
@@ -247,7 +247,7 @@ func DefaultGasRules() GasRules {
 func FakeNetEpochsRules() EpochsRules {
 	cfg := DefaultEpochsRules()
 	cfg.MaxEpochGas /= 5
-	cfg.MaxEpochDuration = inter.Timestamp(10 * time.Minute)
+	cfg.MaxEpochDuration = native.Timestamp(10 * time.Minute)
 	return cfg
 }
 
@@ -255,8 +255,8 @@ func FakeNetEpochsRules() EpochsRules {
 func DefaulLongGasPowerRules() GasPowerRules {
 	return GasPowerRules{
 		AllocPerSec:        100 * DefaultEventGas,
-		MaxAllocPeriod:     inter.Timestamp(60 * time.Minute),
-		StartupAllocPeriod: inter.Timestamp(5 * time.Second),
+		MaxAllocPeriod:     native.Timestamp(60 * time.Minute),
+		StartupAllocPeriod: native.Timestamp(5 * time.Second),
 		MinStartupGas:      DefaultEventGas * 20,
 	}
 }

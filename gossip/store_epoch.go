@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/skiperrors"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/table"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/skiperrors"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/table"
 
 	"github.com/unicornultrafoundation/go-u2u/logger"
 )
@@ -24,11 +24,11 @@ var (
 type (
 	epochStore struct {
 		epoch idx.Epoch
-		db    kvdb.Store
+		db    u2udb.Store
 		table struct {
-			LastEvents kvdb.Store `table:"t"`
-			Heads      kvdb.Store `table:"H"`
-			DagIndex   kvdb.Store `table:"v"`
+			LastEvents u2udb.Store `table:"t"`
+			Heads      u2udb.Store `table:"H"`
+			DagIndex   u2udb.Store `table:"v"`
 		}
 		cache struct {
 			Heads      atomic.Value
@@ -39,7 +39,7 @@ type (
 	}
 )
 
-func newEpochStore(epoch idx.Epoch, db kvdb.Store) *epochStore {
+func newEpochStore(epoch idx.Epoch, db u2udb.Store) *epochStore {
 	es := &epochStore{
 		epoch:    epoch,
 		db:       db,

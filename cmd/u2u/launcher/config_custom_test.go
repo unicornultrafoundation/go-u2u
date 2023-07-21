@@ -6,7 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/stretchr/testify/require"
-	"github.com/unicornultrafoundation/go-hashgraph/abft"
+	"github.com/unicornultrafoundation/go-hashgraph/consensus"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/cachescale"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
@@ -27,8 +27,8 @@ func TestConfigFile(t *testing.T) {
 		Emitter:        emitter.DefaultConfig(),
 		TxPool:         evmcore.DefaultTxPoolConfig,
 		U2uStore:       gossip.DefaultStoreConfig(cacheRatio),
-		Hashgraph:      abft.DefaultConfig(),
-		HashgraphStore: abft.DefaultStoreConfig(cacheRatio),
+		Hashgraph:      consensus.DefaultConfig(),
+		HashgraphStore: consensus.DefaultStoreConfig(cacheRatio),
 		VectorClock:    vecmt.DefaultConfig(cacheRatio),
 	}
 

@@ -29,13 +29,13 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
-var FakeGenesisTime = inter.Timestamp(1608600000 * time.Second)
+var FakeGenesisTime = native.Timestamp(1608600000 * time.Second)
 
 // ApplyFakeGenesis writes or updates the genesis block in db.
-func ApplyFakeGenesis(statedb *state.StateDB, time inter.Timestamp, balances map[common.Address]*big.Int) (*EvmBlock, error) {
+func ApplyFakeGenesis(statedb *state.StateDB, time native.Timestamp, balances map[common.Address]*big.Int) (*EvmBlock, error) {
 	for acc, balance := range balances {
 		statedb.SetBalance(acc, balance)
 	}
@@ -68,7 +68,7 @@ func flush(statedb *state.StateDB, clean bool) (root common.Hash, err error) {
 }
 
 // genesisBlock makes genesis block with pretty hash.
-func genesisBlock(time inter.Timestamp, root common.Hash) *EvmBlock {
+func genesisBlock(time native.Timestamp, root common.Hash) *EvmBlock {
 	block := &EvmBlock{
 		EvmHeader: EvmHeader{
 			Number:   big.NewInt(0),
@@ -83,7 +83,7 @@ func genesisBlock(time inter.Timestamp, root common.Hash) *EvmBlock {
 }
 
 // MustApplyFakeGenesis writes the genesis block and state to db, panicking on error.
-func MustApplyFakeGenesis(statedb *state.StateDB, time inter.Timestamp, balances map[common.Address]*big.Int) *EvmBlock {
+func MustApplyFakeGenesis(statedb *state.StateDB, time native.Timestamp, balances map[common.Address]*big.Int) *EvmBlock {
 	block, err := ApplyFakeGenesis(statedb, time, balances)
 	if err != nil {
 		log.Crit("ApplyFakeGenesis", "err", err)

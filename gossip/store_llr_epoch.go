@@ -4,17 +4,17 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/pos"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
 const (
 	maxEpochPackVotes = 10000
 )
 
-func (s *Store) SetEpochVote(ev inter.LlrSignedEpochVote) {
+func (s *Store) SetEpochVote(ev native.LlrSignedEpochVote) {
 	s.rlp.Set(s.table.LlrEpochVotes, append(ev.Val.Epoch.Bytes(), ev.Signed.Locator.ID().Bytes()...), &ev)
 }
 

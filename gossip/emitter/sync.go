@@ -7,7 +7,7 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/emitter/doublesign"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/utils/errlock"
 )
 
@@ -21,7 +21,7 @@ type syncStatus struct {
 	becameValidator           time.Time
 }
 
-func (em *Emitter) onNewExternalEvent(e inter.EventPayloadI) {
+func (em *Emitter) onNewExternalEvent(e native.EventPayloadI) {
 	em.syncStatus.externalSelfEventDetected = time.Now()
 	em.syncStatus.externalSelfEventCreated = e.CreationTime().Time()
 	status := em.currentSyncStatus()

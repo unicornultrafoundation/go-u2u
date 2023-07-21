@@ -3,7 +3,7 @@ package topicsdb
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 )
 
 type (
@@ -26,7 +26,7 @@ func newLogrec(rec ID, topicCount uint8) *logrec {
 
 // fetch record's data.
 func (rec *logrec) fetch(
-	logrecTable kvdb.Reader,
+	logrecTable u2udb.Reader,
 ) {
 	r := &types.Log{
 		BlockNumber: rec.ID.BlockNumber(),

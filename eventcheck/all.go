@@ -6,7 +6,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/gaspowercheck"
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/heavycheck"
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/parentscheck"
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
 // Checkers is collection of all the checkers
@@ -19,7 +19,7 @@ type Checkers struct {
 }
 
 // Validate runs all the checks except Poset-related
-func (v *Checkers) Validate(e inter.EventPayloadI, parents inter.EventIs) error {
+func (v *Checkers) Validate(e native.EventPayloadI, parents native.EventIs) error {
 	if err := v.Basiccheck.Validate(e); err != nil {
 		return err
 	}
@@ -29,7 +29,7 @@ func (v *Checkers) Validate(e inter.EventPayloadI, parents inter.EventIs) error 
 	if err := v.Parentscheck.Validate(e, parents); err != nil {
 		return err
 	}
-	var selfParent inter.EventI
+	var selfParent native.EventI
 	if e.SelfParent() != nil {
 		selfParent = parents[0]
 	}

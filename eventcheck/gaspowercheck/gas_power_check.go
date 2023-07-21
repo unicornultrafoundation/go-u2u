@@ -7,11 +7,11 @@ import (
 
 	"github.com/unicornultrafoundation/go-hashgraph/eventcheck/epochcheck"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/pos"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
-	"github.com/unicornultrafoundation/go-u2u/inter/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 )
 
 var (
@@ -27,8 +27,8 @@ type ValidatorState struct {
 // ValidationContext for gaspower checking
 type ValidationContext struct {
 	Epoch           idx.Epoch
-	Configs         [inter.GasPowerConfigs]Config
-	EpochStart      inter.Timestamp
+	Configs         [native.GasPowerConfigs]Config
+	EpochStart      native.Timestamp
 	Validators      *pos.Validators
 	ValidatorStates []ValidatorState
 }
@@ -42,9 +42,9 @@ type Reader interface {
 type Config struct {
 	Idx                int
 	AllocPerSec        uint64
-	MaxAllocPeriod     inter.Timestamp
+	MaxAllocPeriod     native.Timestamp
 	MinEnsuredAlloc    uint64
-	StartupAllocPeriod inter.Timestamp
+	StartupAllocPeriod native.Timestamp
 	MinStartupGas      uint64
 }
 
@@ -69,14 +69,14 @@ func div(a *big.Int, b uint64) {
 }
 
 // CalcGasPower calculates available gas power for the event, i.e. how many gas its content may consume
-func (v *Checker) CalcGasPower(e inter.EventI, selfParent inter.EventI) (inter.GasPowerLeft, error) {
+func (v *Checker) CalcGasPower(e native.EventI, selfParent native.EventI) (native.GasPowerLeft, error) {
 	ctx := v.reader.GetValidationContext()
 	// check that all the data is for the same epoch
 	if ctx.Epoch != e.Epoch() {
-		return inter.GasPowerLeft{}, epochcheck.ErrNotRelevant
+		return native.GasPowerLeft{}, epochcheck.ErrNotRelevant
 	}
 
-	var res inter.GasPowerLeft
+	var res native.GasPowerLeft
 	for i := range ctx.Configs {
 		res.Gas[i] = calcGasPower(e, selfParent, ctx, ctx.Configs[i])
 	}
@@ -84,9 +84,9 @@ func (v *Checker) CalcGasPower(e inter.EventI, selfParent inter.EventI) (inter.G
 	return res, nil
 }
 
-func calcGasPower(e inter.EventI, selfParent inter.EventI, ctx *ValidationContext, config Config) uint64 {
+func calcGasPower(e native.EventI, selfParent native.EventI, ctx *ValidationContext, config Config) uint64 {
 	var prevGasPowerLeft uint64
-	var prevTime inter.Timestamp
+	var prevTime native.Timestamp
 
 	if e.SelfParent() != nil {
 		prevGasPowerLeft = selfParent.GasPowerLeft().Gas[config.Idx]
@@ -106,7 +106,7 @@ func calcGasPower(e inter.EventI, selfParent inter.EventI, ctx *ValidationContex
 	return CalcValidatorGasPower(e, e.MedianTime(), prevTime, prevGasPowerLeft, ctx.Validators, config)
 }
 
-func CalcValidatorGasPower(e inter.EventI, eTime, prevTime inter.Timestamp, prevGasPowerLeft uint64, validators *pos.Validators, config Config) uint64 {
+func CalcValidatorGasPower(e native.EventI, eTime, prevTime native.Timestamp, prevGasPowerLeft uint64, validators *pos.Validators, config Config) uint64 {
 	gasPowerPerSec, maxGasPower, startup := CalcValidatorGasPowerPerSec(e.Creator(), validators, config)
 
 	if e.SelfParent() == nil {
@@ -166,7 +166,7 @@ func CalcValidatorGasPowerPerSec(
 }
 
 // Validate event
-func (v *Checker) Validate(e inter.EventI, selfParent inter.EventI) error {
+func (v *Checker) Validate(e native.EventI, selfParent native.EventI) error {
 	gasPowers, err := v.CalcGasPower(e, selfParent)
 	if err != nil {
 		return err

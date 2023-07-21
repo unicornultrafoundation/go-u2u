@@ -10,9 +10,9 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
 // DelEvent deletes event.
@@ -31,7 +31,7 @@ func (s *Store) DelEvent(id hash.Event) {
 }
 
 // SetEvent stores event.
-func (s *Store) SetEvent(e *inter.EventPayload) {
+func (s *Store) SetEvent(e *native.EventPayload) {
 	key := e.ID().Bytes()
 
 	s.rlp.Set(s.table.Events, key, e)
@@ -44,14 +44,14 @@ func (s *Store) SetEvent(e *inter.EventPayload) {
 }
 
 // GetEventPayload returns stored event.
-func (s *Store) GetEventPayload(id hash.Event) *inter.EventPayload {
+func (s *Store) GetEventPayload(id hash.Event) *native.EventPayload {
 	// Get event from LRU cache first.
 	if ev, ok := s.cache.Events.Get(id); ok {
-		return ev.(*inter.EventPayload)
+		return ev.(*native.EventPayload)
 	}
 
 	key := id.Bytes()
-	w, _ := s.rlp.Get(s.table.Events, key, &inter.EventPayload{}).(*inter.EventPayload)
+	w, _ := s.rlp.Get(s.table.Events, key, &native.EventPayload{}).(*native.EventPayload)
 
 	if w != nil {
 		fixEventTxHashes(w)
@@ -68,14 +68,14 @@ func (s *Store) GetEventPayload(id hash.Event) *inter.EventPayload {
 }
 
 // GetEvent returns stored event.
-func (s *Store) GetEvent(id hash.Event) *inter.Event {
+func (s *Store) GetEvent(id hash.Event) *native.Event {
 	// Get event from LRU cache first.
 	if ev, ok := s.cache.EventsHeaders.Get(id); ok {
-		return ev.(*inter.Event)
+		return ev.(*native.Event)
 	}
 
 	key := id.Bytes()
-	w, _ := s.rlp.Get(s.table.Events, key, &inter.EventPayload{}).(*inter.EventPayload)
+	w, _ := s.rlp.Get(s.table.Events, key, &native.EventPayload{}).(*native.EventPayload)
 	if w == nil {
 		return nil
 	}
@@ -90,9 +90,9 @@ func (s *Store) GetEvent(id hash.Event) *inter.Event {
 	return &eh
 }
 
-func (s *Store) forEachEvent(it ethdb.Iterator, onEvent func(event *inter.EventPayload) bool) {
+func (s *Store) forEachEvent(it ethdb.Iterator, onEvent func(event *native.EventPayload) bool) {
 	for it.Next() {
-		event := &inter.EventPayload{}
+		event := &native.EventPayload{}
 		err := rlp.DecodeBytes(it.Value(), event)
 		if err != nil {
 			s.Log.Crit("Failed to decode event", "err", err)
@@ -104,13 +104,13 @@ func (s *Store) forEachEvent(it ethdb.Iterator, onEvent func(event *inter.EventP
 	}
 }
 
-func (s *Store) ForEachEpochEvent(epoch idx.Epoch, onEvent func(event *inter.EventPayload) bool) {
+func (s *Store) ForEachEpochEvent(epoch idx.Epoch, onEvent func(event *native.EventPayload) bool) {
 	it := s.table.Events.NewIterator(epoch.Bytes(), nil)
 	defer it.Release()
 	s.forEachEvent(it, onEvent)
 }
 
-func (s *Store) ForEachEvent(start idx.Epoch, onEvent func(event *inter.EventPayload) bool) {
+func (s *Store) ForEachEvent(start idx.Epoch, onEvent func(event *native.EventPayload) bool) {
 	it := s.table.Events.NewIterator(nil, start.Bytes())
 	defer it.Release()
 	s.forEachEvent(it, onEvent)

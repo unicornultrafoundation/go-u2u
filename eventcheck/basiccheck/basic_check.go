@@ -7,10 +7,10 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	base "github.com/unicornultrafoundation/go-hashgraph/eventcheck/basiccheck"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
 var (
@@ -74,7 +74,7 @@ func validateTx(tx *types.Transaction) error {
 	return nil
 }
 
-func (v *Checker) validateMP(msgEpoch idx.Epoch, mp inter.MisbehaviourProof) error {
+func (v *Checker) validateMP(msgEpoch idx.Epoch, mp native.MisbehaviourProof) error {
 	count := 0
 	if proof := mp.EventsDoublesign; proof != nil {
 		count++
@@ -200,7 +200,7 @@ func (v *Checker) validateMP(msgEpoch idx.Epoch, mp inter.MisbehaviourProof) err
 	return nil
 }
 
-func (v *Checker) checkTxs(e inter.EventPayloadI) error {
+func (v *Checker) checkTxs(e native.EventPayloadI) error {
 	for _, tx := range e.Txs() {
 		if err := validateTx(tx); err != nil {
 			return err
@@ -210,7 +210,7 @@ func (v *Checker) checkTxs(e inter.EventPayloadI) error {
 }
 
 // Validate event
-func (v *Checker) Validate(e inter.EventPayloadI) error {
+func (v *Checker) Validate(e native.EventPayloadI) error {
 	if e.NetForkID() != 0 {
 		return ErrWrongNetForkID
 	}
@@ -241,7 +241,7 @@ func (v *Checker) Validate(e inter.EventPayloadI) error {
 	return nil
 }
 
-func (v *Checker) validateEventLocator(e inter.EventLocator) error {
+func (v *Checker) validateEventLocator(e native.EventLocator) error {
 	if e.NetForkID != 0 {
 		return ErrWrongNetForkID
 	}
@@ -252,7 +252,7 @@ func (v *Checker) validateEventLocator(e inter.EventLocator) error {
 	return nil
 }
 
-func (v *Checker) validateBVs(eventEpoch idx.Epoch, bvs inter.LlrBlockVotes, greedy bool) error {
+func (v *Checker) validateBVs(eventEpoch idx.Epoch, bvs native.LlrBlockVotes, greedy bool) error {
 	if bvs.Epoch > eventEpoch {
 		return FutureBVsEpoch
 	}
@@ -275,7 +275,7 @@ func (v *Checker) validateBVs(eventEpoch idx.Epoch, bvs inter.LlrBlockVotes, gre
 	return nil
 }
 
-func (v *Checker) validateEV(eventEpoch idx.Epoch, ev inter.LlrEpochVote, greedy bool) error {
+func (v *Checker) validateEV(eventEpoch idx.Epoch, ev native.LlrEpochVote, greedy bool) error {
 	if ev.Epoch > eventEpoch {
 		return FutureEVEpoch
 	}
@@ -291,14 +291,14 @@ func (v *Checker) validateEV(eventEpoch idx.Epoch, ev inter.LlrEpochVote, greedy
 	return nil
 }
 
-func (v *Checker) ValidateBVs(bvs inter.LlrSignedBlockVotes) error {
+func (v *Checker) ValidateBVs(bvs native.LlrSignedBlockVotes) error {
 	if err := v.validateEventLocator(bvs.Signed.Locator); err != nil {
 		return err
 	}
 	return v.validateBVs(bvs.Signed.Locator.Epoch, bvs.Val, true)
 }
 
-func (v *Checker) ValidateEV(ev inter.LlrSignedEpochVote) error {
+func (v *Checker) ValidateEV(ev native.LlrSignedEpochVote) error {
 	if err := v.validateEventLocator(ev.Signed.Locator); err != nil {
 		return err
 	}

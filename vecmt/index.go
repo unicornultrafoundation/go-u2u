@@ -2,11 +2,11 @@ package vecmt
 
 import (
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/dag"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/pos"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/table"
+	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/table"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/cachescale"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/wlru"
 	"github.com/unicornultrafoundation/go-hashgraph/vecengine"
@@ -36,9 +36,9 @@ type Index struct {
 
 	getEvent func(hash.Event) dag.Event
 
-	vecDb kvdb.Store
+	vecDb u2udb.Store
 	table struct {
-		HighestBeforeTime kvdb.Store `table:"T"`
+		HighestBeforeTime u2udb.Store `table:"T"`
 	}
 
 	cache struct {
@@ -102,7 +102,7 @@ func (vi *Index) initCaches() {
 }
 
 // Reset resets buffers.
-func (vi *Index) Reset(validators *pos.Validators, db kvdb.Store, getEvent func(hash.Event) dag.Event) {
+func (vi *Index) Reset(validators *pos.Validators, db u2udb.Store, getEvent func(hash.Event) dag.Event) {
 	vi.Base.Reset(validators, db, getEvent)
 	vi.getEvent = getEvent
 	vi.validators = validators
@@ -132,7 +132,7 @@ func (vi *Index) GetEngineCallbacks() vecengine.Callbacks {
 		NewLowestAfter: func(size idx.Validator) vecengine.LowestAfterI {
 			return vi.baseCallbacks.NewLowestAfter(size)
 		},
-		OnDbReset: func(db kvdb.Store) {
+		OnDbReset: func(db u2udb.Store) {
 			vi.baseCallbacks.OnDbReset(db)
 			vi.onDbReset(db)
 		},
@@ -143,7 +143,7 @@ func (vi *Index) GetEngineCallbacks() vecengine.Callbacks {
 	}
 }
 
-func (vi *Index) onDbReset(db kvdb.Store) {
+func (vi *Index) onDbReset(db u2udb.Store) {
 	vi.vecDb = db
 }
 

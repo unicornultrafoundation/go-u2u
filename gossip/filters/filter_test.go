@@ -32,7 +32,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/syndtr/goleveldb/leveldb/opt"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/leveldb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/leveldb"
 
 	"github.com/unicornultrafoundation/go-u2u/topicsdb"
 )

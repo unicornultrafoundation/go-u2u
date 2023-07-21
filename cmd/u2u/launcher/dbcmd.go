@@ -8,9 +8,8 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/syndtr/goleveldb/leveldb/opt"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/cachedproducer"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/multidb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/cachedproducer"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/multidb"
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip"
@@ -76,12 +75,12 @@ Experimental - try to heal dirty DB.
 	}
 )
 
-func makeUncheckedDBsProducers(cfg *config) map[multidb.TypeName]kvdb.IterableDBProducer {
+func makeUncheckedDBsProducers(cfg *config) map[multidb.TypeName]u2udb.IterableDBProducer {
 	dbsList, _ := integration.SupportedDBs(path.Join(cfg.Node.DataDir, "chaindata"), cfg.DBs.RuntimeCache)
 	return dbsList
 }
 
-func makeUncheckedCachedDBsProducers(chaindataDir string) map[multidb.TypeName]kvdb.FullDBProducer {
+func makeUncheckedCachedDBsProducers(chaindataDir string) map[multidb.TypeName]u2udb.FullDBProducer {
 	dbTypes, _ := integration.SupportedDBs(chaindataDir, integration.DBsCacheConfig{
 		Table: map[string]integration.DBCacheConfig{
 			"": {
@@ -90,21 +89,21 @@ func makeUncheckedCachedDBsProducers(chaindataDir string) map[multidb.TypeName]k
 			},
 		},
 	})
-	wrappedDbTypes := make(map[multidb.TypeName]kvdb.FullDBProducer)
+	wrappedDbTypes := make(map[multidb.TypeName]u2udb.FullDBProducer)
 	for typ, producer := range dbTypes {
 		wrappedDbTypes[typ] = cachedproducer.WrapAll(&integration.DummyScopedProducer{IterableDBProducer: producer})
 	}
 	return wrappedDbTypes
 }
 
-func makeCheckedDBsProducers(cfg *config) map[multidb.TypeName]kvdb.IterableDBProducer {
+func makeCheckedDBsProducers(cfg *config) map[multidb.TypeName]u2udb.IterableDBProducer {
 	if err := integration.CheckStateInitialized(path.Join(cfg.Node.DataDir, "chaindata"), cfg.DBs); err != nil {
 		utils.Fatalf(err.Error())
 	}
 	return makeUncheckedDBsProducers(cfg)
 }
 
-func makeDirectDBsProducerFrom(dbsList map[multidb.TypeName]kvdb.IterableDBProducer, cfg *config) kvdb.FullDBProducer {
+func makeDirectDBsProducerFrom(dbsList map[multidb.TypeName]u2udb.IterableDBProducer, cfg *config) u2udb.FullDBProducer {
 	multiRawDbs, err := integration.MakeDirectMultiProducer(dbsList, cfg.DBs.Routing)
 	if err != nil {
 		utils.Fatalf("Failed to initialize multi DB producer: %v", err)
@@ -112,12 +111,12 @@ func makeDirectDBsProducerFrom(dbsList map[multidb.TypeName]kvdb.IterableDBProdu
 	return multiRawDbs
 }
 
-func makeDirectDBsProducer(cfg *config) kvdb.FullDBProducer {
+func makeDirectDBsProducer(cfg *config) u2udb.FullDBProducer {
 	dbsList := makeCheckedDBsProducers(cfg)
 	return makeDirectDBsProducerFrom(dbsList, cfg)
 }
 
-func makeGossipStore(producer kvdb.FlushableDBProducer, cfg *config) *gossip.Store {
+func makeGossipStore(producer u2udb.FlushableDBProducer, cfg *config) *gossip.Store {
 	return gossip.NewStore(producer, cfg.U2uStore)
 }
 
@@ -137,7 +136,7 @@ func compact(ctx *cli.Context) error {
 	return nil
 }
 
-func compactDB(typ multidb.TypeName, name string, producer kvdb.DBProducer) error {
+func compactDB(typ multidb.TypeName, name string, producer u2udb.DBProducer) error {
 	humanName := path.Join(string(typ), name)
 	db, err := producer.OpenDB(name)
 	defer db.Close()

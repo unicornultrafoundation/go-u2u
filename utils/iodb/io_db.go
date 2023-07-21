@@ -4,12 +4,12 @@ import (
 	"io"
 
 	"github.com/unicornultrafoundation/go-hashgraph/common/bigendian"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 
 	"github.com/unicornultrafoundation/go-u2u/utils/ioread"
 )
 
-func Write(writer io.Writer, it kvdb.Iterator) error {
+func Write(writer io.Writer, it u2udb.Iterator) error {
 	for it.Next() {
 		_, err := writer.Write(bigendian.Uint32ToBytes(uint32(len(it.Key()))))
 		if err != nil {
@@ -31,7 +31,7 @@ func Write(writer io.Writer, it kvdb.Iterator) error {
 	return nil
 }
 
-func NewIterator(reader io.Reader) kvdb.Iterator {
+func NewIterator(reader io.Reader) u2udb.Iterator {
 	return &Iterator{
 		reader: reader,
 	}

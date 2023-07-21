@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
 	"github.com/unicornultrafoundation/go-hashgraph/gossip/basestream"
 	"github.com/unicornultrafoundation/go-hashgraph/gossip/basestream/basestreamseeder"

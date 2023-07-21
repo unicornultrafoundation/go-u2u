@@ -1,8 +1,8 @@
 package evmstore
 
 import (
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/batched"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/batched"
 
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesis"
 )
@@ -19,7 +19,7 @@ func (s *Store) ApplyGenesis(g genesis.Genesis) (err error) {
 		if err != nil {
 			return false
 		}
-		if batch.ValueSize() > kvdb.IdealBatchSize {
+		if batch.ValueSize() > u2udb.IdealBatchSize {
 			err = batch.Write()
 			if err != nil {
 				return false

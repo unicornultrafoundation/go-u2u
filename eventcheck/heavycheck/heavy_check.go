@@ -9,12 +9,12 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/basiccheck"
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/epochcheck"
-	"github.com/unicornultrafoundation/go-u2u/inter"
-	"github.com/unicornultrafoundation/go-u2u/inter/validatorpk"
+	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"
 )
 
 var (
@@ -57,9 +57,9 @@ type Checker struct {
 }
 
 type taskData struct {
-	event inter.EventPayloadI
-	bvs   *inter.LlrSignedBlockVotes
-	ev    *inter.LlrSignedEpochVote
+	event native.EventPayloadI
+	bvs   *native.LlrSignedBlockVotes
+	ev    *native.LlrSignedEpochVote
 
 	onValidated func(error)
 }
@@ -100,7 +100,7 @@ func (v *Checker) Overloaded() bool {
 	return len(v.tasksQ) > v.config.MaxQueuedTasks/2
 }
 
-func (v *Checker) EnqueueEvent(e inter.EventPayloadI, onValidated func(error)) error {
+func (v *Checker) EnqueueEvent(e native.EventPayloadI, onValidated func(error)) error {
 	op := &taskData{
 		event:       e,
 		onValidated: onValidated,
@@ -113,7 +113,7 @@ func (v *Checker) EnqueueEvent(e inter.EventPayloadI, onValidated func(error)) e
 	}
 }
 
-func (v *Checker) EnqueueBVs(bvs inter.LlrSignedBlockVotes, onValidated func(error)) error {
+func (v *Checker) EnqueueBVs(bvs native.LlrSignedBlockVotes, onValidated func(error)) error {
 	op := &taskData{
 		bvs:         &bvs,
 		onValidated: onValidated,
@@ -126,7 +126,7 @@ func (v *Checker) EnqueueBVs(bvs inter.LlrSignedBlockVotes, onValidated func(err
 	}
 }
 
-func (v *Checker) EnqueueEV(ev inter.LlrSignedEpochVote, onValidated func(error)) error {
+func (v *Checker) EnqueueEV(ev native.LlrSignedEpochVote, onValidated func(error)) error {
 	op := &taskData{
 		ev:          &ev,
 		onValidated: onValidated,
@@ -140,14 +140,14 @@ func (v *Checker) EnqueueEV(ev inter.LlrSignedEpochVote, onValidated func(error)
 }
 
 // verifySignature checks the signature against e.Creator.
-func verifySignature(signedHash hash.Hash, sig inter.Signature, pubkey validatorpk.PubKey) bool {
+func verifySignature(signedHash hash.Hash, sig native.Signature, pubkey validatorpk.PubKey) bool {
 	if pubkey.Type != validatorpk.Types.Secp256k1 {
 		return false
 	}
 	return crypto.VerifySignature(pubkey.Raw, signedHash.Bytes(), sig.Bytes())
 }
 
-func (v *Checker) ValidateEventLocator(e inter.SignedEventLocator, authEpoch idx.Epoch, authErr error, checkPayload func() bool) error {
+func (v *Checker) ValidateEventLocator(e native.SignedEventLocator, authEpoch idx.Epoch, authErr error, checkPayload func() bool) error {
 	pubkeys := v.reader.GetEpochPubKeysOf(authEpoch)
 	if len(pubkeys) == 0 {
 		return authErr
@@ -180,7 +180,7 @@ func (v *Checker) matchPubkey(creator idx.ValidatorID, epoch idx.Epoch, want []b
 	return nil
 }
 
-func (v *Checker) validateBVsEpoch(bvs inter.LlrBlockVotes) error {
+func (v *Checker) validateBVsEpoch(bvs native.LlrBlockVotes) error {
 	actualEpochStart := v.reader.GetEpochBlockStart(bvs.Epoch)
 	if actualEpochStart == 0 {
 		return ErrUnknownEpochBVs
@@ -191,7 +191,7 @@ func (v *Checker) validateBVsEpoch(bvs inter.LlrBlockVotes) error {
 	return nil
 }
 
-func (v *Checker) ValidateBVs(bvs inter.LlrSignedBlockVotes) error {
+func (v *Checker) ValidateBVs(bvs native.LlrSignedBlockVotes) error {
 	if err := v.validateBVsEpoch(bvs.Val); err != nil {
 		return err
 	}
@@ -200,14 +200,14 @@ func (v *Checker) ValidateBVs(bvs inter.LlrSignedBlockVotes) error {
 	})
 }
 
-func (v *Checker) ValidateEV(ev inter.LlrSignedEpochVote) error {
+func (v *Checker) ValidateEV(ev native.LlrSignedEpochVote) error {
 	return v.ValidateEventLocator(ev.Signed, ev.Val.Epoch-1, ErrUnknownEpochEV, func() bool {
 		return ev.CalcPayloadHash() == ev.Signed.Locator.PayloadHash
 	})
 }
 
 // ValidateEvent runs heavy checks for event
-func (v *Checker) ValidateEvent(e inter.EventPayloadI) error {
+func (v *Checker) ValidateEvent(e native.EventPayloadI) error {
 	pubkeys, epoch := v.reader.GetEpochPubKeys()
 	if e.Epoch() != epoch {
 		return epochcheck.ErrNotRelevant
@@ -267,7 +267,7 @@ func (v *Checker) ValidateEvent(e inter.EventPayloadI) error {
 		}
 	}
 	// Payload hash
-	if e.PayloadHash() != inter.CalcPayloadHash(e) {
+	if e.PayloadHash() != native.CalcPayloadHash(e) {
 		return ErrWrongPayloadHash
 	}
 	// Epochs of BVs and EV

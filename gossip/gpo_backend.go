@@ -3,10 +3,10 @@ package gossip
 import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/gaspowercheck"
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/utils/concurrent"
 )
@@ -48,7 +48,7 @@ func (b *GPOBackend) TotalGasPowerLeft() uint64 {
 	metValidators := map[idx.ValidatorID]bool{}
 	total := uint64(0)
 	gasPowerCheckCfg := gaspowercheck.Config{
-		Idx:                inter.LongTermGas,
+		Idx:                native.LongTermGas,
 		AllocPerSec:        es.Rules.Economy.LongGasPower.AllocPerSec,
 		MaxAllocPeriod:     es.Rules.Economy.LongGasPower.MaxAllocPeriod,
 		MinEnsuredAlloc:    es.Rules.Economy.Gas.MaxEventGas,
@@ -58,7 +58,7 @@ func (b *GPOBackend) TotalGasPowerLeft() uint64 {
 	// count GasPowerLeft from latest events of this epoch
 	for _, tip := range set.Val {
 		e := b.store.GetEvent(tip)
-		left := e.GasPowerLeft().Gas[inter.LongTermGas]
+		left := e.GasPowerLeft().Gas[native.LongTermGas]
 		left += bs.GetValidatorState(e.Creator(), es.Validators).DirtyGasRefund
 
 		_, max, _ := gaspowercheck.CalcValidatorGasPowerPerSec(e.Creator(), es.Validators, gasPowerCheckCfg)
@@ -73,7 +73,7 @@ func (b *GPOBackend) TotalGasPowerLeft() uint64 {
 	for i := idx.Validator(0); i < es.Validators.Len(); i++ {
 		vid := es.Validators.GetID(i)
 		if !metValidators[vid] {
-			left := es.ValidatorStates[i].PrevEpochEvent.GasPowerLeft.Gas[inter.LongTermGas]
+			left := es.ValidatorStates[i].PrevEpochEvent.GasPowerLeft.Gas[native.LongTermGas]
 			left += es.ValidatorStates[i].GasRefund
 
 			_, max, startup := gaspowercheck.CalcValidatorGasPowerPerSec(vid, es.Validators, gasPowerCheckCfg)

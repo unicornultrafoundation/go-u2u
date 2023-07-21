@@ -13,8 +13,8 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/table"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/table"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/simplewlru"
 
 	"github.com/unicornultrafoundation/go-u2u/utils/iodb"
@@ -177,7 +177,7 @@ func (s *Store) ImportEvm(r io.Reader) error {
 		if err != nil {
 			return err
 		}
-		if batch.ValueSize() > kvdb.IdealBatchSize {
+		if batch.ValueSize() > u2udb.IdealBatchSize {
 			err := batch.Write()
 			if err != nil {
 				return err
@@ -189,7 +189,7 @@ func (s *Store) ImportEvm(r io.Reader) error {
 }
 
 type restrictedEvmBatch struct {
-	kvdb.Batch
+	u2udb.Batch
 }
 
 func IsMptKey(key []byte) bool {

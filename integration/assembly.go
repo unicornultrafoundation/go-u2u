@@ -13,11 +13,11 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/status-im/keycard-go/hexutils"
-	"github.com/unicornultrafoundation/go-hashgraph/abft"
+	"github.com/unicornultrafoundation/go-hashgraph/consensus"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/multidb"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/multidb"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesis"
@@ -46,8 +46,8 @@ func (e *GenesisMismatchError) Error() string {
 type Configs struct {
 	U2u            gossip.Config
 	U2uStore       gossip.StoreConfig
-	Hashgraph      abft.Config
-	HashgraphStore abft.StoreConfig
+	Hashgraph      consensus.Config
+	HashgraphStore consensus.StoreConfig
 	VectorClock    vecmt.IndexConfig
 	DBs            DBsConfig
 }
@@ -58,7 +58,7 @@ func panics(name string) func(error) {
 	}
 }
 
-func mustOpenDB(producer kvdb.DBProducer, name string) kvdb.Store {
+func mustOpenDB(producer u2udb.DBProducer, name string) u2udb.Store {
 	db, err := producer.OpenDB(name)
 	if err != nil {
 		utils.Fatalf("Failed to open '%s' database: %v", name, err)
@@ -66,23 +66,23 @@ func mustOpenDB(producer kvdb.DBProducer, name string) kvdb.Store {
 	return db
 }
 
-func getStores(producer kvdb.FlushableDBProducer, cfg Configs) (*gossip.Store, *abft.Store) {
+func getStores(producer u2udb.FlushableDBProducer, cfg Configs) (*gossip.Store, *consensus.Store) {
 	gdb := gossip.NewStore(producer, cfg.U2uStore)
 
 	cMainDb := mustOpenDB(producer, "hashgraph")
-	cGetEpochDB := func(epoch idx.Epoch) kvdb.Store {
+	cGetEpochDB := func(epoch idx.Epoch) u2udb.Store {
 		return mustOpenDB(producer, fmt.Sprintf("hashgraph-%d", epoch))
 	}
-	cdb := abft.NewStore(cMainDb, cGetEpochDB, panics("Hashgraph store"), cfg.HashgraphStore)
+	cdb := consensus.NewStore(cMainDb, cGetEpochDB, panics("Hashgraph store"), cfg.HashgraphStore)
 	return gdb, cdb
 }
 
-func rawApplyGenesis(gdb *gossip.Store, cdb *abft.Store, g genesis.Genesis, cfg Configs) error {
+func rawApplyGenesis(gdb *gossip.Store, cdb *consensus.Store, g genesis.Genesis, cfg Configs) error {
 	_, _, _, err := rawMakeEngine(gdb, cdb, &g, cfg)
 	return err
 }
 
-func rawMakeEngine(gdb *gossip.Store, cdb *abft.Store, g *genesis.Genesis, cfg Configs) (*abft.Hashgraph, *vecmt.Index, gossip.BlockProc, error) {
+func rawMakeEngine(gdb *gossip.Store, cdb *consensus.Store, g *genesis.Genesis, cfg Configs) (*consensus.Hashgraph, *vecmt.Index, gossip.BlockProc, error) {
 	blockProc := gossip.DefaultBlockProc()
 
 	if g != nil {
@@ -91,7 +91,7 @@ func rawMakeEngine(gdb *gossip.Store, cdb *abft.Store, g *genesis.Genesis, cfg C
 			return nil, nil, blockProc, fmt.Errorf("failed to write Gossip genesis state: %v", err)
 		}
 
-		err = cdb.ApplyGenesis(&abft.Genesis{
+		err = cdb.ApplyGenesis(&consensus.Genesis{
 			Epoch:      gdb.GetEpoch(),
 			Validators: gdb.GetValidators(),
 		})
@@ -102,11 +102,11 @@ func rawMakeEngine(gdb *gossip.Store, cdb *abft.Store, g *genesis.Genesis, cfg C
 
 	// create consensus
 	vecClock := vecmt.NewIndex(panics("Vector clock"), cfg.VectorClock)
-	engine := abft.NewHashgraph(cdb, &GossipStoreAdapter{gdb}, vecmt2dagidx.Wrap(vecClock), panics("Hashgraph"), cfg.Hashgraph)
+	engine := consensus.NewHashgraph(cdb, &GossipStoreAdapter{gdb}, vecmt2dagidx.Wrap(vecClock), panics("Hashgraph"), cfg.Hashgraph)
 	return engine, vecClock, blockProc, nil
 }
 
-func applyGenesis(dbs kvdb.FlushableDBProducer, g genesis.Genesis, cfg Configs) error {
+func applyGenesis(dbs u2udb.FlushableDBProducer, g genesis.Genesis, cfg Configs) error {
 	gdb, cdb := getStores(dbs, cfg)
 	defer gdb.Close()
 	defer cdb.Close()
@@ -122,7 +122,7 @@ func applyGenesis(dbs kvdb.FlushableDBProducer, g genesis.Genesis, cfg Configs) 
 	return nil
 }
 
-func migrate(dbs kvdb.FlushableDBProducer, cfg Configs) error {
+func migrate(dbs u2udb.FlushableDBProducer, cfg Configs) error {
 	gdb, cdb := getStores(dbs, cfg)
 	defer gdb.Close()
 	defer cdb.Close()
@@ -145,7 +145,7 @@ func CheckStateInitialized(chaindataDir string, cfg DBsConfig) error {
 	return dbs.Close()
 }
 
-func compactDB(typ multidb.TypeName, name string, producer kvdb.DBProducer) error {
+func compactDB(typ multidb.TypeName, name string, producer u2udb.DBProducer) error {
 	humanName := path.Join(string(typ), name)
 	db, err := producer.OpenDB(name)
 	defer db.Close()
@@ -155,7 +155,7 @@ func compactDB(typ multidb.TypeName, name string, producer kvdb.DBProducer) erro
 	return compactdb.Compact(db, humanName)
 }
 
-func makeEngine(chaindataDir string, g *genesis.Genesis, genesisProc bool, cfg Configs) (*abft.Hashgraph, *vecmt.Index, *gossip.Store, *abft.Store, gossip.BlockProc, func() error, error) {
+func makeEngine(chaindataDir string, g *genesis.Genesis, genesisProc bool, cfg Configs) (*consensus.Hashgraph, *vecmt.Index, *gossip.Store, *consensus.Store, gossip.BlockProc, func() error, error) {
 	// Genesis processing
 	if genesisProc {
 		setGenesisProcessing(chaindataDir)
@@ -255,7 +255,7 @@ func makeEngine(chaindataDir string, g *genesis.Genesis, genesisProc bool, cfg C
 }
 
 // MakeEngine makes consensus engine from config.
-func MakeEngine(chaindataDir string, g *genesis.Genesis, cfg Configs) (*abft.Hashgraph, *vecmt.Index, *gossip.Store, *abft.Store, gossip.BlockProc, func() error) {
+func MakeEngine(chaindataDir string, g *genesis.Genesis, cfg Configs) (*consensus.Hashgraph, *vecmt.Index, *gossip.Store, *consensus.Store, gossip.BlockProc, func() error) {
 	// Legacy DBs migrate
 	if cfg.DBs.MigrationMode != "reformat" && cfg.DBs.MigrationMode != "rebuild" && cfg.DBs.MigrationMode != "" {
 		utils.Fatalf("MigrationMode must be 'reformat' or 'rebuild'")

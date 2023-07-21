@@ -5,18 +5,18 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/unicornultrafoundation/go-hashgraph/common/bigendian"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/pos"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/simplewlru"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
-	"github.com/unicornultrafoundation/go-u2u/inter/ibr"
-	"github.com/unicornultrafoundation/go-u2u/inter/ier"
+	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/native/ibr"
+	"github.com/unicornultrafoundation/go-u2u/native/ier"
 	"github.com/unicornultrafoundation/go-u2u/utils/bitmap"
 )
 
-func (s *Store) SetBlockVotes(bvs inter.LlrSignedBlockVotes) {
+func (s *Store) SetBlockVotes(bvs native.LlrSignedBlockVotes) {
 	s.rlp.Set(s.table.LlrBlockVotes, append(bvs.Val.Epoch.Bytes(), append(bvs.Val.LastBlock().Bytes(), bvs.Signed.Locator.ID().Bytes()...)...), &bvs)
 }
 
@@ -35,7 +35,7 @@ func (s *Store) IterateOverlappingBlockVotesRLP(start []byte, f func(key []byte,
 	}
 }
 
-func (s *Store) getLlrVoteWeight(cache *VotesCache, reader kvdb.Reader, cKey VotesCacheID, key []byte) (pos.Weight, bitmap.Set) {
+func (s *Store) getLlrVoteWeight(cache *VotesCache, reader u2udb.Reader, cKey VotesCacheID, key []byte) (pos.Weight, bitmap.Set) {
 	if cached := cache.Get(cKey); cached != nil {
 		return cached.weight, cached.set
 	}
@@ -55,7 +55,7 @@ func (s *Store) getLlrVoteWeight(cache *VotesCache, reader kvdb.Reader, cKey Vot
 	return weight, set
 }
 
-func (s *Store) flushLlrVoteWeight(table kvdb.Writer, key []byte, weight pos.Weight, set bitmap.Set) {
+func (s *Store) flushLlrVoteWeight(table u2udb.Writer, key []byte, weight pos.Weight, set bitmap.Set) {
 	err := table.Put(key, append(bigendian.Uint32ToBytes(uint32(weight)), set...))
 	if err != nil {
 		s.Log.Crit("Failed to put key-value", "err", err)
@@ -67,7 +67,7 @@ func (s *Store) flushLlrBlockVoteWeight(cKey VotesCacheID, value VotesCacheValue
 	s.flushLlrVoteWeight(s.table.LlrBlockVotesIndex, key, value.weight, value.set)
 }
 
-func (s *Store) addLlrVoteWeight(cache *VotesCache, reader kvdb.Reader, cKey VotesCacheID, key []byte, validator idx.Validator, validatorsNum idx.Validator, diff pos.Weight) pos.Weight {
+func (s *Store) addLlrVoteWeight(cache *VotesCache, reader u2udb.Reader, cKey VotesCacheID, key []byte, validator idx.Validator, validatorsNum idx.Validator, diff pos.Weight) pos.Weight {
 	weight, set := s.getLlrVoteWeight(cache, reader, cKey, key)
 	if set != nil && set.Has(int(validator)) {
 		// don't count the vote if validator already voted
@@ -152,7 +152,7 @@ type LlrFullBlockRecordRLP struct {
 	Root        hash.Hash
 	Txs         types.Transactions
 	ReceiptsRLP rlp.RawValue
-	Time        inter.Timestamp
+	Time        native.Timestamp
 	GasUsed     uint64
 }
 
@@ -167,7 +167,7 @@ func (s *Store) IterateFullBlockRecordsRLP(start idx.Block, f func(b idx.Block, 
 	it := s.table.Blocks.NewIterator(nil, start.Bytes())
 	defer it.Release()
 	for it.Next() {
-		block := &inter.Block{}
+		block := &native.Block{}
 		err := rlp.DecodeBytes(it.Value(), block)
 		if err != nil {
 			s.Log.Crit("Failed to decode block", "err", err)

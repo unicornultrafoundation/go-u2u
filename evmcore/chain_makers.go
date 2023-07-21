@@ -28,7 +28,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/params"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 )
 
@@ -167,7 +167,7 @@ func (b *BlockGen) PrevBlock(index int) *EvmBlock {
 // associated difficulty. It's useful to test scenarios where forking is not
 // tied to chain length directly.
 func (b *BlockGen) OffsetTime(seconds int64) {
-	b.header.Time += inter.Timestamp(seconds)
+	b.header.Time += native.Timestamp(seconds)
 	if b.header.Time <= b.parent.Header().Time {
 		panic("block time out of range")
 	}
@@ -235,11 +235,11 @@ func GenerateChain(config *params.ChainConfig, parent *EvmBlock, db ethdb.Databa
 }
 
 func makeHeader(parent *EvmBlock, state *state.StateDB) *EvmHeader {
-	var t inter.Timestamp
+	var t native.Timestamp
 	if parent.Time == 0 {
 		t = 10
 	} else {
-		t = parent.Time + inter.Timestamp(10*time.Second) // block time is fixed at 10 seconds
+		t = parent.Time + native.Timestamp(10*time.Second) // block time is fixed at 10 seconds
 	}
 	header := &EvmHeader{
 		ParentHash: parent.Hash,

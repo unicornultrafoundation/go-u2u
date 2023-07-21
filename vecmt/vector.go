@@ -3,10 +3,10 @@ package vecmt
 import (
 	"encoding/binary"
 
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/vecfc"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
 /*
@@ -38,15 +38,15 @@ func NewHighestBeforeTime(size idx.Validator) *HighestBeforeTime {
 }
 
 // Get i's position in the byte-encoded vector clock
-func (b HighestBeforeTime) Get(i idx.Validator) inter.Timestamp {
+func (b HighestBeforeTime) Get(i idx.Validator) native.Timestamp {
 	for i >= b.Size() {
 		return 0
 	}
-	return inter.Timestamp(binary.LittleEndian.Uint64(b[i*8 : (i+1)*8]))
+	return native.Timestamp(binary.LittleEndian.Uint64(b[i*8 : (i+1)*8]))
 }
 
 // Set i's position in the byte-encoded vector clock
-func (b *HighestBeforeTime) Set(i idx.Validator, time inter.Timestamp) {
+func (b *HighestBeforeTime) Set(i idx.Validator, time native.Timestamp) {
 	for i >= b.Size() {
 		// append zeros if exceeds size
 		*b = append(*b, []byte{0, 0, 0, 0, 0, 0, 0, 0}...)

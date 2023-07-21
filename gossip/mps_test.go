@@ -6,15 +6,15 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/basiccheck"
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/heavycheck"
-	"github.com/unicornultrafoundation/go-u2u/inter"
 	"github.com/unicornultrafoundation/go-u2u/logger"
+	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
-func copyBvs(bvs inter.LlrSignedBlockVotes) inter.LlrSignedBlockVotes {
+func copyBvs(bvs native.LlrSignedBlockVotes) native.LlrSignedBlockVotes {
 	cp := make([]hash.Hash, 0, len(bvs.Val.Votes))
 	for _, v := range bvs.Val.Votes {
 		cp = append(cp, v)
@@ -23,7 +23,7 @@ func copyBvs(bvs inter.LlrSignedBlockVotes) inter.LlrSignedBlockVotes {
 	return bvs
 }
 
-func copyMP(mp inter.MisbehaviourProof) inter.MisbehaviourProof {
+func copyMP(mp native.MisbehaviourProof) native.MisbehaviourProof {
 	if mp.EventsDoublesign != nil {
 		cp := *mp.EventsDoublesign
 		mp.EventsDoublesign = &cp
@@ -70,11 +70,11 @@ func TestMisbehaviourProofsEventsDoublesign(t *testing.T) {
 	require.NoError(err)
 	require.Greater(env.store.GetEpoch(), startEpoch)
 
-	correctMp := inter.MisbehaviourProof{
-		EventsDoublesign: &inter.EventsDoublesign{
-			Pair: [2]inter.SignedEventLocator{
+	correctMp := native.MisbehaviourProof{
+		EventsDoublesign: &native.EventsDoublesign{
+			Pair: [2]native.SignedEventLocator{
 				{
-					Locator: inter.EventLocator{
+					Locator: native.EventLocator{
 						Epoch:   startEpoch,
 						Seq:     1,
 						Lamport: 1,
@@ -82,7 +82,7 @@ func TestMisbehaviourProofsEventsDoublesign(t *testing.T) {
 					},
 				},
 				{
-					Locator: inter.EventLocator{
+					Locator: native.EventLocator{
 						Epoch:   startEpoch,
 						Seq:     1,
 						Lamport: 2,
@@ -169,12 +169,12 @@ func TestMisbehaviourProofsBlockVoteDoublesign(t *testing.T) {
 	require.NoError(err)
 	require.Greater(env.store.GetEpoch(), startEpoch)
 
-	correctMp := inter.MisbehaviourProof{
-		BlockVoteDoublesign: &inter.BlockVoteDoublesign{
+	correctMp := native.MisbehaviourProof{
+		BlockVoteDoublesign: &native.BlockVoteDoublesign{
 			Block: env.store.GetLatestBlockIndex(),
-			Pair: [2]inter.LlrSignedBlockVotes{
+			Pair: [2]native.LlrSignedBlockVotes{
 				{
-					Val: inter.LlrBlockVotes{
+					Val: native.LlrBlockVotes{
 						Start: env.store.GetLatestBlockIndex() - 1,
 						Epoch: startEpoch,
 						Votes: []hash.Hash{
@@ -184,7 +184,7 @@ func TestMisbehaviourProofsBlockVoteDoublesign(t *testing.T) {
 					},
 				},
 				{
-					Val: inter.LlrBlockVotes{
+					Val: native.LlrBlockVotes{
 						Start: env.store.GetLatestBlockIndex(),
 						Epoch: startEpoch,
 						Votes: []hash.Hash{
@@ -198,20 +198,20 @@ func TestMisbehaviourProofsBlockVoteDoublesign(t *testing.T) {
 
 	// sign
 	for i, p := range correctMp.BlockVoteDoublesign.Pair {
-		e := &inter.MutableEventPayload{}
+		e := &native.MutableEventPayload{}
 		e.SetVersion(1)
 		e.SetBlockVotes(p.Val)
 		e.SetEpoch(env.store.GetEpoch() - idx.Epoch(i))
 		e.SetCreator(2)
-		e.SetPayloadHash(inter.CalcPayloadHash(e))
+		e.SetPayloadHash(native.CalcPayloadHash(e))
 
 		sig, err := env.signer.Sign(env.pubkeys[1], e.HashToSign().Bytes())
 		require.NoError(err)
-		sSig := inter.Signature{}
+		sSig := native.Signature{}
 		copy(sSig[:], sig)
 		e.SetSig(sSig)
 
-		correctMp.BlockVoteDoublesign.Pair[i] = inter.AsSignedBlockVotes(e)
+		correctMp.BlockVoteDoublesign.Pair[i] = native.AsSignedBlockVotes(e)
 	}
 
 	sameVotesMp := copyMP(correctMp)
@@ -310,12 +310,12 @@ func TestMisbehaviourProofsWrongBlockVote(t *testing.T) {
 	require.NoError(err)
 	require.Greater(env.store.GetEpoch(), startEpoch)
 
-	correctMp := inter.MisbehaviourProof{
-		WrongBlockVote: &inter.WrongBlockVote{
+	correctMp := native.MisbehaviourProof{
+		WrongBlockVote: &native.WrongBlockVote{
 			Block: env.store.GetLatestBlockIndex(),
-			Pals: [2]inter.LlrSignedBlockVotes{
+			Pals: [2]native.LlrSignedBlockVotes{
 				{
-					Val: inter.LlrBlockVotes{
+					Val: native.LlrBlockVotes{
 						Start: env.store.GetLatestBlockIndex() - 1,
 						Epoch: startEpoch,
 						Votes: []hash.Hash{
@@ -325,7 +325,7 @@ func TestMisbehaviourProofsWrongBlockVote(t *testing.T) {
 					},
 				},
 				{
-					Val: inter.LlrBlockVotes{
+					Val: native.LlrBlockVotes{
 						Start: env.store.GetLatestBlockIndex(),
 						Epoch: startEpoch + 1,
 						Votes: []hash.Hash{
@@ -338,23 +338,23 @@ func TestMisbehaviourProofsWrongBlockVote(t *testing.T) {
 		},
 	}
 
-	sign := func(mp *inter.MisbehaviourProof) {
+	sign := func(mp *native.MisbehaviourProof) {
 		// sign
 		for i, p := range mp.WrongBlockVote.Pals {
-			e := &inter.MutableEventPayload{}
+			e := &native.MutableEventPayload{}
 			e.SetVersion(1)
 			e.SetBlockVotes(p.Val)
 			e.SetEpoch(env.store.GetEpoch() - idx.Epoch(i))
 			e.SetCreator(idx.ValidatorID(i + 1))
-			e.SetPayloadHash(inter.CalcPayloadHash(e))
+			e.SetPayloadHash(native.CalcPayloadHash(e))
 
 			sig, err := env.signer.Sign(env.pubkeys[i], e.HashToSign().Bytes())
 			require.NoError(err)
-			sSig := inter.Signature{}
+			sSig := native.Signature{}
 			copy(sSig[:], sig)
 			e.SetSig(sSig)
 
-			mp.WrongBlockVote.Pals[i] = inter.AsSignedBlockVotes(e)
+			mp.WrongBlockVote.Pals[i] = native.AsSignedBlockVotes(e)
 		}
 	}
 	sign(&correctMp)
@@ -456,12 +456,12 @@ func TestMisbehaviourProofsWrongBlockEpoch(t *testing.T) {
 	require.NoError(err)
 	require.Greater(env.store.GetEpoch(), startEpoch)
 
-	correctMp := inter.MisbehaviourProof{
-		WrongBlockVote: &inter.WrongBlockVote{
+	correctMp := native.MisbehaviourProof{
+		WrongBlockVote: &native.WrongBlockVote{
 			Block: env.store.GetLatestBlockIndex(),
-			Pals: [2]inter.LlrSignedBlockVotes{
+			Pals: [2]native.LlrSignedBlockVotes{
 				{
-					Val: inter.LlrBlockVotes{
+					Val: native.LlrBlockVotes{
 						Start: env.store.GetLatestBlockIndex() - 1,
 						Epoch: startEpoch,
 						Votes: []hash.Hash{
@@ -471,7 +471,7 @@ func TestMisbehaviourProofsWrongBlockEpoch(t *testing.T) {
 					},
 				},
 				{
-					Val: inter.LlrBlockVotes{
+					Val: native.LlrBlockVotes{
 						Start: env.store.GetLatestBlockIndex(),
 						Epoch: startEpoch,
 						Votes: []hash.Hash{
@@ -486,22 +486,22 @@ func TestMisbehaviourProofsWrongBlockEpoch(t *testing.T) {
 	require.Greater(env.store.GetEpoch(), correctMp.WrongBlockVote.Pals[0].Val.Epoch)
 
 	// sign
-	sign := func(mp *inter.MisbehaviourProof) {
+	sign := func(mp *native.MisbehaviourProof) {
 		for i, p := range mp.WrongBlockVote.Pals {
-			e := &inter.MutableEventPayload{}
+			e := &native.MutableEventPayload{}
 			e.SetVersion(1)
 			e.SetBlockVotes(p.Val)
 			e.SetEpoch(env.store.GetEpoch() - idx.Epoch(i))
 			e.SetCreator(idx.ValidatorID(i + 1))
-			e.SetPayloadHash(inter.CalcPayloadHash(e))
+			e.SetPayloadHash(native.CalcPayloadHash(e))
 
 			sig, err := env.signer.Sign(env.pubkeys[i], e.HashToSign().Bytes())
 			require.NoError(err)
-			sSig := inter.Signature{}
+			sSig := native.Signature{}
 			copy(sSig[:], sig)
 			e.SetSig(sSig)
 
-			mp.WrongBlockVote.Pals[i] = inter.AsSignedBlockVotes(e)
+			mp.WrongBlockVote.Pals[i] = native.AsSignedBlockVotes(e)
 		}
 	}
 	sign(&correctMp)
@@ -609,17 +609,17 @@ func TestMisbehaviourProofsEpochVoteDoublesign(t *testing.T) {
 	require.NoError(err)
 	require.Greater(env.store.GetEpoch(), startEpoch)
 
-	correctMp := inter.MisbehaviourProof{
-		EpochVoteDoublesign: &inter.EpochVoteDoublesign{
-			Pair: [2]inter.LlrSignedEpochVote{
+	correctMp := native.MisbehaviourProof{
+		EpochVoteDoublesign: &native.EpochVoteDoublesign{
+			Pair: [2]native.LlrSignedEpochVote{
 				{
-					Val: inter.LlrEpochVote{
+					Val: native.LlrEpochVote{
 						Epoch: startEpoch + 1,
 						Vote:  hash.HexToHash("0x01"),
 					},
 				},
 				{
-					Val: inter.LlrEpochVote{
+					Val: native.LlrEpochVote{
 						Epoch: startEpoch + 1,
 						Vote:  hash.HexToHash("0x02"),
 					},
@@ -630,20 +630,20 @@ func TestMisbehaviourProofsEpochVoteDoublesign(t *testing.T) {
 
 	// sign
 	for i, p := range correctMp.EpochVoteDoublesign.Pair {
-		e := &inter.MutableEventPayload{}
+		e := &native.MutableEventPayload{}
 		e.SetVersion(1)
 		e.SetEpochVote(p.Val)
 		e.SetEpoch(env.store.GetEpoch() - idx.Epoch(i))
 		e.SetCreator(3)
-		e.SetPayloadHash(inter.CalcPayloadHash(e))
+		e.SetPayloadHash(native.CalcPayloadHash(e))
 
 		sig, err := env.signer.Sign(env.pubkeys[2], e.HashToSign().Bytes())
 		require.NoError(err)
-		sSig := inter.Signature{}
+		sSig := native.Signature{}
 		copy(sSig[:], sig)
 		e.SetSig(sSig)
 
-		correctMp.EpochVoteDoublesign.Pair[i] = inter.AsSignedEpochVote(e)
+		correctMp.EpochVoteDoublesign.Pair[i] = native.AsSignedEpochVote(e)
 	}
 
 	sameVotesMp := copyMP(correctMp)
@@ -729,17 +729,17 @@ func TestMisbehaviourProofsWrongVote(t *testing.T) {
 	require.NoError(err)
 	require.Greater(env.store.GetEpoch(), startEpoch)
 
-	correctMp := inter.MisbehaviourProof{
-		WrongEpochVote: &inter.WrongEpochVote{
-			Pals: [2]inter.LlrSignedEpochVote{
+	correctMp := native.MisbehaviourProof{
+		WrongEpochVote: &native.WrongEpochVote{
+			Pals: [2]native.LlrSignedEpochVote{
 				{
-					Val: inter.LlrEpochVote{
+					Val: native.LlrEpochVote{
 						Epoch: startEpoch + 1,
 						Vote:  hash.HexToHash("0x01"),
 					},
 				},
 				{
-					Val: inter.LlrEpochVote{
+					Val: native.LlrEpochVote{
 						Epoch: startEpoch + 1,
 						Vote:  hash.HexToHash("0x01"),
 					},
@@ -749,22 +749,22 @@ func TestMisbehaviourProofsWrongVote(t *testing.T) {
 	}
 
 	// sign
-	sign := func(mp *inter.MisbehaviourProof) {
+	sign := func(mp *native.MisbehaviourProof) {
 		for i, p := range mp.WrongEpochVote.Pals {
-			e := &inter.MutableEventPayload{}
+			e := &native.MutableEventPayload{}
 			e.SetVersion(1)
 			e.SetEpochVote(p.Val)
 			e.SetEpoch(env.store.GetEpoch() - idx.Epoch(i))
 			e.SetCreator(idx.ValidatorID(i + 1))
-			e.SetPayloadHash(inter.CalcPayloadHash(e))
+			e.SetPayloadHash(native.CalcPayloadHash(e))
 
 			sig, err := env.signer.Sign(env.pubkeys[i], e.HashToSign().Bytes())
 			require.NoError(err)
-			sSig := inter.Signature{}
+			sSig := native.Signature{}
 			copy(sSig[:], sig)
 			e.SetSig(sSig)
 
-			mp.WrongEpochVote.Pals[i] = inter.AsSignedEpochVote(e)
+			mp.WrongEpochVote.Pals[i] = native.AsSignedEpochVote(e)
 		}
 	}
 	sign(&correctMp)

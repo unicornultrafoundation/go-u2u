@@ -20,8 +20,8 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/gossip/dagprocessor"
 	"github.com/unicornultrafoundation/go-hashgraph/gossip/itemsfetcher"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/dag"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/datasemaphore"
 
 	"github.com/unicornultrafoundation/go-u2u/eventcheck"
@@ -47,10 +47,10 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/epochpacks/epstream/epstreamleecher"
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/epochpacks/epstream/epstreamseeder"
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/snap/snapstream/snapleecher"
-	"github.com/unicornultrafoundation/go-u2u/inter"
-	"github.com/unicornultrafoundation/go-u2u/inter/ibr"
-	"github.com/unicornultrafoundation/go-u2u/inter/ier"
 	"github.com/unicornultrafoundation/go-u2u/logger"
+	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/native/ibr"
+	"github.com/unicornultrafoundation/go-u2u/native/ier"
 )
 
 const (
@@ -79,16 +79,16 @@ func checkLenLimits(size int, v interface{}) error {
 
 type dagNotifier interface {
 	SubscribeNewEpoch(ch chan<- idx.Epoch) notify.Subscription
-	SubscribeNewEmitted(ch chan<- *inter.EventPayload) notify.Subscription
+	SubscribeNewEmitted(ch chan<- *native.EventPayload) notify.Subscription
 }
 
 type processCallback struct {
-	Event            func(*inter.EventPayload) error
+	Event            func(*native.EventPayload) error
 	SwitchEpochTo    func(idx.Epoch) error
 	PauseEvmSnapshot func()
-	BVs              func(inter.LlrSignedBlockVotes) error
+	BVs              func(native.LlrSignedBlockVotes) error
 	BR               func(ibr.LlrIdxFullBlockRecord) error
-	EV               func(inter.LlrSignedEpochVote) error
+	EV               func(native.LlrSignedEpochVote) error
 	ER               func(ier.LlrIdxFullEpochRecord) error
 }
 
@@ -168,7 +168,7 @@ type handler struct {
 	engineMu sync.Locker
 
 	notifier             dagNotifier
-	emittedEventsCh      chan *inter.EventPayload
+	emittedEventsCh      chan *native.EventPayload
 	emittedEventsSub     notify.Subscription
 	newEpochsCh          chan idx.Epoch
 	newEpochsSub         notify.Subscription
@@ -432,23 +432,23 @@ func (h *handler) makeDagProcessor(checkers *eventcheck.Checkers) *dagprocessor.
 		if h.store.HasEvent(e.ID()) {
 			return eventcheck.ErrAlreadyConnectedEvent
 		}
-		if err := checkers.Basiccheck.Validate(e.(inter.EventPayloadI)); err != nil {
+		if err := checkers.Basiccheck.Validate(e.(native.EventPayloadI)); err != nil {
 			return err
 		}
-		if err := checkers.Epochcheck.Validate(e.(inter.EventPayloadI)); err != nil {
+		if err := checkers.Epochcheck.Validate(e.(native.EventPayloadI)); err != nil {
 			return err
 		}
 		return nil
 	}
 	bufferedCheck := func(_e dag.Event, _parents dag.Events) error {
-		e := _e.(inter.EventI)
-		parents := make(inter.EventIs, len(_parents))
+		e := _e.(native.EventI)
+		parents := make(native.EventIs, len(_parents))
 		for i := range _parents {
-			parents[i] = _parents[i].(inter.EventI)
+			parents[i] = _parents[i].(native.EventI)
 		}
-		var selfParent inter.EventI
+		var selfParent native.EventI
 		if e.SelfParent() != nil {
-			selfParent = parents[0].(inter.EventI)
+			selfParent = parents[0].(native.EventI)
 		}
 		if err := checkers.Parentscheck.Validate(e, parents); err != nil {
 			return err
@@ -466,7 +466,7 @@ func (h *handler) makeDagProcessor(checkers *eventcheck.Checkers) *dagprocessor.
 		// DAG callbacks
 		Event: dagprocessor.EventCallback{
 			Process: func(_e dag.Event) error {
-				e := _e.(*inter.EventPayload)
+				e := _e.(*native.EventPayload)
 				preStart := time.Now()
 				h.engineMu.Lock()
 				defer h.engineMu.Unlock()
@@ -512,7 +512,7 @@ func (h *handler) makeDagProcessor(checkers *eventcheck.Checkers) *dagprocessor.
 
 func (h *handler) makeBvProcessor(checkers *eventcheck.Checkers) *bvprocessor.Processor {
 	// checkers
-	lightCheck := func(bvs inter.LlrSignedBlockVotes) error {
+	lightCheck := func(bvs native.LlrSignedBlockVotes) error {
 		if h.store.HasBlockVotes(bvs.Val.Epoch, bvs.Val.LastBlock(), bvs.Signed.Locator.ID()) {
 			return eventcheck.ErrAlreadyProcessedBVs
 		}
@@ -526,7 +526,7 @@ func (h *handler) makeBvProcessor(checkers *eventcheck.Checkers) *bvprocessor.Pr
 		// DAG callbacks
 		Item: bvprocessor.ItemCallback{
 			Process: h.process.BVs,
-			Released: func(bvs inter.LlrSignedBlockVotes, peer string, err error) {
+			Released: func(bvs native.LlrSignedBlockVotes, peer string, err error) {
 				if eventcheck.IsBan(err) {
 					log.Warn("Incoming BVs rejected", "BVs", bvs.Signed.Locator.ID(), "creator", bvs.Signed.Locator.Creator, "err", err)
 					h.removePeer(peer)
@@ -555,7 +555,7 @@ func (h *handler) makeBrProcessor() *brprocessor.Processor {
 
 func (h *handler) makeEpProcessor(checkers *eventcheck.Checkers) *epprocessor.Processor {
 	// checkers
-	lightCheck := func(ev inter.LlrSignedEpochVote) error {
+	lightCheck := func(ev native.LlrSignedEpochVote) error {
 		if h.store.HasEpochVote(ev.Val.Epoch, ev.Signed.Locator.ID()) {
 			return eventcheck.ErrAlreadyProcessedEV
 		}
@@ -571,7 +571,7 @@ func (h *handler) makeEpProcessor(checkers *eventcheck.Checkers) *epprocessor.Pr
 		Item: epprocessor.ItemCallback{
 			ProcessEV: h.process.EV,
 			ProcessER: h.process.ER,
-			ReleasedEV: func(ev inter.LlrSignedEpochVote, peer string, err error) {
+			ReleasedEV: func(ev native.LlrSignedEpochVote, peer string, err error) {
 				if eventcheck.IsBan(err) {
 					log.Warn("Incoming EV rejected", "event", ev.Signed.Locator.ID(), "creator", ev.Signed.Locator.Creator, "err", err)
 					h.removePeer(peer)
@@ -660,7 +660,7 @@ func (h *handler) Start(maxPeers int) {
 
 	if h.notifier != nil {
 		// broadcast mined events
-		h.emittedEventsCh = make(chan *inter.EventPayload, 4)
+		h.emittedEventsCh = make(chan *native.EventPayload, 4)
 		h.emittedEventsSub = h.notifier.SubscribeNewEmitted(h.emittedEventsCh)
 		// epoch changes
 		h.newEpochsCh = make(chan idx.Epoch, 4)
@@ -958,7 +958,7 @@ func (h *handler) handleEvents(p *peer, events dag.Events, ordered bool) {
 		if e.Lamport() <= maxLamport {
 			notTooHigh = append(notTooHigh, e)
 		}
-		if now.Sub(e.(inter.EventI).CreationTime().Time()) < 10*time.Minute {
+		if now.Sub(e.(native.EventI).CreationTime().Time()) < 10*time.Minute {
 			h.syncStatus.MarkMaybeSynced()
 		}
 	}
@@ -1076,7 +1076,7 @@ func (h *handler) handleMsg(p *peer) error {
 			break
 		}
 
-		var events inter.EventPayloads
+		var events native.EventPayloads
 		if err := msg.Decode(&events); err != nil {
 			return errResp(ErrDecode, "%v: %v", msg, err)
 		}
@@ -1357,7 +1357,7 @@ func (h *handler) decideBroadcastAggressiveness(size int, passed time.Duration, 
 
 // BroadcastEvent will either propagate a event to a subset of it's peers, or
 // will only announce it's availability (depending what's requested).
-func (h *handler) BroadcastEvent(event *inter.EventPayload, passed time.Duration) int {
+func (h *handler) BroadcastEvent(event *native.EventPayload, passed time.Duration) int {
 	if passed < 0 {
 		passed = 0
 	}
@@ -1381,7 +1381,7 @@ func (h *handler) BroadcastEvent(event *inter.EventPayload, passed time.Duration
 		}
 	}
 	for _, peer := range fullBroadcast {
-		peer.AsyncSendEvents(inter.EventPayloads{event}, peer.queue)
+		peer.AsyncSendEvents(native.EventPayloads{event}, peer.queue)
 	}
 	// Broadcast of event hash to the rest peers
 	for _, peer := range hashBroadcast {

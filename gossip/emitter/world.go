@@ -8,11 +8,11 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	notify "github.com/ethereum/go-ethereum/event"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/pos"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/valkeystore"
 	"github.com/unicornultrafoundation/go-u2u/vecmt"
@@ -28,10 +28,10 @@ type (
 		sync.Locker
 		Reader
 
-		Check(e *inter.EventPayload, parents inter.Events) error
-		Process(*inter.EventPayload) error
-		Broadcast(*inter.EventPayload)
-		Build(*inter.MutableEventPayload, func()) error
+		Check(e *native.EventPayload, parents native.Events) error
+		Process(*native.EventPayload) error
+		Broadcast(*native.EventPayload)
+		Build(*native.MutableEventPayload, func()) error
 		DagIndex() *vecmt.Index
 
 		IsBusy() bool
@@ -68,11 +68,11 @@ type Reader interface {
 	LlrReader
 	GetLatestBlockIndex() idx.Block
 	GetEpochValidators() (*pos.Validators, idx.Epoch)
-	GetEvent(hash.Event) *inter.Event
-	GetEventPayload(hash.Event) *inter.EventPayload
+	GetEvent(hash.Event) *native.Event
+	GetEventPayload(hash.Event) *native.EventPayload
 	GetLastEvent(epoch idx.Epoch, from idx.ValidatorID) *hash.Event
 	GetHeads(idx.Epoch) hash.Events
-	GetGenesisTime() inter.Timestamp
+	GetGenesisTime() native.Timestamp
 	GetRules() u2u.Rules
 }
 

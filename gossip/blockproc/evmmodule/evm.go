@@ -12,8 +12,8 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip/blockproc"
-	"github.com/unicornultrafoundation/go-u2u/inter"
-	"github.com/unicornultrafoundation/go-u2u/inter/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/utils"
 )
@@ -113,7 +113,7 @@ func (p *U2uEVMProcessor) Execute(txs types.Transactions) types.Receipts {
 func (p *U2uEVMProcessor) Finalize() (evmBlock *evmcore.EvmBlock, skippedTxs []uint32, receipts types.Receipts) {
 	evmBlock = p.evmBlockWith(
 		// Filter skipped transactions. Receipts are filtered already
-		inter.FilterSkippedTxs(p.incomingTxs, p.skippedTxs),
+		native.FilterSkippedTxs(p.incomingTxs, p.skippedTxs),
 	)
 	skippedTxs = p.skippedTxs
 	receipts = p.receipts

@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip/blockproc"
@@ -20,10 +20,10 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/gossip/blockproc/evmmodule"
 	"github.com/unicornultrafoundation/go-u2u/gossip/blockproc/sealmodule"
 	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"
-	"github.com/unicornultrafoundation/go-u2u/inter"
-	"github.com/unicornultrafoundation/go-u2u/inter/iblockproc"
-	"github.com/unicornultrafoundation/go-u2u/inter/ibr"
-	"github.com/unicornultrafoundation/go-u2u/inter/ier"
+	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/native/ibr"
+	"github.com/unicornultrafoundation/go-u2u/native/ier"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesis"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesisstore"
@@ -31,7 +31,7 @@ import (
 )
 
 type GenesisBuilder struct {
-	dbs kvdb.DBProducer
+	dbs u2udb.DBProducer
 
 	tmpEvmStore *evmstore.Store
 	tmpStateDB  *state.StateDB
@@ -109,7 +109,7 @@ func (b *GenesisBuilder) CurrentHash() hash.Hash {
 	return er.Hash()
 }
 
-func NewGenesisBuilder(dbs kvdb.DBProducer) *GenesisBuilder {
+func NewGenesisBuilder(dbs u2udb.DBProducer) *GenesisBuilder {
 	tmpEvmStore := evmstore.NewStore(dbs, evmstore.LiteStoreConfig())
 	statedb, _ := tmpEvmStore.StateDB(hash.Zero)
 	return &GenesisBuilder{
@@ -183,7 +183,7 @@ func (b *GenesisBuilder) ExecuteGenesisTxs(blockProc BlockProc, genesisTxs types
 	bs.LastBlock = blockCtx
 
 	prettyHash := func(root hash.Hash) hash.Event {
-		e := inter.MutableEventPayload{}
+		e := native.MutableEventPayload{}
 		// for nice-looking ID
 		e.SetEpoch(es.Epoch)
 		e.SetLamport(1)

@@ -11,17 +11,17 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/syndtr/goleveldb/leveldb/opt"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/batched"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/leveldb"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/pebble"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/skipkeys"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/table"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/batched"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/leveldb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/pebble"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/skipkeys"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/table"
 
 	"github.com/unicornultrafoundation/go-u2u/utils/compactdb"
 )
 
-func lastKey(db kvdb.Store) []byte {
+func lastKey(db u2udb.Store) []byte {
 	var start []byte
 	for {
 		for b := 0xff; b >= 0; b-- {
@@ -37,8 +37,8 @@ func lastKey(db kvdb.Store) []byte {
 }
 
 type transformTask struct {
-	openSrc func() kvdb.Store
-	openDst func() kvdb.Store
+	openSrc func() u2udb.Store
+	openDst func() u2udb.Store
 	name    string
 	dir     string
 	dropSrc bool
@@ -127,7 +127,7 @@ func mustTransform(m transformTask) {
 	}
 }
 
-func isEmptyDB(db kvdb.Iteratee) bool {
+func isEmptyDB(db u2udb.Iteratee) bool {
 	it := db.NewIterator(nil, nil)
 	defer it.Release()
 	return !it.Next()
@@ -143,7 +143,7 @@ func fileExists(filename string) bool {
 
 type closebaleTable struct {
 	*table.Table
-	backend kvdb.Store
+	backend u2udb.Store
 }
 
 func (s *closebaleTable) Close() error {
@@ -154,7 +154,7 @@ func (s *closebaleTable) Drop() {
 	s.backend.Drop()
 }
 
-func newClosableTable(db kvdb.Store, prefix []byte) *closebaleTable {
+func newClosableTable(db u2udb.Store, prefix []byte) *closebaleTable {
 	return &closebaleTable{
 		Table:   table.New(db, prefix),
 		backend: db,
@@ -204,7 +204,7 @@ func equalRoutingConfig(a, b RoutingConfig) bool {
 	return true
 }
 
-func migrateLegacyDBs(chaindataDir string, dbs kvdb.FlushableDBProducer, mode string, layout RoutingConfig) error {
+func migrateLegacyDBs(chaindataDir string, dbs u2udb.FlushableDBProducer, mode string, layout RoutingConfig) error {
 	{ // didn't erase the brackets to avoid massive code changes
 		// migrate DB layout
 		cacheFn, err := dbCacheFdlimit(DBsCacheConfig{
@@ -218,7 +218,7 @@ func migrateLegacyDBs(chaindataDir string, dbs kvdb.FlushableDBProducer, mode st
 		if err != nil {
 			return err
 		}
-		var oldDBs kvdb.IterableDBProducer
+		var oldDBs u2udb.IterableDBProducer
 		var oldDBsType string
 		if fileExists(path.Join(chaindataDir, "gossip", "LOG")) {
 			oldDBs = leveldb.NewProducer(chaindataDir, cacheFn)
@@ -227,14 +227,14 @@ func migrateLegacyDBs(chaindataDir string, dbs kvdb.FlushableDBProducer, mode st
 			oldDBs = pebble.NewProducer(chaindataDir, cacheFn)
 			oldDBsType = "pbl"
 		}
-		openOldDB := func(name string) kvdb.Store {
+		openOldDB := func(name string) u2udb.Store {
 			db, err := oldDBs.OpenDB(name)
 			if err != nil {
 				utils.Fatalf("Failed to open %s old DB: %v", name, err)
 			}
 			return db
 		}
-		openNewDB := func(name string) kvdb.Store {
+		openNewDB := func(name string) u2udb.Store {
 			db, err := dbs.OpenDB(name)
 			if err != nil {
 				utils.Fatalf("Failed to open %s DB: %v", name, err)
@@ -248,10 +248,10 @@ func migrateLegacyDBs(chaindataDir string, dbs kvdb.FlushableDBProducer, mode st
 			for _, name := range oldDBs.Names() {
 				if strings.HasPrefix(name, "hashgraph") || strings.HasPrefix(name, "gossip-") {
 					mustTransform(transformTask{
-						openSrc: func() kvdb.Store {
+						openSrc: func() u2udb.Store {
 							return skipkeys.Wrap(openOldDB(name), MetadataPrefix)
 						},
-						openDst: func() kvdb.Store {
+						openDst: func() u2udb.Store {
 							return openNewDB(name)
 						},
 						name: name,
@@ -264,20 +264,20 @@ func migrateLegacyDBs(chaindataDir string, dbs kvdb.FlushableDBProducer, mode st
 
 			// move logs
 			mustTransform(transformTask{
-				openSrc: func() kvdb.Store {
+				openSrc: func() u2udb.Store {
 					return newClosableTable(openOldDB("gossip"), []byte("Lr"))
 				},
-				openDst: func() kvdb.Store {
+				openDst: func() u2udb.Store {
 					return openNewDB("evm-logs/r")
 				},
 				name: "gossip/Lr",
 				dir:  chaindataDir,
 			})
 			mustTransform(transformTask{
-				openSrc: func() kvdb.Store {
+				openSrc: func() u2udb.Store {
 					return newClosableTable(openOldDB("gossip"), []byte("Lt"))
 				},
-				openDst: func() kvdb.Store {
+				openDst: func() u2udb.Store {
 					return openNewDB("evm-logs/t")
 				},
 				name: "gossip/Lt",
@@ -291,10 +291,10 @@ func migrateLegacyDBs(chaindataDir string, dbs kvdb.FlushableDBProducer, mode st
 					continue
 				}
 				mustTransform(transformTask{
-					openSrc: func() kvdb.Store {
+					openSrc: func() u2udb.Store {
 						return newClosableTable(openOldDB("gossip"), []byte{byte(b)})
 					},
-					openDst: func() kvdb.Store {
+					openDst: func() u2udb.Store {
 						if b == int('M') || b == int('r') || b == int('x') || b == int('X') {
 							return openNewDB("evm/" + string([]byte{byte(b)}))
 						} else {

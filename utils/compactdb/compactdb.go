@@ -8,17 +8,17 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/status-im/keycard-go/hexutils"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/table"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/table"
 )
 
-func isEmptyDB(db kvdb.Iteratee) bool {
+func isEmptyDB(db u2udb.Iteratee) bool {
 	it := db.NewIterator(nil, nil)
 	defer it.Release()
 	return !it.Next()
 }
 
-func firstKey(db kvdb.Store) []byte {
+func firstKey(db u2udb.Store) []byte {
 	it := db.NewIterator(nil, nil)
 	defer it.Release()
 	if !it.Next() {
@@ -27,7 +27,7 @@ func firstKey(db kvdb.Store) []byte {
 	return it.Key()
 }
 
-func lastKey(db kvdb.Store) []byte {
+func lastKey(db u2udb.Store) []byte {
 	var start []byte
 	for {
 		for b := 0xff; b >= 0; b-- {
@@ -54,9 +54,9 @@ func addToPrefix(prefix *big.Int, diff *big.Int, size int) []byte {
 	return append(res, end...)
 }
 
-func Compact(unprefixedDB kvdb.Store, loggingName string) error {
+func Compact(unprefixedDB u2udb.Store, loggingName string) error {
 	lastLog := time.Time{}
-	compact := func(db kvdb.Store, b int, start, end []byte) error {
+	compact := func(db u2udb.Store, b int, start, end []byte) error {
 		if len(loggingName) != 0 && time.Since(lastLog) > time.Second*16 {
 			log.Info("Compacting DB", "name", loggingName, "until", hexutils.BytesToHex(append([]byte{byte(b)}, end...)))
 			lastLog = time.Now()

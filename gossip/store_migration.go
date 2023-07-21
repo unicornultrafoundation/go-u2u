@@ -6,21 +6,21 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
-	"github.com/unicornultrafoundation/go-u2u/inter/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 	"github.com/unicornultrafoundation/go-u2u/utils/migration"
 )
 
-func isEmptyDB(db kvdb.Iteratee) bool {
+func isEmptyDB(db u2udb.Iteratee) bool {
 	it := db.NewIterator(nil, nil)
 	defer it.Release()
 	return !it.Next()
 }
 
 func (s *Store) migrateData() error {
-	versions := migration.NewKvdbIDStore(s.table.Version)
+	versions := migration.NewU2udbIDStore(s.table.Version)
 	if isEmptyDB(s.table.Version) {
 		// short circuit if empty DB
 		versions.SetID(s.migrations().ID())
@@ -64,7 +64,7 @@ const (
 	fixTxBlock2    = 4801307
 )
 
-func fixEventTxHashes(e *inter.EventPayload) {
+func fixEventTxHashes(e *native.EventPayload) {
 	if e.ID() == fixTxEvent1 {
 		e.Txs()[fixTxEventPos1].SetHash(fixTxHash1)
 	}

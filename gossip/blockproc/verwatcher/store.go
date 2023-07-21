@@ -3,14 +3,14 @@ package verwatcher
 import (
 	"sync/atomic"
 
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 
 	"github.com/unicornultrafoundation/go-u2u/logger"
 )
 
 // Store is a node persistent storage working over physical key-value database.
 type Store struct {
-	mainDB kvdb.Store
+	mainDB u2udb.Store
 
 	cache struct {
 		networkVersion atomic.Value
@@ -21,7 +21,7 @@ type Store struct {
 }
 
 // NewStore creates store over key-value db.
-func NewStore(mainDB kvdb.Store) *Store {
+func NewStore(mainDB u2udb.Store) *Store {
 	s := &Store{
 		mainDB:   mainDB,
 		Instance: logger.New("verwatcher-store"),

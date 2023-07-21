@@ -14,15 +14,15 @@ import (
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/dag"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/datasemaphore"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/blockrecords/brstream"
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/blockvotes/bvstream"
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/dag/dagstream"
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/epochpacks/epstream"
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
 var (
@@ -351,7 +351,7 @@ func (p *peer) AsyncSendEventIDs(ids hash.Events, queue chan broadcastItem) {
 }
 
 // SendEvents propagates a batch of events to a remote peer.
-func (p *peer) SendEvents(events inter.EventPayloads) error {
+func (p *peer) SendEvents(events native.EventPayloads) error {
 	// Mark all the event hash as known, but ensure we don't overflow our limits
 	for _, event := range events {
 		p.knownEvents.Add(event.ID())
@@ -376,7 +376,7 @@ func (p *peer) SendEventsRLP(events []rlp.RawValue, ids []hash.Event) error {
 
 // AsyncSendEvents queues an entire event for propagation to a remote peer.
 // If the peer's broadcast queue is full, the events are silently dropped.
-func (p *peer) AsyncSendEvents(events inter.EventPayloads, queue chan broadcastItem) bool {
+func (p *peer) AsyncSendEvents(events native.EventPayloads, queue chan broadcastItem) bool {
 	if p.asyncSendNonEncodedItem(events, EventsMsg, queue) {
 		// Mark all the event hash as known, but ensure we don't overflow our limits
 		for _, event := range events {

@@ -31,11 +31,11 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
-	"github.com/unicornultrafoundation/go-u2u/inter"
-	"github.com/unicornultrafoundation/go-u2u/inter/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 )
 
 // PeerProgress is synchronization status of a peer
@@ -43,7 +43,7 @@ type PeerProgress struct {
 	CurrentEpoch     idx.Epoch
 	CurrentBlock     idx.Block
 	CurrentBlockHash hash.Event
-	CurrentBlockTime inter.Timestamp
+	CurrentBlockTime native.Timestamp
 	HighestBlock     idx.Block
 	HighestEpoch     idx.Epoch
 }
@@ -91,15 +91,15 @@ type Backend interface {
 	CurrentBlock() *evmcore.EvmBlock
 
 	// Hashgraph DAG API
-	GetEventPayload(ctx context.Context, shortEventID string) (*inter.EventPayload, error)
-	GetEvent(ctx context.Context, shortEventID string) (*inter.Event, error)
+	GetEventPayload(ctx context.Context, shortEventID string) (*native.EventPayload, error)
+	GetEvent(ctx context.Context, shortEventID string) (*native.Event, error)
 	GetHeads(ctx context.Context, epoch rpc.BlockNumber) (hash.Events, error)
 	CurrentEpoch(ctx context.Context) idx.Epoch
-	SealedEpochTiming(ctx context.Context) (start inter.Timestamp, end inter.Timestamp)
+	SealedEpochTiming(ctx context.Context) (start native.Timestamp, end native.Timestamp)
 
 	// Hashgraph aBFT API
 	GetEpochBlockState(ctx context.Context, epoch rpc.BlockNumber) (*iblockproc.BlockState, *iblockproc.EpochState, error)
-	GetDowntime(ctx context.Context, vid idx.ValidatorID) (idx.Block, inter.Timestamp, error)
+	GetDowntime(ctx context.Context, vid idx.ValidatorID) (idx.Block, native.Timestamp, error)
 	GetUptime(ctx context.Context, vid idx.ValidatorID) (*big.Int, error)
 	GetOriginatedFee(ctx context.Context, vid idx.ValidatorID) (*big.Int, error)
 }

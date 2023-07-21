@@ -7,10 +7,10 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
 func (s *Store) GetGenesisID() *hash.Hash {
@@ -47,7 +47,7 @@ func (s *Store) SetGenesisID(val hash.Hash) {
 }
 
 // SetBlock stores chain block.
-func (s *Store) SetBlock(n idx.Block, b *inter.Block) {
+func (s *Store) SetBlock(n idx.Block, b *native.Block) {
 	s.rlp.Set(s.table.Blocks, n.Bytes(), b)
 
 	// Add to LRU cache.
@@ -55,20 +55,20 @@ func (s *Store) SetBlock(n idx.Block, b *inter.Block) {
 }
 
 // GetBlock returns stored block.
-func (s *Store) GetBlock(n idx.Block) *inter.Block {
+func (s *Store) GetBlock(n idx.Block) *native.Block {
 	if n == 0 {
 		// fake genesis block for compatibility with web3
-		return &inter.Block{
+		return &native.Block{
 			Time:    evmcore.FakeGenesisTime - 1,
 			Atropos: s.fakeGenesisHash(),
 		}
 	}
 	// Get block from LRU cache first.
 	if c, ok := s.cache.Blocks.Get(n); ok {
-		return c.(*inter.Block)
+		return c.(*native.Block)
 	}
 
-	block, _ := s.rlp.Get(s.table.Blocks, n.Bytes(), &inter.Block{}).(*inter.Block)
+	block, _ := s.rlp.Get(s.table.Blocks, n.Bytes(), &native.Block{}).(*native.Block)
 
 	// Add to LRU cache.
 	if block != nil {
@@ -83,11 +83,11 @@ func (s *Store) HasBlock(n idx.Block) bool {
 	return has
 }
 
-func (s *Store) ForEachBlock(fn func(index idx.Block, block *inter.Block)) {
+func (s *Store) ForEachBlock(fn func(index idx.Block, block *native.Block)) {
 	it := s.table.Blocks.NewIterator(nil, nil)
 	defer it.Release()
 	for it.Next() {
-		var block inter.Block
+		var block native.Block
 		err := rlp.DecodeBytes(it.Value(), &block)
 		if err != nil {
 			s.Log.Crit("Failed to decode block", "err", err)
@@ -154,7 +154,7 @@ func (s *Store) GetGenesisBlockIndex() *idx.Block {
 	return &n
 }
 
-func (s *Store) GetGenesisTime() inter.Timestamp {
+func (s *Store) GetGenesisTime() native.Timestamp {
 	n := s.GetGenesisBlockIndex()
 	if n == nil {
 		return 0
@@ -182,7 +182,7 @@ func (s *Store) FindBlockEpoch(b idx.Block) idx.Epoch {
 	return idx.BytesToEpoch(it.Value())
 }
 
-func (s *Store) GetBlockTxs(n idx.Block, block *inter.Block) types.Transactions {
+func (s *Store) GetBlockTxs(n idx.Block, block *native.Block) types.Transactions {
 	if cached := s.evm.GetCachedEvmBlock(n); cached != nil {
 		return cached.Transactions
 	}
@@ -213,7 +213,7 @@ func (s *Store) GetBlockTxs(n idx.Block, block *inter.Block) types.Transactions 
 		transactions = append(transactions, e.Txs()...)
 	}
 
-	transactions = inter.FilterSkippedTxs(transactions, block.SkippedTxs)
+	transactions = native.FilterSkippedTxs(transactions, block.SkippedTxs)
 
 	return transactions
 }

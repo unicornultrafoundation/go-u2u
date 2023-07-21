@@ -7,7 +7,7 @@ package evmstore
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 )
 
 type TxPosition struct {

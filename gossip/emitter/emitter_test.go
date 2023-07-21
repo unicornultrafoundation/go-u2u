@@ -10,12 +10,12 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/pos"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter/mock"
 	"github.com/unicornultrafoundation/go-u2u/integration/makefakegenesis"
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/vecmt"
 )
@@ -73,7 +73,7 @@ func TestEmitter(t *testing.T) {
 			AnyTimes()
 
 		external.EXPECT().GetGenesisTime().
-			Return(inter.Timestamp(uint64(time.Now().UnixNano()))).
+			Return(native.Timestamp(uint64(time.Now().UnixNano()))).
 			AnyTimes()
 
 		em.init()

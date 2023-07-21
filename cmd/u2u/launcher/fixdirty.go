@@ -7,18 +7,18 @@ import (
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/unicornultrafoundation/go-hashgraph/abft"
 	"github.com/unicornultrafoundation/go-hashgraph/common/bigendian"
+	"github.com/unicornultrafoundation/go-hashgraph/consensus"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/batched"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/flushable"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/batched"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/flushable"
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/integration"
-	"github.com/unicornultrafoundation/go-u2u/inter/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 )
 
 // maxEpochsToTry represents amount of last closed epochs to try (in case that the last one has the state unavailable)
@@ -57,11 +57,11 @@ func healDirty(ctx *cli.Context) error {
 	// prepare consensus database from epochState
 	log.Info("Recreating hashgraph DB")
 	cMainDb := mustOpenDB(multiProducer, "hashgraph")
-	cGetEpochDB := func(epoch idx.Epoch) kvdb.Store {
+	cGetEpochDB := func(epoch idx.Epoch) u2udb.Store {
 		return mustOpenDB(multiProducer, fmt.Sprintf("hashgraph-%d", epoch))
 	}
-	cdb := abft.NewStore(cMainDb, cGetEpochDB, panics("Hashgraph store"), cfg.HashgraphStore)
-	err = cdb.ApplyGenesis(&abft.Genesis{
+	cdb := consensus.NewStore(cMainDb, cGetEpochDB, panics("Hashgraph store"), cfg.HashgraphStore)
+	err = cdb.ApplyGenesis(&consensus.Genesis{
 		Epoch:      epochState.Epoch,
 		Validators: epochState.Validators,
 	})
@@ -84,7 +84,7 @@ func healDirty(ctx *cli.Context) error {
 }
 
 // fixDirtyGossipDb reverts the gossip database into state, when was one of last epochs sealed
-func fixDirtyGossipDb(producer kvdb.FlushableDBProducer, cfg *config) (
+func fixDirtyGossipDb(producer u2udb.FlushableDBProducer, cfg *config) (
 	epochState *iblockproc.EpochState, err error) {
 	gdb := makeGossipStore(producer, cfg) // requires FlushIDKey present (not clean) in all dbs
 	defer gdb.Close()
@@ -139,7 +139,7 @@ func getLastEpochWithState(gdb *gossip.Store, epochsToTry idx.Epoch) (epochIdx i
 	return 0, nil, nil
 }
 
-func eraseTable(name string, producer kvdb.IterableDBProducer) error {
+func eraseTable(name string, producer u2udb.IterableDBProducer) error {
 	log.Info("Cleaning table", "name", name)
 	db, err := producer.OpenDB(name)
 	if err != nil {
@@ -159,7 +159,7 @@ func eraseTable(name string, producer kvdb.IterableDBProducer) error {
 }
 
 // clearDirtyFlags - writes the CleanPrefix into all databases
-func clearDirtyFlags(id []byte, rawProducer kvdb.IterableDBProducer) error {
+func clearDirtyFlags(id []byte, rawProducer u2udb.IterableDBProducer) error {
 	names := rawProducer.Names()
 	for _, name := range names {
 		db, err := rawProducer.OpenDB(name)
@@ -178,7 +178,7 @@ func clearDirtyFlags(id []byte, rawProducer kvdb.IterableDBProducer) error {
 	return nil
 }
 
-func mustOpenDB(producer kvdb.DBProducer, name string) kvdb.Store {
+func mustOpenDB(producer u2udb.DBProducer, name string) u2udb.Store {
 	db, err := producer.OpenDB(name)
 	if err != nil {
 		utils.Fatalf("Failed to open '%s' database: %v", name, err)

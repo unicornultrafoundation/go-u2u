@@ -5,20 +5,20 @@ import (
 	"sort"
 
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/pos"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
 // medianTimeIndex is a handy index for the MedianTime() func
 type medianTimeIndex struct {
 	weight       pos.Weight
-	creationTime inter.Timestamp
+	creationTime native.Timestamp
 }
 
 // MedianTime calculates weighted median of claimed time within highest observed events.
-func (vi *Index) MedianTime(id hash.Event, defaultTime inter.Timestamp) inter.Timestamp {
+func (vi *Index) MedianTime(id hash.Event, defaultTime native.Timestamp) native.Timestamp {
 	vi.Engine.InitBranchesInfo()
 	// Get event by hash
 	_before := vi.Engine.GetMergedHighestBefore(id)
@@ -60,7 +60,7 @@ func (vi *Index) MedianTime(id hash.Event, defaultTime inter.Timestamp) inter.Ti
 	// Calculate weighted median
 	halfWeight := honestTotalWeight / 2
 	var currWeight pos.Weight
-	var median inter.Timestamp
+	var median native.Timestamp
 	for _, highest := range highests {
 		currWeight += highest.weight
 		if currWeight >= halfWeight {

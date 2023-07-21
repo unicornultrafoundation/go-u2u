@@ -2,10 +2,10 @@ package vecmt
 
 import (
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 )
 
-func (vi *Index) getBytes(table kvdb.Store, id hash.Event) []byte {
+func (vi *Index) getBytes(table u2udb.Store, id hash.Event) []byte {
 	key := id.Bytes()
 	b, err := table.Get(key)
 	if err != nil {
@@ -14,7 +14,7 @@ func (vi *Index) getBytes(table kvdb.Store, id hash.Event) []byte {
 	return b
 }
 
-func (vi *Index) setBytes(table kvdb.Store, id hash.Event, b []byte) {
+func (vi *Index) setBytes(table u2udb.Store, id hash.Event, b []byte) {
 	key := id.Bytes()
 	err := table.Put(key, b)
 	if err != nil {

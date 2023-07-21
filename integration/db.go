@@ -11,13 +11,13 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/dag"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/flaggedproducer"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/flushable"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/leveldb"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/multidb"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/pebble"
+	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/flaggedproducer"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/flushable"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/leveldb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/multidb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/pebble"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/fmtfilter"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip"
@@ -40,7 +40,7 @@ type DBsCacheConfig struct {
 	Table map[string]DBCacheConfig
 }
 
-func SupportedDBs(chaindataDir string, cfg DBsCacheConfig) (map[multidb.TypeName]kvdb.IterableDBProducer, map[multidb.TypeName]kvdb.FullDBProducer) {
+func SupportedDBs(chaindataDir string, cfg DBsCacheConfig) (map[multidb.TypeName]u2udb.IterableDBProducer, map[multidb.TypeName]u2udb.FullDBProducer) {
 	if chaindataDir == "inmemory" || chaindataDir == "" {
 		chaindataDir, _ = ioutil.TempDir("", "u2u-tmp")
 	}
@@ -65,14 +65,14 @@ func SupportedDBs(chaindataDir string, cfg DBsCacheConfig) (map[multidb.TypeName
 		pebbleDrc = WrapDatabaseWithMetrics(pebbleDrc)
 	}
 
-	return map[multidb.TypeName]kvdb.IterableDBProducer{
+	return map[multidb.TypeName]u2udb.IterableDBProducer{
 			"leveldb-fsh": leveldbFsh,
 			"leveldb-flg": leveldbFlg,
 			"leveldb-drc": leveldbDrc,
 			"pebble-fsh":  pebbleFsh,
 			"pebble-flg":  pebbleFlg,
 			"pebble-drc":  pebbleDrc,
-		}, map[multidb.TypeName]kvdb.FullDBProducer{
+		}, map[multidb.TypeName]u2udb.FullDBProducer{
 			"leveldb-fsh": flushable.NewSyncedPool(leveldbFsh, FlushIDKey),
 			"leveldb-flg": flaggedproducer.Wrap(leveldbFlg, FlushIDKey),
 			"leveldb-drc": &DummyScopedProducer{leveldbDrc},
@@ -161,7 +161,7 @@ func MakeDBDirs(chaindataDir string) {
 }
 
 type DummyScopedProducer struct {
-	kvdb.IterableDBProducer
+	u2udb.IterableDBProducer
 }
 
 func (d DummyScopedProducer) NotFlushedSizeEst() int {

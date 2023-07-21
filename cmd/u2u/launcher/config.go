@@ -17,7 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/naoina/toml"
-	"github.com/unicornultrafoundation/go-hashgraph/abft"
+	"github.com/unicornultrafoundation/go-hashgraph/consensus"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/cachescale"
 	"gopkg.in/urfave/cli.v1"
 
@@ -159,8 +159,8 @@ type config struct {
 	Emitter        emitter.Config
 	TxPool         evmcore.TxPoolConfig
 	U2uStore       gossip.StoreConfig
-	Hashgraph      abft.Config
-	HashgraphStore abft.StoreConfig
+	Hashgraph      consensus.Config
+	HashgraphStore consensus.StoreConfig
 	VectorClock    vecmt.IndexConfig
 	DBs            integration.DBsConfig
 }
@@ -406,8 +406,8 @@ func mayMakeAllConfigs(ctx *cli.Context) (*config, error) {
 		Emitter:        emitter.DefaultConfig(),
 		TxPool:         evmcore.DefaultTxPoolConfig,
 		U2uStore:       gossip.DefaultStoreConfig(cacheRatio),
-		Hashgraph:      abft.DefaultConfig(),
-		HashgraphStore: abft.DefaultStoreConfig(cacheRatio),
+		Hashgraph:      consensus.DefaultConfig(),
+		HashgraphStore: consensus.DefaultStoreConfig(cacheRatio),
 		VectorClock:    vecmt.DefaultConfig(cacheRatio),
 	}
 

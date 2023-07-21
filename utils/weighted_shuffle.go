@@ -5,7 +5,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-hashgraph/common/littleendian"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/pos"
+	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
 )
 
 type weightedShuffleNode struct {

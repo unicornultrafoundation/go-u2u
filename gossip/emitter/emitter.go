@@ -12,14 +12,14 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/unicornultrafoundation/go-hashgraph/emitter/ancestor"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/pos"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/piecefunc"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter/originatedtxs"
-	"github.com/unicornultrafoundation/go-u2u/inter"
 	"github.com/unicornultrafoundation/go-u2u/logger"
+	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/tracing"
 	"github.com/unicornultrafoundation/go-u2u/utils/rate"
 )
@@ -231,7 +231,7 @@ func (em *Emitter) getSortedTxs() *types.TransactionsByPriceAndNonce {
 	return sortedTxs.Copy()
 }
 
-func (em *Emitter) EmitEvent() (*inter.EventPayload, error) {
+func (em *Emitter) EmitEvent() (*native.EventPayload, error) {
 	if em.config.Validator.ID == 0 {
 		// short circuit if not a validator
 		return nil, nil
@@ -293,7 +293,7 @@ func (em *Emitter) loadPrevEmitTime() time.Time {
 }
 
 // createEvent is not safe for concurrent use.
-func (em *Emitter) createEvent(sortedTxs *types.TransactionsByPriceAndNonce) (*inter.EventPayload, error) {
+func (em *Emitter) createEvent(sortedTxs *types.TransactionsByPriceAndNonce) (*native.EventPayload, error) {
 	if !em.isValidator() {
 		return nil, nil
 	}
@@ -305,7 +305,7 @@ func (em *Emitter) createEvent(sortedTxs *types.TransactionsByPriceAndNonce) (*i
 
 	var (
 		selfParentSeq  idx.Event
-		selfParentTime inter.Timestamp
+		selfParentTime native.Timestamp
 		parents        hash.Events
 		maxLamport     idx.Lamport
 	)
@@ -317,7 +317,7 @@ func (em *Emitter) createEvent(sortedTxs *types.TransactionsByPriceAndNonce) (*i
 	}
 
 	// Set parent-dependent fields
-	parentHeaders := make(inter.Events, len(parents))
+	parentHeaders := make(native.Events, len(parents))
 	for i, p := range parents {
 		parent := em.world.GetEvent(p)
 		if parent == nil {
@@ -334,7 +334,7 @@ func (em *Emitter) createEvent(sortedTxs *types.TransactionsByPriceAndNonce) (*i
 
 	selfParentSeq = 0
 	selfParentTime = 0
-	var selfParentHeader *inter.Event
+	var selfParentHeader *native.Event
 	if selfParent != nil {
 		selfParentHeader = parentHeaders[0]
 		selfParentSeq = selfParentHeader.Seq()
@@ -346,7 +346,7 @@ func (em *Emitter) createEvent(sortedTxs *types.TransactionsByPriceAndNonce) (*i
 		version = 1
 	}
 
-	mutEvent := &inter.MutableEventPayload{}
+	mutEvent := &native.MutableEventPayload{}
 	mutEvent.SetVersion(version)
 	mutEvent.SetEpoch(em.epoch)
 	mutEvent.SetSeq(selfParentSeq + 1)
@@ -354,7 +354,7 @@ func (em *Emitter) createEvent(sortedTxs *types.TransactionsByPriceAndNonce) (*i
 
 	mutEvent.SetParents(parents)
 	mutEvent.SetLamport(maxLamport + 1)
-	mutEvent.SetCreationTime(inter.MaxTimestamp(inter.Timestamp(time.Now().UnixNano()), selfParentTime+1))
+	mutEvent.SetCreationTime(native.MaxTimestamp(native.Timestamp(time.Now().UnixNano()), selfParentTime+1))
 
 	// add LLR votes
 	em.addLlrEpochVote(mutEvent)
@@ -403,7 +403,7 @@ func (em *Emitter) createEvent(sortedTxs *types.TransactionsByPriceAndNonce) (*i
 	}
 
 	// calc Payload hash
-	mutEvent.SetPayloadHash(inter.CalcPayloadHash(mutEvent))
+	mutEvent.SetPayloadHash(native.CalcPayloadHash(mutEvent))
 
 	// sign
 	bSig, err := em.world.Signer.Sign(em.config.Validator.PubKey, mutEvent.HashToSign().Bytes())
@@ -411,7 +411,7 @@ func (em *Emitter) createEvent(sortedTxs *types.TransactionsByPriceAndNonce) (*i
 		em.Periodic.Error(time.Second, "Failed to sign event", "err", err)
 		return nil, err
 	}
-	var sig inter.Signature
+	var sig native.Signature
 	copy(sig[:], bSig)
 	mutEvent.SetSig(sig)
 
@@ -438,7 +438,7 @@ func (em *Emitter) isValidator() bool {
 	return em.config.Validator.ID != 0 && em.validators.Exists(em.config.Validator.ID)
 }
 
-func (em *Emitter) nameEventForDebug(e *inter.EventPayload) {
+func (em *Emitter) nameEventForDebug(e *native.EventPayload) {
 	name := []rune(hash.GetNodeName(e.Creator()))
 	if len(name) < 1 {
 		return

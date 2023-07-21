@@ -5,10 +5,10 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/unicornultrafoundation/go-hashgraph/emitter/ancestor"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/pos"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/utils/adapters/vecmt2dagidx"
 )
 
@@ -51,7 +51,7 @@ func (em *Emitter) OnNewEpoch(newValidators *pos.Validators, newEpoch idx.Epoch)
 }
 
 // OnEventConnected tracks new events
-func (em *Emitter) OnEventConnected(e inter.EventPayloadI) {
+func (em *Emitter) OnEventConnected(e native.EventPayloadI) {
 	if !em.isValidator() {
 		return
 	}
@@ -72,7 +72,7 @@ func (em *Emitter) OnEventConnected(e inter.EventPayloadI) {
 	delete(em.offlineValidators, e.Creator())
 }
 
-func (em *Emitter) OnEventConfirmed(he inter.EventI) {
+func (em *Emitter) OnEventConfirmed(he native.EventI) {
 	if !em.isValidator() {
 		return
 	}

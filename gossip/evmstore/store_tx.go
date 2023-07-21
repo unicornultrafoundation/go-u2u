@@ -5,9 +5,9 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
 // SetTx stores non-event transaction.
@@ -22,7 +22,7 @@ func (s *Store) GetTx(txid common.Hash) *types.Transaction {
 	return tx
 }
 
-func (s *Store) GetBlockTxs(n idx.Block, block inter.Block, getEventPayload func(hash.Event) *inter.EventPayload) types.Transactions {
+func (s *Store) GetBlockTxs(n idx.Block, block native.Block, getEventPayload func(hash.Event) *native.EventPayload) types.Transactions {
 	if cached := s.GetCachedEvmBlock(n); cached != nil {
 		return cached.Transactions
 	}
@@ -53,7 +53,7 @@ func (s *Store) GetBlockTxs(n idx.Block, block inter.Block, getEventPayload func
 		transactions = append(transactions, e.Txs()...)
 	}
 
-	transactions = inter.FilterSkippedTxs(transactions, block.SkippedTxs)
+	transactions = native.FilterSkippedTxs(transactions, block.SkippedTxs)
 
 	return transactions
 }

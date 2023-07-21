@@ -9,7 +9,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-hashgraph/gossip/basestream"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/dag"
+	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
 )
 
 type Request struct {

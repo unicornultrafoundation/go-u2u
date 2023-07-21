@@ -17,15 +17,15 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/unicornultrafoundation/go-hashgraph/common/bigendian"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/pebble"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/pebble"
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"
-	"github.com/unicornultrafoundation/go-u2u/inter/ibr"
-	"github.com/unicornultrafoundation/go-u2u/inter/ier"
+	"github.com/unicornultrafoundation/go-u2u/native/ibr"
+	"github.com/unicornultrafoundation/go-u2u/native/ier"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesis"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesisstore"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesisstore/fileshash"
@@ -44,7 +44,7 @@ func (f dropableFile) Drop() error {
 }
 
 type mptIterator struct {
-	kvdb.Iterator
+	u2udb.Iterator
 }
 
 func (it mptIterator) Next() bool {
@@ -57,7 +57,7 @@ func (it mptIterator) Next() bool {
 }
 
 type mptAndPreimageIterator struct {
-	kvdb.Iterator
+	u2udb.Iterator
 }
 
 func (it mptAndPreimageIterator) Next() bool {
@@ -70,8 +70,8 @@ func (it mptAndPreimageIterator) Next() bool {
 }
 
 type excludingIterator struct {
-	kvdb.Iterator
-	exclude kvdb.Reader
+	u2udb.Iterator
+	exclude u2udb.Reader
 }
 
 func (it excludingIterator) Next() bool {
@@ -228,7 +228,7 @@ func exportGenesis(ctx *cli.Context) error {
 		return errors.New("--export.evm.mode must be one of {full, ext-mpt, mpt}")
 	}
 
-	var excludeEvmDB kvdb.Store
+	var excludeEvmDB u2udb.Store
 	if excludeEvmDBPath := ctx.String(EvmExportExclude.Name); len(excludeEvmDBPath) > 0 {
 		db, err := pebble.New(excludeEvmDBPath, 1024*opt.MiB, utils.MakeDatabaseHandles()/2, nil, nil)
 		if err != nil {

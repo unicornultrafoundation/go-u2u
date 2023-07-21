@@ -19,12 +19,12 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/status-im/keycard-go/hexutils"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter"
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesisstore"
 	"github.com/unicornultrafoundation/go-u2u/utils/ioread"
 )
@@ -177,7 +177,7 @@ func importEventsFile(srv *gossip.Service, fn string) error {
 	start := time.Now()
 	last := hash.Event{}
 
-	batch := make(inter.EventPayloads, 0, 8*1024)
+	batch := make(native.EventPayloads, 0, 8*1024)
 	batchSize := 0
 	maxBatchSize := 8 * 1024 * 1024
 	epoch := idx.Epoch(0)
@@ -208,7 +208,7 @@ func importEventsFile(srv *gossip.Service, fn string) error {
 			return fmt.Errorf("interrupted")
 		default:
 		}
-		e := new(inter.EventPayload)
+		e := new(native.EventPayload)
 		err = stream.Decode(e)
 		if err == io.EOF {
 			err = processBatch()

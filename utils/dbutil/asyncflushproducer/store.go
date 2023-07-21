@@ -1,11 +1,9 @@
 package asyncflushproducer
 
-import (
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
-)
+import "github.com/unicornultrafoundation/go-hashgraph/u2udb"
 
 type store struct {
-	kvdb.Store
+	u2udb.Store
 	CloseFn func() error
 }
 

@@ -1,7 +1,7 @@
 package bvallcheck
 
 import (
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
 type Checker struct {
@@ -9,10 +9,10 @@ type Checker struct {
 	LightCheck LightCheck
 }
 
-type LightCheck func(bvs inter.LlrSignedBlockVotes) error
+type LightCheck func(bvs native.LlrSignedBlockVotes) error
 
 type HeavyCheck interface {
-	Enqueue(bvs inter.LlrSignedBlockVotes, checked func(error)) error
+	Enqueue(bvs native.LlrSignedBlockVotes, checked func(error)) error
 }
 
 type Callback struct {
@@ -21,7 +21,7 @@ type Callback struct {
 }
 
 // Enqueue tries to fill gaps the fetcher's future import queue.
-func (c *Checker) Enqueue(bvs inter.LlrSignedBlockVotes, checked func(error)) {
+func (c *Checker) Enqueue(bvs native.LlrSignedBlockVotes, checked func(error)) {
 	// Run light checks right away
 	err := c.LightCheck(bvs)
 	if err != nil {

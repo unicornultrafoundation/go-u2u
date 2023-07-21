@@ -8,14 +8,14 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/unicornultrafoundation/go-hashgraph/gossip/dagprocessor"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/dag"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/eventcheck"
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/epochcheck"
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter"
-	"github.com/unicornultrafoundation/go-u2u/inter"
-	"github.com/unicornultrafoundation/go-u2u/inter/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 	"github.com/unicornultrafoundation/go-u2u/utils/concurrent"
 )
 
@@ -28,7 +28,7 @@ var (
 	errDirtyEvmSnap     = errors.New("EVM snapshot is dirty")
 )
 
-func (s *Service) buildEvent(e *inter.MutableEventPayload, onIndexed func()) error {
+func (s *Service) buildEvent(e *native.MutableEventPayload, onIndexed func()) error {
 	// set some unique ID
 	e.SetID(s.uniqueEventIDs.sample())
 
@@ -53,7 +53,7 @@ func (s *Service) buildEvent(e *inter.MutableEventPayload, onIndexed func()) err
 
 	// calc initial GasPower
 	e.SetGasPowerUsed(epochcheck.CalcGasPowerUsed(e, s.store.GetRules()))
-	var selfParent *inter.Event
+	var selfParent *native.Event
 	if e.SelfParent() != nil {
 		selfParent = s.store.GetEvent(*e.SelfParent())
 	}
@@ -69,7 +69,7 @@ func (s *Service) buildEvent(e *inter.MutableEventPayload, onIndexed func()) err
 }
 
 // processSavedEvent performs processing which depends on event being saved in DB
-func (s *Service) processSavedEvent(e *inter.EventPayload, es *iblockproc.EpochState) error {
+func (s *Service) processSavedEvent(e *native.EventPayload, es *iblockproc.EpochState) error {
 	err := s.dagIndexer.Add(e)
 	if err != nil {
 		return err
@@ -85,7 +85,7 @@ func (s *Service) processSavedEvent(e *inter.EventPayload, es *iblockproc.EpochS
 }
 
 // saveAndProcessEvent deletes event in a case if it fails validation during event processing
-func (s *Service) saveAndProcessEvent(e *inter.EventPayload, es *iblockproc.EpochState) error {
+func (s *Service) saveAndProcessEvent(e *native.EventPayload, es *iblockproc.EpochState) error {
 	fixEventTxHashes(e)
 	// indexing event
 	s.store.SetEvent(e)
@@ -102,7 +102,7 @@ func (s *Service) saveAndProcessEvent(e *inter.EventPayload, es *iblockproc.Epoc
 	return nil
 }
 
-func processEventHeads(heads *concurrent.EventsSet, e *inter.EventPayload) *concurrent.EventsSet {
+func processEventHeads(heads *concurrent.EventsSet, e *native.EventPayload) *concurrent.EventsSet {
 	// track events with no descendants, i.e. "heads"
 	heads.Lock()
 	defer heads.Unlock()
@@ -111,7 +111,7 @@ func processEventHeads(heads *concurrent.EventsSet, e *inter.EventPayload) *conc
 	return heads
 }
 
-func processLastEvent(lasts *concurrent.ValidatorEventsSet, e *inter.EventPayload) *concurrent.ValidatorEventsSet {
+func processLastEvent(lasts *concurrent.ValidatorEventsSet, e *native.EventPayload) *concurrent.ValidatorEventsSet {
 	// set validator's last event. we don't care about forks, because this index is used only for emitter
 	lasts.Lock()
 	defer lasts.Unlock()
@@ -175,7 +175,7 @@ func (s *Service) EvmSnapshotGeneration() bool {
 }
 
 // processEvent extends the engine.Process with gossip-specific actions on each event processing
-func (s *Service) processEvent(e *inter.EventPayload) error {
+func (s *Service) processEvent(e *native.EventPayload) error {
 	// s.engineMu is locked here
 	if s.stopped {
 		return errStopped
@@ -211,11 +211,11 @@ func (s *Service) processEvent(e *inter.EventPayload) error {
 	}
 
 	// Process LLR votes
-	err := s.processBlockVotes(inter.AsSignedBlockVotes(e))
+	err := s.processBlockVotes(native.AsSignedBlockVotes(e))
 	if err != nil && err != eventcheck.ErrAlreadyProcessedBVs {
 		return err
 	}
-	err = s.processEpochVote(inter.AsSignedEpochVote(e))
+	err = s.processEpochVote(native.AsSignedEpochVote(e))
 	if err != nil && err != eventcheck.ErrAlreadyProcessedEV {
 		return err
 	}

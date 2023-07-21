@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/unicornultrafoundation/go-u2u/integration/makefakegenesis"
-	"github.com/unicornultrafoundation/go-u2u/inter/validatorpk"
+	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"
 )
 
 func TestFakeNetFlag_NonValidator(t *testing.T) {

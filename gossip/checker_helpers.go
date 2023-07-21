@@ -3,12 +3,12 @@ package gossip
 import (
 	"sync/atomic"
 
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/pos"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
 
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/gaspowercheck"
-	"github.com/unicornultrafoundation/go-u2u/inter"
-	"github.com/unicornultrafoundation/go-u2u/inter/validatorpk"
+	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 )
 
@@ -28,7 +28,7 @@ func NewGasPowerContext(s *Store, validators *pos.Validators, epoch idx.Epoch, c
 
 	short := cfg.ShortGasPower
 	shortTermConfig := gaspowercheck.Config{
-		Idx:                inter.ShortTermGas,
+		Idx:                native.ShortTermGas,
 		AllocPerSec:        short.AllocPerSec,
 		MaxAllocPeriod:     short.MaxAllocPeriod,
 		MinEnsuredAlloc:    cfg.Gas.MaxEventGas,
@@ -38,7 +38,7 @@ func NewGasPowerContext(s *Store, validators *pos.Validators, epoch idx.Epoch, c
 
 	long := cfg.LongGasPower
 	longTermConfig := gaspowercheck.Config{
-		Idx:                inter.LongTermGas,
+		Idx:                native.LongTermGas,
 		AllocPerSec:        long.AllocPerSec,
 		MaxAllocPeriod:     long.MaxAllocPeriod,
 		MinEnsuredAlloc:    cfg.Gas.MaxEventGas,
@@ -58,9 +58,9 @@ func NewGasPowerContext(s *Store, validators *pos.Validators, epoch idx.Epoch, c
 		Validators:      validators,
 		EpochStart:      es.EpochStart,
 		ValidatorStates: validatorStates,
-		Configs: [inter.GasPowerConfigs]gaspowercheck.Config{
-			inter.ShortTermGas: shortTermConfig,
-			inter.LongTermGas:  longTermConfig,
+		Configs: [native.GasPowerConfigs]gaspowercheck.Config{
+			native.ShortTermGas: shortTermConfig,
+			native.LongTermGas:  longTermConfig,
 		},
 	}
 }

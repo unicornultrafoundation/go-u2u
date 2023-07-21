@@ -8,8 +8,8 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/unicornultrafoundation/go-hashgraph/gossip/dagprocessor"
 	"github.com/unicornultrafoundation/go-hashgraph/gossip/itemsfetcher"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/dag"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/cachescale"
 
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/heavycheck"

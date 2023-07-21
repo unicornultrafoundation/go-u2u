@@ -5,7 +5,7 @@ import (
 
 	base "github.com/unicornultrafoundation/go-hashgraph/eventcheck/parentscheck"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
 var (
@@ -25,7 +25,7 @@ func New() *Checker {
 }
 
 // Validate event
-func (v *Checker) Validate(e inter.EventI, parents inter.EventIs) error {
+func (v *Checker) Validate(e native.EventI, parents native.EventIs) error {
 	if err := v.base.Validate(e, parents.Bases()); err != nil {
 		return err
 	}

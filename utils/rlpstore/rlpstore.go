@@ -2,7 +2,7 @@ package rlpstore
 
 import (
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 	"github.com/unicornultrafoundation/go-u2u/logger"
 )
 
@@ -11,7 +11,7 @@ type Helper struct {
 }
 
 // Set RLP value
-func (s *Helper) Set(table kvdb.Store, key []byte, val interface{}) {
+func (s *Helper) Set(table u2udb.Store, key []byte, val interface{}) {
 	buf, err := rlp.EncodeToBytes(val)
 	if err != nil {
 		s.Log.Crit("Failed to encode rlp", "err", err)
@@ -23,7 +23,7 @@ func (s *Helper) Set(table kvdb.Store, key []byte, val interface{}) {
 }
 
 // Get RLP value
-func (s *Helper) Get(table kvdb.Store, key []byte, to interface{}) interface{} {
+func (s *Helper) Get(table u2udb.Store, key []byte, to interface{}) interface{} {
 	buf, err := table.Get(key)
 	if err != nil {
 		s.Log.Crit("Failed to get key-value", "err", err)

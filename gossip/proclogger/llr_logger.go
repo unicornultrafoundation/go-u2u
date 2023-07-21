@@ -5,12 +5,12 @@ import (
 	"time"
 
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
-	"github.com/unicornultrafoundation/go-u2u/inter/ibr"
-	"github.com/unicornultrafoundation/go-u2u/inter/ier"
 	"github.com/unicornultrafoundation/go-u2u/logger"
+	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/native/ibr"
+	"github.com/unicornultrafoundation/go-u2u/native/ier"
 	"github.com/unicornultrafoundation/go-u2u/utils"
 )
 
@@ -35,8 +35,8 @@ type Logger struct {
 	lastEpoch     idx.Epoch
 	lastBlock     idx.Block
 	lastID        hash.Event
-	lastEventTime inter.Timestamp
-	lastLlrTime   inter.Timestamp
+	lastEventTime native.Timestamp
+	lastLlrTime   native.Timestamp
 
 	nextLogging time.Time
 
@@ -71,7 +71,7 @@ func (l *Logger) summary(now time.Time) {
 
 // BlockVotesConnectionStarted starts the BVs logging
 // Not safe for concurrent use
-func (l *Logger) BlockVotesConnectionStarted(bvs inter.LlrSignedBlockVotes) func() {
+func (l *Logger) BlockVotesConnectionStarted(bvs native.LlrSignedBlockVotes) func() {
 	if bvs.Val.Epoch == 0 {
 		return func() {}
 	}
@@ -125,7 +125,7 @@ func (l *Logger) BlockRecordConnectionStarted(br ibr.LlrIdxFullBlockRecord) func
 
 // EpochVoteConnectionStarted starts the EV logging
 // Not safe for concurrent use
-func (l *Logger) EpochVoteConnectionStarted(ev inter.LlrSignedEpochVote) func() {
+func (l *Logger) EpochVoteConnectionStarted(ev native.LlrSignedEpochVote) func() {
 	if ev.Val.Epoch == 0 {
 		return func() {}
 	}

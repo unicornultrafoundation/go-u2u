@@ -6,14 +6,14 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/unicornultrafoundation/go-hashgraph/abft"
+	"github.com/unicornultrafoundation/go-hashgraph/consensus"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/cachescale"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/integration/makefakegenesis"
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/utils"
 	"github.com/unicornultrafoundation/go-u2u/vecmt"
 )
@@ -26,8 +26,8 @@ func BenchmarkFlushDBs(b *testing.B) {
 	_, _, store, s2, _, closeDBs := MakeEngine(dir, &g, Configs{
 		U2u:            gossip.DefaultConfig(cachescale.Identity),
 		U2uStore:       gossip.DefaultStoreConfig(cachescale.Identity),
-		Hashgraph:      abft.DefaultConfig(),
-		HashgraphStore: abft.DefaultStoreConfig(cachescale.Identity),
+		Hashgraph:      consensus.DefaultConfig(),
+		HashgraphStore: consensus.DefaultStoreConfig(cachescale.Identity),
 		VectorClock:    vecmt.DefaultConfig(cachescale.Identity),
 		DBs:            DefaultDBsConfig(cachescale.Identity.U64, 512),
 	})
@@ -46,8 +46,8 @@ func BenchmarkFlushDBs(b *testing.B) {
 			return []uint32{uint32(n), uint32(n) + 1, uint32(n) + 2}
 		}
 		for !store.IsCommitNeeded() {
-			store.SetBlock(n, &inter.Block{
-				Time:        inter.Timestamp(n << 32),
+			store.SetBlock(n, &native.Block{
+				Time:        native.Timestamp(n << 32),
 				Atropos:     hash.Event{},
 				Events:      hash.Events{},
 				Txs:         []common.Hash{},

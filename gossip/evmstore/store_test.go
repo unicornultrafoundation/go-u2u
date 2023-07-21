@@ -1,7 +1,7 @@
 package evmstore
 
 import (
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/memorydb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/memorydb"
 )
 
 func cachedStore() *Store {

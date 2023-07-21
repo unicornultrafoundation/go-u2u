@@ -24,9 +24,9 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 )
 
@@ -37,7 +37,7 @@ type (
 		ParentHash common.Hash
 		Root       common.Hash
 		TxHash     common.Hash
-		Time       inter.Timestamp
+		Time       native.Timestamp
 		Coinbase   common.Address
 
 		GasLimit uint64
@@ -69,8 +69,8 @@ func NewEvmBlock(h *EvmHeader, txs types.Transactions) *EvmBlock {
 	return b
 }
 
-// ToEvmHeader converts inter.Block to EvmHeader.
-func ToEvmHeader(block *inter.Block, index idx.Block, prevHash hash.Event, rules u2u.Rules) *EvmHeader {
+// ToEvmHeader converts native.Block to EvmHeader.
+func ToEvmHeader(block *native.Block, index idx.Block, prevHash hash.Event, rules u2u.Rules) *EvmHeader {
 	baseFee := rules.Economy.MinGasPrice
 	if !rules.Upgrades.London {
 		baseFee = nil
@@ -98,7 +98,7 @@ func ConvertFromEthHeader(h *types.Header) *EvmHeader {
 		Root:       h.Root,
 		TxHash:     h.TxHash,
 		ParentHash: h.ParentHash,
-		Time:       inter.FromUnix(int64(h.Time)),
+		Time:       native.FromUnix(int64(h.Time)),
 		Hash:       common.BytesToHash(h.Extra),
 		BaseFee:    h.BaseFee,
 	}

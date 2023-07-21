@@ -6,10 +6,10 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/batched"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/table"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/batched"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/table"
 )
 
 const MaxTopicsCount = 5 // count is limited hard to 5 by EVM (see LOG0...LOG4 ops)
@@ -23,14 +23,14 @@ var (
 type Index struct {
 	table struct {
 		// topic+topicN+(blockN+TxHash+logIndex) -> topic_count (where topicN=0 is for address)
-		Topic kvdb.Store `table:"t"`
+		Topic u2udb.Store `table:"t"`
 		// (blockN+TxHash+logIndex) -> ordered topic_count topics, blockHash, address, data
-		Logrec kvdb.Store `table:"r"`
+		Logrec u2udb.Store `table:"r"`
 	}
 }
 
 // New Index instance.
-func New(dbs kvdb.DBProducer) *Index {
+func New(dbs u2udb.DBProducer) *Index {
 	tt := &Index{}
 
 	err := table.OpenTables(&tt.table, dbs, "evm-logs")

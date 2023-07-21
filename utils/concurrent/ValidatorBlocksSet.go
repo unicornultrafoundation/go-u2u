@@ -3,7 +3,7 @@ package concurrent
 import (
 	"sync"
 
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 )
 
 type ValidatorBlocksSet struct {

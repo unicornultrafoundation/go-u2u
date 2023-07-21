@@ -2,10 +2,10 @@ package gpos
 
 import (
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	"github.com/unicornultrafoundation/go-u2u/inter/validatorpk"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"
 )
 
 type (
@@ -14,9 +14,9 @@ type (
 		ID               idx.ValidatorID
 		Address          common.Address
 		PubKey           validatorpk.PubKey
-		CreationTime     inter.Timestamp
+		CreationTime     native.Timestamp
 		CreationEpoch    idx.Epoch
-		DeactivatedTime  inter.Timestamp
+		DeactivatedTime  native.Timestamp
 		DeactivatedEpoch idx.Epoch
 		Status           uint64
 	}

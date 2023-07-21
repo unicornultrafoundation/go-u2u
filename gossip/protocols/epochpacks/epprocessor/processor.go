@@ -4,14 +4,14 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/unicornultrafoundation/go-hashgraph/inter/dag"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/datasemaphore"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/workers"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
-	"github.com/unicornultrafoundation/go-u2u/inter/iep"
-	"github.com/unicornultrafoundation/go-u2u/inter/ier"
+	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/native/iep"
+	"github.com/unicornultrafoundation/go-u2u/native/ier"
 )
 
 var (
@@ -34,11 +34,11 @@ type Processor struct {
 }
 
 type ItemCallback struct {
-	ProcessEV  func(ev inter.LlrSignedEpochVote) error
+	ProcessEV  func(ev native.LlrSignedEpochVote) error
 	ProcessER  func(er ier.LlrIdxFullEpochRecord) error
-	ReleasedEV func(ev inter.LlrSignedEpochVote, peer string, err error)
+	ReleasedEV func(ev native.LlrSignedEpochVote, peer string, err error)
 	ReleasedER func(er ier.LlrIdxFullEpochRecord, peer string, err error)
-	CheckEV    func(ev inter.LlrSignedEpochVote, checked func(error))
+	CheckEV    func(ev native.LlrSignedEpochVote, checked func(error))
 }
 
 type Callback struct {
@@ -79,7 +79,7 @@ func (f *Processor) Overloaded() bool {
 }
 
 type checkRes struct {
-	ev  inter.LlrSignedEpochVote
+	ev  native.LlrSignedEpochVote
 	err error
 	pos idx.Event
 }
@@ -145,7 +145,7 @@ func (f *Processor) Enqueue(peer string, eps []iep.LlrEpochPack, totalSize uint6
 	})
 }
 
-func (f *Processor) processEV(peer string, ev inter.LlrSignedEpochVote, resErr error) {
+func (f *Processor) processEV(peer string, ev native.LlrSignedEpochVote, resErr error) {
 	// release item if failed validation
 	if resErr != nil {
 		f.callback.Item.ReleasedEV(ev, peer, resErr)

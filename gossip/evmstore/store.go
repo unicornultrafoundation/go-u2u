@@ -13,16 +13,16 @@ import (
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/nokeyiserr"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/table"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/nokeyiserr"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/table"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/wlru"
 
-	"github.com/unicornultrafoundation/go-u2u/inter/iblockproc"
 	"github.com/unicornultrafoundation/go-u2u/logger"
+	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 	"github.com/unicornultrafoundation/go-u2u/topicsdb"
-	"github.com/unicornultrafoundation/go-u2u/utils/adapters/kvdb2ethdb"
+	"github.com/unicornultrafoundation/go-u2u/utils/adapters/udb2ethdb"
 	"github.com/unicornultrafoundation/go-u2u/utils/rlpstore"
 )
 
@@ -33,11 +33,11 @@ type Store struct {
 	cfg StoreConfig
 
 	table struct {
-		Evm kvdb.Store `table:"M"`
+		Evm u2udb.Store `table:"M"`
 		// API-only tables
-		Receipts    kvdb.Store `table:"r"`
-		TxPositions kvdb.Store `table:"x"`
-		Txs         kvdb.Store `table:"X"`
+		Receipts    u2udb.Store `table:"r"`
+		TxPositions u2udb.Store `table:"x"`
+		Txs         u2udb.Store `table:"X"`
 	}
 
 	EvmDb    ethdb.Database
@@ -63,7 +63,7 @@ const (
 )
 
 // NewStore creates store over key-value db.
-func NewStore(dbs kvdb.DBProducer, cfg StoreConfig) *Store {
+func NewStore(dbs u2udb.DBProducer, cfg StoreConfig) *Store {
 	s := &Store{
 		cfg:      cfg,
 		Instance: logger.New("evm-store"),
@@ -103,7 +103,7 @@ func (s *Store) initCache() {
 
 func (s *Store) initEVMDB() {
 	s.EvmDb = rawdb.NewDatabase(
-		kvdb2ethdb.Wrap(
+		udb2ethdb.Wrap(
 			nokeyiserr.Wrap(
 				s.table.Evm)))
 	s.EvmState = state.NewDatabaseWithConfig(s.EvmDb, &trie.Config{
@@ -114,7 +114,7 @@ func (s *Store) initEVMDB() {
 	})
 }
 
-func (s *Store) ResetWithEVMDB(evmStore kvdb.Store) *Store {
+func (s *Store) ResetWithEVMDB(evmStore u2udb.Store) *Store {
 	cp := *s
 	cp.table.Evm = evmStore
 	cp.initEVMDB()
@@ -122,7 +122,7 @@ func (s *Store) ResetWithEVMDB(evmStore kvdb.Store) *Store {
 	return &cp
 }
 
-func (s *Store) EVMDB() kvdb.Store {
+func (s *Store) EVMDB() u2udb.Store {
 	return s.table.Evm
 }
 

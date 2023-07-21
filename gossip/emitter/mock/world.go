@@ -6,13 +6,13 @@ package mock
 
 import (
 	evmcore "github.com/unicornultrafoundation/go-u2u/evmcore"
-	inter "github.com/unicornultrafoundation/go-u2u/inter"
-	validatorpk "github.com/unicornultrafoundation/go-u2u/inter/validatorpk"
+	native "github.com/unicornultrafoundation/go-u2u/native"
+	validatorpk "github.com/unicornultrafoundation/go-u2u/native/validatorpk"
 	u2u "github.com/unicornultrafoundation/go-u2u/u2u"
 	vecmt "github.com/unicornultrafoundation/go-u2u/vecmt"
 	hash "github.com/unicornultrafoundation/go-hashgraph/hash"
-	idx "github.com/unicornultrafoundation/go-hashgraph/inter/idx"
-	pos "github.com/unicornultrafoundation/go-hashgraph/inter/pos"
+	idx "github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	pos "github.com/unicornultrafoundation/go-hashgraph/native/pos"
 	common "github.com/ethereum/go-ethereum/common"
 	types "github.com/ethereum/go-ethereum/core/types"
 	event "github.com/ethereum/go-ethereum/event"
@@ -45,7 +45,7 @@ func (m *MockExternal) EXPECT() *MockExternalMockRecorder {
 }
 
 // Broadcast mocks base method
-func (m *MockExternal) Broadcast(arg0 *inter.EventPayload) {
+func (m *MockExternal) Broadcast(arg0 *native.EventPayload) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "Broadcast", arg0)
 }
@@ -57,7 +57,7 @@ func (mr *MockExternalMockRecorder) Broadcast(arg0 interface{}) *gomock.Call {
 }
 
 // Build mocks base method
-func (m *MockExternal) Build(arg0 *inter.MutableEventPayload, arg1 func()) error {
+func (m *MockExternal) Build(arg0 *native.MutableEventPayload, arg1 func()) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Build", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -71,7 +71,7 @@ func (mr *MockExternalMockRecorder) Build(arg0, arg1 interface{}) *gomock.Call {
 }
 
 // Check mocks base method
-func (m *MockExternal) Check(arg0 *inter.EventPayload, arg1 inter.Events) error {
+func (m *MockExternal) Check(arg0 *native.EventPayload, arg1 native.Events) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Check", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -156,10 +156,10 @@ func (mr *MockExternalMockRecorder) GetEpochValidators() *gomock.Call {
 }
 
 // GetEvent mocks base method
-func (m *MockExternal) GetEvent(arg0 hash.Event) *inter.Event {
+func (m *MockExternal) GetEvent(arg0 hash.Event) *native.Event {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetEvent", arg0)
-	ret0, _ := ret[0].(*inter.Event)
+	ret0, _ := ret[0].(*native.Event)
 	return ret0
 }
 
@@ -170,10 +170,10 @@ func (mr *MockExternalMockRecorder) GetEvent(arg0 interface{}) *gomock.Call {
 }
 
 // GetEventPayload mocks base method
-func (m *MockExternal) GetEventPayload(arg0 hash.Event) *inter.EventPayload {
+func (m *MockExternal) GetEventPayload(arg0 hash.Event) *native.EventPayload {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetEventPayload", arg0)
-	ret0, _ := ret[0].(*inter.EventPayload)
+	ret0, _ := ret[0].(*native.EventPayload)
 	return ret0
 }
 
@@ -184,10 +184,10 @@ func (mr *MockExternalMockRecorder) GetEventPayload(arg0 interface{}) *gomock.Ca
 }
 
 // GetGenesisTime mocks base method
-func (m *MockExternal) GetGenesisTime() inter.Timestamp {
+func (m *MockExternal) GetGenesisTime() native.Timestamp {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetGenesisTime")
-	ret0, _ := ret[0].(inter.Timestamp)
+	ret0, _ := ret[0].(native.Timestamp)
 	return ret0
 }
 
@@ -364,7 +364,7 @@ func (mr *MockExternalMockRecorder) PeersNum() *gomock.Call {
 }
 
 // Process mocks base method
-func (m *MockExternal) Process(arg0 *inter.EventPayload) error {
+func (m *MockExternal) Process(arg0 *native.EventPayload) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Process", arg0)
 	ret0, _ := ret[0].(error)

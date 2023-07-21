@@ -4,12 +4,12 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/unicornultrafoundation/go-hashgraph/inter/dag"
-	"github.com/unicornultrafoundation/go-hashgraph/inter/idx"
+	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/datasemaphore"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/workers"
 
-	"github.com/unicornultrafoundation/go-u2u/inter"
+	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
 var (
@@ -33,9 +33,9 @@ type Processor struct {
 }
 
 type ItemCallback struct {
-	Process  func(bvs inter.LlrSignedBlockVotes) error
-	Released func(bvs inter.LlrSignedBlockVotes, peer string, err error)
-	Check    func(bvs inter.LlrSignedBlockVotes, checked func(error))
+	Process  func(bvs native.LlrSignedBlockVotes) error
+	Released func(bvs native.LlrSignedBlockVotes, peer string, err error)
+	Check    func(bvs native.LlrSignedBlockVotes, checked func(error))
 }
 
 type Callback struct {
@@ -50,7 +50,7 @@ func New(itemsSemaphore *datasemaphore.DataSemaphore, cfg Config, callback Callb
 		itemsSemaphore: itemsSemaphore,
 	}
 	released := callback.Item.Released
-	callback.Item.Released = func(bvs inter.LlrSignedBlockVotes, peer string, err error) {
+	callback.Item.Released = func(bvs native.LlrSignedBlockVotes, peer string, err error) {
 		f.itemsSemaphore.Release(dag.Metric{Num: 1, Size: uint64(bvs.Size())})
 		if released != nil {
 			released(bvs, peer, err)
@@ -82,12 +82,12 @@ func (f *Processor) Overloaded() bool {
 }
 
 type checkRes struct {
-	bvs inter.LlrSignedBlockVotes
+	bvs native.LlrSignedBlockVotes
 	err error
 	pos idx.Event
 }
 
-func (f *Processor) Enqueue(peer string, items []inter.LlrSignedBlockVotes, done func()) error {
+func (f *Processor) Enqueue(peer string, items []native.LlrSignedBlockVotes, done func()) error {
 	totalSize := uint64(0)
 	for _, v := range items {
 		totalSize += v.Size()
@@ -139,7 +139,7 @@ func (f *Processor) Enqueue(peer string, items []inter.LlrSignedBlockVotes, done
 	})
 }
 
-func (f *Processor) process(peer string, bvs inter.LlrSignedBlockVotes, resErr error) {
+func (f *Processor) process(peer string, bvs native.LlrSignedBlockVotes, resErr error) {
 	// release item if failed validation
 	if resErr != nil {
 		f.callback.Item.Released(bvs, peer, resErr)

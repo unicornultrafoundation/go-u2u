@@ -8,15 +8,15 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/unicornultrafoundation/go-hashgraph/common/bigendian"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/flushable"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/memorydb"
-	"github.com/unicornultrafoundation/go-hashgraph/kvdb/table"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/flushable"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/memorydb"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/table"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/wlru"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"
 	"github.com/unicornultrafoundation/go-u2u/logger"
-	"github.com/unicornultrafoundation/go-u2u/utils/adapters/snap2kvdb"
+	"github.com/unicornultrafoundation/go-u2u/utils/adapters/snap2udb"
 	"github.com/unicornultrafoundation/go-u2u/utils/eventid"
 	"github.com/unicornultrafoundation/go-u2u/utils/randat"
 	"github.com/unicornultrafoundation/go-u2u/utils/rlpstore"
@@ -25,41 +25,41 @@ import (
 
 // Store is a node persistent storage working over physical key-value database.
 type Store struct {
-	dbs kvdb.FlushableDBProducer
+	dbs u2udb.FlushableDBProducer
 	cfg StoreConfig
 
 	snapshotedEVMDB *switchable.Snapshot
 	evm             *evmstore.Store
 	table           struct {
-		Version kvdb.Store `table:"_"`
+		Version u2udb.Store `table:"_"`
 
 		// Main DAG tables
-		BlockEpochState        kvdb.Store `table:"D"`
-		BlockEpochStateHistory kvdb.Store `table:"h"`
-		Events                 kvdb.Store `table:"e"`
-		Blocks                 kvdb.Store `table:"b"`
-		EpochBlocks            kvdb.Store `table:"P"`
-		Genesis                kvdb.Store `table:"g"`
-		UpgradeHeights         kvdb.Store `table:"U"`
+		BlockEpochState        u2udb.Store `table:"D"`
+		BlockEpochStateHistory u2udb.Store `table:"h"`
+		Events                 u2udb.Store `table:"e"`
+		Blocks                 u2udb.Store `table:"b"`
+		EpochBlocks            u2udb.Store `table:"P"`
+		Genesis                u2udb.Store `table:"g"`
+		UpgradeHeights         u2udb.Store `table:"U"`
 
 		// P2P-only
-		HighestLamport kvdb.Store `table:"l"`
+		HighestLamport u2udb.Store `table:"l"`
 
 		// Network version
-		NetworkVersion kvdb.Store `table:"V"`
+		NetworkVersion u2udb.Store `table:"V"`
 
 		// API-only
-		BlockHashes kvdb.Store `table:"B"`
+		BlockHashes u2udb.Store `table:"B"`
 
-		LlrState           kvdb.Store `table:"S"`
-		LlrBlockResults    kvdb.Store `table:"R"`
-		LlrEpochResults    kvdb.Store `table:"Q"`
-		LlrBlockVotes      kvdb.Store `table:"T"`
-		LlrBlockVotesIndex kvdb.Store `table:"J"`
-		LlrEpochVotes      kvdb.Store `table:"E"`
-		LlrEpochVoteIndex  kvdb.Store `table:"I"`
-		LlrLastBlockVotes  kvdb.Store `table:"G"`
-		LlrLastEpochVote   kvdb.Store `table:"F"`
+		LlrState           u2udb.Store `table:"S"`
+		LlrBlockResults    u2udb.Store `table:"R"`
+		LlrEpochResults    u2udb.Store `table:"Q"`
+		LlrBlockVotes      u2udb.Store `table:"T"`
+		LlrBlockVotesIndex u2udb.Store `table:"J"`
+		LlrEpochVotes      u2udb.Store `table:"E"`
+		LlrEpochVoteIndex  u2udb.Store `table:"I"`
+		LlrLastBlockVotes  u2udb.Store `table:"G"`
+		LlrLastEpochVote   u2udb.Store `table:"F"`
 	}
 
 	prevFlushTime time.Time
@@ -105,7 +105,7 @@ func NewMemStore() *Store {
 }
 
 // NewStore creates store over key-value db.
-func NewStore(dbs kvdb.FlushableDBProducer, cfg StoreConfig) *Store {
+func NewStore(dbs u2udb.FlushableDBProducer, cfg StoreConfig) *Store {
 	s := &Store{
 		dbs:           dbs,
 		cfg:           cfg,
@@ -264,7 +264,7 @@ func (s *Store) CaptureEvmKvdbSnapshot() {
 			old.Release()
 		}
 	}
-	newStore := s.evm.ResetWithEVMDB(snap2kvdb.Wrap(s.snapshotedEVMDB))
+	newStore := s.evm.ResetWithEVMDB(snap2udb.Wrap(s.snapshotedEVMDB))
 	newStore.Snaps = nil
 	root := s.GetBlockState().FinalizedStateRoot
 	err = s.generateSnapshotAt(newStore, common.Hash(root), false, false)

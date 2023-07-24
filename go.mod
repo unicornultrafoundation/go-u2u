@@ -26,7 +26,7 @@ require (
 	github.com/tyler-smith/go-bip39 v1.0.2
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/uber/jaeger-lib v2.4.1+incompatible
-	github.com/unicornultrafoundation/go-hashgraph v0.0.0-20230719041329-5b253715b053
+	github.com/unicornultrafoundation/go-hashgraph v0.0.0-20230724012326-d3c3a785a9b0
 	golang.org/x/crypto v0.1.0
 	golang.org/x/sys v0.7.0
 	gopkg.in/urfave/cli.v1 v1.20.0

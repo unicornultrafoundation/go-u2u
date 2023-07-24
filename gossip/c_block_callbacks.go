@@ -15,7 +15,7 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
-	"github.com/unicornultrafoundation/go-hashgraph/types"
+	utypes "github.com/unicornultrafoundation/go-hashgraph/types"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/workers"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
@@ -61,8 +61,8 @@ type ExtendedTxPosition struct {
 }
 
 // GetConsensusCallbacks returns single (for Service) callback instance.
-func (s *Service) GetConsensusCallbacks() types.ConsensusCallbacks {
-	return types.ConsensusCallbacks{
+func (s *Service) GetConsensusCallbacks() utypes.ConsensusCallbacks {
+	return utypes.ConsensusCallbacks{
 		BeginBlock: consensusCallbackBeginBlockFn(
 			s.blockProcTasks,
 			&s.blockProcWg,
@@ -89,8 +89,8 @@ func consensusCallbackBeginBlockFn(
 	feed *ServiceFeed,
 	emitters *[]*emitter.Emitter,
 	verWatcher *verwatcher.VerWarcher,
-) types.BeginBlockFn {
-	return func(cBlock *types.Block) types.BlockCallbacks {
+) utypes.BeginBlockFn {
+	return func(cBlock *utypes.Block) utypes.BlockCallbacks {
 		wg.Wait()
 		start := time.Now()
 
@@ -125,10 +125,10 @@ func consensusCallbackBeginBlockFn(
 			mpsCheatersMap[cheater] = struct{}{}
 		}
 
-		return types.BlockCallbacks{
+		return utypes.BlockCallbacks{
 			ApplyEvent: func(_e dag.Event) {
 				e := _e.(native.EventI)
-				if cBlock.Atropos == e.ID() {
+				if cBlock.Event == e.ID() {
 					atroposTime = e.MedianTime()
 					atroposDegenerate = false
 				}
@@ -193,7 +193,7 @@ func consensusCallbackBeginBlockFn(
 				blockCtx := iblockproc.BlockCtx{
 					Idx:     bs.LastBlock.Idx + 1,
 					Time:    atroposTime,
-					Atropos: cBlock.Atropos,
+					Atropos: cBlock.Event,
 				}
 				// Note:
 				// it's possible that a previous Atropos observes current Atropos (1)
@@ -210,7 +210,7 @@ func consensusCallbackBeginBlockFn(
 				// Finalize the progress of eventProcessor
 				bs = eventProcessor.Finalize(blockCtx, skipBlock) // TODO: refactor to not mutate the bs, it is unclear
 				{                                                 // sort and merge MPs cheaters
-					mpsCheaters := make(types.Cheaters, 0, len(mpsCheatersMap))
+					mpsCheaters := make(utypes.Cheaters, 0, len(mpsCheatersMap))
 					for vid := range mpsCheatersMap {
 						mpsCheaters = append(mpsCheaters, vid)
 					}
@@ -223,7 +223,7 @@ func consensusCallbackBeginBlockFn(
 				if skipBlock {
 					// save the latest block state even if block is skipped
 					store.SetBlockEpochState(bs, es)
-					log.Debug("Frame is skipped", "atropos", cBlock.Atropos.String())
+					log.Debug("Frame is skipped", "atropos", cBlock.Event.String())
 					return nil
 				}
 
@@ -296,7 +296,7 @@ func consensusCallbackBeginBlockFn(
 					// new block
 					var block = &native.Block{
 						Time:    blockCtx.Time,
-						Atropos: cBlock.Atropos,
+						Atropos: cBlock.Event,
 						Events:  hash.Events(confirmedEvents),
 					}
 					for _, tx := range append(preInternalTxs, internalTxs...) {
@@ -531,7 +531,7 @@ func spillBlockEvents(store *Store, block *native.Block, network u2u.Rules) (*na
 	return block, fullEvents
 }
 
-func mergeCheaters(a, b types.Cheaters) types.Cheaters {
+func mergeCheaters(a, b utypes.Cheaters) utypes.Cheaters {
 	if len(b) == 0 {
 		return a
 	}
@@ -539,7 +539,7 @@ func mergeCheaters(a, b types.Cheaters) types.Cheaters {
 		return b
 	}
 	aSet := a.Set()
-	merged := make(types.Cheaters, 0, len(b)+len(a))
+	merged := make(utypes.Cheaters, 0, len(b)+len(a))
 	for _, v := range a {
 		merged = append(merged, v)
 	}

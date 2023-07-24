@@ -11,7 +11,7 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
-	"github.com/unicornultrafoundation/go-hashgraph/types"
+	utypes "github.com/unicornultrafoundation/go-hashgraph/types"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/memorydb"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
@@ -95,7 +95,7 @@ func FakeGenesisStoreWithRulesAndStart(num idx.Validator, balance, stake *big.In
 				},
 				FinalizedStateRoot:    hash.Hash{},
 				EpochGas:              0,
-				EpochCheaters:         types.Cheaters{},
+				EpochCheaters:         utypes.Cheaters{},
 				CheatersWritten:       0,
 				ValidatorStates:       make([]iblockproc.ValidatorBlockState, 0),
 				NextValidatorProfiles: make(map[idx.ValidatorID]drivertype.Validator),

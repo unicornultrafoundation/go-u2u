@@ -82,7 +82,7 @@ func rawApplyGenesis(gdb *gossip.Store, cdb *consensus.Store, g genesis.Genesis,
 	return err
 }
 
-func rawMakeEngine(gdb *gossip.Store, cdb *consensus.Store, g *genesis.Genesis, cfg Configs) (*consensus.Hashgraph, *vecmt.Index, gossip.BlockProc, error) {
+func rawMakeEngine(gdb *gossip.Store, cdb *consensus.Store, g *genesis.Genesis, cfg Configs) (*consensus.Consensus, *vecmt.Index, gossip.BlockProc, error) {
 	blockProc := gossip.DefaultBlockProc()
 
 	if g != nil {
@@ -102,7 +102,7 @@ func rawMakeEngine(gdb *gossip.Store, cdb *consensus.Store, g *genesis.Genesis, 
 
 	// create consensus
 	vecClock := vecmt.NewIndex(panics("Vector clock"), cfg.VectorClock)
-	engine := consensus.NewHashgraph(cdb, &GossipStoreAdapter{gdb}, vecmt2dagidx.Wrap(vecClock), panics("Hashgraph"), cfg.Hashgraph)
+	engine := consensus.NewConsensus(cdb, &GossipStoreAdapter{gdb}, vecmt2dagidx.Wrap(vecClock), panics("Hashgraph"), cfg.Hashgraph)
 	return engine, vecClock, blockProc, nil
 }
 
@@ -155,7 +155,7 @@ func compactDB(typ multidb.TypeName, name string, producer u2udb.DBProducer) err
 	return compactdb.Compact(db, humanName)
 }
 
-func makeEngine(chaindataDir string, g *genesis.Genesis, genesisProc bool, cfg Configs) (*consensus.Hashgraph, *vecmt.Index, *gossip.Store, *consensus.Store, gossip.BlockProc, func() error, error) {
+func makeEngine(chaindataDir string, g *genesis.Genesis, genesisProc bool, cfg Configs) (*consensus.Consensus, *vecmt.Index, *gossip.Store, *consensus.Store, gossip.BlockProc, func() error, error) {
 	// Genesis processing
 	if genesisProc {
 		setGenesisProcessing(chaindataDir)
@@ -255,7 +255,7 @@ func makeEngine(chaindataDir string, g *genesis.Genesis, genesisProc bool, cfg C
 }
 
 // MakeEngine makes consensus engine from config.
-func MakeEngine(chaindataDir string, g *genesis.Genesis, cfg Configs) (*consensus.Hashgraph, *vecmt.Index, *gossip.Store, *consensus.Store, gossip.BlockProc, func() error) {
+func MakeEngine(chaindataDir string, g *genesis.Genesis, cfg Configs) (*consensus.Consensus, *vecmt.Index, *gossip.Store, *consensus.Store, gossip.BlockProc, func() error) {
 	// Legacy DBs migrate
 	if cfg.DBs.MigrationMode != "reformat" && cfg.DBs.MigrationMode != "rebuild" && cfg.DBs.MigrationMode != "" {
 		utils.Fatalf("MigrationMode must be 'reformat' or 'rebuild'")

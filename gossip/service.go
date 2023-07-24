@@ -25,7 +25,7 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/types"
+	utypes "github.com/unicornultrafoundation/go-hashgraph/types"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/workers"
 
 	"github.com/unicornultrafoundation/go-u2u/ethapi"
@@ -112,7 +112,7 @@ type Service struct {
 
 	// application
 	store               *Store
-	engine              types.Consensus
+	engine              utypes.Consensus
 	dagIndexer          *vecmt.Index
 	engineMu            *sync.RWMutex
 	emitters            []*emitter.Emitter
@@ -158,7 +158,7 @@ type Service struct {
 }
 
 func NewService(stack *node.Node, config Config, store *Store, blockProc BlockProc,
-	engine types.Consensus, dagIndexer *vecmt.Index, newTxPool func(evmcore.StateReader) TxPool,
+	engine utypes.Consensus, dagIndexer *vecmt.Index, newTxPool func(evmcore.StateReader) TxPool,
 	haltCheck func(oldEpoch, newEpoch idx.Epoch, age time.Time) bool) (*Service, error) {
 	if err := config.Validate(); err != nil {
 		return nil, err
@@ -180,7 +180,7 @@ func NewService(stack *node.Node, config Config, store *Store, blockProc BlockPr
 	return svc, nil
 }
 
-func newService(config Config, store *Store, blockProc BlockProc, engine types.Consensus, dagIndexer *vecmt.Index, newTxPool func(evmcore.StateReader) TxPool) (*Service, error) {
+func newService(config Config, store *Store, blockProc BlockProc, engine utypes.Consensus, dagIndexer *vecmt.Index, newTxPool func(evmcore.StateReader) TxPool) (*Service, error) {
 	svc := &Service{
 		config:             config,
 		blockProcTasksDone: make(chan struct{}),

@@ -82,14 +82,14 @@ func (g *testGossipStoreAdapter) GetEvent(id hash.Event) dag.Event {
 	return e
 }
 
-func makeTestEngine(gdb *Store) (*consensus.Hashgraph, *vecmt.Index) {
+func makeTestEngine(gdb *Store) (*consensus.Consensus, *vecmt.Index) {
 	cdb := consensus.NewMemStore()
 	_ = cdb.ApplyGenesis(&consensus.Genesis{
 		Epoch:      gdb.GetEpoch(),
 		Validators: gdb.GetValidators(),
 	})
 	vecClock := vecmt.NewIndex(panics("Vector clock"), vecmt.LiteConfig())
-	engine := consensus.NewHashgraph(cdb, &testGossipStoreAdapter{gdb}, vecmt2dagidx.Wrap(vecClock), panics("Hashgraph"), consensus.LiteConfig())
+	engine := consensus.NewConsensus(cdb, &testGossipStoreAdapter{gdb}, vecmt2dagidx.Wrap(vecClock), panics("Hashgraph"), consensus.LiteConfig())
 	return engine, vecClock
 }
 

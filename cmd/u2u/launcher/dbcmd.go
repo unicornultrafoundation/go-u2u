@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/syndtr/goleveldb/leveldb/opt"
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/cachedproducer"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/multidb"
 	"gopkg.in/urfave/cli.v1"
@@ -160,7 +161,7 @@ func compactDB(typ multidb.TypeName, name string, producer u2udb.DBProducer) err
 	return nil
 }
 
-func showDbStats(db ethdb.Stater) {
+func showDbStats(db ethdb.KeyValueStater) {
 	if stats, err := db.Stat("stats"); err != nil {
 		log.Warn("Failed to read database stats", "error", err)
 	} else {

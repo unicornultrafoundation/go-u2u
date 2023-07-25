@@ -14,7 +14,6 @@ import (
 	notify "github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/discover/discfilter"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/unicornultrafoundation/go-hashgraph/gossip/dagprocessor"
@@ -782,10 +781,9 @@ func (h *handler) handle(p *peer) error {
 		p.Log().Error("Snapshot extension barrier failed", "err", err)
 		return err
 	}
-	useless := discfilter.Banned(p.Node().ID(), p.Node().Record())
-	if !useless && (!eligibleForSnap(p.Peer) || !strings.Contains(strings.ToLower(p.Name()), "u2u")) {
+	useless := false
+	if !eligibleForSnap(p.Peer) || !strings.Contains(strings.ToLower(p.Name()), "u2u") {
 		useless = true
-		discfilter.Ban(p.ID())
 	}
 	if !p.Peer.Info().Network.Trusted && useless && h.peers.UselessNum() >= h.maxPeers/10 {
 		// don't allow more than 10% of useless peers
@@ -809,9 +807,6 @@ func (h *handler) handle(p *peer) error {
 	)
 	if err := p.Handshake(h.NetworkID, myProgress, common.Hash(genesis)); err != nil {
 		p.Log().Debug("Handshake failed", "err", err)
-		if !useless {
-			discfilter.Ban(p.ID())
-		}
 		return err
 	}
 

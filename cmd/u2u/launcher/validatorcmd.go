@@ -10,7 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"gopkg.in/urfave/cli.v1"
+	"github.com/urfave/cli/v2"
 
 	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"
 	"github.com/unicornultrafoundation/go-u2u/valkeystore"
@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	validatorCommand = cli.Command{
+	validatorCommand = &cli.Command{
 		Name:     "validator",
 		Usage:    "Manage validators",
 		Category: "VALIDATOR COMMANDS",

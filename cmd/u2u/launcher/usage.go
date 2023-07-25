@@ -23,10 +23,10 @@ import (
 	"sort"
 
 	"github.com/ethereum/go-ethereum/cmd/utils"
-	cli "gopkg.in/urfave/cli.v1"
+	cli "github.com/urfave/cli/v2"
 
 	"github.com/unicornultrafoundation/go-u2u/debug"
-	"github.com/unicornultrafoundation/go-u2u/flags"
+	"github.com/unicornultrafoundation/go-u2u/internal/flags"
 )
 
 // AppHelpFlagGroups is the application flags, grouped by functionality.

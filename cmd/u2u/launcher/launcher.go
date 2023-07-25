@@ -13,22 +13,20 @@ import (
 	"github.com/ethereum/go-ethereum/console/prompt"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
+	evmetrics "github.com/ethereum/go-ethereum/metrics"
 	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/p2p/discover/discfilter"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-	"gopkg.in/urfave/cli.v1"
-
-	evmetrics "github.com/ethereum/go-ethereum/metrics"
+	"github.com/urfave/cli/v2"
 
 	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/metrics"
 	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/tracing"
 	"github.com/unicornultrafoundation/go-u2u/debug"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
-	"github.com/unicornultrafoundation/go-u2u/flags"
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter"
 	"github.com/unicornultrafoundation/go-u2u/integration"
+	"github.com/unicornultrafoundation/go-u2u/internal/flags"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesis"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesisstore"
 	"github.com/unicornultrafoundation/go-u2u/utils/errlock"
@@ -87,8 +85,6 @@ func initFlags() {
 		utils.NoDiscoverFlag,
 		utils.DiscoveryV5Flag,
 		utils.NetrestrictFlag,
-		utils.IPrestrictFlag,
-		utils.PrivateNodeFlag,
 		utils.NodeKeyFileFlag,
 		utils.NodeKeyHexFlag,
 	}
@@ -128,12 +124,6 @@ func initFlags() {
 	}
 	legacyRpcFlags = []cli.Flag{
 		utils.NoUSBFlag,
-		utils.LegacyRPCEnabledFlag,
-		utils.LegacyRPCListenAddrFlag,
-		utils.LegacyRPCPortFlag,
-		utils.LegacyRPCCORSDomainFlag,
-		utils.LegacyRPCVirtualHostsFlag,
-		utils.LegacyRPCApiFlag,
 	}
 
 	rpcFlags = []cli.Flag{
@@ -178,7 +168,9 @@ func initFlags() {
 		tracing.EnableFlag,
 	}
 
-	nodeFlags = []cli.Flag{}
+	nodeFlags = []cli.Flag{
+		utils.FDLimitFlag,
+	}
 	nodeFlags = append(nodeFlags, gpoFlags...)
 	nodeFlags = append(nodeFlags, accountFlags...)
 	nodeFlags = append(nodeFlags, performanceFlags...)
@@ -190,7 +182,6 @@ func initFlags() {
 
 // init the CLI app.
 func init() {
-	discfilter.Enable()
 	overrideFlags()
 	overrideParams()
 
@@ -201,7 +192,7 @@ func init() {
 	app.Action = hashgraphMain
 	app.Version = params.VersionWithCommit(gitCommit, gitDate)
 	app.HideVersion = true // we have a command to print the version
-	app.Commands = []cli.Command{
+	app.Commands = []*cli.Command{
 		// See accountcmd.go:
 		accountCommand,
 		walletCommand,
@@ -236,10 +227,10 @@ func init() {
 	app.Flags = append(app.Flags, metricsFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
+		flags.MigrateGlobalFlags(ctx)
 		if err := debug.Setup(ctx); err != nil {
 			return err
 		}
-
 		// Start metrics export if enabled
 		utils.SetupMetrics(ctx)
 		// Start system runtime metrics collection
@@ -250,7 +241,6 @@ func init() {
 	app.After = func(ctx *cli.Context) error {
 		debug.Exit()
 		prompt.Stdin.Close() // Resets terminal mode.
-
 		return nil
 	}
 }
@@ -263,7 +253,7 @@ func Launch(args []string) error {
 // It creates a default node based on the command line arguments and runs it in
 // blocking mode, waiting for it to be shut down.
 func hashgraphMain(ctx *cli.Context) error {
-	if args := ctx.Args(); len(args) > 0 {
+	if args := ctx.Args().Slice(); len(args) > 0 {
 		return fmt.Errorf("invalid command: %q", args[0])
 	}
 
@@ -278,7 +268,7 @@ func hashgraphMain(ctx *cli.Context) error {
 	genesisStore := mayGetGenesisStore(ctx)
 	node, _, nodeClose := makeNode(ctx, cfg, genesisStore)
 	defer nodeClose()
-	startNode(ctx, node)
+	startNode(ctx, node, false)
 	node.Wait()
 	return nil
 }
@@ -343,8 +333,8 @@ func makeNode(ctx *cli.Context, cfg *config, genesisStore *genesisstore.Store) (
 		return evmcore.NewTxPool(cfg.TxPool, reader.Config(), reader)
 	}
 	haltCheck := func(oldEpoch, newEpoch idx.Epoch, age time.Time) bool {
-		stop := ctx.GlobalIsSet(ExitWhenAgeFlag.Name) && ctx.GlobalDuration(ExitWhenAgeFlag.Name) >= time.Since(age)
-		stop = stop || ctx.GlobalIsSet(ExitWhenEpochFlag.Name) && idx.Epoch(ctx.GlobalUint64(ExitWhenEpochFlag.Name)) <= newEpoch
+		stop := ctx.IsSet(ExitWhenAgeFlag.Name) && ctx.Duration(ExitWhenAgeFlag.Name) >= time.Since(age)
+		stop = stop || ctx.IsSet(ExitWhenEpochFlag.Name) && idx.Epoch(ctx.Uint64(ExitWhenEpochFlag.Name)) <= newEpoch
 		if stop {
 			go func() {
 				// do it in a separate thread to avoid deadlock
@@ -391,11 +381,11 @@ func makeConfigNode(ctx *cli.Context, cfg *node.Config) *node.Node {
 
 // startNode boots up the system node and all registered protocols, after which
 // it unlocks any requested accounts, and starts the RPC/IPC interfaces.
-func startNode(ctx *cli.Context, stack *node.Node) {
+func startNode(ctx *cli.Context, stack *node.Node, isConsole bool) {
 	debug.Memsize.Add("node", stack)
 
 	// Start up the node itself
-	utils.StartNode(ctx, stack)
+	utils.StartNode(ctx, stack, isConsole)
 
 	// Unlock any account specifically requested
 	unlockAccounts(ctx, stack)
@@ -447,7 +437,7 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 // unlockAccounts unlocks any account specifically requested.
 func unlockAccounts(ctx *cli.Context, stack *node.Node) {
 	var unlocks []string
-	inputs := strings.Split(ctx.GlobalString(utils.UnlockedAccountFlag.Name), ",")
+	inputs := strings.Split(ctx.String(utils.UnlockedAccountFlag.Name), ",")
 	for _, input := range inputs {
 		if trimmed := strings.TrimSpace(input); trimmed != "" {
 			unlocks = append(unlocks, trimmed)

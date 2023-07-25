@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/unicornultrafoundation/go-hashgraph/common/bigendian"
@@ -13,7 +14,7 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/batched"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/multidb"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/table"
-	"gopkg.in/urfave/cli.v1"
+	"github.com/urfave/cli/v2"
 
 	"github.com/unicornultrafoundation/go-u2u/integration"
 	"github.com/unicornultrafoundation/go-u2u/utils/compactdb"
@@ -28,7 +29,8 @@ func dbTransform(ctx *cli.Context) error {
 	defer os.RemoveAll(tmpPath)
 
 	// get supported DB producers
-	dbTypes := makeUncheckedCachedDBsProducers(path.Join(cfg.Node.DataDir, "chaindata"))
+	handles := ctx.Int(utils.FDLimitFlag.Name)
+	dbTypes := makeUncheckedCachedDBsProducers(path.Join(cfg.Node.DataDir, "chaindata"), handles)
 
 	byReq, err := readRoutes(cfg, dbTypes)
 	if err != nil {
@@ -99,7 +101,7 @@ func dbTransform(ctx *cli.Context) error {
 		byComponents = append(byComponents, component)
 	}
 
-	tmpDbTypes := makeUncheckedCachedDBsProducers(path.Join(cfg.Node.DataDir, "tmp"))
+	tmpDbTypes := makeUncheckedCachedDBsProducers(path.Join(cfg.Node.DataDir, "tmp"), handles)
 	for _, component := range byComponents {
 		err := transformComponent(cfg.Node.DataDir, dbTypes, tmpDbTypes, component)
 		if err != nil {

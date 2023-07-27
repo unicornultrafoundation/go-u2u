@@ -1,4 +1,4 @@
-package ftmclient
+package native
 
 import (
 	"context"

@@ -12,21 +12,20 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/native/iep"
 )
 
-// Constants to match up protocol versions and messages
+// Constants to match up U2U Protocol versions and messages
 const (
-	FTM62           = 62
-	FTM63           = 63
-	ProtocolVersion = FTM63
+	UP01            = 1
+	ProtocolVersion = UP01
 )
 
 // ProtocolName is the official short name of the protocol used during capability negotiation.
 const ProtocolName = "u2u"
 
 // ProtocolVersions are the supported versions of the protocol (first is primary).
-var ProtocolVersions = []uint{FTM62, FTM63}
+var ProtocolVersions = []uint{UP01}
 
 // protocolLengths are the number of implemented message corresponding to different protocol versions.
-var protocolLengths = map[uint]uint64{FTM62: EventsStreamResponse + 1, FTM63: EPsStreamResponse + 1}
+var protocolLengths = map[uint]uint64{UP01: EventsStreamResponse + 1}
 
 const protocolMaxMsgSize = native.ProtocolMaxMsgSize // Maximum cap on the size of a protocol message
 

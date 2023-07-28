@@ -36,7 +36,7 @@ func TestConsensusCallback(t *testing.T) {
 		for i := idx.Validator(0); i < validatorsNum; i++ {
 			from := i % validatorsNum
 			to := 0
-			txs[i] = env.Transfer(idx.ValidatorID(from+1), idx.ValidatorID(to+1), utils.ToFtm(100))
+			txs[i] = env.Transfer(idx.ValidatorID(from+1), idx.ValidatorID(to+1), utils.ToU2U(100))
 		}
 		tm := sameEpoch
 		if n%10 == 0 {
@@ -50,9 +50,9 @@ func TestConsensusCallback(t *testing.T) {
 			balances[i] = big.NewInt(0).Sub(balances[i], fee)
 		}
 		// balance movements
-		balances[0].Add(balances[0], utils.ToFtm(200))
-		balances[1].Sub(balances[1], utils.ToFtm(100))
-		balances[2].Sub(balances[2], utils.ToFtm(100))
+		balances[0].Add(balances[0], utils.ToU2U(200))
+		balances[1].Sub(balances[1], utils.ToU2U(100))
+		balances[2].Sub(balances[2], utils.ToU2U(100))
 	}
 
 	// check balances

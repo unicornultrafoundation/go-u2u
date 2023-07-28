@@ -159,30 +159,5 @@ func GetAPIs(apiBackend Backend) []rpc.API {
 		},
 	}
 
-	// NOTE: eth-namespace is doubled as ftm-namespace for branding purpose
-	double := []rpc.API{
-		{
-			Namespace: "ftm",
-			Version:   "1.0",
-			Service:   NewPublicEthereumAPI(apiBackend),
-			Public:    true,
-		}, {
-			Namespace: "ftm",
-			Version:   "1.0",
-			Service:   NewPublicBlockChainAPI(apiBackend),
-			Public:    true,
-		}, {
-			Namespace: "ftm",
-			Version:   "1.0",
-			Service:   NewPublicTransactionPoolAPI(apiBackend, nonceLock),
-			Public:    true,
-		}, {
-			Namespace: "ftm",
-			Version:   "1.0",
-			Service:   NewPublicAccountAPI(apiBackend.AccountManager()),
-			Public:    true,
-		},
-	}
-
-	return append(orig, double...)
+	return append(orig)
 }

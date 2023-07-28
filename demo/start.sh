@@ -23,8 +23,8 @@ do
 	--fakenet=${ACC}/$N \
 	--port=${PORT} \
 	--nat extip:127.0.0.1 \
-	--http --http.addr="127.0.0.1" --http.port=${RPCP} --http.corsdomain="*" --http.api="eth,debug,net,admin,web3,personal,txpool,ftm,dag" \
-	--ws --ws.addr="127.0.0.1" --ws.port=${WSP} --ws.origins="*" --ws.api="eth,debug,net,admin,web3,personal,txpool,ftm,dag" \
+	--http --http.addr="127.0.0.1" --http.port=${RPCP} --http.corsdomain="*" --http.api="eth,debug,net,admin,web3,personal,txpool,dag" \
+	--ws --ws.addr="127.0.0.1" --ws.port=${WSP} --ws.origins="*" --ws.api="eth,debug,net,admin,web3,personal,txpool,dag" \
 	--verbosity=3 --tracing >> u2u$i.log 2>&1)&
 
     echo -e "\tnode$i ok"

@@ -57,7 +57,7 @@ func BenchmarkBallotTxsProcessing(b *testing.B) {
 
 		// Init accounts
 		for vid := idx.ValidatorID(2); vid <= count; vid++ {
-			tx := env.Transfer(1, vid, utils.ToFtm(10))
+			tx := env.Transfer(1, vid, utils.ToU2U(10))
 			txs = append(txs, tx)
 			if len(txs) > 2 {
 				flushTxs()

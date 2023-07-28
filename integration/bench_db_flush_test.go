@@ -21,7 +21,7 @@ import (
 func BenchmarkFlushDBs(b *testing.B) {
 	dir := tmpDir("flush_bench")
 	defer os.RemoveAll(dir)
-	genStore := makefakegenesis.FakeGenesisStore(1, utils.ToFtm(1), utils.ToFtm(1))
+	genStore := makefakegenesis.FakeGenesisStore(1, utils.ToU2U(1), utils.ToU2U(1))
 	g := genStore.Genesis()
 	_, _, store, s2, _, closeDBs := MakeEngine(dir, &g, Configs{
 		U2u:            gossip.DefaultConfig(cachescale.Identity),

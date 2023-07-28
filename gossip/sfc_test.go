@@ -133,7 +133,7 @@ func TestSFC(t *testing.T) {
 
 			// create new
 			rr, err := env.ApplyTxs(nextEpoch,
-				env.Contract(admin, utils.ToFtm(0), sfc100.ContractBin),
+				env.Contract(admin, utils.ToU2U(0), sfc100.ContractBin),
 			)
 			require.NoError(err)
 			require.Equal(1, rr.Len())
@@ -167,7 +167,7 @@ func TestSFC(t *testing.T) {
 		// create new
 		anyContractBin := driver100.ContractBin
 		rr, err := env.ApplyTxs(nextEpoch,
-			env.Contract(admin, utils.ToFtm(0), anyContractBin),
+			env.Contract(admin, utils.ToU2U(0), anyContractBin),
 		)
 		require.NoError(err)
 		require.Equal(1, rr.Len())
@@ -200,7 +200,7 @@ func circleTransfers(t *testing.T, env *testEnv, count uint64) {
 		for i := idx.Validator(0); i < validatorsNum; i++ {
 			from := (i) % validatorsNum
 			to := (i + 1) % validatorsNum
-			txs[i] = env.Transfer(idx.ValidatorID(from+1), idx.ValidatorID(to+1), utils.ToFtm(100))
+			txs[i] = env.Transfer(idx.ValidatorID(from+1), idx.ValidatorID(to+1), utils.ToU2U(100))
 		}
 
 		rr, err := env.ApplyTxs(sameEpoch, txs...)

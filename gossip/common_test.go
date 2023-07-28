@@ -135,7 +135,7 @@ func newTestEnv(firstEpoch idx.Epoch, validatorsNum idx.Validator) *testEnv {
 	rules.Epochs.MaxEpochDuration = native.Timestamp(maxEpochDuration)
 	rules.Blocks.MaxEmptyBlockSkipPeriod = 0
 
-	genStore := makefakegenesis.FakeGenesisStoreWithRulesAndStart(validatorsNum, utils.ToFtm(genesisBalance), utils.ToFtm(genesisStake), rules, firstEpoch, 2)
+	genStore := makefakegenesis.FakeGenesisStoreWithRulesAndStart(validatorsNum, utils.ToU2U(genesisBalance), utils.ToU2U(genesisStake), rules, firstEpoch, 2)
 	genesis := genStore.Genesis()
 
 	store := NewMemStore()

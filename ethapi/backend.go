@@ -30,10 +30,12 @@ import (
 	notify "github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
+
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
+	"github.com/unicornultrafoundation/go-u2u/evmcore/txtracer"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 )
@@ -73,8 +75,13 @@ type Backend interface {
 	GetReceiptsByNumber(ctx context.Context, number rpc.BlockNumber) (types.Receipts, error)
 	GetTd(hash common.Hash) *big.Int
 	GetEVM(ctx context.Context, msg evmcore.Message, state *state.StateDB, header *evmcore.EvmHeader, vmConfig *vm.Config) (*vm.EVM, func() error, error)
+	GetBlockContext(header *evmcore.EvmHeader) vm.BlockContext
 	MinGasPrice() *big.Int
 	MaxGasLimit() uint64
+
+	// Transaction trace API
+	TxTraceByHash(ctx context.Context, h common.Hash) (*[]txtracer.ActionTrace, error)
+	TxTraceSave(ctx context.Context, h common.Hash, traces []byte) error
 
 	// Transaction pool API
 	SendTx(ctx context.Context, signedTx *types.Transaction) error
@@ -155,6 +162,11 @@ func GetAPIs(apiBackend Backend) []rpc.API {
 			Namespace: "abft",
 			Version:   "1.0",
 			Service:   NewPublicAbftAPI(apiBackend),
+			Public:    true,
+		}, {
+			Namespace: "trace",
+			Version:   "1.0",
+			Service:   NewPublicTxTraceAPI(apiBackend),
 			Public:    true,
 		},
 	}

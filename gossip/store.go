@@ -7,14 +7,15 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
+
 	"github.com/unicornultrafoundation/go-hashgraph/common/bigendian"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/flushable"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/memorydb"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/table"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/wlru"
-
 	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"
+	txtracer "github.com/unicornultrafoundation/go-u2u/gossip/txtracer"
 	"github.com/unicornultrafoundation/go-u2u/logger"
 	"github.com/unicornultrafoundation/go-u2u/utils/adapters/snap2udb"
 	"github.com/unicornultrafoundation/go-u2u/utils/eventid"
@@ -30,6 +31,7 @@ type Store struct {
 
 	snapshotedEVMDB *switchable.Snapshot
 	evm             *evmstore.Store
+	txtracer        *txtracer.Store
 	table           struct {
 		Version u2udb.Store `table:"_"`
 
@@ -41,6 +43,9 @@ type Store struct {
 		EpochBlocks            u2udb.Store `table:"P"`
 		Genesis                u2udb.Store `table:"g"`
 		UpgradeHeights         u2udb.Store `table:"U"`
+
+		// Transaction traces
+		TransactionTraces u2udb.Store `table:"t"`
 
 		// P2P-only
 		HighestLamport u2udb.Store `table:"l"`
@@ -122,6 +127,10 @@ func NewStore(dbs u2udb.FlushableDBProducer, cfg StoreConfig) *Store {
 	s.initCache()
 	s.evm = evmstore.NewStore(dbs, cfg.EVM)
 
+	if cfg.TraceTransactions {
+		s.txtracer = txtracer.NewStore(s.table.TransactionTraces)
+	}
+
 	if err := s.migrateData(); err != nil {
 		s.Log.Crit("Failed to migrate Gossip DB", "err", err)
 	}
@@ -161,6 +170,9 @@ func (s *Store) Close() {
 	table.MigrateTables(&s.table, nil)
 	table.MigrateCaches(&s.cache, setnil)
 
+	if s.txtracer != nil {
+		s.txtracer.Close()
+	}
 	_ = s.closeEpochStore()
 	s.evm.Close()
 }
@@ -236,6 +248,10 @@ func (s *Store) flushDBs() error {
 
 func (s *Store) EvmStore() *evmstore.Store {
 	return s.evm
+}
+
+func (s *Store) TxTraceStore() *txtracer.Store {
+	return s.txtracer
 }
 
 func (s *Store) CaptureEvmKvdbSnapshot() {

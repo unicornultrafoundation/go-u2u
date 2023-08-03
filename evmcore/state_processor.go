@@ -27,6 +27,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
 
+	"github.com/unicornultrafoundation/go-u2u/evmcore/txtracer"
 	"github.com/unicornultrafoundation/go-u2u/utils/signers/gsignercache"
 	"github.com/unicornultrafoundation/go-u2u/utils/signers/internaltx"
 )
@@ -80,7 +81,7 @@ func (p *StateProcessor) Process(
 		}
 
 		statedb.Prepare(tx.Hash(), i)
-		receipt, _, skip, err = applyTransaction(msg, p.config, gp, statedb, blockNumber, blockHash, tx, usedGas, vmenv, onNewLog)
+		receipt, _, skip, err = applyTransaction(msg, p.config, gp, statedb, blockNumber, blockHash, tx, usedGas, vmenv, cfg, onNewLog)
 		if skip {
 			skipped = append(skipped, uint32(i))
 			err = nil
@@ -105,6 +106,7 @@ func applyTransaction(
 	tx *types.Transaction,
 	usedGas *uint64,
 	evm *vm.EVM,
+	cfg vm.Config,
 	onNewLog func(*types.Log, *state.StateDB),
 ) (
 	*types.Receipt,
@@ -116,6 +118,20 @@ func applyTransaction(
 	txContext := NewEVMTxContext(msg)
 	evm.Reset(txContext, statedb)
 
+	// Test if type of tracer is transaction tracing
+	// logger, in that case, set a info for it
+	var traceLogger *txtracer.TraceStructLogger
+	switch cfg.Tracer.(type) {
+	case *txtracer.TraceStructLogger:
+		traceLogger = cfg.Tracer.(*txtracer.TraceStructLogger)
+		traceLogger.SetTx(tx.Hash())
+		traceLogger.SetFrom(msg.From())
+		traceLogger.SetTo(msg.To())
+		traceLogger.SetValue(*msg.Value())
+		traceLogger.SetBlockHash(blockHash)
+		traceLogger.SetBlockNumber(blockNumber)
+		traceLogger.SetTxIndex(uint(statedb.TxIndex()))
+	}
 	// Apply the transaction to the current state (included in the env).
 	result, err := ApplyMessage(evm, msg, gp)
 	if err != nil {
@@ -158,6 +174,15 @@ func applyTransaction(
 	receipt.BlockHash = blockHash
 	receipt.BlockNumber = blockNumber
 	receipt.TransactionIndex = uint(statedb.TxIndex())
+
+	// Set post informations and save trace
+	if traceLogger != nil {
+		traceLogger.SetGasUsed(result.UsedGas)
+		traceLogger.SetNewAddress(receipt.ContractAddress)
+		traceLogger.ProcessTx()
+		traceLogger.SaveTrace()
+	}
+
 	return receipt, result.UsedGas, false, err
 }
 

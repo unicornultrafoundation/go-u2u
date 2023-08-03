@@ -118,7 +118,7 @@ func makeDirectDBsProducer(cfg *config) u2udb.FullDBProducer {
 }
 
 func makeGossipStore(producer u2udb.FlushableDBProducer, cfg *config) *gossip.Store {
-	return gossip.NewStore(producer, cfg.U2uStore)
+	return gossip.NewStore(producer, cfg.U2UStore)
 }
 
 func compact(ctx *cli.Context) error {

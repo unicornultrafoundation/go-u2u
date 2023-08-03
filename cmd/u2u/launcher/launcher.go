@@ -22,8 +22,8 @@ import (
 	evmetrics "github.com/ethereum/go-ethereum/metrics"
 
 	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/metrics"
-	prometheus "github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/monitoring"
 	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/tracing"
+	"github.com/unicornultrafoundation/go-u2u/utils/prometheus"
 	"github.com/unicornultrafoundation/go-u2u/debug"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/flags"

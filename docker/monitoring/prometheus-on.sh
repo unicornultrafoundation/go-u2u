@@ -4,6 +4,11 @@ cd $(dirname $0)
 NETWORK=u2u
 CONF=prometheus/prometheus.yml
 
+set -e
+
+docker network inspect ${NETWORK} &>/dev/null || \
+docker network create ${NETWORK}
+
 cat << HEADER > $CONF
 global:
   # How frequently to scrape targets by default.
@@ -14,7 +19,7 @@ HEADER
 cat << NODE >> $CONF
   - job_name: 'prometheus'
     static_configs:
-      - targets: ['localhost:19090']
+      - targets: ['prometheus:19090']
 NODE
 
 echo -e "\nStart Prometheus:\n"

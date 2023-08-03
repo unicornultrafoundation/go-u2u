@@ -8,7 +8,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var namespace = "lachesis"
+var namespace = "u2u"
 
 // SetNamespace for metrics.
 func SetNamespace(s string) {
@@ -50,15 +50,15 @@ func convertToPrometheusMetric(name string, m interface{}) (prometheus.Collector
 		})
 
 	case metrics.Meter:
-		collector = NewCollector(opts, metric,
+		collector = PrometheusCollector(opts, metric,
 			"rate1m", "rate5m", "rate15m", "rate")
 
 	case metrics.Histogram:
-		collector = NewCollector(opts, metric,
+		collector = PrometheusCollector(opts, metric,
 			"min", "max", "mean")
 
 	case metrics.Timer, metrics.ResettingTimer:
-		collector = NewCollector(opts, metric,
+		collector = PrometheusCollector(opts, metric,
 			"min", "max", "mean", "rate1m", "rate5m", "rate15m", "rate")
 
 	default:

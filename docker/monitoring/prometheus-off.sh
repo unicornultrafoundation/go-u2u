@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 cd $(dirname $0)
-. ./_params.sh
-
 
 docker ps -a -q -f "network=${NETWORK}" -f "name=prometheus" | while read id
 do

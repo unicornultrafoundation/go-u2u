@@ -13,7 +13,7 @@ import (
 )
 
 var PrometheusEndpointFlag = cli.StringFlag{
-	Name:  "monitoring.prometheus.endpoint",
+	Name:  "metrics.prometheus.endpoint",
 	Usage: "Prometheus API endpoint to report metrics to",
 	Value: ":19090",
 }
@@ -24,7 +24,7 @@ func SetupPrometheus(ctx *cli.Context) {
 	}
 	prometheus.SetNamespace("u2u")
 	var endpoint = ctx.GlobalString(PrometheusEndpointFlag.Name)
-	prometheus.ListenTo(endpoint, nil)
+	prometheus.PrometheusListener(endpoint, nil)
 }
 
 var (

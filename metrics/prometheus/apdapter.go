@@ -9,8 +9,7 @@ import (
 )
 
 // NewCollector constructor.
-func NewCollector(opts prometheus.Opts, metric interface{}, fields ...string) *Collector {
-
+func PrometheusCollector(opts prometheus.Opts, metric interface{}, fields ...string) *Collector {
 	return &Collector{
 		Metric: &Metric{
 			desc: prometheus.NewDesc(

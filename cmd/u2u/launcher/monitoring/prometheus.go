@@ -1,29 +1,24 @@
-package prometheus
+package monitoring
 
 import (
 	"os"
 	"path/filepath"
 	"sync/atomic"
 
+	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/metrics"
 	cli "gopkg.in/urfave/cli.v1"
 
-	"github.com/unicornultrafoundation/go-u2u/metrics/prometheus"
+	"github.com/unicornultrafoundation/go-u2u/monitoring/prometheus"
 )
-
-var PrometheusEndpointFlag = cli.StringFlag{
-	Name:  "metrics.prometheus.endpoint",
-	Usage: "Prometheus API endpoint to report metrics to",
-	Value: ":19090",
-}
 
 func SetupPrometheus(ctx *cli.Context) {
 	if !metrics.Enabled {
 		return
 	}
 	prometheus.SetNamespace("u2u")
-	var endpoint = ctx.GlobalString(PrometheusEndpointFlag.Name)
+	var endpoint = ctx.GlobalString(utils.MetricsPrometheusEndpointFlag.Name)
 	prometheus.PrometheusListener(endpoint, nil)
 }
 

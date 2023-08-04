@@ -22,6 +22,5 @@ echo -e "\nStart Prometheus:\n"
 
 docker run --rm -d --name=prometheus \
     --net=host \
-    -p 9090:9090 \
     -v ${PWD}/${CONF}:/etc/prometheus/${CONF} \
     prom/prometheus

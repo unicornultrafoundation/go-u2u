@@ -23,7 +23,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/metrics"
 	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/tracing"
-	"github.com/unicornultrafoundation/go-u2u/utils/prometheus"
+	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/monitoring"
 	"github.com/unicornultrafoundation/go-u2u/debug"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/flags"
@@ -166,7 +166,7 @@ func initFlags() {
 		utils.MetricsInfluxDBTokenFlag,
 		utils.MetricsInfluxDBBucketFlag,
 		utils.MetricsInfluxDBOrganizationFlag,
-		prometheus.PrometheusEndpointFlag,
+		utils.MetricsPrometheusEndpointFlag,
 		tracing.EnableFlag,
 	}
 
@@ -233,7 +233,7 @@ func init() {
 
 		// Start metrics export if enabled
 		utils.SetupMetrics(ctx)
-		prometheus.SetupPrometheus(ctx)
+		monitoring.SetupPrometheus(ctx)
 		// Start system runtime metrics collection
 		go evmetrics.CollectProcessMetrics(3 * time.Second)
 		return nil
@@ -291,7 +291,7 @@ func makeNode(ctx *cli.Context, cfg *config, genesisStore *genesisstore.Store) (
 		_ = genesisStore.Close()
 	}
 	metrics.SetDataDir(cfg.Node.DataDir)
-	prometheus.SetDataDirMonitor(cfg.Node.DataDir)
+	monitoring.SetDataDirMonitor(cfg.Node.DataDir)
 
 	// substitute default bootnodes if requested
 	networkName := ""

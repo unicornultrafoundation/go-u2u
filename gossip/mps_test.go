@@ -3,11 +3,12 @@ package gossip
 import (
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/basiccheck"
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/heavycheck"
 	"github.com/unicornultrafoundation/go-u2u/logger"
@@ -16,10 +17,8 @@ import (
 
 func copyBvs(bvs native.LlrSignedBlockVotes) native.LlrSignedBlockVotes {
 	cp := make([]hash.Hash, 0, len(bvs.Val.Votes))
-	for _, v := range bvs.Val.Votes {
-		cp = append(cp, v)
-	}
-	bvs.Val.Votes = cp
+	cp = append(cp, bvs.Val.Votes...)
+	cp = bvs.Val.Votes
 	return bvs
 }
 

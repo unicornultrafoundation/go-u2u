@@ -20,6 +20,7 @@ package ethapi
 import (
 	"context"
 	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
@@ -58,8 +59,9 @@ type Backend interface {
 	ChainDb() ethdb.Database
 	AccountManager() *accounts.Manager
 	ExtRPCEnabled() bool
-	RPCGasCap() uint64        // global gas cap for eth_call over rpc: DoS protection
-	RPCTxFeeCap() float64     // global tx fee cap for all transaction related APIs
+	RPCGasCap() uint64    // global gas cap for eth_call over rpc: DoS protection
+	RPCTxFeeCap() float64 // global tx fee cap for all transaction related APIs
+	RPCTimeout() time.Duration
 	UnprotectedAllowed() bool // allows only for EIP155 transactions.
 	CalcBlockExtApi() bool
 

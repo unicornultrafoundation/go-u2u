@@ -20,7 +20,7 @@ func decodePair(b []byte) (uint32, uint32) {
 	return v1, v2
 }
 
-type UncallabaleAfterRelease struct {
+type UncallableAfterRelease struct {
 	u2udb.Snapshot
 	iterators []*uncallabaleAfterReleaseIterator
 	mu        sync.Mutex
@@ -30,7 +30,7 @@ type uncallabaleAfterReleaseIterator struct {
 	u2udb.Iterator
 }
 
-func (db *UncallabaleAfterRelease) NewIterator(prefix []byte, start []byte) u2udb.Iterator {
+func (db *UncallableAfterRelease) NewIterator(prefix []byte, start []byte) u2udb.Iterator {
 	it := db.Snapshot.NewIterator(prefix, start)
 	wrapped := &uncallabaleAfterReleaseIterator{it}
 
@@ -41,7 +41,7 @@ func (db *UncallabaleAfterRelease) NewIterator(prefix []byte, start []byte) u2ud
 	return wrapped
 }
 
-func (db *UncallabaleAfterRelease) Release() {
+func (db *UncallableAfterRelease) Release() {
 	db.Snapshot.Release()
 	// ensure nil pointer exception on any next call
 	db.Snapshot = nil
@@ -75,7 +75,7 @@ func TestSnapshot_SwitchTo(t *testing.T) {
 	// 4 readers, one interrupter
 	snap, err := memdb.GetSnapshot()
 	require.NoError(err)
-	switchable := Wrap(&UncallabaleAfterRelease{
+	switchable := Wrap(&UncallableAfterRelease{
 		Snapshot: snap,
 	})
 
@@ -136,7 +136,7 @@ func TestSnapshot_SwitchTo(t *testing.T) {
 			for atomic.LoadUint32(&stop) == 0 {
 				snap, err := memdb.GetSnapshot()
 				require.NoError(err)
-				old := switchable.SwitchTo(&UncallabaleAfterRelease{
+				old := switchable.SwitchTo(&UncallableAfterRelease{
 					Snapshot: snap,
 				})
 				old.Release()

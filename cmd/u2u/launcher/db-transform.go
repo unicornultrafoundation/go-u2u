@@ -8,15 +8,16 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/unicornultrafoundation/go-hashgraph/common/bigendian"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/batched"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/multidb"
-	"github.com/unicornultrafoundation/go-hashgraph/u2udb/table"
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/integration"
-	"github.com/unicornultrafoundation/go-u2u/utils/compactdb"
+	"github.com/unicornultrafoundation/go-u2u/utils"
+	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/compactdb"
 )
 
 func dbTransform(ctx *cli.Context) error {
@@ -267,8 +268,8 @@ func transformComponent(datadir string, dbTypes, tmpDbTypes map[multidb.TypeName
 				newHumanName := path.Join("tmp", string(e.New.Type), e.New.Name)
 				log.Info("Copying DB table", "req", e.Req, "old_db", oldHumanName, "old_table", e.Old.Table,
 					"new_db", newHumanName, "new_table", e.New.Table)
-				oldTable := table.New(oldDB, []byte(e.Old.Table))
-				newTable := table.New(newDB, []byte(e.New.Table))
+				oldTable := utils.NewTableOrSelf(oldDB, []byte(e.Old.Table))
+				newTable := utils.NewTableOrSelf(newDB, []byte(e.New.Table))
 				it := oldTable.NewIterator(nil, nil)
 				defer it.Release()
 
@@ -290,7 +291,7 @@ func transformComponent(datadir string, dbTypes, tmpDbTypes map[multidb.TypeName
 					keys = keys[:0]
 					values = values[:0]
 				}
-				err = compactdb.Compact(newTable, newHumanName)
+				err = compactdb.Compact(newTable, newHumanName, 16*opt.GiB)
 				if err != nil {
 					log.Error("Database compaction failed", "err", err)
 					return err

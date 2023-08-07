@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/status-im/keycard-go/hexutils"
+	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/unicornultrafoundation/go-hashgraph/consensus"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
@@ -22,7 +23,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesis"
 	"github.com/unicornultrafoundation/go-u2u/utils/adapters/vecmt2dagidx"
-	"github.com/unicornultrafoundation/go-u2u/utils/compactdb"
+	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/compactdb"
 	"github.com/unicornultrafoundation/go-u2u/vecmt"
 )
 
@@ -152,7 +153,7 @@ func compactDB(typ multidb.TypeName, name string, producer u2udb.DBProducer) err
 	if err != nil {
 		return err
 	}
-	return compactdb.Compact(db, humanName)
+	return compactdb.Compact(db, humanName, 16*opt.GiB)
 }
 
 func makeEngine(chaindataDir string, g *genesis.Genesis, genesisProc bool, cfg Configs) (*consensus.Consensus, *vecmt.Index, *gossip.Store, *consensus.Store, gossip.BlockProc, func() error, error) {

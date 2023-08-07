@@ -18,7 +18,7 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/skipkeys"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/table"
 
-	"github.com/unicornultrafoundation/go-u2u/utils/compactdb"
+	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/compactdb"
 )
 
 func lastKey(db u2udb.Store) []byte {
@@ -114,7 +114,7 @@ func transform(m transformTask) error {
 		keys = keys[:0]
 	}
 	// compact the new DB
-	if err := compactdb.Compact(dst, m.name); err != nil {
+	if err := compactdb.Compact(dst, m.name, 16*opt.GiB); err != nil {
 		return err
 	}
 	return nil

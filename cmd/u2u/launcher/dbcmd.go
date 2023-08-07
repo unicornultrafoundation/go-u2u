@@ -15,7 +15,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/integration"
-	"github.com/unicornultrafoundation/go-u2u/utils/compactdb"
+	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/compactdb"
 )
 
 var (
@@ -149,7 +149,7 @@ func compactDB(typ multidb.TypeName, name string, producer u2udb.DBProducer) err
 	log.Info("Stats before compaction", "db", humanName)
 	showDbStats(db)
 
-	err = compactdb.Compact(db, humanName)
+	err = compactdb.Compact(db, humanName, 64*opt.GiB)
 	if err != nil {
 		log.Error("Database compaction failed", "err", err)
 		return err

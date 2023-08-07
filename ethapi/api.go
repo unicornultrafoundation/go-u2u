@@ -42,6 +42,7 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/trie"
+	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/tyler-smith/go-bip39"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
@@ -50,7 +51,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/gossip/gasprice"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/utils/adapters/ethdb2udb"
-	"github.com/unicornultrafoundation/go-u2u/utils/compactdb"
+	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/compactdb"
 	"github.com/unicornultrafoundation/go-u2u/utils/signers/gsignercache"
 	"github.com/unicornultrafoundation/go-u2u/utils/signers/internaltx"
 )
@@ -2075,7 +2076,7 @@ func (api *PrivateDebugAPI) ChaindbProperty(property string) (string, error) {
 // ChaindbCompact flattens the entire key-value database into a single level,
 // removing all unused slots and merging all keys.
 func (api *PrivateDebugAPI) ChaindbCompact() error {
-	if err := compactdb.Compact(ethdb2udb.Wrap(api.b.ChainDb()), "EVM"); err != nil {
+	if err := compactdb.Compact(ethdb2udb.Wrap(api.b.ChainDb()), "EVM", 64*opt.GiB); err != nil {
 		log.Error("Database compaction failed", "err", err)
 		return err
 	}

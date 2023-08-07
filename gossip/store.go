@@ -17,10 +17,10 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"
 	"github.com/unicornultrafoundation/go-u2u/logger"
 	"github.com/unicornultrafoundation/go-u2u/utils/adapters/snap2udb"
+	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/switchable"
 	"github.com/unicornultrafoundation/go-u2u/utils/eventid"
 	"github.com/unicornultrafoundation/go-u2u/utils/randat"
 	"github.com/unicornultrafoundation/go-u2u/utils/rlpstore"
-	"github.com/unicornultrafoundation/go-u2u/utils/switchable"
 )
 
 // Store is a node persistent storage working over physical key-value database.

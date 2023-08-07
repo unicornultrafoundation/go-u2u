@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
@@ -455,6 +456,10 @@ func (b *EthAPIBackend) UnprotectedAllowed() bool {
 
 func (b *EthAPIBackend) RPCGasCap() uint64 {
 	return b.svc.config.RPCGasCap
+}
+
+func (b *EthAPIBackend) RPCTimeout() time.Duration {
+	return b.svc.config.RPCTimeout
 }
 
 func (b *EthAPIBackend) RPCTxFeeCap() float64 {

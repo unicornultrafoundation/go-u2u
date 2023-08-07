@@ -16,7 +16,7 @@ import (
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/integration"
-	"github.com/unicornultrafoundation/go-u2u/utils/compactdb"
+	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/compactdb"
 )
 
 func dbTransform(ctx *cli.Context) error {

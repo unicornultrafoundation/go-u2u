@@ -22,7 +22,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesis"
 	"github.com/unicornultrafoundation/go-u2u/utils/adapters/vecmt2dagidx"
-	"github.com/unicornultrafoundation/go-u2u/utils/compactdb"
+	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/compactdb"
 	"github.com/unicornultrafoundation/go-u2u/vecmt"
 )
 

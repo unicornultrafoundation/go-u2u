@@ -18,7 +18,7 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/skipkeys"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/table"
 
-	"github.com/unicornultrafoundation/go-u2u/utils/compactdb"
+	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/compactdb"
 )
 
 func lastKey(db u2udb.Store) []byte {

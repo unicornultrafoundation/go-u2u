@@ -2,29 +2,15 @@ package emitter
 
 import (
 	"io"
-	"os"
-	"path/filepath"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+
+	"github.com/unicornultrafoundation/go-u2u/utils"
 )
 
-func openPrevActionFile(path string, isSyncMode bool) *os.File {
-	const dirPerm = 0700
-	if err := os.MkdirAll(filepath.Dir(path), dirPerm); err != nil {
-		log.Crit("Failed to create open event file", "file", path, "err", err)
-	}
-	sync := 0
-	if isSyncMode {
-		sync = os.O_SYNC
-	}
-	fh, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|sync, 0666)
-	if err != nil {
-		log.Crit("Failed to open event file", "file", path, "err", err)
-	}
-	return fh
-}
+var openPrevActionFile = utils.OpenFile
 
 func (em *Emitter) writeLastEmittedEventID(id hash.Event) {
 	if em.emittedEventFile == nil {

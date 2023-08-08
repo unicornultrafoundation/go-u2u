@@ -3,11 +3,12 @@ package integration
 import (
 	"os"
 	"path"
+
+	"github.com/unicornultrafoundation/go-u2u/utils"
 )
 
 func isInterrupted(chaindataDir string) bool {
-	_, err := os.Stat(path.Join(chaindataDir, "unfinished"))
-	return err == nil
+	return utils.FileExists(path.Join(chaindataDir, "unfinished"))
 }
 
 func setGenesisProcessing(chaindataDir string) {

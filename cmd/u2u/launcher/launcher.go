@@ -22,8 +22,8 @@ import (
 	evmetrics "github.com/ethereum/go-ethereum/metrics"
 
 	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/metrics"
-	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/tracing"
 	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/monitoring"
+	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/tracing"
 	"github.com/unicornultrafoundation/go-u2u/debug"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/flags"
@@ -292,6 +292,7 @@ func makeNode(ctx *cli.Context, cfg *config, genesisStore *genesisstore.Store) (
 	}
 	metrics.SetDataDir(cfg.Node.DataDir)
 	monitoring.SetDataDirMonitor(cfg.Node.DataDir)
+	memorizeDBPreset(cfg)
 
 	// substitute default bootnodes if requested
 	networkName := ""

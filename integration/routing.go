@@ -13,6 +13,18 @@ type RoutingConfig struct {
 	Table map[string]multidb.Route
 }
 
+func (a RoutingConfig) Equal(b RoutingConfig) bool {
+	if len(a.Table) != len(b.Table) {
+		return false
+	}
+	for k, v := range a.Table {
+		if b.Table[k] != v {
+			return false
+		}
+	}
+	return true
+}
+
 func MakeMultiProducer(rawProducers map[multidb.TypeName]u2udb.IterableDBProducer, scopedProducers map[multidb.TypeName]u2udb.FullDBProducer, cfg RoutingConfig) (u2udb.FullDBProducer, error) {
 	cachedProducers := make(map[multidb.TypeName]u2udb.FullDBProducer)
 	var flushID []byte

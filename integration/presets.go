@@ -6,7 +6,7 @@ import (
 )
 
 var DefaultDBsConfig = PblLegacyDBsConfig
-var DefaultDBsConfigName = "pbl-1"
+var DefaultDBsConfigName = "legacy-pebble"
 
 /*
  * pbl-1 config

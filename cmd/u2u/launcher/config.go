@@ -125,7 +125,7 @@ var (
 	}
 	DBPresetFlag = cli.StringFlag{
 		Name:  "db.preset",
-		Usage: "DBs layout preset ('pbl-1' or 'ldb-1' or 'legacy-ldb' or 'legacy-pbl')",
+		Usage: "DBs layout preset ('pebble' or 'legacy-pebble')",
 	}
 )
 

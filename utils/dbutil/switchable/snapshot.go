@@ -17,8 +17,8 @@ type Snapshot struct {
 func (s *Snapshot) SwitchTo(snap u2udb.Snapshot) u2udb.Snapshot {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	old := itergc.Wrap(snap, &sync.Mutex{})
-	s.Snapshot = snap
+	old := s.Snapshot
+	s.Snapshot = itergc.Wrap(snap, &sync.Mutex{})
 	return old
 }
 

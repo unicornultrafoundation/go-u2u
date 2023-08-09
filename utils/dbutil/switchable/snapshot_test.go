@@ -12,6 +12,8 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/common/bigendian"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/memorydb"
+
+	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/dbcounter"
 )
 
 func decodePair(b []byte) (uint32, uint32) {
@@ -22,17 +24,17 @@ func decodePair(b []byte) (uint32, uint32) {
 
 type UncallableAfterRelease struct {
 	u2udb.Snapshot
-	iterators []*uncallabaleAfterReleaseIterator
+	iterators []*uncallableAfterReleaseIterator
 	mu        sync.Mutex
 }
 
-type uncallabaleAfterReleaseIterator struct {
+type uncallableAfterReleaseIterator struct {
 	u2udb.Iterator
 }
 
 func (db *UncallableAfterRelease) NewIterator(prefix []byte, start []byte) u2udb.Iterator {
 	it := db.Snapshot.NewIterator(prefix, start)
-	wrapped := &uncallabaleAfterReleaseIterator{it}
+	wrapped := &uncallableAfterReleaseIterator{it}
 
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -63,7 +65,7 @@ func TestSnapshot_SwitchTo(t *testing.T) {
 	const duration = time.Millisecond * 400
 
 	// fill DB with data
-	memdb := memorydb.New()
+	memdb := dbcounter.WrapStore(memorydb.New(), "", false)
 	for i := uint32(0); i < prefixes; i++ {
 		for j := uint32(0); j < keys; j++ {
 			key := append(bigendian.Uint32ToBytes(i), bigendian.Uint32ToBytes(j)...)
@@ -146,4 +148,6 @@ func TestSnapshot_SwitchTo(t *testing.T) {
 	time.Sleep(duration)
 	atomic.StoreUint32(&stop, 1)
 	wg.Wait()
+	switchable.Release()
+	require.NoError(memdb.Close())
 }

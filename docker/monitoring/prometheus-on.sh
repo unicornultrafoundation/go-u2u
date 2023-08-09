@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 cd $(dirname $0)
 
-NETWORK=u2u
+NETWORK=testnet_default
 CONF=prometheus/prometheus.yml
 
 set -e

@@ -368,12 +368,12 @@ func setDBConfig(ctx *cli.Context, cfg integration.DBsConfig, cacheRatio cachesc
 
 func setDBConfigStr(cfg integration.DBsConfig, cacheRatio cachescale.Func, preset string) integration.DBsConfig {
 	switch preset {
-	case "pbl-1":
+	case "pebble":
 		cfg = integration.Pbl1DBsConfig(cacheRatio.U64, uint64(utils.MakeDatabaseHandles()))
-	case "legacy-pbl":
+	case "legacy-pebble":
 		cfg = integration.PblLegacyDBsConfig(cacheRatio.U64, uint64(utils.MakeDatabaseHandles()))
 	default:
-		utils.Fatalf("--%s must be 'pbl-1' or 'legacy-pbl'", DBPresetFlag.Name)
+		utils.Fatalf("--%s must be 'pebble' or 'legacy-pebble'", DBPresetFlag.Name)
 	}
 	// sanity check
 	if preset != reversePresetName(cfg.Routing) {
@@ -386,10 +386,10 @@ func reversePresetName(cfg integration.RoutingConfig) string {
 	pbl1 := integration.Pbl1RoutingConfig()
 	pblLegacy := integration.PblLegacyRoutingConfig()
 	if cfg.Equal(pbl1) {
-		return "pbl-1"
+		return "pebble"
 	}
 	if cfg.Equal(pblLegacy) {
-		return "legacy-pbl"
+		return "legacy-pebble"
 	}
 	return ""
 }

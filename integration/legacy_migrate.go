@@ -13,7 +13,6 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/batched"
-	"github.com/unicornultrafoundation/go-hashgraph/u2udb/leveldb"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/pebble"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/skipkeys"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/table"
@@ -133,14 +132,6 @@ func isEmptyDB(db u2udb.Iteratee) bool {
 	return !it.Next()
 }
 
-func fileExists(filename string) bool {
-	info, err := os.Stat(filename)
-	if err != nil {
-		return false
-	}
-	return !info.IsDir()
-}
-
 type closebaleTable struct {
 	*table.Table
 	backend u2udb.Store
@@ -206,15 +197,7 @@ func migrateLegacyDBs(chaindataDir string, dbs u2udb.FlushableDBProducer, mode s
 		if err != nil {
 			return err
 		}
-		var oldDBs u2udb.IterableDBProducer
-		var oldDBsType string
-		if fileExists(path.Join(chaindataDir, "gossip", "LOG")) {
-			oldDBs = leveldb.NewProducer(chaindataDir, cacheFn)
-			oldDBsType = "ldb"
-		} else {
-			oldDBs = pebble.NewProducer(chaindataDir, cacheFn)
-			oldDBsType = "pbl"
-		}
+		oldDBs := pebble.NewProducer(chaindataDir, cacheFn)
 		openOldDB := func(name string) u2udb.Store {
 			db, err := oldDBs.OpenDB(name)
 			if err != nil {
@@ -295,36 +278,18 @@ func migrateLegacyDBs(chaindataDir string, dbs u2udb.FlushableDBProducer, mode s
 				})
 			}
 		case "reformat":
-			if oldDBsType == "ldb" {
-				if !layout.Equal(LdbLegacyRoutingConfig()) {
-					return errors.New("reformatting DBs: missing --db.preset=legacy-ldb flag")
-				}
-				err = os.Rename(path.Join(chaindataDir, "gossip"), path.Join(chaindataDir, "leveldb-fsh", "main"))
-				if err != nil {
-					return err
-				}
-				for _, name := range oldDBs.Names() {
-					if strings.HasPrefix(name, "hashgraph") || strings.HasPrefix(name, "gossip-") {
-						err = os.Rename(path.Join(chaindataDir, name), path.Join(chaindataDir, "leveldb-fsh", name))
-						if err != nil {
-							return err
-						}
-					}
-				}
-			} else {
-				if !layout.Equal(PblLegacyRoutingConfig()) {
-					return errors.New("reformatting DBs: missing --db.preset=legacy-pbl flag")
-				}
-				err = os.Rename(path.Join(chaindataDir, "gossip"), path.Join(chaindataDir, "pebble-fsh", "main"))
-				if err != nil {
-					return err
-				}
-				for _, name := range oldDBs.Names() {
-					if strings.HasPrefix(name, "hashgraph") || strings.HasPrefix(name, "gossip-") {
-						err = os.Rename(path.Join(chaindataDir, name), path.Join(chaindataDir, "pebble-fsh", name))
-						if err != nil {
-							return err
-						}
+			if !layout.Equal(PblLegacyRoutingConfig()) {
+				return errors.New("reformatting DBs: missing --db.preset=legacy-pbl flag")
+			}
+			err = os.Rename(path.Join(chaindataDir, "gossip"), path.Join(chaindataDir, "pebble-fsh", "main"))
+			if err != nil {
+				return err
+			}
+			for _, name := range oldDBs.Names() {
+				if strings.HasPrefix(name, "hashgraph") || strings.HasPrefix(name, "gossip-") {
+					err = os.Rename(path.Join(chaindataDir, name), path.Join(chaindataDir, "pebble-fsh", name))
+					if err != nil {
+						return err
 					}
 				}
 			}

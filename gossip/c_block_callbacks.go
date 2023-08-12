@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/metrics"
+
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
@@ -19,6 +20,7 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/utils/workers"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
+	"github.com/unicornultrafoundation/go-u2u/evmcore/txtracer"
 	"github.com/unicornultrafoundation/go-u2u/gossip/blockproc/verwatcher"
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter"
 	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"
@@ -250,7 +252,15 @@ func consensusCallbackBeginBlockFn(
 					})
 				}
 
-				evmProcessor := blockProc.EVMModule.Start(blockCtx, statedb, evmStateReader, onNewLogAll, es.Rules, es.Rules.EvmChainConfig(store.GetUpgradeHeights()))
+				// Providing default config
+				// In case of trace transaction node, this config is changed
+				evmCfg := u2u.DefaultVMConfig
+				if store.txtracer != nil {
+					evmCfg.Debug = true
+					evmCfg.Tracer = txtracer.NewTraceStructLogger(store.txtracer)
+				}
+
+				evmProcessor := blockProc.EVMModule.Start(blockCtx, statedb, evmStateReader, onNewLogAll, es.Rules, evmCfg, es.Rules.EvmChainConfig(store.GetUpgradeHeights()))
 				executionStart := time.Now()
 
 				// Execute pre-internal transactions
@@ -473,7 +483,16 @@ func (s *Service) ReexecuteBlocks(from, to idx.Block) {
 			log.Crit("Failue to re-execute blocks", "err", err)
 		}
 		es := s.store.GetHistoryEpochState(s.store.FindBlockEpoch(b))
-		evmProcessor := blockProc.EVMModule.Start(blockCtx, statedb, evmStateReader, func(t *types.Log) {}, es.Rules, es.Rules.EvmChainConfig(upgradeHeights))
+
+		// Providing default config
+		// In case of trace transaction node, this config is changed
+		evmCfg := u2u.DefaultVMConfig
+		if s.store.txtracer != nil {
+			evmCfg.Debug = true
+			evmCfg.Tracer = txtracer.NewTraceStructLogger(s.store.txtracer)
+		}
+		evmProcessor := blockProc.EVMModule.Start(blockCtx, statedb, evmStateReader, func(t *types.Log) {}, es.Rules, evmCfg, es.Rules.EvmChainConfig(upgradeHeights))
+
 		txs := s.store.GetBlockTxs(b, block)
 		evmProcessor.Execute(txs)
 		evmProcessor.Finalize()

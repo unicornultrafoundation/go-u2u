@@ -119,6 +119,12 @@ var (
 		Usage: "Exits after synchronisation reaches the required epoch",
 	}
 
+	// TxTracerFlag enables transaction tracing recording
+	EnableTxTracerFlag = cli.BoolFlag{
+		Name:  "enabletxtracer",
+		Usage: "If present, than this node records inner transaction traces",
+	}
+
 	DBMigrationModeFlag = cli.StringFlag{
 		Name:  "db.migration.mode",
 		Usage: "MultiDB migration mode ('reformat' or 'rebuild')",
@@ -160,7 +166,7 @@ type config struct {
 	U2u            gossip.Config
 	Emitter        emitter.Config
 	TxPool         evmcore.TxPoolConfig
-	U2uStore       gossip.StoreConfig
+	U2UStore       gossip.StoreConfig
 	Hashgraph      consensus.Config
 	HashgraphStore consensus.StoreConfig
 	VectorClock    vecmt.IndexConfig
@@ -170,7 +176,7 @@ type config struct {
 func (c *config) AppConfigs() integration.Configs {
 	return integration.Configs{
 		U2u:            c.U2u,
-		U2uStore:       c.U2uStore,
+		U2uStore:       c.U2UStore,
 		Hashgraph:      c.Hashgraph,
 		HashgraphStore: c.HashgraphStore,
 		VectorClock:    c.VectorClock,
@@ -469,7 +475,7 @@ func mayMakeAllConfigs(ctx *cli.Context) (*config, error) {
 		U2u:            gossip.DefaultConfig(cacheRatio),
 		Emitter:        emitter.DefaultConfig(),
 		TxPool:         evmcore.DefaultTxPoolConfig,
-		U2uStore:       gossip.DefaultStoreConfig(cacheRatio),
+		U2UStore:       gossip.DefaultStoreConfig(cacheRatio),
 		Hashgraph:      consensus.DefaultConfig(),
 		HashgraphStore: consensus.DefaultStoreConfig(cacheRatio),
 		VectorClock:    vecmt.DefaultConfig(cacheRatio),
@@ -498,7 +504,7 @@ func mayMakeAllConfigs(ctx *cli.Context) (*config, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfg.U2uStore, err = gossipStoreConfigWithFlags(ctx, cfg.U2uStore)
+	cfg.U2UStore, err = gossipStoreConfigWithFlags(ctx, cfg.U2UStore)
 	if err != nil {
 		return nil, err
 	}
@@ -519,6 +525,10 @@ func mayMakeAllConfigs(ctx *cli.Context) (*config, error) {
 
 	if err := cfg.U2u.Validate(); err != nil {
 		return nil, err
+	}
+
+	if ctx.GlobalIsSet(EnableTxTracerFlag.Name) {
+		cfg.U2UStore.TraceTransactions = true
 	}
 
 	return &cfg, nil

@@ -26,7 +26,7 @@ func TestConfigFile(t *testing.T) {
 		U2u:            gossip.DefaultConfig(cacheRatio),
 		Emitter:        emitter.DefaultConfig(),
 		TxPool:         evmcore.DefaultTxPoolConfig,
-		U2uStore:       gossip.DefaultStoreConfig(cacheRatio),
+		U2UStore:       gossip.DefaultStoreConfig(cacheRatio),
 		Hashgraph:      consensus.DefaultConfig(),
 		HashgraphStore: consensus.DefaultStoreConfig(cacheRatio),
 		VectorClock:    vecmt.DefaultConfig(cacheRatio),

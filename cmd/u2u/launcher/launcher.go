@@ -125,6 +125,7 @@ func initFlags() {
 		GCModeFlag,
 		DBPresetFlag,
 		DBMigrationModeFlag,
+		EnableTxTracerFlag,
 	}
 
 	rpcFlags = []cli.Flag{
@@ -212,6 +213,7 @@ func init() {
 		importCommand,
 		exportCommand,
 		checkCommand,
+		deleteCommand,
 		// See snapshot.go
 		snapshotCommand,
 		// See dbcmd.go

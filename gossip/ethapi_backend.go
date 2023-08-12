@@ -2,6 +2,7 @@ package gossip
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -18,11 +19,13 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/pkg/errors"
+
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/ethapi"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
+	"github.com/unicornultrafoundation/go-u2u/evmcore/txtracer"
 	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
@@ -92,6 +95,28 @@ func (b *EthAPIBackend) HeaderByHash(ctx context.Context, h common.Hash) (*evmco
 		return nil, nil
 	}
 	return b.HeaderByNumber(ctx, rpc.BlockNumber(*index))
+}
+
+// TxTraceByHash returns transaction trace from store db by the hash.
+func (b *EthAPIBackend) TxTraceByHash(ctx context.Context, h common.Hash) (*[]txtracer.ActionTrace, error) {
+	if b.state.store.txtracer == nil {
+		return nil, errors.New("Transaction trace key-value store db is not initialized")
+	}
+	txBytes := b.state.store.txtracer.GetTx(h)
+	traces := make([]txtracer.ActionTrace, 0)
+	json.Unmarshal(txBytes, &traces)
+	if len(traces) == 0 {
+		return nil, fmt.Errorf("No trace for tx hash: %s", h.String())
+	}
+	return &traces, nil
+}
+
+// TxTraceSave saves transaction trace into store db
+func (b *EthAPIBackend) TxTraceSave(ctx context.Context, h common.Hash, traces []byte) error {
+	if b.state.store.txtracer != nil {
+		return b.state.store.txtracer.SetTxTrace(h, traces)
+	}
+	return errors.New("Transaction trace key-value store db is not initialized")
 }
 
 // BlockByNumber returns evm block by its number, or nil if not exists.
@@ -326,6 +351,10 @@ func (b *EthAPIBackend) GetEVM(ctx context.Context, msg evmcore.Message, state *
 	context := evmcore.NewEVMBlockContext(header, b.state, nil)
 	config := b.ChainConfig()
 	return vm.NewEVM(context, txContext, state, config, *vmConfig), vmError, nil
+}
+
+func (b *EthAPIBackend) GetBlockContext(header *evmcore.EvmHeader) vm.BlockContext {
+	return evmcore.NewEVMBlockContext(header, b.state, nil)
 }
 
 func (b *EthAPIBackend) SendTx(ctx context.Context, signedTx *types.Transaction) error {

@@ -10,9 +10,9 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
+
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
-
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip/blockproc"
 	"github.com/unicornultrafoundation/go-u2u/gossip/blockproc/drivermodule"
@@ -141,7 +141,7 @@ func (b *GenesisBuilder) ExecuteGenesisTxs(blockProc BlockProc, genesisTxs types
 	txListener := blockProc.TxListenerModule.Start(blockCtx, bs, es, b.tmpStateDB)
 	evmProcessor := blockProc.EVMModule.Start(blockCtx, b.tmpStateDB, dummyHeaderReturner{}, func(l *types.Log) {
 		txListener.OnNewLog(l)
-	}, es.Rules, es.Rules.EvmChainConfig([]u2u.UpgradeHeight{
+	}, es.Rules, u2u.DefaultVMConfig, es.Rules.EvmChainConfig([]u2u.UpgradeHeight{
 		{
 			Upgrades: es.Rules.Upgrades,
 			Height:   0,

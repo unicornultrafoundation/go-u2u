@@ -75,7 +75,7 @@ type (
 
 		// This can be set to list of enrtree:// URLs which will be queried for
 		// for nodes to connect to.
-		U2uDiscoveryURLs  []string
+		U2UDiscoveryURLs  []string
 		SnapDiscoveryURLs []string
 
 		AllowSnapsync bool

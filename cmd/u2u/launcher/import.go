@@ -79,8 +79,8 @@ func importEvents(ctx *cli.Context) error {
 	// avoid P2P interaction, API calls and events emitting
 	genesisStore := mayGetGenesisStore(ctx)
 	cfg := makeAllConfigs(ctx)
-	cfg.U2u.Protocol.EventsSemaphoreLimit.Size = math.MaxUint32
-	cfg.U2u.Protocol.EventsSemaphoreLimit.Num = math.MaxUint32
+	cfg.U2U.Protocol.EventsSemaphoreLimit.Size = math.MaxUint32
+	cfg.U2U.Protocol.EventsSemaphoreLimit.Num = math.MaxUint32
 	cfg.Emitter.Validator = emitter.ValidatorConfig{}
 	cfg.TxPool.Journal = ""
 	cfg.Node.IPCPath = ""

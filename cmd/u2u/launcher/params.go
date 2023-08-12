@@ -37,7 +37,7 @@ var (
 		NetworkName: "test",
 	}
 
-	AllowedU2uGenesis = []GenesisTemplate{
+	AllowedU2UGenesis = []GenesisTemplate{
 		{
 			Name:   "Mainnet-5577 with pruned MPT",
 			Header: mainnetHeader,

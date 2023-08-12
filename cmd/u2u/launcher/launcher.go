@@ -350,7 +350,7 @@ func makeNode(ctx *cli.Context, cfg *config, genesisStore *genesisstore.Store) (
 		}
 		return false
 	}
-	svc, err := gossip.NewService(stack, cfg.U2u, gdb, blockProc, engine, dagIndex, newTxPool, haltCheck)
+	svc, err := gossip.NewService(stack, cfg.U2U, gdb, blockProc, engine, dagIndex, newTxPool, haltCheck)
 	if err != nil {
 		utils.Fatalf("Failed to create the service: %v", err)
 	}

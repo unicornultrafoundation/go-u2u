@@ -59,7 +59,7 @@ func (h *handler) runSnapExtension(peer *snap.Peer, handler snap.Handler) error 
 	defer h.peerWG.Done()
 	if err := h.peers.RegisterSnapExtension(peer); err != nil {
 		logger := peer.Log().Error
-		if err == errSnapWithoutU2u {
+		if err == errSnapWithoutU2U {
 			logger = peer.Log().Trace
 		}
 		logger("Snapshot extension registration failed", "err", err)

@@ -20,7 +20,7 @@ func isEmptyDB(db u2udb.Iteratee) bool {
 }
 
 func (s *Store) migrateData() error {
-	versions := migration.NewU2udbIDStore(s.table.Version)
+	versions := migration.NewU2UdbIDStore(s.table.Version)
 	if isEmptyDB(s.table.Version) {
 		// short circuit if empty DB
 		versions.SetID(s.migrations().ID())

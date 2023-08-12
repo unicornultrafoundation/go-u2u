@@ -190,7 +190,7 @@ func (st *StateTransition) to() common.Address {
 func (st *StateTransition) buyGas() error {
 	mgval := new(big.Int).SetUint64(st.msg.Gas())
 	mgval = mgval.Mul(mgval, st.gasPrice)
-	// Note: U2u doesn't need to check against gasFeeCap instead of gasPrice, as it's too aggressive in the asynchronous environment
+	// Note: U2U doesn't need to check against gasFeeCap instead of gasPrice, as it's too aggressive in the asynchronous environment
 	if have, want := st.state.GetBalance(st.msg.From()), mgval; have.Cmp(want) < 0 {
 		return fmt.Errorf("%w: address %v have %v want %v", ErrInsufficientFunds, st.msg.From().Hex(), have, want)
 	}
@@ -222,7 +222,7 @@ func (st *StateTransition) preCheck() error {
 				st.msg.From().Hex(), codeHash)
 		}
 	}
-	// Note: U2u doesn't need to check gasFeeCap >= BaseFee, because it's already checked by epochcheck
+	// Note: U2U doesn't need to check gasFeeCap >= BaseFee, because it's already checked by epochcheck
 	return st.buyGas()
 }
 
@@ -254,7 +254,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	// 4. the purchased gas is enough to cover intrinsic usage
 	// 5. there is no overflow when calculating intrinsic gas
 
-	// Note: insufficient balance for **topmost** call isn't a consensus error in U2u, unlike Ethereum
+	// Note: insufficient balance for **topmost** call isn't a consensus error in U2U, unlike Ethereum
 	// Such transaction will revert and consume sender's gas
 
 	// Check clauses 1-3, buy gas if everything is correct

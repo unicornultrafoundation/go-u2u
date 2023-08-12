@@ -10,39 +10,39 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 )
 
-type U2uEpochsSealerModule struct{}
+type U2UEpochsSealerModule struct{}
 
-func New() *U2uEpochsSealerModule {
-	return &U2uEpochsSealerModule{}
+func New() *U2UEpochsSealerModule {
+	return &U2UEpochsSealerModule{}
 }
 
-func (m *U2uEpochsSealerModule) Start(block iblockproc.BlockCtx, bs iblockproc.BlockState, es iblockproc.EpochState) blockproc.SealerProcessor {
-	return &U2uEpochsSealer{
+func (m *U2UEpochsSealerModule) Start(block iblockproc.BlockCtx, bs iblockproc.BlockState, es iblockproc.EpochState) blockproc.SealerProcessor {
+	return &U2UEpochsSealer{
 		block: block,
 		es:    es,
 		bs:    bs,
 	}
 }
 
-type U2uEpochsSealer struct {
+type U2UEpochsSealer struct {
 	block iblockproc.BlockCtx
 	es    iblockproc.EpochState
 	bs    iblockproc.BlockState
 }
 
-func (s *U2uEpochsSealer) EpochSealing() bool {
+func (s *U2UEpochsSealer) EpochSealing() bool {
 	sealEpoch := s.bs.EpochGas >= s.es.Rules.Epochs.MaxEpochGas
 	sealEpoch = sealEpoch || (s.block.Time-s.es.EpochStart) >= s.es.Rules.Epochs.MaxEpochDuration
 	sealEpoch = sealEpoch || s.bs.AdvanceEpochs > 0
 	return sealEpoch || s.bs.EpochCheaters.Len() != 0
 }
 
-func (p *U2uEpochsSealer) Update(bs iblockproc.BlockState, es iblockproc.EpochState) {
+func (p *U2UEpochsSealer) Update(bs iblockproc.BlockState, es iblockproc.EpochState) {
 	p.bs, p.es = bs, es
 }
 
 // SealEpoch is called after pre-internal transactions are executed
-func (s *U2uEpochsSealer) SealEpoch() (iblockproc.BlockState, iblockproc.EpochState) {
+func (s *U2UEpochsSealer) SealEpoch() (iblockproc.BlockState, iblockproc.EpochState) {
 	// Select new validators
 	oldValidators := s.es.Validators
 	builder := pos.NewBigBuilder()

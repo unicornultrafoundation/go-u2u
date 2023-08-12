@@ -45,8 +45,8 @@ func (e *GenesisMismatchError) Error() string {
 }
 
 type Configs struct {
-	U2u            gossip.Config
-	U2uStore       gossip.StoreConfig
+	U2U            gossip.Config
+	U2UStore       gossip.StoreConfig
 	Hashgraph      consensus.Config
 	HashgraphStore consensus.StoreConfig
 	VectorClock    vecmt.IndexConfig
@@ -68,7 +68,7 @@ func mustOpenDB(producer u2udb.DBProducer, name string) u2udb.Store {
 }
 
 func getStores(producer u2udb.FlushableDBProducer, cfg Configs) (*gossip.Store, *consensus.Store) {
-	gdb := gossip.NewStore(producer, cfg.U2uStore)
+	gdb := gossip.NewStore(producer, cfg.U2UStore)
 
 	cMainDb := mustOpenDB(producer, "hashgraph")
 	cGetEpochDB := func(epoch idx.Epoch) u2udb.Store {

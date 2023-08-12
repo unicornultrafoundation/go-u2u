@@ -234,7 +234,7 @@ func newService(config Config, store *Store, blockProc BlockProc, engine utypes.
 	// init dialCandidates
 	dnsclient := dnsdisc.NewClient(dnsdisc.Config{})
 	var err error
-	svc.u2uDialCandidates, err = dnsclient.NewIterator(config.U2uDiscoveryURLs...)
+	svc.u2uDialCandidates, err = dnsclient.NewIterator(config.U2UDiscoveryURLs...)
 	if err != nil {
 		return nil, err
 	}

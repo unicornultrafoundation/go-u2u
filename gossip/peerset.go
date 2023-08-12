@@ -39,9 +39,9 @@ var (
 	// a peer set, but no peer with the given id exists.
 	errPeerNotRegistered = errors.New("peer not registered")
 
-	// errSnapWithoutU2u is returned if a peer attempts to connect only on the
+	// errSnapWithoutU2U is returned if a peer attempts to connect only on the
 	// snap protocol without advertizing the u2u main protocol.
-	errSnapWithoutU2u = errors.New("peer connected on snap without compatible u2u support")
+	errSnapWithoutU2U = errors.New("peer connected on snap without compatible u2u support")
 )
 
 // peerSet represents the collection of active peers currently participating in
@@ -72,7 +72,7 @@ func newPeerSet() *peerSet {
 func (ps *peerSet) RegisterSnapExtension(peer *snap.Peer) error {
 	// Reject the peer if it is not eligible for a snap protocol
 	if !eligibleForSnap(peer.Peer) {
-		return errSnapWithoutU2u
+		return errSnapWithoutU2U
 	}
 	// Ensure nobody can double connect
 	ps.lock.Lock()

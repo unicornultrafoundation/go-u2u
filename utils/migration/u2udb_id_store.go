@@ -5,22 +5,22 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 )
 
-// U2udbIDStore stores id
-type U2udbIDStore struct {
+// U2UdbIDStore stores id
+type U2UdbIDStore struct {
 	table u2udb.Store
 	key   []byte
 }
 
-// NewU2udbIDStore constructor
-func NewU2udbIDStore(table u2udb.Store) *U2udbIDStore {
-	return &U2udbIDStore{
+// NewU2UdbIDStore constructor
+func NewU2UdbIDStore(table u2udb.Store) *U2UdbIDStore {
+	return &U2UdbIDStore{
 		table: table,
 		key:   []byte("id"),
 	}
 }
 
 // GetID is a getter
-func (p *U2udbIDStore) GetID() string {
+func (p *U2UdbIDStore) GetID() string {
 	id, err := p.table.Get(p.key)
 	if err != nil {
 		log.Crit("Failed to get key-value", "err", err)
@@ -33,7 +33,7 @@ func (p *U2udbIDStore) GetID() string {
 }
 
 // SetID is a setter
-func (p *U2udbIDStore) SetID(id string) {
+func (p *U2UdbIDStore) SetID(id string) {
 	err := p.table.Put(p.key, []byte(id))
 	if err != nil {
 		log.Crit("Failed to put key-value", "err", err)

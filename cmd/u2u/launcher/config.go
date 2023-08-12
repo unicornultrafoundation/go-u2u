@@ -163,7 +163,7 @@ var tomlSettings = toml.Config{
 
 type config struct {
 	Node           node.Config
-	U2u            gossip.Config
+	U2U            gossip.Config
 	Emitter        emitter.Config
 	TxPool         evmcore.TxPoolConfig
 	U2UStore       gossip.StoreConfig
@@ -175,8 +175,8 @@ type config struct {
 
 func (c *config) AppConfigs() integration.Configs {
 	return integration.Configs{
-		U2u:            c.U2u,
-		U2uStore:       c.U2UStore,
+		U2U:            c.U2U,
+		U2UStore:       c.U2UStore,
 		Hashgraph:      c.Hashgraph,
 		HashgraphStore: c.HashgraphStore,
 		VectorClock:    c.VectorClock,
@@ -232,7 +232,7 @@ func mayGetGenesisStore(ctx *cli.Context) *genesisstore.Store {
 				NetworkID:   g.NetworkID,
 				NetworkName: g.NetworkName,
 			}
-			for _, allowed := range AllowedU2uGenesis {
+			for _, allowed := range AllowedU2UGenesis {
 				if allowed.Hashes.Equal(genesisHashes) && allowed.Header.Equal(gHeader) {
 					log.Info("Genesis file is a known preset", "name", allowed.Name)
 					goto notExperimental
@@ -472,7 +472,7 @@ func mayMakeAllConfigs(ctx *cli.Context) (*config, error) {
 	cacheRatio := cacheScaler(ctx)
 	cfg := config{
 		Node:           defaultNodeConfig(),
-		U2u:            gossip.DefaultConfig(cacheRatio),
+		U2U:            gossip.DefaultConfig(cacheRatio),
 		Emitter:        emitter.DefaultConfig(),
 		TxPool:         evmcore.DefaultTxPoolConfig,
 		U2UStore:       gossip.DefaultStoreConfig(cacheRatio),
@@ -500,7 +500,7 @@ func mayMakeAllConfigs(ctx *cli.Context) (*config, error) {
 
 	// Apply flags (high priority)
 	var err error
-	cfg.U2u, err = gossipConfigWithFlags(ctx, cfg.U2u)
+	cfg.U2U, err = gossipConfigWithFlags(ctx, cfg.U2U)
 	if err != nil {
 		return nil, err
 	}
@@ -523,7 +523,7 @@ func mayMakeAllConfigs(ctx *cli.Context) (*config, error) {
 	// Process DBs defaults in the end because they are applied only in absence of config or flags
 	cfg = setDBConfigDefault(cfg, cacheRatio)
 
-	if err := cfg.U2u.Validate(); err != nil {
+	if err := cfg.U2U.Validate(); err != nil {
 		return nil, err
 	}
 

@@ -17,8 +17,10 @@ import (
 
 func copyBvs(bvs native.LlrSignedBlockVotes) native.LlrSignedBlockVotes {
 	cp := make([]hash.Hash, 0, len(bvs.Val.Votes))
-	cp = append(cp, bvs.Val.Votes...)
-	cp = bvs.Val.Votes
+	for _, v := range bvs.Val.Votes {
+		cp = append(cp, v)
+	}
+	bvs.Val.Votes = cp
 	return bvs
 }
 

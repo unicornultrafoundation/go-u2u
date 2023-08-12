@@ -1,13 +1,10 @@
 #!/usr/bin/env bash
 cd $(dirname $0)
 
-NETWORK=u2u
+NETWORK=testnet_default
 CONF=prometheus/prometheus.yml
 
 set -e
-
-docker network inspect ${NETWORK} &>/dev/null || \
-docker network create ${NETWORK}
 
 cat << HEADER > $CONF
 global:
@@ -16,11 +13,15 @@ global:
 
 scrape_configs:
 HEADER
-cat << NODE >> $CONF
-  - job_name: 'prometheus'
+
+docker ps -f network=${NETWORK} --format '{{.Names}}' | while read svc
+do
+    cat << NODE >> $CONF
+  - job_name: '$svc'
     static_configs:
-      - targets: ['prometheus:19090']
+      - targets: ['$svc:19090']
 NODE
+done
 
 echo -e "\nStart Prometheus:\n"
 

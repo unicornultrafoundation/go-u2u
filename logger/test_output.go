@@ -15,7 +15,7 @@ func SetTestMode(t testing.TB) {
 // TestHandler writes into test log.
 func TestHandler(t testing.TB, fmtr log.Format) log.Handler {
 	return log.FuncHandler(func(r *log.Record) error {
-		t.Log(string(fmtr.Format(r)))
+		//t.Log(string(fmtr.Format(r)))
 		return nil
 	})
 }

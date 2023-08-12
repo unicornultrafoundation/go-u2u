@@ -7,7 +7,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/deckarep/golang-set v1.7.1
 	github.com/docker/docker v1.13.1
-	github.com/dvyukov/go-fuzz v0.0.0-20201127111758-49e582c6c23d
+	github.com/dvyukov/go-fuzz v0.0.0-20230614170735-95bc4d742dfa
 	github.com/ethereum/go-ethereum v1.12.0
 	github.com/evalphobia/logrus_sentry v0.8.2
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5

@@ -122,7 +122,7 @@ var (
 	// TxTracerFlag enables transaction tracing recording
 	EnableTxTracerFlag = cli.BoolFlag{
 		Name:  "enabletxtracer",
-		Usage: "If present, than this node records inner transaction traces",
+		Usage: "DO NOT RUN THIS OPTION AS VALIDATOR. Enable node records inner transaction traces for debugging purpose",
 	}
 
 	DBMigrationModeFlag = cli.StringFlag{

@@ -5,20 +5,14 @@ import (
 	"path/filepath"
 	"sync/atomic"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/metrics"
-	cli "gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/monitoring/prometheus"
 )
 
-func SetupPrometheus(ctx *cli.Context) {
-	if !metrics.Enabled {
-		return
-	}
+func SetupPrometheus(endpoint string) {
 	prometheus.SetNamespace("u2u")
-	var endpoint = ctx.GlobalString(utils.MetricsPrometheusEndpointFlag.Name)
 	prometheus.PrometheusListener(endpoint, nil)
 }
 

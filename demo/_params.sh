@@ -7,6 +7,7 @@ declare -r  TAG="${TAG:-latest}"
 PORT_BASE=3000
 RPCP_BASE=4000
 WSP_BASE=4500
+PPROFP_BASE=6000
 
 attach_and_exec() {
     local i=$1

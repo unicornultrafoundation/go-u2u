@@ -126,6 +126,9 @@ func initFlags() {
 		DBPresetFlag,
 		DBMigrationModeFlag,
 		EnableTxTracerFlag,
+		EnableMonitorFlag,
+		PrometheusMonitoringAdrrFlag,
+		PrometheusMonitoringPortFlag,
 	}
 
 	rpcFlags = []cli.Flag{
@@ -167,7 +170,6 @@ func initFlags() {
 		utils.MetricsInfluxDBTokenFlag,
 		utils.MetricsInfluxDBBucketFlag,
 		utils.MetricsInfluxDBOrganizationFlag,
-		utils.MetricsPrometheusEndpointFlag,
 		tracing.EnableFlag,
 	}
 
@@ -235,7 +237,6 @@ func init() {
 
 		// Start metrics export if enabled
 		utils.SetupMetrics(ctx)
-		monitoring.SetupPrometheus(ctx)
 		// Start system runtime metrics collection
 		go evmetrics.CollectProcessMetrics(3 * time.Second)
 		return nil
@@ -293,6 +294,7 @@ func makeNode(ctx *cli.Context, cfg *config, genesisStore *genesisstore.Store) (
 		_ = genesisStore.Close()
 	}
 	metrics.SetDataDir(cfg.Node.DataDir)
+	monitoring.SetupPrometheus(fmt.Sprintf("%s:%d", cfg.Monitoring.HTTP, cfg.Monitoring.Port))
 	monitoring.SetDataDirMonitor(cfg.Node.DataDir)
 	memorizeDBPreset(cfg)
 

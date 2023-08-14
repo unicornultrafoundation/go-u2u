@@ -17,6 +17,7 @@ do
     PORT=$(($PORT_BASE+$i))
     RPCP=$(($RPCP_BASE+$i))
     WSP=$(($WSP_BASE+$i))
+    PPROFP=$(($PPROFP_BASE+$i))
     ACC=$(($i+1))
     (../build/demo_u2u \
 	--datadir=${DATADIR} \
@@ -25,7 +26,8 @@ do
 	--nat extip:127.0.0.1 \
 	--http --http.addr="127.0.0.1" --http.port=${RPCP} --http.corsdomain="*" --http.api="eth,debug,net,admin,web3,personal,txpool,dag" \
 	--ws --ws.addr="127.0.0.1" --ws.port=${WSP} --ws.origins="*" --ws.api="eth,debug,net,admin,web3,personal,txpool,dag" \
-	--verbosity=3 --tracing >> u2u$i.log 2>&1)&
+    --pprof --pprof.addr="127.0.0.1" --pprof.port=${PPROFP} \
+	--verbosity=3 --tracing --metrics >> u2u$i.log 2>&1)&
 
     echo -e "\tnode$i ok"
 done

@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 cd $(dirname $0)
 
-NETWORK=testnet_default
-CONF=prometheus/prometheus.yml
+. ../_params.sh
 
 set -e
 
@@ -14,7 +13,7 @@ global:
 scrape_configs:
 HEADER
 
-docker ps -f network=${NETWORK} --format '{{.Names}}' | while read svc
+docker ps -f network=${DEVNET_NETWORK} --format '{{.Names}}' | while read svc
 do
     cat << NODE >> $CONF
   - job_name: '$svc'
@@ -26,7 +25,7 @@ done
 echo -e "\nStart Prometheus:\n"
 
 docker run --rm -d --name=prometheus \
-    --net=${NETWORK} \
+    --net=${DEVNET_NETWORK} \
     -p 9090:9090 \
     -v ${PWD}/${CONF}:/etc/prometheus/${CONF} \
     prom/prometheus

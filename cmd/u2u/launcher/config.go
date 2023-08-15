@@ -33,6 +33,7 @@ import (
 	futils "github.com/unicornultrafoundation/go-u2u/utils"
 	"github.com/unicornultrafoundation/go-u2u/utils/memory"
 	"github.com/unicornultrafoundation/go-u2u/vecmt"
+	"github.com/unicornultrafoundation/go-u2u/monitoring"
 )
 
 var (
@@ -133,6 +134,17 @@ var (
 		Name:  "db.preset",
 		Usage: "DBs layout preset ('pebble' or 'legacy-pebble')",
 	}
+
+	// MonitoringFlag defines APIs endpoint to mornitor metrics
+	EnableMonitorFlag = cli.BoolFlag{
+		Name:  "monitor",
+		Usage: "Enable the monitor servers",
+	}
+	PrometheusMonitoringPortFlag = cli.IntFlag{
+		Name:  "monitor.prometheus.port",
+		Usage: "Opens Prometheus API port to mornitor metrics",
+		Value: monitoring.DefaultConfig.Port,
+	}
 )
 
 type GenesisTemplate struct {
@@ -171,6 +183,7 @@ type config struct {
 	HashgraphStore consensus.StoreConfig
 	VectorClock    vecmt.IndexConfig
 	DBs            integration.DBsConfig
+	Monitoring     monitoring.Config
 }
 
 func (c *config) AppConfigs() integration.Configs {
@@ -432,6 +445,13 @@ func setDBConfigDefault(cfg config, cacheRatio cachescale.Func) config {
 	return cfg
 }
 
+func setMonitoringConfig(ctx *cli.Context, cfg monitoring.Config) monitoring.Config {
+	// apply config for monitoring
+	cfg.Port = ctx.GlobalInt(PrometheusMonitoringPortFlag.Name)
+
+	return cfg
+}
+
 func nodeConfigWithFlags(ctx *cli.Context, cfg node.Config) node.Config {
 	utils.SetNodeConfig(ctx, &cfg)
 
@@ -529,6 +549,10 @@ func mayMakeAllConfigs(ctx *cli.Context) (*config, error) {
 
 	if ctx.GlobalIsSet(EnableTxTracerFlag.Name) {
 		cfg.U2UStore.TraceTransactions = true
+	}
+
+	if ctx.GlobalIsSet(EnableMonitorFlag.Name) {
+		cfg.Monitoring = setMonitoringConfig(ctx, cfg.Monitoring)
 	}
 
 	return &cfg, nil

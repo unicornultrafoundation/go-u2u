@@ -160,8 +160,8 @@ func consensusCallbackBeginBlockFn(
 									}
 								}
 							} else {
-								actualRecord := store.GetFullBlockRecord(proof.Block)
-								if actualRecord != nil && proof.GetVote(0) != actualRecord.Hash() {
+								actualBlockRecordHash := store.GetBlockRecordHash(proof.Block)
+								if actualBlockRecordHash != nil && proof.GetVote(0) != *actualBlockRecordHash {
 									for _, pal := range proof.Pals {
 										reportCheater(e.Creator(), pal.Signed.Locator.Creator)
 									}

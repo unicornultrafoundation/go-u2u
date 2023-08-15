@@ -76,7 +76,8 @@ type Store struct {
 		EventIDs               *eventid.Cache
 		EventsHeaders          *wlru.Cache  `cache:"-"` // store by pointer
 		Blocks                 *wlru.Cache  `cache:"-"` // store by pointer
-		BlockHashes            *wlru.Cache  `cache:"-"` // store by pointer
+		BlockHashes            *wlru.Cache  `cache:"-"` // store by value
+		BlockRecordHashes      *wlru.Cache  `cache:"-"` // store by value
 		EvmBlocks              *wlru.Cache  `cache:"-"` // store by pointer
 		BlockEpochStateHistory *wlru.Cache  `cache:"-"` // store by pointer
 		BlockEpochState        atomic.Value // store by value
@@ -145,6 +146,7 @@ func (s *Store) initCache() {
 	blockHashesNum := s.cfg.Cache.BlocksNum
 	blockHashesCacheSize := nominalSize * uint(blockHashesNum)
 	s.cache.BlockHashes = s.makeCache(blockHashesCacheSize, blockHashesNum)
+	s.cache.BlockRecordHashes = s.makeCache(blockHashesCacheSize, blockHashesNum)
 
 	eventsHeadersNum := s.cfg.Cache.EventsNum
 	eventsHeadersCacheSize := nominalSize * uint(eventsHeadersNum)

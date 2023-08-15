@@ -21,7 +21,6 @@ import (
 
 	evmetrics "github.com/ethereum/go-ethereum/metrics"
 
-	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/metrics"
 	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/monitoring"
 	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/tracing"
 	"github.com/unicornultrafoundation/go-u2u/debug"
@@ -126,6 +125,8 @@ func initFlags() {
 		DBPresetFlag,
 		DBMigrationModeFlag,
 		EnableTxTracerFlag,
+		EnableMonitorFlag,
+		PrometheusMonitoringPortFlag,
 	}
 
 	rpcFlags = []cli.Flag{
@@ -167,7 +168,6 @@ func initFlags() {
 		utils.MetricsInfluxDBTokenFlag,
 		utils.MetricsInfluxDBBucketFlag,
 		utils.MetricsInfluxDBOrganizationFlag,
-		utils.MetricsPrometheusEndpointFlag,
 		tracing.EnableFlag,
 	}
 
@@ -235,7 +235,6 @@ func init() {
 
 		// Start metrics export if enabled
 		utils.SetupMetrics(ctx)
-		monitoring.SetupPrometheus(ctx)
 		// Start system runtime metrics collection
 		go evmetrics.CollectProcessMetrics(3 * time.Second)
 		return nil
@@ -292,8 +291,10 @@ func makeNode(ctx *cli.Context, cfg *config, genesisStore *genesisstore.Store) (
 	if genesisStore != nil {
 		_ = genesisStore.Close()
 	}
-	metrics.SetDataDir(cfg.Node.DataDir)
-	monitoring.SetDataDirMonitor(cfg.Node.DataDir)
+
+	monitoring.SetupPrometheus(fmt.Sprintf(":%d", cfg.Monitoring.Port))
+	monitoring.SetDataDir(cfg.Node.DataDir)
+	
 	memorizeDBPreset(cfg)
 
 	// substitute default bootnodes if requested

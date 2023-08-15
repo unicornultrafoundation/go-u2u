@@ -136,6 +136,24 @@ func (s *Store) GetFullBlockRecord(n idx.Block) *ibr.LlrFullBlockRecord {
 	}
 }
 
+func (s *Store) GetBlockRecordHash(n idx.Block) *hash.Hash {
+	// Get data from LRU cache first.
+	if s.cache.BlockRecordHashes != nil {
+		if c, ok := s.cache.BlockRecordHashes.Get(n); ok {
+			h := c.(hash.Hash)
+			return &h
+		}
+	}
+	blockRecord := s.GetFullBlockRecord(n)
+	if blockRecord == nil {
+		return nil
+	}
+	blockRecordHash := blockRecord.Hash()
+	// Add to LRU cache.
+	s.cache.BlockRecordHashes.Add(n, blockRecordHash, nominalSize)
+	return &blockRecordHash
+}
+
 func (s *Store) GetFullEpochRecord(epoch idx.Epoch) *ier.LlrFullEpochRecord {
 	hbs, hes := s.GetHistoryBlockEpochState(epoch)
 	if hbs == nil || hes == nil {

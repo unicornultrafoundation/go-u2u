@@ -3,7 +3,9 @@ package monitoring
 import (
 	"os"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/metrics"
@@ -11,39 +13,68 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/monitoring/prometheus"
 )
 
+var once sync.Once
+
 func SetupPrometheus(endpoint string) {
 	prometheus.SetNamespace("u2u")
 	prometheus.PrometheusListener(endpoint, nil)
 }
 
-var (
-	// TODO: refactor it
-	dbDirMonitor        atomic.Value
-	dbSizeMetricMonitor = metrics.NewRegisteredFunctionalGauge("db_size", nil, measureDbDirMonitor)
-)
-
-func SetDataDirMonitor(datadir string) {
-	dbDirMonitor.Store(datadir)
+func SetDataDir(datadir string) {
+	once.Do(func() {
+		go measureDbDir("db_size", datadir)
+	})
 }
 
-func measureDbDirMonitor() (size int64) {
-	datadir, ok := dbDirMonitor.Load().(string)
-	if !ok || datadir == "" || datadir == "inmemory" {
-		return
-	}
+func measureDbDir(name, datadir string) {
+	var (
+		dbSize int64
+		gauge  metrics.Gauge
+		rescan = (len(datadir) > 0 && datadir != "inmemory")
+	)
+	for {
+		time.Sleep(time.Second)
 
-	err := filepath.Walk(datadir, func(_ string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
+		if rescan {
+			size := sizeOfDir(datadir)
+			atomic.StoreInt64(&dbSize, size)
 		}
-		if !info.IsDir() {
+
+		if gauge == nil {
+			gauge = metrics.NewRegisteredFunctionalGauge(name, nil, func() int64 {
+				return atomic.LoadInt64(&dbSize)
+			})
+		}
+
+		if !rescan {
+			break
+		}
+	}
+}
+
+func sizeOfDir(dir string) (size int64) {
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			log.Debug("datadir walk", "path", path, "err", err)
+			return filepath.SkipDir
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		dst, err := filepath.EvalSymlinks(path)
+		if err == nil && dst != path {
+			size += sizeOfDir(dst)
+		} else {
 			size += info.Size()
 		}
-		return err
+
+		return nil
 	})
+
 	if err != nil {
-		log.Error("filepath.Walk", "path", datadir, "err", err)
-		return 0
+		log.Debug("datadir walk", "path", dir, "err", err)
 	}
 
 	return

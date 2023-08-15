@@ -140,11 +140,6 @@ var (
 		Name:  "monitor",
 		Usage: "Enable the monitor servers",
 	}
-	PrometheusMonitoringAdrrFlag = cli.StringFlag{
-		Name:  "monitor.prometheus.addr",
-		Usage: "Opens Prometheus API address to mornitor metrics",
-		Value: "127.0.0.1",
-	}
 	PrometheusMonitoringPortFlag = cli.IntFlag{
 		Name:  "monitor.prometheus.port",
 		Usage: "Opens Prometheus API port to mornitor metrics",
@@ -452,7 +447,6 @@ func setDBConfigDefault(cfg config, cacheRatio cachescale.Func) config {
 
 func setMonitoringConfig(ctx *cli.Context, cfg monitoring.Config) monitoring.Config {
 	// apply config for monitoring
-	cfg.HTTP = ctx.GlobalString(PrometheusMonitoringAdrrFlag.Name)
 	cfg.Port = ctx.GlobalInt(PrometheusMonitoringPortFlag.Name)
 
 	return cfg

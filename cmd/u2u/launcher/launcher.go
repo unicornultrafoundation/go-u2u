@@ -21,7 +21,6 @@ import (
 
 	evmetrics "github.com/ethereum/go-ethereum/metrics"
 
-	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/metrics"
 	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/monitoring"
 	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/tracing"
 	"github.com/unicornultrafoundation/go-u2u/debug"
@@ -127,7 +126,6 @@ func initFlags() {
 		DBMigrationModeFlag,
 		EnableTxTracerFlag,
 		EnableMonitorFlag,
-		PrometheusMonitoringAdrrFlag,
 		PrometheusMonitoringPortFlag,
 	}
 
@@ -293,9 +291,10 @@ func makeNode(ctx *cli.Context, cfg *config, genesisStore *genesisstore.Store) (
 	if genesisStore != nil {
 		_ = genesisStore.Close()
 	}
-	metrics.SetDataDir(cfg.Node.DataDir)
-	monitoring.SetupPrometheus(fmt.Sprintf("%s:%d", cfg.Monitoring.HTTP, cfg.Monitoring.Port))
-	monitoring.SetDataDirMonitor(cfg.Node.DataDir)
+
+	monitoring.SetupPrometheus(fmt.Sprintf(":%d", cfg.Monitoring.Port))
+	monitoring.SetDataDir(cfg.Node.DataDir)
+	
 	memorizeDBPreset(cfg)
 
 	// substitute default bootnodes if requested

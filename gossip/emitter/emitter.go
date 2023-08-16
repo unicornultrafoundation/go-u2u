@@ -212,11 +212,7 @@ func (em *Emitter) getSortedTxs() *types.TransactionsByPriceAndNonce {
 		return em.cache.sortedTxs.Copy()
 	}
 	// Build the cache
-	pendingTxs, err := em.world.TxPool.Pending(true)
-	if err != nil {
-		em.Log.Error("Tx pool transactions fetching error", "err", err)
-		return nil
-	}
+	pendingTxs := em.world.TxPool.Pending(true)
 	for from, txs := range pendingTxs {
 		// Filter the excessive transactions from each sender
 		if len(txs) > em.config.MaxTxsPerAddress {

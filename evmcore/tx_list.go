@@ -21,6 +21,8 @@ import (
 	"math"
 	"math/big"
 	"sort"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -43,6 +45,7 @@ func (h *nonceHeap) Pop() interface{} {
 	old := *h
 	n := len(old)
 	x := old[n-1]
+	old[n-1] = 0
 	*h = old[0 : n-1]
 	return x
 }
@@ -251,24 +254,26 @@ type txList struct {
 	strict bool         // Whether nonces are strictly continuous or not
 	txs    *txSortedMap // Heap indexed sorted hash map of the transactions
 
-	costcap *big.Int // Price of the highest costing transaction (reset only if exceeds balance)
-	gascap  uint64   // Gas limit of the highest spending transaction (reset only if exceeds block limit)
+	costcap   *big.Int // Price of the highest costing transaction (reset only if exceeds balance)
+	gascap    uint64   // Gas limit of the highest spending transaction (reset only if exceeds block limit)
+	totalcost *big.Int // Total cost of all transactions in the list
 }
 
-// newTxList create a new transaction list for maintaining nonce-indexable fast,
+// newList create a new transaction list for maintaining nonce-indexable fast,
 // gapped, sortable transaction lists.
 func newTxList(strict bool) *txList {
 	return &txList{
-		strict:  strict,
-		txs:     newTxSortedMap(),
-		costcap: new(big.Int),
+		strict:    strict,
+		txs:       newTxSortedMap(),
+		costcap:   new(big.Int),
+		totalcost: new(big.Int),
 	}
 }
 
-// Overlaps returns whether the transaction specified has the same nonce as one
-// already contained within the list.
-func (l *txList) Overlaps(tx *types.Transaction) bool {
-	return l.txs.Get(tx.Nonce()) != nil
+// Contains returns whether the  list contains a transaction
+// with the provided nonce.
+func (l *txList) Contains(nonce uint64) bool {
+	return l.txs.Get(nonce) != nil
 }
 
 // Add tries to insert a new transaction into the list, returning whether the
@@ -293,13 +298,17 @@ func (l *txList) Add(tx *types.Transaction, priceBump uint64) (bool, *types.Tran
 		thresholdFeeCap := aFeeCap.Div(aFeeCap, b)
 		thresholdTip := aTip.Div(aTip, b)
 
-		// Have to ensure that either the new fee cap or tip is higher than the
+		// We have to ensure that both the new fee cap and tip are higher than the
 		// old ones as well as checking the percentage threshold to ensure that
-		// this is accurate for low (Wei-level) gas price replacements
+		// this is accurate for low (Wei-level) gas price replacements.
 		if tx.GasFeeCapIntCmp(thresholdFeeCap) < 0 || tx.GasTipCapIntCmp(thresholdTip) < 0 {
 			return false, nil
 		}
+		// Old is being replaced, subtract old cost
+		l.subTotalCost([]*types.Transaction{old})
 	}
+	// Add new tx cost to totalcost
+	l.totalcost.Add(l.totalcost, tx.Cost())
 	// Otherwise overwrite the old transaction with the current one
 	l.txs.Put(tx)
 	if cost := tx.Cost(); l.costcap.Cmp(cost) < 0 {
@@ -315,7 +324,9 @@ func (l *txList) Add(tx *types.Transaction, priceBump uint64) (bool, *types.Tran
 // provided threshold. Every removed transaction is returned for any post-removal
 // maintenance.
 func (l *txList) Forward(threshold uint64) types.Transactions {
-	return l.txs.Forward(threshold)
+	txs := l.txs.Forward(threshold)
+	l.subTotalCost(txs)
+	return txs
 }
 
 // Filter removes all transactions from the list with a cost or gas limit higher
@@ -354,6 +365,9 @@ func (l *txList) Filter(costLimit *big.Int, gasLimit uint64) (types.Transactions
 		}
 		invalids = l.txs.filter(func(tx *types.Transaction) bool { return tx.Nonce() > lowest })
 	}
+	// Reset total cost
+	l.subTotalCost(removed)
+	l.subTotalCost(invalids)
 	l.txs.reheap()
 	return removed, invalids
 }
@@ -361,7 +375,9 @@ func (l *txList) Filter(costLimit *big.Int, gasLimit uint64) (types.Transactions
 // Cap places a hard limit on the number of items, returning all transactions
 // exceeding that limit.
 func (l *txList) Cap(threshold int) types.Transactions {
-	return l.txs.Cap(threshold)
+	txs := l.txs.Cap(threshold)
+	l.subTotalCost(txs)
+	return txs
 }
 
 // Remove deletes a transaction from the maintained list, returning whether the
@@ -373,9 +389,12 @@ func (l *txList) Remove(tx *types.Transaction) (bool, types.Transactions) {
 	if removed := l.txs.Remove(nonce); !removed {
 		return false, nil
 	}
+	l.subTotalCost([]*types.Transaction{tx})
 	// In strict mode, filter out non-executable transactions
 	if l.strict {
-		return true, l.txs.Filter(func(tx *types.Transaction) bool { return tx.Nonce() > nonce })
+		txs := l.txs.Filter(func(tx *types.Transaction) bool { return tx.Nonce() > nonce })
+		l.subTotalCost(txs)
+		return true, txs
 	}
 	return true, nil
 }
@@ -388,7 +407,9 @@ func (l *txList) Remove(tx *types.Transaction) (bool, types.Transactions) {
 // prevent getting into and invalid state. This is not something that should ever
 // happen but better to be self correcting than failing!
 func (l *txList) Ready(start uint64) types.Transactions {
-	return l.txs.Ready(start)
+	txs := l.txs.Ready(start)
+	l.subTotalCost(txs)
+	return txs
 }
 
 // Len returns the length of the transaction list.
@@ -412,6 +433,14 @@ func (l *txList) Flatten() types.Transactions {
 // transaction with the highest nonce
 func (l *txList) LastElement() *types.Transaction {
 	return l.txs.LastElement()
+}
+
+// subTotalCost subtracts the cost of the given transactions from the
+// total cost of all transactions.
+func (l *txList) subTotalCost(txs []*types.Transaction) {
+	for _, tx := range txs {
+		l.totalcost.Sub(l.totalcost, tx.Cost())
+	}
 }
 
 // priceHeap is a heap.Interface implementation over transactions for retrieving
@@ -467,7 +496,7 @@ func (h *priceHeap) Pop() interface{} {
 }
 
 // txPricedList is a price-sorted heap to allow operating on transactions pool
-// contents in a price-incrementing way. It's built opon the all transactions
+// contents in a price-incrementing way. It's built upon the all transactions
 // in txpool but only interested in the remote part. It means only remote transactions
 // will be considered for tracking, sorting, eviction, etc.
 //
@@ -478,9 +507,12 @@ func (h *priceHeap) Pop() interface{} {
 // better candidates for inclusion while in other cases (at the top of the baseFee peak)
 // the floating heap is better. When baseFee is decreasing they behave similarly.
 type txPricedList struct {
-	all              *txLookup // Pointer to the map of all transactions
-	urgent, floating priceHeap // Heaps of prices of all the stored **remote** transactions
-	stales           int       // Number of stale price points to (re-heap trigger)
+	// Number of stale price points to (re-heap trigger).
+	stales atomic.Int64
+
+	all              *txLookup  // Pointer to the map of all transactions
+	urgent, floating priceHeap  // Heaps of prices of all the stored **remote** transactions
+	reheapMu         sync.Mutex // Mutex asserts that only one routine is reheaping the list
 }
 
 const (
@@ -510,8 +542,8 @@ func (l *txPricedList) Put(tx *types.Transaction, local bool) {
 // the heap if a large enough ratio of transactions go stale.
 func (l *txPricedList) Removed(count int) {
 	// Bump the stale counter, but exit if still too low (< 25%)
-	l.stales += count
-	if l.stales <= (len(l.urgent.list)+len(l.floating.list))/4 {
+	stales := l.stales.Add(int64(count))
+	if int(stales) <= (len(l.urgent.list)+len(l.floating.list))/4 {
 		return
 	}
 	// Seems we've reached a critical number of stale transactions, reheap
@@ -535,7 +567,7 @@ func (l *txPricedList) underpricedFor(h *priceHeap, tx *types.Transaction) bool 
 	for len(h.list) > 0 {
 		head := h.list[0]
 		if l.all.GetRemote(head.Hash()) == nil { // Removed or migrated
-			l.stales--
+			l.stales.Add(-1)
 			heap.Pop(h)
 			continue
 		}
@@ -552,16 +584,17 @@ func (l *txPricedList) underpricedFor(h *priceHeap, tx *types.Transaction) bool 
 
 // Discard finds a number of most underpriced transactions, removes them from the
 // priced list and returns them for further removal from the entire pool.
+// If noPending is set to true, we will only consider the floating list
 //
 // Note local transaction won't be considered for eviction.
 func (l *txPricedList) Discard(slots int, force bool) (types.Transactions, bool) {
 	drop := make(types.Transactions, 0, slots) // Remote underpriced transactions to drop
 	for slots > 0 {
-		if len(l.urgent.list)*floatingRatio > len(l.floating.list)*urgentRatio || floatingRatio == 0 {
+		if len(l.urgent.list)*floatingRatio > len(l.floating.list)*urgentRatio {
 			// Discard stale transactions if found during cleanup
 			tx := heap.Pop(&l.urgent).(*types.Transaction)
 			if l.all.GetRemote(tx.Hash()) == nil { // Removed or migrated
-				l.stales--
+				l.stales.Add(-1)
 				continue
 			}
 			// Non stale transaction found, move to floating heap
@@ -574,7 +607,7 @@ func (l *txPricedList) Discard(slots int, force bool) (types.Transactions, bool)
 			// Discard stale transactions if found during cleanup
 			tx := heap.Pop(&l.floating).(*types.Transaction)
 			if l.all.GetRemote(tx.Hash()) == nil { // Removed or migrated
-				l.stales--
+				l.stales.Add(-1)
 				continue
 			}
 			// Non stale transaction found, discard it
@@ -594,8 +627,10 @@ func (l *txPricedList) Discard(slots int, force bool) (types.Transactions, bool)
 
 // Reheap forcibly rebuilds the heap based on the current remote transaction set.
 func (l *txPricedList) Reheap() {
+	l.reheapMu.Lock()
+	defer l.reheapMu.Unlock()
 	start := time.Now()
-	l.stales = 0
+	l.stales.Store(0)
 	l.urgent.list = make([]*types.Transaction, 0, l.all.RemoteCount())
 	l.all.Range(func(hash common.Hash, tx *types.Transaction, local bool) bool {
 		l.urgent.list = append(l.urgent.list, tx)
@@ -620,8 +655,6 @@ func (l *txPricedList) Reheap() {
 // SetBaseFee updates the base fee and triggers a re-heap. Note that Removed is not
 // necessary to call right before SetBaseFee when processing a new block.
 func (l *txPricedList) SetBaseFee(baseFee *big.Int) {
-	if l.urgent.baseFee == nil || l.urgent.baseFee.Cmp(baseFee) != 0 {
-		l.urgent.baseFee = baseFee
-		l.Reheap()
-	}
+	l.urgent.baseFee = baseFee
+	l.Reheap()
 }

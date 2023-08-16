@@ -294,7 +294,7 @@ func makeNode(ctx *cli.Context, cfg *config, genesisStore *genesisstore.Store) (
 
 	monitoring.SetupPrometheus(fmt.Sprintf(":%d", cfg.Monitoring.Port))
 	monitoring.SetDataDir(cfg.Node.DataDir)
-	
+
 	memorizeDBPreset(cfg)
 
 	// substitute default bootnodes if requested

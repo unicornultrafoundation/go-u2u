@@ -61,7 +61,7 @@ func (p *dummyTxPool) ContentFrom(addr common.Address) (types.Transactions, type
 }
 
 // Pending returns all the transactions known to the pool
-func (p *dummyTxPool) Pending(enforceTips bool) (map[common.Address]types.Transactions, error) {
+func (p *dummyTxPool) Pending(enforceTips bool) map[common.Address]types.Transactions {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
@@ -73,7 +73,7 @@ func (p *dummyTxPool) Pending(enforceTips bool) (map[common.Address]types.Transa
 	for _, batch := range batches {
 		sort.Sort(types.TxByNonce(batch))
 	}
-	return batches, nil
+	return batches
 }
 
 func (p *dummyTxPool) SubscribeNewTxsNotify(ch chan<- evmcore.NewTxsNotify) notify.Subscription {

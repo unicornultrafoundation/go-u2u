@@ -35,11 +35,7 @@ func (b *GPOBackend) GetPendingRules() u2u.Rules {
 }
 
 func (b *GPOBackend) PendingTxs() map[common.Address]types.Transactions {
-	txs, err := b.txpool.Pending(false)
-	if err != nil {
-		return map[common.Address]types.Transactions{}
-	}
-	return txs
+	return b.txpool.Pending(false)
 }
 
 // TotalGasPowerLeft returns a total amount of obtained gas power by the validators, according to the latest events from each validator

@@ -441,12 +441,11 @@ func (mr *MockTxPoolMockRecorder) Has(arg0 interface{}) *gomock.Call {
 }
 
 // Pending mocks base method
-func (m *MockTxPool) Pending(arg0 bool) (map[common.Address]types.Transactions, error) {
+func (m *MockTxPool) Pending(arg0 bool) map[common.Address]types.Transactions {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Pending", arg0)
 	ret0, _ := ret[0].(map[common.Address]types.Transactions)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	return ret0
 }
 
 // Pending indicates an expected call of Pending

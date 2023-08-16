@@ -379,10 +379,7 @@ func (b *EthAPIBackend) SubscribeNewTxsNotify(ch chan<- evmcore.NewTxsNotify) no
 }
 
 func (b *EthAPIBackend) GetPoolTransactions() (types.Transactions, error) {
-	pending, err := b.svc.txpool.Pending(false)
-	if err != nil {
-		return nil, err
-	}
+	pending := b.svc.txpool.Pending(false)
 	var txs types.Transactions
 	for _, batch := range pending {
 		txs = append(txs, batch...)

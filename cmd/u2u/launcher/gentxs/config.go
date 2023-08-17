@@ -3,18 +3,14 @@ package gentxs
 import (
 	"errors"
 
-	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/ethereum/go-ethereum/common"
 	"gopkg.in/urfave/cli.v1"
+
+	"github.com/unicornultrafoundation/go-u2u/u2u"
 
 	"github.com/unicornultrafoundation/go-u2u/utils/toml"
 )
 
-var ConfigFileFlag = cli.StringFlag{
-	Name:  "config",
-	Usage: "TOML configuration file",
-	Value: "txsgen.toml",
-}
 
 type Config struct {
 	ChainId int64 // chain id for sign transactions

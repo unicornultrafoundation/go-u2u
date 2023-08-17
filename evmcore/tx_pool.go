@@ -135,6 +135,7 @@ const (
 // StateReader provides the state of blockchain and current gas limit to do
 // some pre checks in tx pool and event subscribers.
 type StateReader interface {
+	Config() *params.ChainConfig
 	CurrentBlock() *EvmBlock
 	GetBlock(hash common.Hash, number uint64) *EvmBlock
 	StateAt(root common.Hash) (*state.StateDB, error)
@@ -142,7 +143,6 @@ type StateReader interface {
 	EffectiveMinTip() *big.Int
 	MaxGasLimit() uint64
 	SubscribeNewBlock(ch chan<- ChainHeadNotify) notify.Subscription
-	Config() *params.ChainConfig
 }
 
 // TxPoolConfig are the configuration parameters of the transaction pool.
@@ -172,12 +172,12 @@ var DefaultTxPoolConfig = TxPoolConfig{
 	PriceLimit: 1,
 	PriceBump:  10,
 
-	AccountSlots: 16,
-	GlobalSlots:  1024 + 256, // urgent + floating queue capacity with 4:1 ratio
-	AccountQueue: 32,
-	GlobalQueue:  256,
+	AccountSlots: 32,
+	GlobalSlots:  2048 + 512, // urgent + floating queue capacity with 4:1 ratio
+	AccountQueue: 128,
+	GlobalQueue:  512,
 
-	Lifetime: 3 * time.Hour,
+	Lifetime: 1 * time.Hour,
 }
 
 // sanitize checks the provided user configurations and changes anything that's

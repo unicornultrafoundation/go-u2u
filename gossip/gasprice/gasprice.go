@@ -22,16 +22,18 @@ import (
 	"sync"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru"
+
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core/types"
-	lru "github.com/hashicorp/golang-lru"
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/params"
+
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/piecefunc"
 
 	"github.com/unicornultrafoundation/go-u2u/u2u"
-
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/params"
 )
 
 var (
@@ -56,7 +58,7 @@ type Reader interface {
 	TotalGasPowerLeft() uint64
 	GetRules() u2u.Rules
 	GetPendingRules() u2u.Rules
-	PendingTxs() types.Transactions
+	PendingTxs() map[common.Address]types.Transactions
 }
 
 type tipCache struct {

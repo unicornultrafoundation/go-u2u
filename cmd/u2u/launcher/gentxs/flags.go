@@ -4,8 +4,8 @@ import (
 	"gopkg.in/urfave/cli.v1"
 )
 
-var ConfigFileFlag = cli.StringFlag{
-	Name:  "config",
+var NetworkConfigFileFlag = cli.StringFlag{
+	Name:  "networkconfig",
 	Usage: "TOML configuration file",
 	Value: "txsgen.toml",
 }
@@ -16,16 +16,10 @@ var TpsLimitFlag = cli.Float64Flag{
 	Value: -1.0,
 }
 
-var KeyStoreDirFlag = cli.StringFlag{
-	Name:  "keystore",
+var AccKeyStoreDirFlag = cli.StringFlag{
+	Name:  "acckeystore",
 	Usage: "Directory for the keystore",
 	Value: "keys_txsgen",
-}
-
-var VerbosityFlag = cli.IntFlag{
-	Name:  "verbosity",
-	Usage: "sets the verbosity level",
-	Value: 3,
 }
 
 var GenerateAccountFlag = cli.IntFlag{
@@ -40,6 +34,10 @@ var GenerateAccountBalanceFlag = cli.IntFlag{
 	Value: 1,
 }
 
+var GenerateTxTransferFlag = cli.StringFlag{
+	Name:  "faketransfers",
+	Usage: "Generates a lot of transfer txs between accounts in the keystore dir (except config.Payer).",
+}
 
 func getTpsLimit(ctx *cli.Context) float64 {
 	return ctx.GlobalFloat64(TpsLimitFlag.Name)

@@ -226,10 +226,17 @@ func (g *BalancesGenerator) transferTx(from, to accounts.Account, amount *big.In
 }
 
 // genesisFakeBalance Only use for fakenet stress testing purpose
-func (g *BalancesGenerator) genesisFakeBalance(amount *big.Int) {
+func (g *BalancesGenerator) genesisFakeBalance(amount *big.Int) error {
+	count := uint(len(g.accs))
+	if count < 1 {
+		return fmt.Errorf("No initial accounts")
+	}
+
 	builder := makegenesis.NewGenesisBuilder(memorydb.NewProducer(""))
 
 	for _, account := range g.accs{
 		builder.AddBalance(account.Address, amount)
 	}
+
+	return nil
 }

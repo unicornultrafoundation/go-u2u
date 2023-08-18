@@ -29,7 +29,7 @@ func DefaultConfig() *Config {
 
 func OpenConfig(ctx *cli.Context) *Config {
 	cfg := DefaultConfig()
-	f := ctx.GlobalString(ConfigFileFlag.Name)
+	f := ctx.GlobalString(NetworkConfigFileFlag.Name)
 	err := cfg.Load(f)
 	if err != nil {
 		panic(err)

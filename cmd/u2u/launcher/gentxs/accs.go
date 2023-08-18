@@ -18,7 +18,7 @@ var (
 )
 
 func makeKeyStore(ctx *cli.Context) (*keystore.KeyStore, error) {
-	keydir := ctx.GlobalString(KeyStoreDirFlag.Name)
+	keydir := ctx.GlobalString(AccKeyStoreDirFlag.Name)
 	keydir, err := filepath.Abs(keydir)
 	if err != nil {
 		return nil, err

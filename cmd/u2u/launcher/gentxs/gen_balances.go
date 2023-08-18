@@ -14,7 +14,11 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 
+	"github.com/unicornultrafoundation/go-hashgraph/u2udb/memorydb"
+
+	"github.com/unicornultrafoundation/go-u2u/integration/makegenesis"
 	"github.com/unicornultrafoundation/go-u2u/logger"
+	
 )
 
 type BalancesGenerator struct {
@@ -218,5 +222,14 @@ func (g *BalancesGenerator) transferTx(from, to accounts.Account, amount *big.In
 
 		err = client.SendTransaction(context.Background(), signed)
 		return signed, err
+	}
+}
+
+// genesisFakeBalance Only use for fakenet stress testing purpose
+func (g *BalancesGenerator) genesisFakeBalance(amount *big.Int) {
+	builder := makegenesis.NewGenesisBuilder(memorydb.NewProducer(""))
+
+	for _, account := range g.accs{
+		builder.AddBalance(account.Address, amount)
 	}
 }

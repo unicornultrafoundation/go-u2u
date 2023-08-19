@@ -186,7 +186,7 @@ func translateGossipPrefix(p byte) byte {
 func migrateLegacyDBs(chaindataDir string, dbs u2udb.FlushableDBProducer, mode string, layout RoutingConfig) error {
 	{ // didn't erase the brackets to avoid massive code changes
 		// migrate DB layout
-		cacheFn, err := dbCacheFdlimit(DBsCacheConfig{
+		cacheFn, err := DbCacheFdlimit(DBsCacheConfig{
 			Table: map[string]DBCacheConfig{
 				"": {
 					Cache:   1024 * opt.MiB,

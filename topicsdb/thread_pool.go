@@ -21,10 +21,9 @@ type threadPool struct {
 
 var globalPool threadPool
 
+// init threadPool only on demand to give time to other packages
+// call debug.SetMaxThreads() if they need
 func (p *threadPool) init() {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
 	if !p.initialized {
 		p.initialized = true
 		p.sum = getMaxThreads() * GoroutinesPerThread
@@ -32,12 +31,16 @@ func (p *threadPool) init() {
 }
 
 func (p *threadPool) Lock(want int) (got int, release func()) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	if !p.initialized {
 		p.init()
 	}
 
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	if want < 1 {
+		want = 0
+	}
 
 	got = min(p.sum, want)
 	p.sum -= got
@@ -112,7 +115,7 @@ func (tt *withThreadPool) ForEachInBlocks(ctx context.Context, from, to idx.Bloc
 		if got <= threads {
 			release()
 			select {
-			case <-time.After(time.Microsecond):
+			case <-time.After(time.Millisecond):
 				continue
 			case <-ctx.Done():
 				return ctx.Err()

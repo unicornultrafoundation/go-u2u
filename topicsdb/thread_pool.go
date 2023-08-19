@@ -11,7 +11,7 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 )
 
-const GoroutinesPerThread = 100
+const GoroutinesPerThread = 0.8
 
 type threadPool struct {
 	mu          sync.Mutex
@@ -26,7 +26,7 @@ var globalPool threadPool
 func (p *threadPool) init() {
 	if !p.initialized {
 		p.initialized = true
-		p.sum = getMaxThreads() * GoroutinesPerThread
+		p.sum = int(getMaxThreads() * GoroutinesPerThread)
 	}
 }
 
@@ -53,10 +53,10 @@ func (p *threadPool) Lock(want int) (got int, release func()) {
 	return
 }
 
-func getMaxThreads() int {
+func getMaxThreads() float64 {
 	was := debug.SetMaxThreads(10000)
 	debug.SetMaxThreads(was)
-	return was
+	return float64(was)
 }
 
 // withThreadPool wraps the index and limits its threads in use

@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"time"
 
+	"gopkg.in/urfave/cli.v1"
+
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
+
 	"github.com/unicornultrafoundation/go-hashgraph/common/bigendian"
 	"github.com/unicornultrafoundation/go-hashgraph/consensus"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
@@ -14,7 +17,6 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/batched"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/flushable"
-	"gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/integration"
@@ -36,7 +38,7 @@ func healDirty(ctx *cli.Context) error {
 	multiProducer := makeDirectDBsProducerFrom(dbTypes, cfg)
 
 	// reverts the gossip database state
-	epochState, err := fixDirtyGossipDb(multiProducer, cfg)
+	epochState, topEpoch, err := fixDirtyGossipDb(multiProducer, cfg)
 	if err != nil {
 		return err
 	}
@@ -44,8 +46,8 @@ func healDirty(ctx *cli.Context) error {
 	// drop epoch-related databases and consensus database
 	log.Info("Removing epoch DBs - will be recreated on next start")
 	for _, name := range []string{
-		fmt.Sprintf("gossip-%d", epochState.Epoch),
-		fmt.Sprintf("hashgraph-%d", epochState.Epoch),
+		fmt.Sprintf("gossip-%d", topEpoch),
+		fmt.Sprintf("hashgraph-%d", topEpoch),
 		"hashgraph",
 	} {
 		err = eraseTable(name, multiProducer)
@@ -60,7 +62,7 @@ func healDirty(ctx *cli.Context) error {
 	cGetEpochDB := func(epoch idx.Epoch) u2udb.Store {
 		return mustOpenDB(multiProducer, fmt.Sprintf("hashgraph-%d", epoch))
 	}
-	cdb := consensus.NewStore(cMainDb, cGetEpochDB, panics("Hashgraph store"), cfg.HashgraphStore)
+	cdb := consensus.NewStore(cMainDb, cGetEpochDB, panics("hashgraph store"), cfg.HashgraphStore)
 	err = cdb.ApplyGenesis(&consensus.Genesis{
 		Epoch:      epochState.Epoch,
 		Validators: epochState.Validators,
@@ -85,14 +87,15 @@ func healDirty(ctx *cli.Context) error {
 
 // fixDirtyGossipDb reverts the gossip database into state, when was one of last epochs sealed
 func fixDirtyGossipDb(producer u2udb.FlushableDBProducer, cfg *config) (
-	epochState *iblockproc.EpochState, err error) {
+	epochState *iblockproc.EpochState, topEpoch idx.Epoch, err error) {
 	gdb := makeGossipStore(producer, cfg) // requires FlushIDKey present (not clean) in all dbs
 	defer gdb.Close()
+	topEpoch = gdb.GetEpoch()
 
 	// find the last closed epoch with the state available
 	epochIdx, blockState, epochState := getLastEpochWithState(gdb, maxEpochsToTry)
 	if blockState == nil || epochState == nil {
-		return nil, fmt.Errorf("state for last %d closed epochs is pruned, recovery isn't possible", maxEpochsToTry)
+		return nil, 0, fmt.Errorf("state for last %d closed epochs is pruned, recovery isn't possible", maxEpochsToTry)
 	}
 
 	// set the historic state to be the current
@@ -111,7 +114,7 @@ func fixDirtyGossipDb(producer u2udb.FlushableDBProducer, cfg *config) (
 		return true
 	})
 
-	return epochState, nil
+	return epochState, topEpoch, nil
 }
 
 // getLastEpochWithState finds the last closed epoch with the state available

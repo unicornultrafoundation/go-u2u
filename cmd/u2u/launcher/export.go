@@ -8,19 +8,23 @@ import (
 	"strings"
 	"time"
 
+	"gopkg.in/urfave/cli.v1"
+
+	"github.com/status-im/keycard-go/hexutils"
+	"github.com/syndtr/goleveldb/leveldb/opt"
+
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/status-im/keycard-go/hexutils"
-	"github.com/syndtr/goleveldb/leveldb/opt"
+
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/batched"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/pebble"
-	"gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip"
+	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/autocompact"
 )
 
 var (
@@ -135,7 +139,7 @@ func exportEvmKeys(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	keysDB := batched.Wrap(keysDB_)
+	keysDB := batched.Wrap(autocompact.Wrap2M(keysDB_, opt.GiB, 16*opt.GiB, true, "evm-keys"))
 	defer keysDB.Close()
 
 	it := gdb.EvmStore().EvmDb.NewIterator(nil, nil)

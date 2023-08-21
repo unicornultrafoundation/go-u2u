@@ -28,12 +28,12 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/gossip/gasprice"
 	"github.com/unicornultrafoundation/go-u2u/integration"
 	"github.com/unicornultrafoundation/go-u2u/integration/makefakegenesis"
+	"github.com/unicornultrafoundation/go-u2u/monitoring"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesis"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesisstore"
 	futils "github.com/unicornultrafoundation/go-u2u/utils"
 	"github.com/unicornultrafoundation/go-u2u/utils/memory"
 	"github.com/unicornultrafoundation/go-u2u/vecmt"
-	"github.com/unicornultrafoundation/go-u2u/monitoring"
 )
 
 var (

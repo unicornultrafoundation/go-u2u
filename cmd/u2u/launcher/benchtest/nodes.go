@@ -1,4 +1,4 @@
-package gentxs
+package benchtest
 
 import (
 	"time"

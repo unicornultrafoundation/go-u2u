@@ -1,4 +1,4 @@
-package gentxs
+package benchtest
 
 import (
 	"github.com/ethereum/go-ethereum/core/types"

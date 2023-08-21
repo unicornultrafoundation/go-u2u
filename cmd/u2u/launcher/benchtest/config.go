@@ -1,4 +1,4 @@
-package gentxs
+package benchtest
 
 import (
 	"errors"
@@ -7,10 +7,8 @@ import (
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/u2u"
-
 	"github.com/unicornultrafoundation/go-u2u/utils/toml"
 )
-
 
 type Config struct {
 	ChainId int64 // chain id for sign transactions
@@ -23,6 +21,8 @@ func DefaultConfig() *Config {
 		ChainId: int64(u2u.FakeNetworkID),
 		URLs: []string{
 			"ws://127.0.0.1:4500",
+			"ws://127.0.0.1:4501",
+			"ws://127.0.0.1:4502",
 		},
 	}
 }
@@ -32,7 +32,7 @@ func OpenConfig(ctx *cli.Context) *Config {
 	f := ctx.GlobalString(NetworkConfigFileFlag.Name)
 	err := cfg.Load(f)
 	if err != nil {
-		panic(err)
+		return cfg
 	}
 	return cfg
 }

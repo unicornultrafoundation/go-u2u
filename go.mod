@@ -38,7 +38,7 @@ require (
 	github.com/tyler-smith/go-bip39 v1.0.2
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/uber/jaeger-lib v2.4.1+incompatible
-	github.com/unicornultrafoundation/go-hashgraph v0.0.0-20230724012326-d3c3a785a9b0
+	github.com/unicornultrafoundation/go-hashgraph v0.0.0-20230821125020-9d4c316445eb
 	golang.org/x/crypto v0.12.0
 	golang.org/x/sys v0.11.0
 	gopkg.in/urfave/cli.v1 v1.20.0
@@ -51,6 +51,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.1.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.1.1 // indirect
 	github.com/aws/smithy-go v1.1.0 // indirect
+	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
 	github.com/mattn/go-ieproxy v0.0.1 // indirect
 	golang.org/x/term v0.11.0 // indirect
 )
@@ -66,7 +67,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cockroachdb/errors v1.9.1 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
-	github.com/cockroachdb/pebble v0.0.0-20230209160836-829675f94811 // indirect
+	github.com/cockroachdb/pebble v0.0.0-20230819001538-1798fbf5956c // indirect
 	github.com/cockroachdb/redact v1.1.3 // indirect
 	github.com/deepmap/oapi-codegen v1.8.2 // indirect
 	github.com/dlclark/regexp2 v1.2.0 // indirect

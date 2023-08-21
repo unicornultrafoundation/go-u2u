@@ -5,7 +5,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
 
 	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"
 	"github.com/unicornultrafoundation/go-u2u/valkeystore/encryption"

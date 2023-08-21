@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/p2p/enode"
+	"github.com/unicornultrafoundation/go-u2u/libs/p2p/enode"
 	"github.com/stretchr/testify/require"
 	"github.com/unicornultrafoundation/go-hashgraph/consensus"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/cachescale"

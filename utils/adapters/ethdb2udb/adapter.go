@@ -1,7 +1,7 @@
 package ethdb2udb
 
 import (
-	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/unicornultrafoundation/go-u2u/libs/ethdb"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 )
 

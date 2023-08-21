@@ -1,8 +1,8 @@
 package driverauth
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/libs/common/hexutil"
 	"github.com/unicornultrafoundation/go-u2u/gossip/contract/driverauth100"
 )
 

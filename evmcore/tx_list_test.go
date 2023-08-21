@@ -21,8 +21,8 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
 )
 
 // Tests that transactions can be added to strict lists and list contents and

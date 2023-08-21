@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
 )
 
 type logHandler func(rec *logrec) (gonext bool, err error)

@@ -3,9 +3,9 @@ package ethapi
 import (
 	"context"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/unicornultrafoundation/go-u2u/libs/rpc"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/libs/common/hexutil"
 )
 
 // PublicAbftAPI provides an API to access consensus related information.

@@ -23,6 +23,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/monitoring"
 	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/tracing"
+	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/benchtest"
 	"github.com/unicornultrafoundation/go-u2u/debug"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/flags"
@@ -64,6 +65,12 @@ func initFlags() {
 	// Flags for testing purpose.
 	testFlags = []cli.Flag{
 		FakeNetFlag,
+		benchtest.NetworkConfigFileFlag,
+		benchtest.TpsLimitFlag,
+		benchtest.AccKeyStoreDirFlag,
+		benchtest.GenerateAccountFlag,
+		benchtest.GenerateAccountBalanceFlag,
+		benchtest.GenerateTxTransferFlag,
 	}
 
 	// Flags that configure the node.
@@ -273,6 +280,12 @@ func hashgraphMain(ctx *cli.Context) error {
 	defer nodeClose()
 	startNode(ctx, node)
 	node.Wait()
+
+	//start fakenet stress test
+	if ctx.GlobalIsSet(FakeNetFlag.Name){
+		benchtest.MakeFakenetFeatures(ctx)
+	}
+
 	return nil
 }
 
@@ -294,7 +307,7 @@ func makeNode(ctx *cli.Context, cfg *config, genesisStore *genesisstore.Store) (
 
 	monitoring.SetupPrometheus(fmt.Sprintf(":%d", cfg.Monitoring.Port))
 	monitoring.SetDataDir(cfg.Node.DataDir)
-	
+
 	memorizeDBPreset(cfg)
 
 	// substitute default bootnodes if requested

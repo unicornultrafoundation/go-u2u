@@ -1,37 +1,29 @@
 package evmstore
 
 import (
-	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/syndtr/goleveldb/leveldb/opt"
+
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/batched"
 
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesis"
+	"github.com/unicornultrafoundation/go-u2u/utils/adapters/ethdb2udb"
+	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/autocompact"
 )
 
 // ApplyGenesis writes initial state.
 func (s *Store) ApplyGenesis(g genesis.Genesis) (err error) {
-	batch := s.EvmDb.NewBatch()
-	defer batch.Reset()
+	db := batched.Wrap(autocompact.Wrap2M(ethdb2udb.Wrap(s.EvmDb), opt.GiB, 16*opt.GiB, true, "evm"))
 	g.RawEvmItems.ForEach(func(key, value []byte) bool {
+		err = db.Put(key, value)
 		if err != nil {
 			return false
-		}
-		err = batch.Put(key, value)
-		if err != nil {
-			return false
-		}
-		if batch.ValueSize() > u2udb.IdealBatchSize {
-			err = batch.Write()
-			if err != nil {
-				return false
-			}
-			batch.Reset()
 		}
 		return true
 	})
 	if err != nil {
 		return err
 	}
-	return batch.Write()
+	return db.Write()
 }
 
 func (s *Store) WrapTablesAsBatched() (unwrap func()) {
@@ -45,7 +37,7 @@ func (s *Store) WrapTablesAsBatched() (unwrap func()) {
 
 	unwrapLogs := s.EvmLogs.WrapTablesAsBatched()
 
-	batchedReceipts := batched.Wrap(s.table.Receipts)
+	batchedReceipts := batched.Wrap(autocompact.Wrap2M(s.table.Receipts, opt.GiB, 16*opt.GiB, false, "receipts"))
 	s.table.Receipts = batchedReceipts
 	return func() {
 		_ = batchedTxs.Flush()

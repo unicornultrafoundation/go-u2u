@@ -26,8 +26,7 @@ func updMetric(median, cur, upd idx.Event, validatorIdx idx.Validator, validator
 	return scalarUpdMetric(upd-median, weight, validators.TotalWeight())
 }
 
-func eventMetric(orig ancestor.Metric, seq idx.Event) ancestor.Metric {
-	metric := ancestor.Metric(eventMetricF(uint64(orig)))
+func kickStartMetric(metric ancestor.Metric, seq idx.Event) ancestor.Metric {
 	// kick start metric in a beginning of epoch, when there's nothing to observe yet
 	if seq <= 2 && metric < 0.9*piecefunc.DecimalUnit {
 		metric += 0.1 * piecefunc.DecimalUnit
@@ -36,6 +35,10 @@ func eventMetric(orig ancestor.Metric, seq idx.Event) ancestor.Metric {
 		metric += 0.2 * piecefunc.DecimalUnit
 	}
 	return metric
+}
+
+func eventMetric(orig ancestor.Metric, seq idx.Event) ancestor.Metric {
+	return kickStartMetric(ancestor.Metric(eventMetricF(uint64(orig))), seq)
 }
 
 func (em *Emitter) isAllowedToEmit(e native.EventI, eTxs bool, metric ancestor.Metric, selfParent *native.Event) bool {

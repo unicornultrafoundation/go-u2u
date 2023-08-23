@@ -8,7 +8,7 @@ import (
 
 // GetContractBin is SFCLib contract genesis implementation bin code
 // Has to be compiled with flag bin-runtime
-// Built from opera-sfc 424031c81a77196f4e9d60c7d876032dd47208ce, solc 0.5.17+commit.d19bba13.Emscripten.clang, optimize-runs 200
+// Built from opera-sfc 76c17565a891e241b09de0a9c1693d0ab3689c17, solc 0.5.17+commit.d19bba13.Emscripten.clang, optimize-runs 200
 func GetContractBin() []byte {
 	return hexutil.MustDecode(sfclib100.ContractBinRuntime)
 }

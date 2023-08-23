@@ -22,16 +22,9 @@ func (em *Emitter) buildSearchStrategies(maxParents idx.Event) []ancestor.Search
 	for idx.Event(len(strategies)) < maxParents/2 {
 		strategies = append(strategies, randStrategy)
 	}
-	if em.fcIndexer != nil {
-		quorumStrategy := em.fcIndexer.SearchStrategy()
-		for idx.Event(len(strategies)) < maxParents {
-			strategies = append(strategies, quorumStrategy)
-		}
-	} else if em.quorumIndexer != nil {
-		quorumStrategy := em.quorumIndexer.SearchStrategy()
-		for idx.Event(len(strategies)) < maxParents {
-			strategies = append(strategies, quorumStrategy)
-		}
+	quorumStrategy := em.quorumIndexer.SearchStrategy()
+	for idx.Event(len(strategies)) < maxParents {
+		strategies = append(strategies, quorumStrategy)
 	}
 	return strategies
 }

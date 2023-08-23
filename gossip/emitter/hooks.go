@@ -8,8 +8,6 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/emitterdriver"
 	"github.com/unicornultrafoundation/go-u2u/utils"
@@ -50,10 +48,8 @@ func (em *Emitter) OnNewEpoch(newValidators *pos.Validators, newEpoch idx.Epoch)
 	var (
 		extMinInterval        time.Duration
 		extConfirmingInterval time.Duration
-		switchToFCIndexer     bool
 	)
 	if statedb != nil {
-		switchToFCIndexer = statedb.GetState(emitterdriver.ContractAddress, utils.U64to256(0)) != (common.Hash{0})
 		extMinInterval = time.Duration(statedb.GetState(emitterdriver.ContractAddress, utils.U64to256(1)).Big().Uint64())
 		extConfirmingInterval = time.Duration(statedb.GetState(emitterdriver.ContractAddress, utils.U64to256(2)).Big().Uint64())
 	}
@@ -69,16 +65,6 @@ func (em *Emitter) OnNewEpoch(newValidators *pos.Validators, newEpoch idx.Epoch)
 	em.globalConfirmingInterval = maxDuration(minDuration(em.config.EmitIntervals.Confirming*20, extConfirmingInterval), em.config.EmitIntervals.Confirming/4)
 	em.recountConfirmingIntervals(newValidators)
 
-	if switchToFCIndexer {
-		em.quorumIndexer = nil
-		em.fcIndexer = ancestor.NewFCIndexer(newValidators, em.world.DagIndex(), em.config.Validator.ID)
-	} else {
-		em.quorumIndexer = ancestor.NewQuorumIndexer(newValidators, vecmt2dagidx.Wrap(em.world.DagIndex()),
-			func(median, current, update idx.Event, validatorIdx idx.Validator) ancestor.Metric {
-				return updMetric(median, current, update, validatorIdx, newValidators)
-			})
-		em.fcIndexer = nil
-	}
 	em.quorumIndexer = ancestor.NewQuorumIndexer(newValidators, vecmt2dagidx.Wrap(em.world.DagIndex()),
 		func(median, current, update idx.Event, validatorIdx idx.Validator) ancestor.Metric {
 			return updMetric(median, current, update, validatorIdx, newValidators)
@@ -91,11 +77,7 @@ func (em *Emitter) OnEventConnected(e native.EventPayloadI) {
 	if !em.isValidator() {
 		return
 	}
-	if em.fcIndexer != nil {
-		em.fcIndexer.ProcessEvent(e)
-	} else if em.quorumIndexer != nil {
-		em.quorumIndexer.ProcessEvent(e, e.Creator() == em.config.Validator.ID)
-	}
+	em.quorumIndexer.ProcessEvent(e, e.Creator() == em.config.Validator.ID)
 	em.payloadIndexer.ProcessEvent(e, ancestor.Metric(e.Txs().Len()))
 	for _, tx := range e.Txs() {
 		addr, _ := types.Sender(em.world.TxSigner, tx)

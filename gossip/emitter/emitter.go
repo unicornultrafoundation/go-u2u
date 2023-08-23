@@ -18,6 +18,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter/originatedtxs"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
 	"github.com/unicornultrafoundation/go-u2u/logger"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/tracing"
@@ -60,9 +61,11 @@ type Emitter struct {
 	prevRecheckedChallenges time.Time
 
 	quorumIndexer  *ancestor.QuorumIndexer
+	fcIndexer      *ancestor.FCIndexer
 	payloadIndexer *ancestor.PayloadIndexer
 
-	intervals EmitIntervals
+	intervals                EmitIntervals
+	globalConfirmingInterval time.Duration
 
 	done chan struct{}
 	wg   sync.WaitGroup
@@ -96,12 +99,13 @@ func NewEmitter(
 
 	txTime, _ := lru.New(TxTimeBufferSize)
 	return &Emitter{
-		config:        config,
-		world:         world,
-		originatedTxs: originatedtxs.New(SenderCountBufferSize),
-		txTime:        txTime,
-		intervals:     config.EmitIntervals,
-		Periodic:      logger.Periodic{Instance: logger.New()},
+		config:                   config,
+		world:                    world,
+		originatedTxs:            originatedtxs.New(SenderCountBufferSize),
+		txTime:                   txTime,
+		intervals:                config.EmitIntervals,
+		globalConfirmingInterval: config.EmitIntervals.Confirming,
+		Periodic:                 logger.Periodic{Instance: logger.New()},
 	}
 }
 
@@ -372,8 +376,22 @@ func (em *Emitter) createEvent(sortedTxs *types.TransactionsByPriceAndNonce) (*n
 	var metric ancestor.Metric
 	err := em.world.Build(mutEvent, func() {
 		// calculate event metric when it is indexed by the vector clock
-		metric = eventMetric(em.quorumIndexer.GetMetricOf(mutEvent.ID()), mutEvent.Seq())
-		metric = overheadAdjustedEventMetricF(em.validators.Len(), uint64(em.busyRate.Rate1()*piecefunc.DecimalUnit), metric)
+		// calculate event metric when it is indexed by the vector clock
+		if em.fcIndexer != nil {
+			pastMe := em.fcIndexer.ValidatorsPastMe()
+			metric = (ancestor.Metric(pastMe) * piecefunc.DecimalUnit) / ancestor.Metric(em.validators.TotalWeight())
+			if pastMe < em.validators.Quorum() {
+				metric /= 15
+			}
+			if metric < 0.03*piecefunc.DecimalUnit {
+				metric = 0.03 * piecefunc.DecimalUnit
+			}
+			metric = overheadAdjustedEventMetricF(em.validators.Len(), uint64(em.busyRate.Rate1()*piecefunc.DecimalUnit), metric)
+			metric = kickStartMetric(metric, mutEvent.Seq())
+		} else if em.quorumIndexer != nil {
+			metric = eventMetric(em.quorumIndexer.GetMetricOf(mutEvent.ID()), mutEvent.Seq())
+			metric = overheadAdjustedEventMetricF(em.validators.Len(), uint64(em.busyRate.Rate1()*piecefunc.DecimalUnit), metric)
+		}
 	})
 	if err != nil {
 		if err == ErrNotEnoughGasPower {

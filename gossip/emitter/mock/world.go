@@ -14,7 +14,6 @@ import (
 	pos "github.com/unicornultrafoundation/go-hashgraph/native/pos"
 	common "github.com/ethereum/go-ethereum/common"
 	types "github.com/ethereum/go-ethereum/core/types"
-	event "github.com/ethereum/go-ethereum/event"
 	gomock "github.com/golang/mock/gomock"
 	big "math/big"
 	reflect "reflect"

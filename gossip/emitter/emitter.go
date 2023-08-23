@@ -10,13 +10,13 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	lru "github.com/hashicorp/golang-lru"
+	
 	"github.com/unicornultrafoundation/go-hashgraph/emitter/ancestor"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/piecefunc"
 
-	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter/originatedtxs"
 	"github.com/unicornultrafoundation/go-u2u/logger"
 	"github.com/unicornultrafoundation/go-u2u/native"
@@ -30,8 +30,6 @@ const (
 )
 
 type Emitter struct {
-	txTime *lru.Cache // tx hash -> tx time
-
 	config Config
 
 	world World
@@ -98,12 +96,10 @@ func NewEmitter(
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	config.EmitIntervals = config.EmitIntervals.RandomizeEmitTime(r)
 
-	txTime, _ := lru.New(TxTimeBufferSize)
 	return &Emitter{
 		config:            config,
 		world:             world,
 		originatedTxs:     originatedtxs.New(SenderCountBufferSize),
-		txTime:            txTime,
 		intervals:         config.EmitIntervals,
 		Periodic:          logger.Periodic{Instance: logger.New()},
 		validatorVersions: make(map[idx.ValidatorID]uint64),
@@ -142,9 +138,6 @@ func (em *Emitter) Start() {
 	em.init()
 	em.done = make(chan struct{})
 
-	newTxsCh := make(chan evmcore.NewTxsNotify)
-	em.world.TxPool.SubscribeNewTxsNotify(newTxsCh)
-
 	done := em.done
 	if em.config.EmitIntervals.Min == 0 {
 		return
@@ -157,8 +150,6 @@ func (em *Emitter) Start() {
 		defer timer.Stop()
 		for {
 			select {
-			case txNotify := <-newTxsCh:
-				em.memorizeTxTimes(txNotify.Txs)
 			case <-timer.C:
 				em.tick()
 			case <-done:

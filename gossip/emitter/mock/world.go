@@ -5,7 +5,6 @@
 package mock
 
 import (
-	evmcore "github.com/unicornultrafoundation/go-u2u/evmcore"
 	native "github.com/unicornultrafoundation/go-u2u/native"
 	validatorpk "github.com/unicornultrafoundation/go-u2u/native/validatorpk"
 	u2u "github.com/unicornultrafoundation/go-u2u/u2u"
@@ -455,13 +454,6 @@ func (mr *MockTxPoolMockRecorder) Pending(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pending", reflect.TypeOf((*MockTxPool)(nil).Pending), arg0)
 }
 
-// SubscribeNewTxsNotify mocks base method
-func (m *MockTxPool) SubscribeNewTxsNotify(arg0 chan<- evmcore.NewTxsNotify) event.Subscription {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SubscribeNewTxsNotify", arg0)
-	ret0, _ := ret[0].(event.Subscription)
-	return ret0
-}
 
 // SubscribeNewTxsNotify indicates an expected call of SubscribeNewTxsNotify
 func (mr *MockTxPoolMockRecorder) SubscribeNewTxsNotify(arg0 interface{}) *gomock.Call {

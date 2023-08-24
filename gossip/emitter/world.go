@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	notify "github.com/ethereum/go-ethereum/event"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
@@ -37,6 +38,8 @@ type (
 		IsBusy() bool
 		IsSynced() bool
 		PeersNum() int
+
+		StateDB() *state.StateDB
 	}
 
 	// aliases for mock generator

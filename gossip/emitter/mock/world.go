@@ -16,6 +16,7 @@ import (
 	common "github.com/ethereum/go-ethereum/common"
 	types "github.com/ethereum/go-ethereum/core/types"
 	event "github.com/ethereum/go-ethereum/event"
+	state "github.com/ethereum/go-ethereum/core/state"
 	gomock "github.com/golang/mock/gomock"
 	big "math/big"
 	reflect "reflect"
@@ -375,6 +376,20 @@ func (m *MockExternal) Process(arg0 *native.EventPayload) error {
 func (mr *MockExternalMockRecorder) Process(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Process", reflect.TypeOf((*MockExternal)(nil).Process), arg0)
+}
+
+// StateDB mocks base method.
+func (m *MockExternal) StateDB() *state.StateDB {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateDB")
+	ret0, _ := ret[0].(*state.StateDB)
+	return ret0
+}
+
+// StateDB indicates an expected call of StateDB.
+func (mr *MockExternalMockRecorder) StateDB() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateDB", reflect.TypeOf((*MockExternal)(nil).StateDB))
 }
 
 // Unlock mocks base method

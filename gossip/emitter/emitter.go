@@ -62,7 +62,8 @@ type Emitter struct {
 	quorumIndexer  *ancestor.QuorumIndexer
 	payloadIndexer *ancestor.PayloadIndexer
 
-	intervals EmitIntervals
+	intervals                EmitIntervals
+	globalConfirmingInterval time.Duration
 
 	done chan struct{}
 	wg   sync.WaitGroup
@@ -96,12 +97,13 @@ func NewEmitter(
 
 	txTime, _ := lru.New(TxTimeBufferSize)
 	return &Emitter{
-		config:        config,
-		world:         world,
-		originatedTxs: originatedtxs.New(SenderCountBufferSize),
-		txTime:        txTime,
-		intervals:     config.EmitIntervals,
-		Periodic:      logger.Periodic{Instance: logger.New()},
+		config:                   config,
+		world:                    world,
+		originatedTxs:            originatedtxs.New(SenderCountBufferSize),
+		txTime:                   txTime,
+		intervals:                config.EmitIntervals,
+		globalConfirmingInterval: config.EmitIntervals.Confirming,
+		Periodic:                 logger.Periodic{Instance: logger.New()},
 	}
 }
 

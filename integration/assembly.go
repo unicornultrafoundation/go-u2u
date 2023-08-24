@@ -19,7 +19,6 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/multidb"
-
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesis"
 	"github.com/unicornultrafoundation/go-u2u/utils/adapters/vecmt2dagidx"
@@ -76,6 +75,12 @@ func getStores(producer u2udb.FlushableDBProducer, cfg Configs) (*gossip.Store, 
 	}
 	cdb := consensus.NewStore(cMainDb, cGetEpochDB, panics("Hashgraph store"), cfg.HashgraphStore)
 	return gdb, cdb
+}
+
+func getEpoch(producer u2udb.FlushableDBProducer, cfg Configs) idx.Epoch {
+	gdb := gossip.NewStore(producer, cfg.U2UStore)
+	defer gdb.Close()
+	return gdb.GetEpoch()
 }
 
 func rawApplyGenesis(gdb *gossip.Store, cdb *consensus.Store, g genesis.Genesis, cfg Configs) error {
@@ -202,6 +207,24 @@ func makeEngine(chaindataDir string, g *genesis.Genesis, genesisProc bool, cfg C
 		if err != nil {
 			return nil, nil, nil, nil, gossip.BlockProc{}, nil, err
 		}
+
+		// drop previous epoch DBs, which do not survive restart
+		epoch := getEpoch(dbs, cfg)
+		leDB, err := dbs.OpenDB(fmt.Sprintf("lachesis-%d", epoch))
+		if err != nil {
+			_ = dbs.Close()
+			return nil, nil, nil, nil, gossip.BlockProc{}, nil, err
+		}
+		_ = leDB.Close()
+		leDB.Drop()
+		goDB, err := dbs.OpenDB(fmt.Sprintf("gossip-%d", epoch))
+		if err != nil {
+			_ = dbs.Close()
+			return nil, nil, nil, nil, gossip.BlockProc{}, nil, err
+		}
+		_ = goDB.Close()
+		goDB.Drop()
+
 		err = migrate(dbs, cfg)
 		_ = dbs.Close()
 		if err != nil {
@@ -216,6 +239,7 @@ func makeEngine(chaindataDir string, g *genesis.Genesis, genesisProc bool, cfg C
 	if err != nil {
 		return nil, nil, nil, nil, gossip.BlockProc{}, nil, err
 	}
+
 	gdb, cdb := getStores(dbs, cfg)
 	defer func() {
 		if err != nil {

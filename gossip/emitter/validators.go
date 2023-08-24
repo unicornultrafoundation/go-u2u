@@ -2,7 +2,6 @@ package emitter
 
 import (
 	"time"
-
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/piecefunc"
@@ -10,10 +9,11 @@ import (
 
 const (
 	validatorChallenge = 4 * time.Second
+	networkStartPeriod = 3 * time.Hour
 )
 
-func (em *Emitter) recountConfirmingIntervals(validators *pos.Validators) {
-	// validators with lower stake should emit fewer events to reduce network load
+func (em *Emitter) recountValidators(validators *pos.Validators) {
+	// stakers with lower stake should emit less events to reduce network load
 	// confirmingEmitInterval = piecefunc(totalStakeBeforeMe / totalStake) * MinEmitInterval
 	totalStakeBefore := pos.Weight(0)
 	for i, stake := range validators.SortedWeights() {
@@ -25,9 +25,15 @@ func (em *Emitter) recountConfirmingIntervals(validators *pos.Validators) {
 		}
 		confirmingEmitIntervalRatio := confirmingEmitIntervalF(stakeRatio)
 		em.stakeRatio[vid] = stakeRatio
-		em.expectedEmitIntervals[vid] = time.Duration(piecefunc.Mul(uint64(em.globalConfirmingInterval), confirmingEmitIntervalRatio))
+		em.expectedEmitIntervals[vid] = time.Duration(piecefunc.Mul(uint64(em.config.EmitIntervals.Confirming), confirmingEmitIntervalRatio))
 	}
 	em.intervals.Confirming = em.expectedEmitIntervals[em.config.Validator.ID]
+	em.intervals.Max = em.config.EmitIntervals.Max
+	// if network just has started, then relax the doublesign protection
+	if time.Since(em.world.GetGenesisTime().Time()) < networkStartPeriod {
+		em.intervals.Max /= 6
+		em.intervals.DoublesignProtection /= 6
+	}
 }
 
 func (em *Emitter) recheckChallenges() {
@@ -60,7 +66,7 @@ func (em *Emitter) recheckChallenges() {
 		}
 	}
 	if recount {
-		em.recountConfirmingIntervals(em.validators)
+		em.recountValidators(em.validators)
 	}
 	em.prevRecheckedChallenges = now
 }

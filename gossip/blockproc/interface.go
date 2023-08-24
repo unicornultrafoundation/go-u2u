@@ -3,9 +3,7 @@ package blockproc
 import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
-
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/native"
@@ -53,5 +51,5 @@ type EVMProcessor interface {
 }
 
 type EVM interface {
-	Start(block iblockproc.BlockCtx, statedb *state.StateDB, reader evmcore.DummyChain, onNewLog func(*types.Log), net u2u.Rules, vmConfig vm.Config, chainCfg *params.ChainConfig) EVMProcessor
+	Start(block iblockproc.BlockCtx, statedb *state.StateDB, reader evmcore.DummyChain, onNewLog func(*types.Log), net u2u.Rules, evmCfg *params.ChainConfig) EVMProcessor
 }

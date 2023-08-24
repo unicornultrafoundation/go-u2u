@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/unicornultrafoundation/go-hashgraph/emitter/ancestor"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
@@ -105,7 +106,6 @@ func (em *Emitter) OnEventConnected(e native.EventPayloadI) {
 	} else if em.quorumIndexer != nil {
 		em.quorumIndexer.ProcessEvent(e, e.Creator() == em.config.Validator.ID)
 	}
-	em.quorumIndexer.ProcessEvent(e, e.Creator() == em.config.Validator.ID)
 	em.payloadIndexer.ProcessEvent(e, ancestor.Metric(e.Txs().Len()))
 	for _, tx := range e.Txs() {
 		addr, _ := types.Sender(em.world.TxSigner, tx)

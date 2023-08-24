@@ -7,7 +7,6 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/piecefunc"
-
 	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
@@ -27,7 +26,7 @@ func updMetric(median, cur, upd idx.Event, validatorIdx idx.Validator, validator
 }
 
 func kickStartMetric(metric ancestor.Metric, seq idx.Event) ancestor.Metric {
-	// kick start metric in a beginning of epoch, when there's nothing to observe yet
+	// kickstart metric in a beginning of epoch, when there's nothing to observe yet
 	if seq <= 2 && metric < 0.9*piecefunc.DecimalUnit {
 		metric += 0.1 * piecefunc.DecimalUnit
 	}

@@ -141,7 +141,7 @@ func (b *GenesisBuilder) ExecuteGenesisTxs(blockProc BlockProc, genesisTxs types
 	txListener := blockProc.TxListenerModule.Start(blockCtx, bs, es, b.tmpStateDB)
 	evmProcessor := blockProc.EVMModule.Start(blockCtx, b.tmpStateDB, dummyHeaderReturner{}, func(l *types.Log) {
 		txListener.OnNewLog(l)
-	}, es.Rules, u2u.DefaultVMConfig, es.Rules.EvmChainConfig([]u2u.UpgradeHeight{
+	}, es.Rules, es.Rules.EvmChainConfig([]u2u.UpgradeHeight{
 		{
 			Upgrades: es.Rules.Upgrades,
 			Height:   0,

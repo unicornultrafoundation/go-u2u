@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/unicornultrafoundation/go-hashgraph/emitter/ancestor"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
@@ -56,10 +57,11 @@ type Emitter struct {
 	prevRecheckedChallenges time.Time
 
 	quorumIndexer  *ancestor.QuorumIndexer
-	payloadIndexer *ancestor.PayloadIndexer
 	fcIndexer      *ancestor.FCIndexer
+	payloadIndexer *ancestor.PayloadIndexer
 
-	intervals EmitIntervals
+	intervals                EmitIntervals
+	globalConfirmingInterval time.Duration
 
 	done chan struct{}
 	wg   sync.WaitGroup

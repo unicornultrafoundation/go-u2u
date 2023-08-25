@@ -5,21 +5,23 @@
 package mock
 
 import (
-	native "github.com/unicornultrafoundation/go-u2u/native"
-	validatorpk "github.com/unicornultrafoundation/go-u2u/native/validatorpk"
-	u2u "github.com/unicornultrafoundation/go-u2u/u2u"
-	vecmt "github.com/unicornultrafoundation/go-u2u/vecmt"
-	hash "github.com/unicornultrafoundation/go-hashgraph/hash"
-	idx "github.com/unicornultrafoundation/go-hashgraph/native/idx"
-	pos "github.com/unicornultrafoundation/go-hashgraph/native/pos"
+	big "math/big"
+	reflect "reflect"
+
 	common "github.com/ethereum/go-ethereum/common"
 	state "github.com/ethereum/go-ethereum/core/state"
 	types "github.com/ethereum/go-ethereum/core/types"
 	gomock "github.com/golang/mock/gomock"
-	big "math/big"
-	reflect "reflect"
+	hash "github.com/unicornultrafoundation/go-hashgraph/hash"
+	idx "github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	pos "github.com/unicornultrafoundation/go-hashgraph/native/pos"
+	native "github.com/unicornultrafoundation/go-u2u/native"
+	validatorpk "github.com/unicornultrafoundation/go-u2u/native/validatorpk"
+	u2u "github.com/unicornultrafoundation/go-u2u/u2u"
+	vecmt "github.com/unicornultrafoundation/go-u2u/vecmt"
 )
 
+// MockExternal is a mock of External interface.
 type MockExternal struct {
 	ctrl     *gomock.Controller
 	recorder *MockExternalMockRecorder

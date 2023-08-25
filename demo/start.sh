@@ -20,15 +20,30 @@ do
     ACC=$(($i+1))
     PPROFP=$(($PPROFP_BASE+$i))
 
+    if [ $i -eq 0 ]; then
     (../build/demo_u2u \
 	--datadir=${DATADIR} \
 	--fakenet=${ACC}/$N \
+    --fakeaccs=100 \
+    --fakebalance=10 \
+    --faketransfers \
 	--port=${PORT} \
 	--nat extip:127.0.0.1 \
 	--http --http.addr="127.0.0.1" --http.port=${RPCP} --http.corsdomain="*" --http.api="eth,debug,net,admin,web3,personal,txpool,dag" \
 	--ws --ws.addr="127.0.0.1" --ws.port=${WSP} --ws.origins="*" --ws.api="eth,debug,net,admin,web3,personal,txpool,dag" \
     --pprof --pprof.addr="127.0.0.1" --pprof.port=${PPROFP} \
-	--verbosity=3 --tracing --metrics >> u2u$i.log 2>&1
+	--verbosity=3 --tracing --monitor >> u2u$i.log 2>&1)&
+    else 
+    (../build/demo_u2u \
+    --datadir=${DATADIR} \
+    --fakenet=${ACC}/$N \
+    --port=${PORT} \
+    --nat extip:127.0.0.1 \
+    --http --http.addr="127.0.0.1" --http.port=${RPCP} --http.corsdomain="*" --http.api="eth,debug,net,admin,web3,personal,txpool,dag" \
+    --ws --ws.addr="127.0.0.1" --ws.port=${WSP} --ws.origins="*" --ws.api="eth,debug,net,admin,web3,personal,txpool,dag" \
+    --pprof --pprof.addr="127.0.0.1" --pprof.port=${PPROFP} \
+    --verbosity=3 --tracing >> u2u$i.log 2>&1)&
+    fi
 
     echo -e "\tnode$i ok"
 done

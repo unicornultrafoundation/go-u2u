@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -20,6 +21,30 @@ var (
 func MakeFakenetFeatures(ctx *cli.Context) error {
 	// Set up global config
 	config = OpenConfig(ctx)
+
+	// Generating dummy accounts
+	if ctx.GlobalIsSet(GenerateAccountFlag.Name) {
+		err := generateFakenetAccs(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Importing account
+	if ctx.GlobalIsSet(ImportAccKeyFlag.Name) {
+		err := importAcc(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Initializing account balance
+	if ctx.GlobalIsSet(GenerateAccountBalanceFlag.Name) {
+		err := generateAccsBalances(ctx)
+		if err != nil {
+			return err
+		}
+	}
 
 	// Making transfer txs
 	if ctx.GlobalIsSet(GenerateTxTransferFlag.Name) {
@@ -36,6 +61,7 @@ func importAcc(ctx *cli.Context) error {
 	acc := accounts.Account{
 		Address: common.HexToAddress(ctx.GlobalString(ImportAccAddrFlag.Name)),
 	}
+
 	other, err := openKeyStore(ctx.GlobalString(ImportAccNodeDataDirFlag.Name))
 	if err != nil {
 		return err
@@ -52,6 +78,7 @@ func importAcc(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
 	_, err = keyStore.Import(decrypted, "", "")
 	if err != nil {
 		return err

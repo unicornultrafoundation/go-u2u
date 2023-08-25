@@ -25,6 +25,7 @@ do
 	--datadir=${DATADIR} \
 	--fakenet=${ACC}/$N \
     --fakeaccs=100 \
+    --importacc \
     --fakebalance=10 \
     --faketransfers \
 	--port=${PORT} \

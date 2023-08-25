@@ -14,7 +14,7 @@ import (
 
 var (
 	gasLimit = uint64(21000)
-	gasPrice = new(big.Int).Mul(u2u.FakeEconomyRules().MinGasPrice, big.NewInt(10))
+	gasPrice = new(big.Int).Mul(u2u.FakeEconomyRules().MinGasPrice, big.NewInt(1000))
 )
 
 func MakeKeyStore(ctx *cli.Context) (*keystore.KeyStore, error) {

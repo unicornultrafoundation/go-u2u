@@ -20,7 +20,6 @@ func DefaultConfig() *Config {
 	return &Config{
 		ChainId: int64(u2u.FakeNetworkID),
 		URLs: []string{
-			"ws://127.0.0.1:4500",
 			"ws://127.0.0.1:4501",
 			"ws://127.0.0.1:4502",
 		},
@@ -32,7 +31,7 @@ func OpenConfig(ctx *cli.Context) *Config {
 	f := ctx.GlobalString(NetworkConfigFileFlag.Name)
 	err := cfg.Load(f)
 	if err != nil {
-		return cfg
+		panic(err)
 	}
 	return cfg
 }

@@ -14,11 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 
-	"github.com/unicornultrafoundation/go-hashgraph/u2udb/memorydb"
-
-	"github.com/unicornultrafoundation/go-u2u/integration/makegenesis"
 	"github.com/unicornultrafoundation/go-u2u/logger"
-	
 )
 
 type BalancesGenerator struct {
@@ -48,8 +44,6 @@ func NewBalancesGenerator(cfg *Config, ks *keystore.KeyStore, amount int64) *Bal
 		Instance: logger.New("gentxs_balance"),
 	}
 	g.state.Log = g.Log
-
-	var found bool
 	for _, acc := range ks.Accounts() {
 		if err := ks.Unlock(acc, ""); err != nil {
 			panic(err)
@@ -57,15 +51,10 @@ func NewBalancesGenerator(cfg *Config, ks *keystore.KeyStore, amount int64) *Bal
 
 		if acc.Address == cfg.Payer {
 			g.payer = acc
-			found = true
 		} else {
 			g.accs = append(g.accs, acc)
 		}
 	}
-	if !found {
-		panic("payer not found in the keystore")
-	}
-
 	return g
 }
 
@@ -179,7 +168,6 @@ func (g *BalancesGenerator) generate(position uint, state *genState) *Transactio
 
 	from := g.payer
 	to := g.accs[position%count]
-
 	// wait every N
 	var callback TxCallback
 	if position%500 == 0 {
@@ -223,20 +211,4 @@ func (g *BalancesGenerator) transferTx(from, to accounts.Account, amount *big.In
 		err = client.SendTransaction(context.Background(), signed)
 		return signed, err
 	}
-}
-
-// genesisFakeBalance Only use for fakenet stress testing purpose
-func (g *BalancesGenerator) genesisFakeBalance(amount *big.Int) error {
-	count := uint(len(g.accs))
-	if count < 1 {
-		return fmt.Errorf("No initial accounts")
-	}
-
-	builder := makegenesis.NewGenesisBuilder(memorydb.NewProducer(""))
-
-	for _, account := range g.accs{
-		builder.AddBalance(account.Address, amount)
-	}
-
-	return nil
 }

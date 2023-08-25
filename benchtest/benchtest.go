@@ -7,8 +7,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -17,25 +18,9 @@ var (
 )
 
 func MakeFakenetFeatures(ctx *cli.Context) error {
-	// Register to monitoring enpoint
-	SetupPrometheus(ctx)
 	// Set up global config
 	config = OpenConfig(ctx)
 
-	// Generating fake accounts
-	if ctx.GlobalIsSet(GenerateAccountFlag.Name) {
-		err := generateFakenetAccs(ctx)
-		if err != nil {
-			return err
-		}
-	}
-	// Initializing account balances
-	if ctx.GlobalIsSet(GenerateAccountBalanceFlag.Name) {
-		err := generateAccsBalances(ctx)
-		if err != nil {
-			return err
-		}
-	}
 	// Making transfer txs
 	if ctx.GlobalIsSet(GenerateTxTransferFlag.Name) {
 		err := generateTransfers(ctx)
@@ -43,7 +28,35 @@ func MakeFakenetFeatures(ctx *cli.Context) error {
 			return err
 		}
 	}
-		
+
+	return nil
+}
+
+func importAcc(ctx *cli.Context) error {
+	acc := accounts.Account{
+		Address: common.HexToAddress(ctx.GlobalString(ImportAccAddrFlag.Name)),
+	}
+	other, err := openKeyStore(ctx.GlobalString(ImportAccNodeDataDirFlag.Name))
+	if err != nil {
+		return err
+	}
+
+	password := ctx.GlobalString(ImportAccPasswordFlag.Name)
+
+	keyStore, err := MakeKeyStore(ctx)
+	if err != nil {
+		return err
+	}
+
+	decrypted, err := other.Export(acc, password, "")
+	if err != nil {
+		return err
+	}
+	_, err = keyStore.Import(decrypted, "", "")
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -53,7 +66,7 @@ func generateFakenetAccs(ctx *cli.Context) error {
 		accsCount = int(ctx.GlobalInt(GenerateAccountFlag.Name))
 	}
 
-	keyStore, err := makeKeyStore(ctx)
+	keyStore, err := MakeKeyStore(ctx)
 	if err != nil {
 		return err
 	}
@@ -78,7 +91,7 @@ func generateFakenetAccs(ctx *cli.Context) error {
 func generateAccsBalances(ctx *cli.Context) error {
 	cfg := config
 	cfg.URLs = cfg.URLs[:1] // txs from single payer should be sent by single sender
-	keyStore, err := makeKeyStore(ctx)
+	keyStore, err := MakeKeyStore(ctx)
 	if err != nil {
 		return err
 	}
@@ -88,8 +101,10 @@ func generateAccsBalances(ctx *cli.Context) error {
 		amount = int64(ctx.GlobalInt(GenerateAccountBalanceFlag.Name))
 	}
 
+	maxTps := getTpsLimit(ctx)
+
 	generator := NewBalancesGenerator(cfg, keyStore, amount)
-	err = generator.genesisFakeBalance(generator.amount)
+	err = generate(generator, maxTps)
 
 	return err
 }
@@ -97,7 +112,7 @@ func generateAccsBalances(ctx *cli.Context) error {
 // generateTransfers action.
 func generateTransfers(ctx *cli.Context) error {
 	cfg := config
-	keyStore, err := makeKeyStore(ctx)
+	keyStore, err := MakeKeyStore(ctx)
 	if err != nil {
 		return err
 	}

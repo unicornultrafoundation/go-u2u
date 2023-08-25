@@ -21,9 +21,9 @@ import (
 
 	evmetrics "github.com/ethereum/go-ethereum/metrics"
 
+	"github.com/unicornultrafoundation/go-u2u/benchtest"
 	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/monitoring"
 	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/tracing"
-	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/benchtest"
 	"github.com/unicornultrafoundation/go-u2u/debug"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/flags"
@@ -65,6 +65,10 @@ func initFlags() {
 	// Flags for testing purpose.
 	testFlags = []cli.Flag{
 		FakeNetFlag,
+		benchtest.ImportAccKeyFlag,
+		benchtest.ImportAccNodeDataDirFlag,
+		benchtest.ImportAccAddrFlag,
+		benchtest.ImportAccPasswordFlag,
 		benchtest.NetworkConfigFileFlag,
 		benchtest.TpsLimitFlag,
 		benchtest.AccKeyStoreDirFlag,
@@ -277,14 +281,15 @@ func hashgraphMain(ctx *cli.Context) error {
 	cfg := makeAllConfigs(ctx)
 	genesisStore := mayGetGenesisStore(ctx)
 	node, _, nodeClose := makeNode(ctx, cfg, genesisStore)
-	defer nodeClose()
-	startNode(ctx, node)
-	node.Wait()
 
+	defer nodeClose()
+
+	startNode(ctx, node)
 	//start fakenet stress test
-	if ctx.GlobalIsSet(FakeNetFlag.Name){
+	if ctx.GlobalIsSet(FakeNetFlag.Name) {
 		benchtest.MakeFakenetFeatures(ctx)
 	}
+	node.Wait()
 
 	return nil
 }

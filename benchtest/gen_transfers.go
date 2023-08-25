@@ -67,7 +67,7 @@ func (g *TransfersGenerator) Start() <-chan *Transaction {
 	}
 	g.done = make(chan struct{})
 
-	output := make(chan *Transaction, 100)
+	output := make(chan *Transaction, 10)
 	g.work.Add(1)
 	go g.background(output)
 
@@ -169,7 +169,7 @@ func (g *TransfersGenerator) generate(position uint, state *genState) *Transacti
 
 	// wait every cicle
 	if position%count == 0 {
-		state.NotReady("transer cicle")
+		state.NotReady("transfer cicle")
 		callback = func(r *types.Receipt, e error) {
 			state.Ready()
 		}

@@ -7,7 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/unicornultrafoundation/go-u2u/logger"
-
+	"github.com/unicornultrafoundation/go-u2u/monitoring"
 	"github.com/unicornultrafoundation/go-u2u/utils"
 )
 
@@ -65,8 +65,9 @@ func (n *Nodes) measureGeneratorTPS() {
 		txCount int64 = 0
 		start         = time.Now()
 	)
-	for got := range n.sents {
-		txCount += got
+	for sent := range n.sents {
+		monitoring.DefaultConfig.TxCountSentMeter.Inc(sent)
+		txCount += sent
 
 		dur := time.Since(start).Seconds()
 		if dur < 5.0 && txCount < 100 {
@@ -91,7 +92,7 @@ func (n *Nodes) measureNetworkTPS() {
 		start         = time.Now()
 	)
 	for got := range n.receipts {
-		txCountGotMeter.Inc(got)
+		monitoring.DefaultConfig.TxCountGotMeter.Inc(got)
 		txCount += got
 
 		dur := time.Since(start).Seconds()
@@ -109,7 +110,7 @@ func (n *Nodes) measureNetworkTPS() {
 		txCount = 0
 
 		n.notifyTPS(avg)
-		txTpsMeter.Update(int64(tps))
+		monitoring.DefaultConfig.TxTpsMeter.Update(int64(tps))
 	}
 }
 

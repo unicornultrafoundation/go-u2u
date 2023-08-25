@@ -169,7 +169,6 @@ func (s *Sender) sendTx(tx *Transaction, client *ethclient.Client) (err error) {
 	default:
 		s.Log.Error("tx sending err", "hash", txHash, "dsc", tx.Dsc, "err", err)
 	}
-
 	if tx.Callback != nil {
 		tx.Callback(nil, err)
 	}

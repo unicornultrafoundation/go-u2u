@@ -2,8 +2,10 @@ package launcher
 
 import (
 	"bufio"
+	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"path"
 	"path/filepath"
@@ -12,6 +14,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/p2p/enode"
@@ -22,6 +25,7 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/utils/cachescale"
 	"gopkg.in/urfave/cli.v1"
 
+	"github.com/unicornultrafoundation/go-u2u/benchtest"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter"
@@ -223,6 +227,42 @@ func mayGetGenesisStore(ctx *cli.Context) *genesisstore.Store {
 		_, num, err := parseFakeGen(ctx.GlobalString(FakeNetFlag.Name))
 		if err != nil {
 			log.Crit("Invalid flag", "flag", FakeNetFlag.Name, "err", err)
+		}
+		if ctx.GlobalIsSet(benchtest.GenerateAccountFlag.Name) {
+			var accsCount int = 1000
+			if ctx.GlobalInt(benchtest.GenerateAccountFlag.Name) > 1 {
+				accsCount = int(ctx.GlobalInt(benchtest.GenerateAccountFlag.Name))
+			}
+
+			keyStore, err := benchtest.MakeKeyStore(ctx)
+			if err != nil {
+				panic(err)
+			}
+
+			for i := 0; i < accsCount; i++ {
+				reader := rand.New(rand.NewSource(int64(i)))
+
+				key, err := ecdsa.GenerateKey(crypto.S256(), reader)
+				if err != nil {
+					panic(err)
+				}
+				_, err = keyStore.ImportECDSA(key, "")
+				if err != nil {
+					panic(err)
+				}
+			}
+		}
+		if ctx.GlobalIsSet(benchtest.GenerateAccountBalanceFlag.Name) {
+			var amount uint64 = 1e18
+			if ctx.GlobalInt(benchtest.GenerateAccountBalanceFlag.Name) > 0 {
+				amount = uint64(ctx.GlobalInt(benchtest.GenerateAccountBalanceFlag.Name))
+			}
+			keyStore, err := benchtest.MakeKeyStore(ctx)
+			if err != nil {
+				panic(err)
+			}
+			log.Info("Balance", "amount", amount)
+			return makefakegenesis.FakeGenesisStoreForBenchTest(num, keyStore, futils.ToU2U(1000000000), futils.ToU2U(amount), futils.ToU2U(5000000))
 		}
 		return makefakegenesis.FakeGenesisStore(num, futils.ToU2U(1000000000), futils.ToU2U(5000000))
 	case ctx.GlobalIsSet(GenesisFlag.Name):
@@ -448,7 +488,9 @@ func setDBConfigDefault(cfg config, cacheRatio cachescale.Func) config {
 func setMonitoringConfig(ctx *cli.Context, cfg monitoring.Config) monitoring.Config {
 	// apply config for monitoring
 	cfg.Port = ctx.GlobalInt(PrometheusMonitoringPortFlag.Name)
-
+	// cfg.TxCountSentMeter = metrics.NewRegisteredCounter("tx_count_sent", nil)
+	// cfg.TxCountSentMeter = metrics.NewRegisteredCounter("tx_count_got", nil)
+	// cfg.TxTpsMeter = metrics.NewRegisteredHistogram("tx_tps", nil, metrics.NewUniformSample(500))
 	return cfg
 }
 

@@ -8,16 +8,16 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 
 	"github.com/unicornultrafoundation/go-u2u/u2u"
-	
+
 	"gopkg.in/urfave/cli.v1"
 )
 
 var (
 	gasLimit = uint64(21000)
-	gasPrice = new(big.Int).Mul(u2u.FakeEconomyRules().MinGasPrice, big.NewInt(2))
+	gasPrice = new(big.Int).Mul(u2u.FakeEconomyRules().MinGasPrice, big.NewInt(10))
 )
 
-func makeKeyStore(ctx *cli.Context) (*keystore.KeyStore, error) {
+func MakeKeyStore(ctx *cli.Context) (*keystore.KeyStore, error) {
 	keydir := ctx.GlobalString(AccKeyStoreDirFlag.Name)
 	keydir, err := filepath.Abs(keydir)
 	if err != nil {

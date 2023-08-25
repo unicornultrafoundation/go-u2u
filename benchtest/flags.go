@@ -16,6 +16,29 @@ var TpsLimitFlag = cli.Float64Flag{
 	Value: -1.0,
 }
 
+var ImportAccKeyFlag = cli.BoolFlag{
+	Name:  "importacc",
+	Usage: "Decripts and imports account into the keystore dir.",
+}
+
+var ImportAccAddrFlag = cli.StringFlag{
+	Name:  "importacc.address",
+	Usage: "Config imported account address.",
+	Value: "0x239fa7623354ec26520de878b52f13fe84b06971",
+}
+
+var ImportAccNodeDataDirFlag = cli.StringFlag{
+	Name:  "importacc.datadir",
+	Usage: "Config imported account data dir.",
+	Value: "u2u0.datadir",
+}
+
+var ImportAccPasswordFlag = cli.StringFlag{
+	Name:  "importacc.password",
+	Usage: "Config imported account password.",
+	Value: "",
+}
+
 var AccKeyStoreDirFlag = cli.StringFlag{
 	Name:  "acckeystore",
 	Usage: "Directory for the keystore",

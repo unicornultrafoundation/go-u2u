@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -186,4 +187,101 @@ func GetFakeValidators(num idx.Validator) gpos.Validators {
 	}
 
 	return validators
+}
+
+// Only for benchmark testing purpose
+func FakeGenesisStoreForBenchTest(num idx.Validator, ks *keystore.KeyStore, balance, initBalance, stake *big.Int) *genesisstore.Store {
+	return FakeGenesisStoreWithRulesAndStartForBenchTest(num, ks, balance, initBalance, stake, u2u.FakeNetRules(), 2, 1)
+}
+
+func FakeGenesisStoreWithRulesAndStartForBenchTest(num idx.Validator, ks *keystore.KeyStore, balance, initBalance, stake *big.Int, rules u2u.Rules, epoch idx.Epoch, block idx.Block) *genesisstore.Store {
+	builder := makegenesis.NewGenesisBuilder(memorydb.NewProducer(""))
+	
+	validators := GetFakeValidators(num)
+
+	// add balances to validators
+	var delegations []drivercall.Delegation
+	for _, val := range validators {
+		builder.AddBalance(val.Address, balance)
+		delegations = append(delegations, drivercall.Delegation{
+			Address:            val.Address,
+			ValidatorID:        val.ID,
+			Stake:              stake,
+			LockedStake:        new(big.Int),
+			LockupFromEpoch:    0,
+			LockupEndTime:      0,
+			LockupDuration:     0,
+			EarlyUnlockPenalty: new(big.Int),
+			Rewards:            new(big.Int),
+		})
+	}
+
+	// add balances to fake accounts
+	for _, acc := range ks.Accounts() {
+		if err := ks.Unlock(acc, ""); err != nil {
+			panic(err)
+		}
+		builder.AddBalance(acc.Address, initBalance)
+	}
+
+	// deploy essential contracts
+	// pre deploy NetworkInitializer
+	builder.SetCode(netinit.ContractAddress, netinit.GetContractBin())
+	// pre deploy NodeDriver
+	builder.SetCode(driver.ContractAddress, driver.GetContractBin())
+	// pre deploy NodeDriverAuth
+	builder.SetCode(driverauth.ContractAddress, driverauth.GetContractBin())
+	// pre deploy SFC
+	builder.SetCode(sfc.ContractAddress, sfc.GetContractBin())
+	// set non-zero code for pre-compiled contracts
+	builder.SetCode(evmwriter.ContractAddress, []byte{0})
+
+	builder.SetCurrentEpoch(ier.LlrIdxFullEpochRecord{
+		LlrFullEpochRecord: ier.LlrFullEpochRecord{
+			BlockState: iblockproc.BlockState{
+				LastBlock: iblockproc.BlockCtx{
+					Idx:     block - 1,
+					Time:    FakeGenesisTime,
+					Atropos: hash.Event{},
+				},
+				FinalizedStateRoot:    hash.Hash{},
+				EpochGas:              0,
+				EpochCheaters:         utypes.Cheaters{},
+				CheatersWritten:       0,
+				ValidatorStates:       make([]iblockproc.ValidatorBlockState, 0),
+				NextValidatorProfiles: make(map[idx.ValidatorID]drivertype.Validator),
+				DirtyRules:            nil,
+				AdvanceEpochs:         0,
+			},
+			EpochState: iblockproc.EpochState{
+				Epoch:             epoch - 1,
+				EpochStart:        FakeGenesisTime,
+				PrevEpochStart:    FakeGenesisTime - 1,
+				EpochStateRoot:    hash.Zero,
+				Validators:        pos.NewBuilder().Build(),
+				ValidatorStates:   make([]iblockproc.ValidatorEpochState, 0),
+				ValidatorProfiles: make(map[idx.ValidatorID]drivertype.Validator),
+				Rules:             rules,
+			},
+		},
+		Idx: epoch - 1,
+	})
+
+	var owner common.Address
+	if num != 0 {
+		owner = validators[0].Address
+	}
+
+	blockProc := makegenesis.DefaultBlockProc()
+	genesisTxs := GetGenesisTxs(epoch-2, validators, builder.TotalSupply(), delegations, owner)
+	err := builder.ExecuteGenesisTxs(blockProc, genesisTxs)
+	if err != nil {
+		panic(err)
+	}
+
+	return builder.Build(genesis.Header{
+		GenesisID:   builder.CurrentHash(),
+		NetworkID:   rules.NetworkID,
+		NetworkName: rules.Name,
+	})
 }

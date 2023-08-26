@@ -19,7 +19,7 @@ var (
 	}
 
 	mainnetHeader = genesis.Header{
-		GenesisID:   hash.HexToHash("0x44e1da45bd5435ce8108c9fad8fee0f59a14513ec00693620eeb606fc9625005"),
+		GenesisID:   hash.HexToHash("0x54e033c612a9b1a8ac8c6cb131f513202648f19b3a2756f8e2e40877d280606c"),
 		NetworkID:   u2u.MainNetworkID,
 		NetworkName: "main",
 	}
@@ -35,9 +35,9 @@ var (
 			Name:   "Mainnet",
 			Header: mainnetHeader,
 			Hashes: genesis.Hashes{
-				genesisstore.EpochsSection(0): hash.HexToHash("0x0b66da086607d273e90d3a0bde28737f20a3301d6c73b60d039f551c5734d267"),
-				genesisstore.BlocksSection(0): hash.HexToHash("0xac64d5db3991eeaebe605987f466662658de984e897a01d533d20f468d5f93a1"),
-				genesisstore.EvmSection(0):    hash.HexToHash("0x0c2943da59dffcf3b00a1e3a76a603f475087c140b72353cb9a398c48350dcd2"),
+				genesisstore.EpochsSection(0): hash.HexToHash("0x85307dd741356839d24176a1e015e90ceb9da53d9223d396a18524b9f8b24cb3"),
+				genesisstore.BlocksSection(0): hash.HexToHash("0x8847aff8a1934306902448a92c8a56e91ef843a550c61fa043a8e3881ef8a0ea"),
+				genesisstore.EvmSection(0):    hash.HexToHash("0x321932aa0bf71bc8ac9b26bfbdef111897c38120b7a1329f232d29ea9b26f6d3"),
 			},
 		},
 

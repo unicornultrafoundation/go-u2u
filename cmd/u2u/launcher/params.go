@@ -11,7 +11,10 @@ import (
 
 var (
 	Bootnodes = map[string][]string{
-		"main": {},
+		"main": {
+			"enode://104a461922f696758c73f69819a9c7990acb8ed692790d228602e89f45375f04d57fbaeb00f50b7ccb677551f4d91fc04ea67a4a1ac49099996f7c1d38b502f6@18.139.172.157:5050",
+			"enode://6fa78c636f53ae45b0b3bf44b41f39ebcb62f0bbf52c314c496443fe80ba4ae2a1e2877dcb16a0aca3209fe20d55702909e88174f47bfd82b79ea65ae9d7e076@18.138.204.206:5050",
+		},
 		"test": {},
 	}
 

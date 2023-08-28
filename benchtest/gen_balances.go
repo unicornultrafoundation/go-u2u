@@ -35,11 +35,11 @@ type BalancesGenerator struct {
 	logger.Instance
 }
 
-func NewBalancesGenerator(cfg *Config, ks *keystore.KeyStore, amount int64) *BalancesGenerator {
+func NewBalancesGenerator(cfg *Config, ks *keystore.KeyStore, amount *big.Int) *BalancesGenerator {
 	g := &BalancesGenerator{
 		chainId: big.NewInt(cfg.ChainId),
 		ks:      ks,
-		amount:  big.NewInt(amount),
+		amount:  amount,
 
 		Instance: logger.New("gentxs_balance"),
 	}

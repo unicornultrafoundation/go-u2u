@@ -5,9 +5,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/metrics"
 
 	"github.com/unicornultrafoundation/go-u2u/logger"
-	"github.com/unicornultrafoundation/go-u2u/monitoring"
 	"github.com/unicornultrafoundation/go-u2u/utils"
 )
 
@@ -21,6 +21,12 @@ type Nodes struct {
 	cfg      *Config
 	logger.Instance
 }
+
+var (
+	txCountSentMeter = metrics.GetOrRegisterCounter("tx_count_sent", nil)
+	txCountGotMeter  = metrics.GetOrRegisterCounter("tx_count_got", nil)
+	txLatencyMeter   = metrics.GetOrRegisterHistogram("tx_latency", nil, metrics.NewUniformSample(10000))
+)
 
 func NewNodes(cfg *Config, input <-chan *Transaction) *Nodes {
 	n := &Nodes{
@@ -66,7 +72,7 @@ func (n *Nodes) measureGeneratorTPS() {
 		start         = time.Now()
 	)
 	for sent := range n.sents {
-		monitoring.DefaultConfig.TxCountSentMeter.Inc(sent)
+		txCountSentMeter.Inc(sent)
 		txCount += sent
 
 		dur := time.Since(start).Seconds()
@@ -92,7 +98,8 @@ func (n *Nodes) measureNetworkTPS() {
 		start         = time.Now()
 	)
 	for got := range n.receipts {
-		monitoring.DefaultConfig.TxCountGotMeter.Inc(got)
+		txCountGotMeter.Inc(got)
+		n.Log.Info("txCountGotMeter", "txCountGotMeter", txCountGotMeter.Snapshot())
 		txCount += got
 
 		dur := time.Since(start).Seconds()
@@ -110,7 +117,8 @@ func (n *Nodes) measureNetworkTPS() {
 		txCount = 0
 
 		n.notifyTPS(avg)
-		monitoring.DefaultConfig.TxTpsMeter.Update(int64(tps))
+		txLatencyMeter.Update(int64(tps))
+		n.Log.Info("TxTpsMeter", "TxTpsMeter", txLatencyMeter.Count())
 	}
 }
 

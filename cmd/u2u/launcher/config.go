@@ -10,12 +10,14 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
+	
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/cmd/utils"
+
 	"github.com/naoina/toml"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/unicornultrafoundation/go-hashgraph/consensus"
@@ -448,9 +450,6 @@ func setDBConfigDefault(cfg config, cacheRatio cachescale.Func) config {
 func setMonitoringConfig(ctx *cli.Context, cfg monitoring.Config) monitoring.Config {
 	// apply config for monitoring
 	cfg.Port = ctx.GlobalInt(PrometheusMonitoringPortFlag.Name)
-	// cfg.TxCountSentMeter = metrics.NewRegisteredCounter("tx_count_sent", nil)
-	// cfg.TxCountSentMeter = metrics.NewRegisteredCounter("tx_count_got", nil)
-	// cfg.TxTpsMeter = metrics.NewRegisteredHistogram("tx_tps", nil, metrics.NewUniformSample(500))
 	return cfg
 }
 

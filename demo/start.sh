@@ -26,7 +26,7 @@ do
 	--fakenet=${ACC}/$N \
     --fakeaccs=100 \
     --importacc \
-    --fakebalance=10 \
+    --fakebalance=1000000 \
     --faketransfers \
 	--port=${PORT} \
 	--nat extip:127.0.0.1 \

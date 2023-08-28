@@ -11,6 +11,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
+	"github.com/unicornultrafoundation/go-u2u/utils"
+
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -123,14 +125,14 @@ func generateAccsBalances(ctx *cli.Context) error {
 		return err
 	}
 
-	var amount int64 = 1e18
+	var amount uint64 = 1e18
 	if ctx.GlobalInt(GenerateAccountBalanceFlag.Name) > 0 {
-		amount = int64(ctx.GlobalInt(GenerateAccountBalanceFlag.Name))
+		amount = uint64(ctx.GlobalInt(GenerateAccountBalanceFlag.Name))
 	}
 
 	maxTps := getTpsLimit(ctx)
 
-	generator := NewBalancesGenerator(cfg, keyStore, amount)
+	generator := NewBalancesGenerator(cfg, keyStore, utils.ToU2U(amount))
 	err = generate(generator, maxTps)
 
 	return err

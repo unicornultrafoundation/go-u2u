@@ -30,6 +30,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/netinit"
 	netinitcall "github.com/unicornultrafoundation/go-u2u/u2u/contracts/netinit/netinitcalls"
 	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/sfc"
+	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/sfclib"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesis"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesis/gpos"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesisstore"
@@ -83,6 +84,8 @@ func FakeGenesisStoreWithRulesAndStart(num idx.Validator, balance, stake *big.In
 	builder.SetCode(driverauth.ContractAddress, driverauth.GetContractBin())
 	// pre deploy SFC
 	builder.SetCode(sfc.ContractAddress, sfc.GetContractBin())
+	// pre deploy SFCLib
+	builder.SetCode(sfclib.ContractAddress, sfclib.GetContractBin())
 	// set non-zero code for pre-compiled contracts
 	builder.SetCode(evmwriter.ContractAddress, []byte{0})
 
@@ -149,7 +152,7 @@ func GetGenesisTxs(sealedEpoch idx.Epoch, validators gpos.Validators, totalSuppl
 	buildTx := txBuilder()
 	internalTxs := make(types.Transactions, 0, 15)
 	// initialization
-	calldata := netinitcall.InitializeAll(sealedEpoch, totalSupply, sfc.ContractAddress, driverauth.ContractAddress, driver.ContractAddress, evmwriter.ContractAddress, driverOwner)
+	calldata := netinitcall.InitializeAll(sealedEpoch, totalSupply, sfc.ContractAddress, sfclib.ContractAddress, driverauth.ContractAddress, driver.ContractAddress, evmwriter.ContractAddress, driverOwner)
 	internalTxs = append(internalTxs, buildTx(calldata, netinit.ContractAddress))
 	// push genesis validators
 	for _, v := range validators {

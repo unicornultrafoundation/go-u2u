@@ -16,10 +16,11 @@ import (
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/p2p/discover/discfilter"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"gopkg.in/urfave/cli.v1"
 
 	evmetrics "github.com/ethereum/go-ethereum/metrics"
+
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/benchtest"
 	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/monitoring"
@@ -224,7 +225,6 @@ func init() {
 		importCommand,
 		exportCommand,
 		checkCommand,
-		deleteCommand,
 		// See snapshot.go
 		snapshotCommand,
 		// See dbcmd.go
@@ -373,12 +373,13 @@ func makeNode(ctx *cli.Context, cfg *config, genesisStore *genesisstore.Store) (
 	if err != nil {
 		utils.Fatalf("Failed to create the service: %v", err)
 	}
-	if cfg.Emitter.Validator.ID != 0 {
-		svc.RegisterEmitter(emitter.NewEmitter(cfg.Emitter, svc.EmitterWorld(signer)))
-	}
 	err = engine.Bootstrap(svc.GetConsensusCallbacks())
 	if err != nil {
 		utils.Fatalf("Failed to bootstrap the engine: %v", err)
+	}
+	svc.ReprocessEpochEvents()
+	if cfg.Emitter.Validator.ID != 0 {
+		svc.RegisterEmitter(emitter.NewEmitter(cfg.Emitter, svc.EmitterWorld(signer)))
 	}
 
 	stack.RegisterAPIs(svc.APIs())

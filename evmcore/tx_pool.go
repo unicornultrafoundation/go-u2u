@@ -36,6 +36,7 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/unicornultrafoundation/go-u2u/utils/signers/gsignercache"
+	"github.com/unicornultrafoundation/go-u2u/utils/txtime"
 )
 
 const (
@@ -135,6 +136,7 @@ const (
 // StateReader provides the state of blockchain and current gas limit to do
 // some pre checks in tx pool and event subscribers.
 type StateReader interface {
+	Config() *params.ChainConfig
 	CurrentBlock() *EvmBlock
 	GetBlock(hash common.Hash, number uint64) *EvmBlock
 	StateAt(root common.Hash) (*state.StateDB, error)
@@ -142,7 +144,6 @@ type StateReader interface {
 	EffectiveMinTip() *big.Int
 	MaxGasLimit() uint64
 	SubscribeNewBlock(ch chan<- ChainHeadNotify) notify.Subscription
-	Config() *params.ChainConfig
 }
 
 // TxPoolConfig are the configuration parameters of the transaction pool.
@@ -172,12 +173,12 @@ var DefaultTxPoolConfig = TxPoolConfig{
 	PriceLimit: 1,
 	PriceBump:  10,
 
-	AccountSlots: 16,
-	GlobalSlots:  1024 + 256, // urgent + floating queue capacity with 4:1 ratio
-	AccountQueue: 32,
-	GlobalQueue:  256,
+	AccountSlots: 32,
+	GlobalSlots:  2048 + 512, // urgent + floating queue capacity with 4:1 ratio
+	AccountQueue: 128,
+	GlobalQueue:  512,
 
-	Lifetime: 3 * time.Hour,
+	Lifetime: 1 * time.Hour,
 }
 
 // sanitize checks the provided user configurations and changes anything that's
@@ -555,17 +556,6 @@ func (pool *TxPool) Pending(enforceTips bool) (map[common.Address]types.Transact
 	return pending, nil
 }
 
-func (pool *TxPool) PendingSlice() types.Transactions {
-	pool.mu.Lock()
-	defer pool.mu.Unlock()
-
-	pending := make(types.Transactions, 0, 1000)
-	for _, list := range pool.pending {
-		pending = append(pending, list.Flatten()...)
-	}
-	return pending
-}
-
 func (pool *TxPool) SampleHashes(max int) []common.Hash {
 	return pool.all.SampleHashes(max)
 }
@@ -898,6 +888,7 @@ func (pool *TxPool) AddRemote(tx *types.Transaction) error {
 
 // addTxs attempts to queue a batch of transactions if they are valid.
 func (pool *TxPool) addTxs(txs []*types.Transaction, local, sync bool) []error {
+	arrivedAt := time.Now()
 	// Filter out known ones without obtaining the pool lock or recovering signatures
 	var (
 		errs = make([]error, len(txs))
@@ -929,6 +920,13 @@ func (pool *TxPool) addTxs(txs []*types.Transaction, local, sync bool) []error {
 	pool.mu.Lock()
 	newErrs, dirtyAddrs := pool.addTxsLocked(news, local)
 	pool.mu.Unlock()
+
+	// memorize tx time of validated transactions
+	for i, tx := range news {
+		if newErrs[i] == nil {
+			txtime.Validated(tx.Hash(), arrivedAt)
+		}
+	}
 
 	var nilSlot = 0
 	for _, err := range newErrs {

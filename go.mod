@@ -14,6 +14,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d
 	github.com/holiman/bloomfilter/v2 v2.0.3
+	github.com/holiman/uint256 v1.2.2-0.20230321075855-87b91420868c
 	github.com/mattn/go-colorable v0.1.13
 	github.com/mattn/go-isatty v0.0.16
 	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
@@ -28,7 +29,7 @@ require (
 	github.com/tyler-smith/go-bip39 v1.0.2
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/uber/jaeger-lib v2.4.1+incompatible
-	github.com/unicornultrafoundation/go-hashgraph v0.0.0-20230724012326-d3c3a785a9b0
+	github.com/unicornultrafoundation/go-hashgraph v0.0.0-20230824150228-48571d39c47f
 	golang.org/x/crypto v0.1.0
 	golang.org/x/sys v0.7.0
 	gopkg.in/urfave/cli.v1 v1.20.0
@@ -66,7 +67,6 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/graph-gophers/graphql-go v0.0.0-20201113091052-beb923fada29 // indirect
-	github.com/holiman/uint256 v1.2.2-0.20230321075855-87b91420868c // indirect
 	github.com/huin/goupnp v1.0.2 // indirect
 	github.com/influxdata/influxdb v1.8.3 // indirect
 	github.com/influxdata/influxdb-client-go/v2 v2.4.0 // indirect

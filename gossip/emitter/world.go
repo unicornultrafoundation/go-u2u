@@ -5,13 +5,12 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
-	notify "github.com/ethereum/go-ethereum/event"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
 
-	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/valkeystore"
@@ -37,6 +36,8 @@ type (
 		IsBusy() bool
 		IsSynced() bool
 		PeersNum() int
+
+		StateDB() *state.StateDB
 	}
 
 	// aliases for mock generator
@@ -83,10 +84,6 @@ type TxPool interface {
 	// Pending should return pending transactions.
 	// The slice should be modifiable by the caller.
 	Pending(enforceTips bool) (map[common.Address]types.Transactions, error)
-
-	// SubscribeNewTxsNotify should return an event subscription of
-	// NewTxsNotify and send events to the given channel.
-	SubscribeNewTxsNotify(chan<- evmcore.NewTxsNotify) notify.Subscription
 
 	// Count returns the total number of transactions
 	Count() int

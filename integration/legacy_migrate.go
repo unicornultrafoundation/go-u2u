@@ -7,16 +7,19 @@ import (
 	"path"
 	"strings"
 
+	"github.com/syndtr/goleveldb/leveldb/opt"
+
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/syndtr/goleveldb/leveldb/opt"
+
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/batched"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/pebble"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/skipkeys"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/table"
 
+	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/autocompact"
 	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/compactdb"
 )
 
@@ -45,7 +48,7 @@ type transformTask struct {
 
 func transform(m transformTask) error {
 	openDst := func() *batched.Store {
-		return batched.Wrap(m.openDst())
+		return batched.Wrap(autocompact.Wrap2M(m.openDst(), opt.GiB, 16*opt.GiB, true, ""))
 	}
 	openSrc := func() *batched.Store {
 		return batched.Wrap(m.openSrc())
@@ -186,7 +189,7 @@ func translateGossipPrefix(p byte) byte {
 func migrateLegacyDBs(chaindataDir string, dbs u2udb.FlushableDBProducer, mode string, layout RoutingConfig) error {
 	{ // didn't erase the brackets to avoid massive code changes
 		// migrate DB layout
-		cacheFn, err := dbCacheFdlimit(DBsCacheConfig{
+		cacheFn, err := DbCacheFdlimit(DBsCacheConfig{
 			Table: map[string]DBCacheConfig{
 				"": {
 					Cache:   1024 * opt.MiB,

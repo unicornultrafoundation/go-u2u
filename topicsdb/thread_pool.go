@@ -2,12 +2,13 @@ package topicsdb
 
 import (
 	"context"
-	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/threads"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+
+	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/threads"
 )
 
 // withThreadPool wraps the index and limits its threads in use

@@ -2,62 +2,13 @@ package topicsdb
 
 import (
 	"context"
-	"runtime/debug"
-	"sync"
+	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/threads"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 )
-
-const GoroutinesPerThread = 0.8
-
-type threadPool struct {
-	mu          sync.Mutex
-	initialized bool
-	sum         int
-}
-
-var globalPool threadPool
-
-// init threadPool only on demand to give time to other packages
-// call debug.SetMaxThreads() if they need
-func (p *threadPool) init() {
-	if !p.initialized {
-		p.initialized = true
-		p.sum = int(getMaxThreads() * GoroutinesPerThread)
-	}
-}
-
-func (p *threadPool) Lock(want int) (got int, release func()) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	if !p.initialized {
-		p.init()
-	}
-
-	if want < 1 {
-		want = 0
-	}
-
-	got = min(p.sum, want)
-	p.sum -= got
-	release = func() {
-		p.mu.Lock()
-		defer p.mu.Unlock()
-		p.sum += got
-	}
-
-	return
-}
-
-func getMaxThreads() float64 {
-	was := debug.SetMaxThreads(10000)
-	debug.SetMaxThreads(was)
-	return float64(was)
-}
 
 // withThreadPool wraps the index and limits its threads in use
 type withThreadPool struct {

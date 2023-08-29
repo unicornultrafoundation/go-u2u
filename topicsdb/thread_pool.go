@@ -35,6 +35,10 @@ func (tt *withThreadPool) ForEachInBlocks(ctx context.Context, from, to idx.Bloc
 		return nil
 	}
 
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	pattern, err := limitPattern(pattern)
 	if err != nil {
 		return err
@@ -51,20 +55,24 @@ func (tt *withThreadPool) ForEachInBlocks(ctx context.Context, from, to idx.Bloc
 	}
 
 	splitby := 0
-	threads := 0
+	parallels := 0
 	for i := range pattern {
-		threads += len(pattern[i])
+		parallels += len(pattern[i])
 		if len(pattern[splitby]) < len(pattern[i]) {
 			splitby = i
 		}
 	}
 	rest := pattern[splitby]
-	threads -= len(rest)
+	parallels -= len(rest)
+
+	if parallels >= threads.GlobalPool.Cap() {
+		return ErrTooBigTopics
+	}
 
 	for len(rest) > 0 {
-		got, release := globalPool.Lock(threads + len(rest))
-		if got <= threads {
-			release()
+		got, release := threads.GlobalPool.Lock(parallels + len(rest))
+		if got <= parallels {
+			release(got)
 			select {
 			case <-time.After(time.Millisecond):
 				continue
@@ -73,10 +81,13 @@ func (tt *withThreadPool) ForEachInBlocks(ctx context.Context, from, to idx.Bloc
 			}
 		}
 
-		pattern[splitby] = rest[:got-threads]
-		rest = rest[got-threads:]
-		err = tt.searchParallel(ctx, pattern, uint64(from), uint64(to), onMatched)
-		release()
+		onDbIterator := func() {
+			release(1)
+		}
+
+		pattern[splitby] = rest[:got-parallels]
+		rest = rest[got-parallels:]
+		err = tt.searchParallel(ctx, pattern, uint64(from), uint64(to), onMatched, onDbIterator)
 		if err != nil {
 			return err
 		}

@@ -29,7 +29,6 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/libs/common"
 	"github.com/unicornultrafoundation/go-u2u/libs/consensus/ethash"
 	"github.com/unicornultrafoundation/go-u2u/libs/console/prompt"
-	"github.com/unicornultrafoundation/go-u2u/libs/eth"
 	"github.com/unicornultrafoundation/go-u2u/libs/eth/ethconfig"
 	"github.com/unicornultrafoundation/go-u2u/libs/internal/jsre"
 	"github.com/unicornultrafoundation/go-u2u/libs/miner"
@@ -77,7 +76,6 @@ func (p *hookedPrompter) SetWordCompleter(completer prompt.WordCompleter) {}
 type tester struct {
 	workspace string
 	stack     *node.Node
-	ethereum  *eth.Ethereum
 	console   *Console
 	input     *hookedPrompter
 	output    *bytes.Buffer
@@ -108,10 +106,6 @@ func newTester(t *testing.T, confOverride func(*ethconfig.Config)) *tester {
 	if confOverride != nil {
 		confOverride(ethConf)
 	}
-	ethBackend, err := eth.New(stack, ethConf)
-	if err != nil {
-		t.Fatalf("failed to register Ethereum protocol: %v", err)
-	}
 	// Start the node and assemble the JavaScript console around it
 	if err = stack.Start(); err != nil {
 		t.Fatalf("failed to start test stack: %v", err)
@@ -138,7 +132,6 @@ func newTester(t *testing.T, confOverride func(*ethconfig.Config)) *tester {
 	return &tester{
 		workspace: workspace,
 		stack:     stack,
-		ethereum:  ethBackend,
 		console:   console,
 		input:     prompter,
 		output:    printer,

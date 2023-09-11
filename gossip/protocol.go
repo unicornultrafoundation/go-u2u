@@ -5,7 +5,9 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-u2u/libs/common"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
+	notify "github.com/unicornultrafoundation/go-u2u/libs/event"
 
+	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/native/ibr"
@@ -101,6 +103,7 @@ var errorToString = map[int]string{
 
 type TxPool interface {
 	emitter.TxPool
+	SubscribeNewTxsNotify(chan<- evmcore.NewTxsNotify) notify.Subscription
 	// AddRemotes should add the given transactions to the pool.
 	AddRemotes([]*types.Transaction) []error
 	AddLocals(txs []*types.Transaction) []error

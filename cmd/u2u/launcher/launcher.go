@@ -25,10 +25,10 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/tracing"
 	"github.com/unicornultrafoundation/go-u2u/debug"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
+	"github.com/unicornultrafoundation/go-u2u/flags"
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter"
 	"github.com/unicornultrafoundation/go-u2u/integration"
-	"github.com/unicornultrafoundation/go-u2u/flags"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesis"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesisstore"
 	"github.com/unicornultrafoundation/go-u2u/utils/errlock"
@@ -210,7 +210,6 @@ func init() {
 		importCommand,
 		exportCommand,
 		checkCommand,
-		deleteCommand,
 		// See snapshot.go
 		snapshotCommand,
 		// See dbcmd.go
@@ -352,12 +351,13 @@ func makeNode(ctx *cli.Context, cfg *config, genesisStore *genesisstore.Store) (
 	if err != nil {
 		utils.Fatalf("Failed to create the service: %v", err)
 	}
-	if cfg.Emitter.Validator.ID != 0 {
-		svc.RegisterEmitter(emitter.NewEmitter(cfg.Emitter, svc.EmitterWorld(signer)))
-	}
 	err = engine.Bootstrap(svc.GetConsensusCallbacks())
 	if err != nil {
 		utils.Fatalf("Failed to bootstrap the engine: %v", err)
+	}
+	svc.ReprocessEpochEvents()
+	if cfg.Emitter.Validator.ID != 0 {
+		svc.RegisterEmitter(emitter.NewEmitter(cfg.Emitter, svc.EmitterWorld(signer)))
 	}
 
 	stack.RegisterAPIs(svc.APIs())

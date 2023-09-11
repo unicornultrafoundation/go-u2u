@@ -1,6 +1,8 @@
 package vecmt
 
 import (
+	"github.com/syndtr/goleveldb/leveldb/opt"
+	"github.com/unicornultrafoundation/go-hashgraph/vecengine/vecflushable"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
@@ -16,6 +18,7 @@ import (
 // IndexCacheConfig - config for cache sizes of Engine
 type IndexCacheConfig struct {
 	HighestBeforeTimeSize uint
+	DBCache               int
 }
 
 // IndexConfig - Engine config (cache sizes)
@@ -54,6 +57,7 @@ func DefaultConfig(scale cachescale.Func) IndexConfig {
 		Fc: vecfc.DefaultConfig(scale),
 		Caches: IndexCacheConfig{
 			HighestBeforeTimeSize: scale.U(160 * 1024),
+			DBCache:               scale.I(10 * opt.MiB),
 		},
 	}
 }
@@ -103,7 +107,9 @@ func (vi *Index) initCaches() {
 
 // Reset resets buffers.
 func (vi *Index) Reset(validators *pos.Validators, db u2udb.Store, getEvent func(hash.Event) dag.Event) {
-	vi.Base.Reset(validators, db, getEvent)
+	fdb := vecflushable.Wrap(db, vi.cfg.Caches.DBCache)
+	vi.vecDb = fdb
+	vi.Base.Reset(validators, fdb, getEvent)
 	vi.getEvent = getEvent
 	vi.validators = validators
 	vi.validatorIdxs = validators.Idxs()
@@ -132,19 +138,11 @@ func (vi *Index) GetEngineCallbacks() vecengine.Callbacks {
 		NewLowestAfter: func(size idx.Validator) vecengine.LowestAfterI {
 			return vi.baseCallbacks.NewLowestAfter(size)
 		},
-		OnDbReset: func(db u2udb.Store) {
-			vi.baseCallbacks.OnDbReset(db)
-			vi.onDbReset(db)
-		},
 		OnDropNotFlushed: func() {
 			vi.baseCallbacks.OnDropNotFlushed()
 			vi.onDropNotFlushed()
 		},
 	}
-}
-
-func (vi *Index) onDbReset(db u2udb.Store) {
-	vi.vecDb = db
 }
 
 func (vi *Index) onDropNotFlushed() {

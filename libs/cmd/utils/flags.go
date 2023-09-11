@@ -52,7 +52,6 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/libs/metrics"
 	"github.com/unicornultrafoundation/go-u2u/libs/metrics/exp"
 	"github.com/unicornultrafoundation/go-u2u/libs/metrics/influxdb"
-	"github.com/unicornultrafoundation/go-u2u/libs/miner"
 	"github.com/unicornultrafoundation/go-u2u/libs/node"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/enode"
@@ -406,52 +405,6 @@ var (
 	CachePreimagesFlag = cli.BoolFlag{
 		Name:  "cache.preimages",
 		Usage: "Enable recording the SHA3/keccak preimages of trie keys",
-	}
-	// Miner settings
-	MiningEnabledFlag = cli.BoolFlag{
-		Name:  "mine",
-		Usage: "Enable mining",
-	}
-	MinerThreadsFlag = cli.IntFlag{
-		Name:  "miner.threads",
-		Usage: "Number of CPU threads to use for mining",
-		Value: 0,
-	}
-	MinerNotifyFlag = cli.StringFlag{
-		Name:  "miner.notify",
-		Usage: "Comma separated HTTP URL list to notify of new work packages",
-	}
-	MinerNotifyFullFlag = cli.BoolFlag{
-		Name:  "miner.notify.full",
-		Usage: "Notify with pending block headers instead of work packages",
-	}
-	MinerGasLimitFlag = cli.Uint64Flag{
-		Name:  "miner.gaslimit",
-		Usage: "Target gas ceiling for mined blocks",
-		Value: ethconfig.Defaults.Miner.GasCeil,
-	}
-	MinerGasPriceFlag = BigFlag{
-		Name:  "miner.gasprice",
-		Usage: "Minimum gas price for mining a transaction",
-		Value: ethconfig.Defaults.Miner.GasPrice,
-	}
-	MinerEtherbaseFlag = cli.StringFlag{
-		Name:  "miner.etherbase",
-		Usage: "Public address for block mining rewards (default = first account)",
-		Value: "0",
-	}
-	MinerExtraDataFlag = cli.StringFlag{
-		Name:  "miner.extradata",
-		Usage: "Block extra data set by the miner (default = client version)",
-	}
-	MinerRecommitIntervalFlag = cli.DurationFlag{
-		Name:  "miner.recommit",
-		Usage: "Time interval to recreate the block being mined",
-		Value: ethconfig.Defaults.Miner.Recommit,
-	}
-	MinerNoVerfiyFlag = cli.BoolFlag{
-		Name:  "miner.noverify",
-		Usage: "Disable remote sealing verification",
 	}
 	// Account settings
 	UnlockedAccountFlag = cli.StringFlag{
@@ -1023,9 +976,6 @@ func MakeAddress(ks *keystore.KeyStore, account string) (accounts.Account, error
 func setEtherbase(ctx *cli.Context, ks *keystore.KeyStore, cfg *ethconfig.Config) {
 	// Extract the current etherbase
 	var etherbase string
-	if ctx.GlobalIsSet(MinerEtherbaseFlag.Name) {
-		etherbase = ctx.GlobalString(MinerEtherbaseFlag.Name)
-	}
 	// Convert the etherbase into an address and configure it
 	if etherbase != "" {
 		if ks != nil {
@@ -1311,31 +1261,6 @@ func setEthash(ctx *cli.Context, cfg *ethconfig.Config) {
 	}
 }
 
-func setMiner(ctx *cli.Context, cfg *miner.Config) {
-	if ctx.GlobalIsSet(MinerNotifyFlag.Name) {
-		cfg.Notify = strings.Split(ctx.GlobalString(MinerNotifyFlag.Name), ",")
-	}
-	cfg.NotifyFull = ctx.GlobalBool(MinerNotifyFullFlag.Name)
-	if ctx.GlobalIsSet(MinerExtraDataFlag.Name) {
-		cfg.ExtraData = []byte(ctx.GlobalString(MinerExtraDataFlag.Name))
-	}
-	if ctx.GlobalIsSet(MinerGasLimitFlag.Name) {
-		cfg.GasCeil = ctx.GlobalUint64(MinerGasLimitFlag.Name)
-	}
-	if ctx.GlobalIsSet(MinerGasPriceFlag.Name) {
-		cfg.GasPrice = GlobalBig(ctx, MinerGasPriceFlag.Name)
-	}
-	if ctx.GlobalIsSet(MinerRecommitIntervalFlag.Name) {
-		cfg.Recommit = ctx.GlobalDuration(MinerRecommitIntervalFlag.Name)
-	}
-	if ctx.GlobalIsSet(MinerNoVerfiyFlag.Name) {
-		cfg.Noverify = ctx.GlobalBool(MinerNoVerfiyFlag.Name)
-	}
-	if ctx.GlobalIsSet(LegacyMinerGasTargetFlag.Name) {
-		log.Warn("The generic --miner.gastarget flag is deprecated and will be removed in the future!")
-	}
-}
-
 func setWhitelist(ctx *cli.Context, cfg *ethconfig.Config) {
 	whitelist := ctx.GlobalString(WhitelistFlag.Name)
 	if whitelist == "" {
@@ -1421,7 +1346,6 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *ethconfig.Config) {
 	setGPO(ctx, &cfg.GPO, ctx.GlobalString(SyncModeFlag.Name) == "light")
 	setTxPool(ctx, &cfg.TxPool)
 	setEthash(ctx, cfg)
-	setMiner(ctx, &cfg.Miner)
 	setWhitelist(ctx, cfg)
 	setLes(ctx, cfg)
 

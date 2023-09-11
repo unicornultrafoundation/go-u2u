@@ -3,11 +3,11 @@ package gossip
 import (
 	"errors"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
 
 	"github.com/unicornultrafoundation/go-u2u/eventcheck"
 	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"

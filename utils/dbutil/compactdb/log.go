@@ -5,9 +5,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/status-im/keycard-go/hexutils"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/unicornultrafoundation/go-u2u/libs/log"
 )
 
 type loggedCompacter struct {

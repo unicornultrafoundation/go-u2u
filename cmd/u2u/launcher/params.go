@@ -1,7 +1,6 @@
 package launcher
 
 import (
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 
 	"github.com/unicornultrafoundation/go-u2u/u2u"
@@ -177,8 +176,11 @@ var (
 )
 
 func overrideParams() {
-	params.MainnetBootnodes = []string{}
-	params.RopstenBootnodes = []string{}
-	params.RinkebyBootnodes = []string{}
-	params.GoerliBootnodes = []string{}
+	// Below params are removed from source code.
+	// Does not need to override.
+
+	// params.MainnetBootnodes = []string{}
+	// params.RopstenBootnodes = []string{}
+	// params.RinkebyBootnodes = []string{}
+	// params.GoerliBootnodes = []string{}
 }

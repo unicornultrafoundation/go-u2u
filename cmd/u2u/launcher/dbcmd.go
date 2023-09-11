@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/cachedproducer"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/multidb"
+	"github.com/unicornultrafoundation/go-u2u/libs/cmd/utils"
+	"github.com/unicornultrafoundation/go-u2u/libs/ethdb"
+	"github.com/unicornultrafoundation/go-u2u/libs/log"
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip"

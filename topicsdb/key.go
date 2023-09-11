@@ -1,8 +1,8 @@
 package topicsdb
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/unicornultrafoundation/go-hashgraph/common/bigendian"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
 )
 
 const (

@@ -19,10 +19,10 @@ package evmcore
 import (
 	"sync/atomic"
 
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/state"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/libs/params"
 
 	"github.com/unicornultrafoundation/go-u2u/utils/signers/gsignercache"
 )

@@ -5,14 +5,14 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
 	utypes "github.com/unicornultrafoundation/go-hashgraph/types"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/memorydb"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
+	"github.com/unicornultrafoundation/go-u2u/libs/crypto"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/integration/makegenesis"

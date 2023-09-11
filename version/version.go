@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/unicornultrafoundation/go-u2u/libs/params"
 )
 
 func init() {

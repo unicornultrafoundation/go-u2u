@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/unicornultrafoundation/go-u2u/libs/log"
 )
 
 func OpenFile(path string, isSyncMode bool) *os.File {

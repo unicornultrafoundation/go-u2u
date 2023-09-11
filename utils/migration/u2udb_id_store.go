@@ -1,8 +1,8 @@
 package migration
 
 import (
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/unicornultrafoundation/go-u2u/libs/log"
 )
 
 // U2UdbIDStore stores id

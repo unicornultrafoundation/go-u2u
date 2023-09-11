@@ -11,10 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/status-im/keycard-go/hexutils"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -22,6 +18,10 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
+	"github.com/unicornultrafoundation/go-u2u/libs/rlp"
+	"github.com/unicornultrafoundation/go-u2u/libs/rpc"
 
 	"github.com/unicornultrafoundation/go-u2u/eventcheck"
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/epochcheck"

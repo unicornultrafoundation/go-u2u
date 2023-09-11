@@ -6,8 +6,8 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/suite"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
 
 	lbasiccheck "github.com/unicornultrafoundation/go-hashgraph/eventcheck/basiccheck"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"

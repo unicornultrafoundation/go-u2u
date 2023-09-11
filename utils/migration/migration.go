@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/unicornultrafoundation/go-u2u/libs/log"
 )
 
 // Migration is a migration step.

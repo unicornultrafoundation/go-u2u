@@ -23,10 +23,10 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/console"
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/unicornultrafoundation/go-u2u/libs/console"
+	"github.com/unicornultrafoundation/go-u2u/libs/cmd/utils"
+	"github.com/unicornultrafoundation/go-u2u/libs/node"
+	"github.com/unicornultrafoundation/go-u2u/libs/rpc"
 	"gopkg.in/urfave/cli.v1"
 )
 

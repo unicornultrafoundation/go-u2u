@@ -19,8 +19,8 @@ package evmcore
 import (
 	"sync"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/state"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/state"
 )
 
 // txNoncer is a tiny virtual state database to manage the executable nonces of

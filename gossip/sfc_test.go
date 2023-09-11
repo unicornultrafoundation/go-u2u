@@ -35,9 +35,9 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
+	"github.com/unicornultrafoundation/go-u2u/libs/common/hexutil"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
 
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-u2u/gossip/contract/driver100"

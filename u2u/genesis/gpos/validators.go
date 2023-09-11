@@ -1,7 +1,7 @@
 package gpos
 
 import (
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
 	"github.com/unicornultrafoundation/go-u2u/native"
 
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"

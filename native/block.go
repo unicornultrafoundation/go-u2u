@@ -1,9 +1,9 @@
 package native
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
 )
 
 type Block struct {

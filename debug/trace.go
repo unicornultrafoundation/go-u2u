@@ -24,7 +24,7 @@ import (
 	"os"
 	"runtime/trace"
 
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/unicornultrafoundation/go-u2u/libs/log"
 )
 
 // StartGoTrace turns on tracing, writing to the given file.

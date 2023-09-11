@@ -6,10 +6,10 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/node"
+	"github.com/unicornultrafoundation/go-u2u/libs/cmd/utils"
+	"github.com/unicornultrafoundation/go-u2u/libs/crypto"
+	"github.com/unicornultrafoundation/go-u2u/libs/log"
+	"github.com/unicornultrafoundation/go-u2u/libs/node"
 	cli "gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"

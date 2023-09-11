@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/unicornultrafoundation/go-u2u/libs/crypto"
+	"github.com/unicornultrafoundation/go-u2u/libs/params"
 
 	"github.com/unicornultrafoundation/go-u2u/integration/makefakegenesis"
 	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"

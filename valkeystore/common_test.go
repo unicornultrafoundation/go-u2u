@@ -3,8 +3,8 @@ package valkeystore
 import (
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
 
 	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"
 )

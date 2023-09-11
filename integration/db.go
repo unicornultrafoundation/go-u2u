@@ -7,9 +7,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
@@ -19,6 +16,9 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/multidb"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/pebble"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/fmtfilter"
+	"github.com/unicornultrafoundation/go-u2u/libs/cmd/utils"
+	"github.com/unicornultrafoundation/go-u2u/libs/log"
+	"github.com/unicornultrafoundation/go-u2u/libs/metrics"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/asyncflushproducer"

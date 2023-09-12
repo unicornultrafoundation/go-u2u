@@ -312,7 +312,6 @@ func (c *Console) Welcome() {
 		} catch (err) {}
 		message
 	`)
-	fmt.Println("@@@@@@@@@@@@@@@@@@@@@ mes:", res, " err:", err)
 	if err == nil {
 		message += res.String()
 	}

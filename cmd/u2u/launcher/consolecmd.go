@@ -18,16 +18,14 @@ package launcher
 
 import (
 	"fmt"
-	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/console"
+	"gopkg.in/urfave/cli.v1"
+
 	"github.com/unicornultrafoundation/go-u2u/libs/cmd/utils"
+	"github.com/unicornultrafoundation/go-u2u/libs/console"
 	"github.com/unicornultrafoundation/go-u2u/libs/node"
 	"github.com/unicornultrafoundation/go-u2u/libs/rpc"
-	"gopkg.in/urfave/cli.v1"
 )
 
 var (
@@ -42,7 +40,7 @@ var (
 		Description: `
 The u2u console is an interactive shell for the JavaScript runtime environment
 which exposes a node admin interface as well as the Ðapp JavaScript API.
-See https://github.com/ethereum/go-ethereum/wiki/JavaScript-Console.`,
+See https://github.com/unicornultrafoundation/go-u2u/libs/wiki/JavaScript-Console.`,
 	}
 
 	attachCommand = cli.Command{
@@ -55,7 +53,7 @@ See https://github.com/ethereum/go-ethereum/wiki/JavaScript-Console.`,
 		Description: `
 The u2u console is an interactive shell for the JavaScript runtime environment
 which exposes a node admin interface as well as the Ðapp JavaScript API.
-See https://github.com/ethereum/go-ethereum/wiki/JavaScript-Console.
+See https://github.com/unicornultrafoundation/go-u2u/libs/wiki/JavaScript-Console.
 This command allows to open a console on a running u2u node.`,
 	}
 
@@ -68,7 +66,7 @@ This command allows to open a console on a running u2u node.`,
 		Category:  "CONSOLE COMMANDS",
 		Description: `
 The JavaScript VM exposes a node admin interface as well as the Ðapp
-JavaScript API. See https://github.com/ethereum/go-ethereum/wiki/JavaScript-Console`,
+JavaScript API. See https://github.com/unicornultrafoundation/go-u2u/libs/wiki/JavaScript-Console`,
 	}
 )
 
@@ -170,46 +168,11 @@ func dialRPC(endpoint string) (*rpc.Client, error) {
 // console to it, executes each of the files specified as arguments and tears
 // everything down.
 func ephemeralConsole(ctx *cli.Context) error {
-	// Create and start the node based on the CLI flags
-	cfg := makeAllConfigs(ctx)
-	genesisStore := mayGetGenesisStore(ctx)
-	node, _, nodeClose := makeNode(ctx, cfg, genesisStore)
-	startNode(ctx, node)
-	defer nodeClose()
-
-	// Attach to the newly started node and start the JavaScript console
-	client, err := node.Attach()
-	if err != nil {
-		utils.Fatalf("Failed to attach to the inproc u2u: %v", err)
-	}
-	config := console.Config{
-		DataDir: utils.MakeDataDir(ctx),
-		DocRoot: ctx.GlobalString(utils.JSpathFlag.Name),
-		Client:  client,
-		Preload: utils.MakeConsolePreloads(ctx),
-	}
-
-	console, err := console.New(config)
-	if err != nil {
-		utils.Fatalf("Failed to start the JavaScript console: %v", err)
-	}
-	defer console.Stop(false)
-
-	// Evaluate each of the specified JavaScript files
+	var b strings.Builder
 	for _, file := range ctx.Args() {
-		if err = console.Execute(file); err != nil {
-			utils.Fatalf("Failed to execute %s: %v", file, err)
-		}
+		b.Write([]byte(fmt.Sprintf("loadScript('%s');", file)))
 	}
-	// Wait for pending callbacks, but stop for Ctrl-C.
-	abort := make(chan os.Signal, 1)
-	signal.Notify(abort, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		<-abort
-		os.Exit(0)
-	}()
-	console.Stop(true)
-
+	utils.Fatalf(`The "js" command is deprecated. Please use the following instead:
+u2u --exec "%s" console`, b.String())
 	return nil
 }

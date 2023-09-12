@@ -29,6 +29,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/libs/common"
 	"github.com/unicornultrafoundation/go-u2u/libs/consensus/ethash"
 	"github.com/unicornultrafoundation/go-u2u/libs/console/prompt"
+	"github.com/unicornultrafoundation/go-u2u/libs/core"
 	"github.com/unicornultrafoundation/go-u2u/libs/eth/ethconfig"
 	"github.com/unicornultrafoundation/go-u2u/libs/internal/jsre"
 	"github.com/unicornultrafoundation/go-u2u/libs/miner"
@@ -96,6 +97,7 @@ func newTester(t *testing.T, confOverride func(*ethconfig.Config)) *tester {
 		t.Fatalf("failed to create node: %v", err)
 	}
 	ethConf := &ethconfig.Config{
+		Genesis: core.DeveloperGenesisBlock(15, common.Address{}),
 		Miner: miner.Config{
 			Etherbase: common.HexToAddress(testAddress),
 		},
@@ -280,7 +282,7 @@ func TestPrettyError(t *testing.T) {
 	defer tester.Close(t)
 	tester.console.Evaluate("throw 'hello'")
 
-	want := jsre.ErrorColor("hello") + "\n\tat <eval>:1:7(1)\n\n"
+	want := jsre.ErrorColor("hello") + "\n\tat <eval>:1:1(1)\n\n"
 	if output := tester.output.String(); output != want {
 		t.Fatalf("pretty error mismatch: have %s, want %s", output, want)
 	}

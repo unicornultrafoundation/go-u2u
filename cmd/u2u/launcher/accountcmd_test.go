@@ -138,7 +138,7 @@ func TestUnlockFlag(t *testing.T) {
 	cli := exec(t,
 		"--fakenet", "0/1", "--datadir", datadir, "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0",
 		"--unlock", "f466859ead1932d743d622cb74fc058882e8648a",
-		"js", "testdata/empty.js")
+		"console", "--exec", "testdata/empty.js")
 
 	cli.Expect(`
 Unlocking account f466859ead1932d743d622cb74fc058882e8648a | Attempt 1/3
@@ -183,7 +183,7 @@ func TestUnlockFlagMultiIndex(t *testing.T) {
 	cli := exec(t,
 		"--fakenet", "0/1", "--datadir", datadir, "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0",
 		"--unlock", "0,2",
-		"js", "testdata/empty.js")
+		"console", "--exec", "testdata/empty.js")
 
 	cli.Expect(`
 Unlocking account 0 | Attempt 1/3
@@ -211,7 +211,7 @@ func TestUnlockFlagPasswordFile(t *testing.T) {
 	cli := exec(t,
 		"--fakenet", "0/1", "--datadir", datadir, "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0",
 		"--password", "testdata/passwords.txt", "--unlock", "0,2",
-		"js", "testdata/empty.js")
+		"console", "--exec", "testdata/empty.js")
 
 	cli.ExpectExit()
 
@@ -244,7 +244,7 @@ func TestUnlockFlagAmbiguous(t *testing.T) {
 	cli := exec(t,
 		"--fakenet", "0/1", "--keystore", store, "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0",
 		"--unlock", "f466859ead1932d743d622cb74fc058882e8648a",
-		"js", "testdata/empty.js")
+		"console", "--exec", "testdata/empty.js")
 
 	// Helper for the expect template, returns absolute keystore path.
 	cli.SetTemplateFunc("keypath", func(file string) string {

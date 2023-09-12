@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/docker/docker/pkg/reexec"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/rpc"
 
 	"github.com/unicornultrafoundation/go-u2u/cmd/cmdtest"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/libs/rpc"
 )
 
 func tmpdir(t *testing.T) string {

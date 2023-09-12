@@ -66,7 +66,7 @@ func TestIPCAttachWelcome(t *testing.T) {
 	}
 	cli := exec(t,
 		"--fakenet", "0/1", "--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
-		"--ipcpath", ipc)
+		"--ipcpath", ipc, "--cache", "7923", "--datadir.minfreedisk", "1")
 
 	waitForEndpoint(t, ipc, 60*time.Second)
 	testAttachWelcome(t, cli, "ipc:"+ipc, ipcAPIs)
@@ -79,7 +79,7 @@ func TestHTTPAttachWelcome(t *testing.T) {
 	port := strconv.Itoa(trulyRandInt(1024, 65536)) // Yeah, sometimes this will fail, sorry :P
 	cli := exec(t,
 		"--fakenet", "0/1", "--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
-		"--http", "--http.port", port)
+		"--http", "--http.port", port, "--cache", "7923", "--datadir.minfreedisk", "1")
 
 	endpoint := "http://127.0.0.1:" + port
 	waitForEndpoint(t, endpoint, 60*time.Second)
@@ -94,7 +94,7 @@ func TestWSAttachWelcome(t *testing.T) {
 
 	cli := exec(t,
 		"--fakenet", "0/1", "--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
-		"--ws", "--ws.port", port)
+		"--ws", "--ws.port", port, "--cache", "7923", "--datadir.minfreedisk", "1")
 
 	endpoint := "ws://127.0.0.1:" + port
 	waitForEndpoint(t, endpoint, 60*time.Second)

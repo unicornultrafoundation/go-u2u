@@ -17,6 +17,7 @@
 package console
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -162,12 +163,10 @@ func (c *Console) initConsoleObject() {
 }
 
 func (c *Console) initWeb3(bridge *bridge) error {
-	bnJS := string(deps.MustAsset("bignumber.js"))
-	web3JS := string(deps.MustAsset("web3.js"))
-	if err := c.jsre.Compile("bignumber.js", bnJS); err != nil {
+	if err := c.jsre.Compile("bignumber.js", deps.BigNumberJS); err != nil {
 		return fmt.Errorf("bignumber.js: %v", err)
 	}
-	if err := c.jsre.Compile("web3.js", web3JS); err != nil {
+	if err := c.jsre.Compile("web3.js", deps.Web3JS); err != nil {
 		return fmt.Errorf("web3.js: %v", err)
 	}
 	if _, err := c.jsre.Run("var Web3 = require('web3');"); err != nil {
@@ -296,13 +295,13 @@ func (c *Console) AutoCompleteInput(line string, pos int) (string, []string, str
 	return line[:start], c.jsre.CompleteKeywords(line[start:pos]), line[pos:]
 }
 
-// Welcome show summary of current Geth instance and some metadata about the
+// Welcome shows summary of current u2u instance and some metadata about the
 // console's available modules.
 func (c *Console) Welcome() {
 	message := "Welcome to the Hashgraph JavaScript console!\n\n"
 
-	// Print some generic Geth metadata
-	if res, err := c.jsre.Run(`
+	// Print some generic u2u metadata
+	res, err := c.jsre.Run(`
 		var message = "instance: " + web3.version.node + "\n";
 		try {
 			message += "coinbase: " + ftm.coinbase + "\n";
@@ -312,7 +311,9 @@ func (c *Console) Welcome() {
 			message += " datadir: " + admin.datadir + "\n";
 		} catch (err) {}
 		message
-	`); err == nil {
+	`)
+	fmt.Println("@@@@@@@@@@@@@@@@@@@@@ mes:", res, " err:", err)
+	if err == nil {
 		message += res.String()
 	}
 	// List all the supported modules for the user to call
@@ -342,7 +343,7 @@ func (c *Console) Evaluate(statement string) {
 	c.jsre.Evaluate(statement, c.printer)
 }
 
-// Interactive starts an interactive user session, where input is propted from
+// Interactive starts an interactive user session, where input is prompted from
 // the configured user prompter.
 func (c *Console) Interactive() {
 	var (
@@ -376,7 +377,7 @@ func (c *Console) Interactive() {
 			return
 
 		case err := <-inputErr:
-			if err == liner.ErrPromptAborted {
+			if errors.Is(err, liner.ErrPromptAborted) {
 				// When prompting for multi-line input, the first Ctrl-C resets
 				// the multi-line state.
 				prompt, indents, input = c.prompt, 0, ""
@@ -429,7 +430,7 @@ func (c *Console) readLines(input chan<- string, errc chan<- error, prompt <-cha
 	}
 }
 
-// countIndents returns the number of identations for the given input.
+// countIndents returns the number of indentations for the given input.
 // In case of invalid input such as var a = } the result can be negative.
 func countIndents(input string) int {
 	var (

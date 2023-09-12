@@ -23,7 +23,8 @@ func TestTxTracing(t *testing.T) {
 	wsport := strconv.Itoa(trulyRandInt(10000, 65536))
 	cliNode := exec(t,
 		"--fakenet", "1/1", "--enabletxtracer", "--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
-		"--ws", "--ws.port", wsport, "--http", "--http.api", "eth,web3,net,txpool,ftm,sfc,trace", "--http.port", port, "--allow-insecure-unlock")
+		"--ws", "--ws.port", wsport, "--http", "--http.api", "eth,web3,net,txpool,ftm,sfc,trace", "--http.port", port, "--allow-insecure-unlock",
+		"--cache", "7923", "--datadir.minfreedisk", "1")
 
 	// Wait for node to start
 	endpoint := "ws://127.0.0.1:" + wsport

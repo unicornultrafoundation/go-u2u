@@ -18,7 +18,7 @@ func TestFakeNetFlag_NonValidator(t *testing.T) {
 	// Start an u2u console, make sure it's cleaned up and terminate the console
 	cli := exec(t,
 		"--fakenet", "0/3",
-		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
+		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none", "--cache", "7923", "--datadir.minfreedisk", "1",
 		"console")
 
 	// Gather all the infos the welcome message needs to contain
@@ -60,7 +60,7 @@ func TestFakeNetFlag_Validator(t *testing.T) {
 	// Start an u2u console, make sure it's cleaned up and terminate the console
 	cli := exec(t,
 		"--fakenet", "3/3",
-		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
+		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none", "--cache", "7923", "--datadir.minfreedisk", "1",
 		"console")
 
 	// Gather all the infos the welcome message needs to contain

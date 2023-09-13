@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	MainNetworkID   uint64 = 3860
+	MainNetworkID   uint64 = 39
 	TestNetworkID   uint64 = 2484
 	FakeNetworkID   uint64 = 4439
 	DefaultEventGas uint64 = 28000
@@ -159,7 +159,12 @@ func MainNetRules() Rules {
 		Economy:   DefaultEconomyRules(),
 		Blocks: BlocksRules{
 			MaxBlockGas:             20500000,
-			MaxEmptyBlockSkipPeriod: native.Timestamp(1 * time.Minute),
+			MaxEmptyBlockSkipPeriod: native.Timestamp(1 * time.Second),
+		},
+		Upgrades: Upgrades{
+			Berlin: true,
+			London: true,
+			Llr:    true,
 		},
 	}
 }
@@ -173,7 +178,12 @@ func TestNetRules() Rules {
 		Economy:   DefaultEconomyRules(),
 		Blocks: BlocksRules{
 			MaxBlockGas:             20500000,
-			MaxEmptyBlockSkipPeriod: native.Timestamp(1 * time.Minute),
+			MaxEmptyBlockSkipPeriod: native.Timestamp(1 * time.Second),
+		},
+		Upgrades: Upgrades{
+			Berlin: true,
+			London: true,
+			Llr:    true,
 		},
 	}
 }
@@ -226,8 +236,8 @@ func DefaultDagRules() DagRules {
 
 func DefaultEpochsRules() EpochsRules {
 	return EpochsRules{
-		MaxEpochGas:      1500000000,
-		MaxEpochDuration: native.Timestamp(4 * time.Hour),
+		MaxEpochGas:      300000000,
+		MaxEpochDuration: native.Timestamp(7 * time.Minute),
 	}
 }
 
@@ -247,7 +257,7 @@ func DefaultGasRules() GasRules {
 func FakeNetEpochsRules() EpochsRules {
 	cfg := DefaultEpochsRules()
 	cfg.MaxEpochGas /= 5
-	cfg.MaxEpochDuration = native.Timestamp(10 * time.Minute)
+	cfg.MaxEpochDuration = native.Timestamp(5 * time.Second)
 	return cfg
 }
 

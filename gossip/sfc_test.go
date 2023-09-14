@@ -1,8 +1,8 @@
 package gossip
 
 // compile SFC with truffle
-//go:generate bash -c "cd ../../u2u-sfc && git checkout 0cde5d7b186a8e5c32197acfb382e2a7f8a19351"
-//go:generate bash -c "docker run --name go-u2u-sfc-compiler -v $(pwd)/contract/solc:/src/build/contracts -v $(pwd)/../../u2u-sfc:/src -w /src node:18.16.1 bash -c 'export NPM_CONFIG_PREFIX=~; npm install --no-save; npm install --no-save truffle@5.2.4' && docker commit go-u2u-sfc-compiler go-u2u-sfc-compiler-image && docker rm go-u2u-sfc-compiler"
+//go:generate bash -c "cd ../../u2u-sfc && git checkout 8ff03212140f8440f1dea2c63826528ceff91074"
+//go:generate bash -c "docker run --name go-u2u-sfc-compiler -v $(pwd)/contract/solc:/src/build/contracts -v $(pwd)/../../u2u-sfc:/src -w /src node:18-buster bash -c 'export NPM_CONFIG_PREFIX=~; npm install --no-save; npm install --no-save truffle@5.2.4' && docker commit go-u2u-sfc-compiler go-u2u-sfc-compiler-image && docker rm go-u2u-sfc-compiler"
 //go:generate bash -c "docker run --rm -v $(pwd)/contract/solc:/src/build/contracts -v $(pwd)/../../u2u-sfc:/src -w /src go-u2u-sfc-compiler-image bash -c 'export NPM_CONFIG_PREFIX=~; rm -f /src/build/contracts/*json; npm run build'"
 //go:generate bash -c "cd ./contract/solc && for f in SFC.json SFCLib.json; do jq -j .bytecode $DOLLAR{f} > $DOLLAR{f%.json}.bin; jq -j .deployedBytecode $DOLLAR{f} > $DOLLAR{f%.json}.bin-runtime; jq -c .abi $DOLLAR{f} > $DOLLAR{f%.json}.abi; done"
 //go:generate bash -c "docker run --rm -v $(pwd)/contract/solc:/src/build/contracts -v $(pwd)/../../u2u-sfc:/src -w /src go-u2u-sfc-compiler-image bash -c 'export NPM_CONFIG_PREFIX=~; sed -i s/runs:\\ 200,/runs:\\ 10000,/ /src/truffle-config.js; rm -f /src/build/contracts/*json; npm run build'"

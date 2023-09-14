@@ -304,9 +304,9 @@ func (c *Console) Welcome() {
 	res, err := c.jsre.Run(`
 		var message = "instance: " + web3.version.node + "\n";
 		try {
-			message += "coinbase: " + ftm.coinbase + "\n";
+			message += "coinbase: " + u2u.coinbase + "\n";
 		} catch (err) {}
-		message += "at block: " + ftm.blockNumber + " (" + new Date(1000 * ftm.getBlock(ftm.blockNumber).timestamp) + ")\n";
+		message += "at block: " + u2u.blockNumber + " (" + new Date(1000 * u2u.getBlock(u2u.blockNumber).timestamp) + ")\n";
 		try {
 			message += " datadir: " + admin.datadir + "\n";
 		} catch (err) {}

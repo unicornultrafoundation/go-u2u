@@ -1,6 +1,7 @@
 package emitter
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -19,6 +20,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/logger"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/tracing"
+	"github.com/unicornultrafoundation/go-u2u/utils/errlock"
 	"github.com/unicornultrafoundation/go-u2u/utils/rate"
 )
 
@@ -309,6 +311,12 @@ func (em *Emitter) createEvent(sortedTxs *types.TransactionsByPriceAndNonce) (*n
 	selfParent, parents, ok := em.chooseParents(em.epoch, em.config.Validator.ID)
 	if !ok {
 		return nil, nil
+	}
+	prevEmitted := em.readLastEmittedEventID()
+	if prevEmitted != nil && prevEmitted.Epoch() >= em.epoch {
+		if selfParent == nil || *selfParent != *prevEmitted {
+			errlock.Permanent(errors.New("local database is corrupted, which may lead to a double sign"))
+		}
 	}
 
 	// Set parent-dependent fields

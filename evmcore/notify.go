@@ -17,8 +17,8 @@
 package evmcore
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
 )
 
 // NewTxsNotify is posted when a batch of transactions enter the transaction pool.

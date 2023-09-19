@@ -4,7 +4,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/unicornultrafoundation/go-u2u/libs/rlp"
 )
 
 type GasRulesRLPV0 struct {

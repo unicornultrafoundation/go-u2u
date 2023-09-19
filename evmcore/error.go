@@ -19,7 +19,7 @@ package evmcore
 import (
 	"errors"
 
-	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
 )
 
 var (

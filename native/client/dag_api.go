@@ -4,10 +4,10 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
+	ethereum "github.com/unicornultrafoundation/go-u2u/libs"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/libs/common/hexutil"
 
 	"github.com/unicornultrafoundation/go-u2u/native"
 )

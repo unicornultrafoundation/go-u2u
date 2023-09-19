@@ -9,9 +9,9 @@ import (
 
 	"github.com/syndtr/goleveldb/leveldb/opt"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/unicornultrafoundation/go-u2u/libs/cmd/utils"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/libs/log"
 
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/batched"
@@ -91,7 +91,7 @@ func transform(m transformTask) error {
 		if err != nil {
 			utils.Fatalf("Failed to flush: %v", err)
 		}
-		freeSpace, err := getFreeDiskSpace(m.dir)
+		freeSpace, err := utils.GetFreeDiskSpace(m.dir)
 		if err != nil {
 			log.Error("Failed to retrieve free disk space", "err", err)
 		} else if freeSpace < 20*opt.GiB {

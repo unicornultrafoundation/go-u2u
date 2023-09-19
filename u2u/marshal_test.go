@@ -4,8 +4,8 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/stretchr/testify/require"
+	"github.com/unicornultrafoundation/go-u2u/libs/rlp"
 )
 
 func TestUpdateRules(t *testing.T) {

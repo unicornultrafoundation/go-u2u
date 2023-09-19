@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/unicornultrafoundation/go-u2u/libs/crypto"
+	"github.com/unicornultrafoundation/go-u2u/libs/params"
 
 	"github.com/unicornultrafoundation/go-u2u/integration/makefakegenesis"
 	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"
@@ -18,7 +18,7 @@ func TestFakeNetFlag_NonValidator(t *testing.T) {
 	// Start an u2u console, make sure it's cleaned up and terminate the console
 	cli := exec(t,
 		"--fakenet", "0/3",
-		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
+		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none", "--cache", "7923", "--datadir.minfreedisk", "1",
 		"console")
 
 	// Gather all the infos the welcome message needs to contain
@@ -60,7 +60,7 @@ func TestFakeNetFlag_Validator(t *testing.T) {
 	// Start an u2u console, make sure it's cleaned up and terminate the console
 	cli := exec(t,
 		"--fakenet", "3/3",
-		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
+		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none", "--cache", "7923", "--datadir.minfreedisk", "1",
 		"console")
 
 	// Gather all the infos the welcome message needs to contain

@@ -1,8 +1,8 @@
 package validatorpk
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
 )
 
 const (

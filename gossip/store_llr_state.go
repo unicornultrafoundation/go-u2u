@@ -1,8 +1,8 @@
 package gossip
 
 import (
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/libs/log"
 )
 
 type LlrState struct {

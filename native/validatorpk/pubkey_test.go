@@ -3,8 +3,8 @@ package validatorpk
 import (
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
 )
 
 func TestFromString(t *testing.T) {

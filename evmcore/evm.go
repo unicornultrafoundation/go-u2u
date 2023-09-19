@@ -19,8 +19,8 @@ package evmcore
 import (
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/vm"
 )
 
 // DummyChain supports retrieving headers and consensus parameters from the

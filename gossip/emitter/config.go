@@ -4,8 +4,8 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/libs/params"
 
 	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
@@ -61,7 +61,7 @@ func DefaultConfig() Config {
 
 		EmitIntervals: EmitIntervals{
 			Min:                        150 * time.Millisecond,
-			Max:                        10 * time.Minute,
+			Max:                        1 * time.Second,
 			Confirming:                 170 * time.Millisecond,
 			DoublesignProtection:       27 * time.Minute, // should be greater than MaxEmitInterval
 			ParallelInstanceProtection: 1 * time.Minute,

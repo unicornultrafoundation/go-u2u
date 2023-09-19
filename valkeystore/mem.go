@@ -3,7 +3,7 @@ package valkeystore
 import (
 	"errors"
 
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/unicornultrafoundation/go-u2u/libs/crypto"
 
 	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"
 	"github.com/unicornultrafoundation/go-u2u/valkeystore/encryption"

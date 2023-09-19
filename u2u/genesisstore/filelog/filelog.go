@@ -5,7 +5,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/unicornultrafoundation/go-u2u/libs/log"
 
 	"github.com/unicornultrafoundation/go-u2u/utils"
 )

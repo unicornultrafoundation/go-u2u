@@ -6,8 +6,8 @@ import (
 	"path"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/stretchr/testify/require"
+	"github.com/unicornultrafoundation/go-u2u/libs/accounts/keystore"
 
 	"github.com/unicornultrafoundation/go-u2u/valkeystore/encryption"
 )

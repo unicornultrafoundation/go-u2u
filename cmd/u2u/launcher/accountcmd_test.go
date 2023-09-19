@@ -137,13 +137,14 @@ func TestUnlockFlag(t *testing.T) {
 	datadir := tmpDatadirWithKeystore(t)
 	cli := exec(t,
 		"--fakenet", "0/1", "--datadir", datadir, "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0",
-		"--unlock", "f466859ead1932d743d622cb74fc058882e8648a",
-		"js", "testdata/empty.js")
+		"--unlock", "f466859ead1932d743d622cb74fc058882e8648a", "--cache", "7923", "--datadir.minfreedisk", "1",
+		"console", "--exec", "loadScript('testdata/empty.js')")
 
 	cli.Expect(`
 Unlocking account f466859ead1932d743d622cb74fc058882e8648a | Attempt 1/3
 !! Unsupported terminal, password will be echoed.
 Passphrase: {{.InputLine "foobar"}}
+undefined
 `)
 	cli.ExpectExit()
 
@@ -162,7 +163,7 @@ func TestUnlockFlagWrongPassword(t *testing.T) {
 	datadir := tmpDatadirWithKeystore(t)
 	cli := exec(t,
 		"--fakenet", "0/1", "--datadir", datadir, "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0",
-		"--unlock", "f466859ead1932d743d622cb74fc058882e8648a")
+		"--unlock", "f466859ead1932d743d622cb74fc058882e8648a", "--cache", "7923", "--datadir.minfreedisk", "1")
 
 	cli.Expect(`
 Unlocking account f466859ead1932d743d622cb74fc058882e8648a | Attempt 1/3
@@ -182,8 +183,8 @@ func TestUnlockFlagMultiIndex(t *testing.T) {
 	datadir := tmpDatadirWithKeystore(t)
 	cli := exec(t,
 		"--fakenet", "0/1", "--datadir", datadir, "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0",
-		"--unlock", "0,2",
-		"js", "testdata/empty.js")
+		"--unlock", "0,2", "--cache", "7923", "--datadir.minfreedisk", "1",
+		"console", "--exec", "loadScript('testdata/empty.js')")
 
 	cli.Expect(`
 Unlocking account 0 | Attempt 1/3
@@ -191,6 +192,7 @@ Unlocking account 0 | Attempt 1/3
 Passphrase: {{.InputLine "foobar"}}
 Unlocking account 2 | Attempt 1/3
 Passphrase: {{.InputLine "foobar"}}
+undefined
 `)
 	cli.ExpectExit()
 
@@ -210,9 +212,11 @@ func TestUnlockFlagPasswordFile(t *testing.T) {
 	datadir := tmpDatadirWithKeystore(t)
 	cli := exec(t,
 		"--fakenet", "0/1", "--datadir", datadir, "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0",
-		"--password", "testdata/passwords.txt", "--unlock", "0,2",
-		"js", "testdata/empty.js")
-
+		"--password", "testdata/passwords.txt", "--unlock", "0,2", "--cache", "7923",
+		"--datadir.minfreedisk", "1", "console", "--exec", "loadScript('testdata/empty.js')")
+	cli.Expect(`
+undefined
+`)
 	cli.ExpectExit()
 
 	wantMessages := []string{
@@ -231,7 +235,7 @@ func TestUnlockFlagPasswordFileWrongPassword(t *testing.T) {
 	datadir := tmpDatadirWithKeystore(t)
 	cli := exec(t,
 		"--fakenet", "0/1", "--datadir", datadir, "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0",
-		"--password", "testdata/wrong-passwords.txt", "--unlock", "0,2")
+		"--password", "testdata/wrong-passwords.txt", "--unlock", "0,2", "--cache", "7923", "--datadir.minfreedisk", "1")
 
 	cli.Expect(`
 Fatal: Failed to unlock account 0 (could not decrypt key with given password)
@@ -243,8 +247,8 @@ func TestUnlockFlagAmbiguous(t *testing.T) {
 	store := filepath.Join("testdata", "dupes")
 	cli := exec(t,
 		"--fakenet", "0/1", "--keystore", store, "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0",
-		"--unlock", "f466859ead1932d743d622cb74fc058882e8648a",
-		"js", "testdata/empty.js")
+		"--unlock", "f466859ead1932d743d622cb74fc058882e8648a", "--cache", "7923", "--datadir.minfreedisk", "1",
+		"console", "--exec", "loadScript('testdata/empty.js')")
 
 	// Helper for the expect template, returns absolute keystore path.
 	cli.SetTemplateFunc("keypath", func(file string) string {
@@ -262,6 +266,7 @@ Testing your passphrase against all of them...
 Your passphrase unlocked keystore://{{keypath "1"}}
 In order to avoid this warning, you need to remove the following duplicate key files:
    keystore://{{keypath "2"}}
+undefined
 `)
 	cli.ExpectExit()
 
@@ -280,7 +285,7 @@ func TestUnlockFlagAmbiguousWrongPassword(t *testing.T) {
 	store := filepath.Join("testdata", "dupes")
 	cli := exec(t,
 		"--fakenet", "0/1", "--keystore", store, "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0",
-		"--unlock", "f466859ead1932d743d622cb74fc058882e8648a")
+		"--unlock", "f466859ead1932d743d622cb74fc058882e8648a", "--cache", "7923", "--datadir.minfreedisk", "1")
 
 	// Helper for the expect template, returns absolute keystore path.
 	cli.SetTemplateFunc("keypath", func(file string) string {

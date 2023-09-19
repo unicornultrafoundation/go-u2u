@@ -24,16 +24,15 @@ import (
 	"path"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/consensus/ethash"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/leveldb"
-
+	"github.com/unicornultrafoundation/go-u2u/evmcore"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/libs/core"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/rawdb"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
+	"github.com/unicornultrafoundation/go-u2u/libs/crypto"
+	"github.com/unicornultrafoundation/go-u2u/libs/params"
 	"github.com/unicornultrafoundation/go-u2u/topicsdb"
 )
 
@@ -79,7 +78,11 @@ func BenchmarkFilters(b *testing.B) {
 	)
 
 	genesis := core.GenesisBlockForTesting(backend.db, addr1, big.NewInt(1000000))
-	chain, receipts := core.GenerateChain(params.TestChainConfig, genesis, ethash.NewFaker(), backend.db, 100010, func(i int, gen *core.BlockGen) {
+	genesisEvmBlock := evmcore.EvmBlock{
+		EvmHeader:    *evmcore.ConvertFromEthHeader(genesis.Header()),
+		Transactions: genesis.Transactions(),
+	}
+	chain, receipts, _ := evmcore.GenerateChain(params.TestChainConfig, &genesisEvmBlock, backend.db, 100010, func(i int, gen *evmcore.BlockGen) {
 		switch i {
 		case 2403:
 			receipt := makeReceipt(addr1)
@@ -96,10 +99,10 @@ func BenchmarkFilters(b *testing.B) {
 		}
 	})
 	for i, block := range chain {
-		rawdb.WriteBlock(backend.db, block)
-		rawdb.WriteCanonicalHash(backend.db, block.Hash(), block.NumberU64())
-		rawdb.WriteHeadBlockHash(backend.db, block.Hash())
-		rawdb.WriteReceipts(backend.db, block.Hash(), block.NumberU64(), receipts[i])
+		rawdb.WriteBlock(backend.db, block.EthBlock())
+		rawdb.WriteCanonicalHash(backend.db, block.EthBlock().Hash(), block.NumberU64())
+		rawdb.WriteHeadBlockHash(backend.db, block.EthBlock().Hash())
+		rawdb.WriteReceipts(backend.db, block.EthBlock().Hash(), block.NumberU64(), receipts[i])
 	}
 	b.ResetTimer()
 
@@ -127,7 +130,11 @@ func TestFilters(t *testing.T) {
 	)
 
 	genesis := core.GenesisBlockForTesting(backend.db, addr, big.NewInt(1000000))
-	chain, receipts := core.GenerateChain(params.TestChainConfig, genesis, ethash.NewFaker(), backend.db, 1000, func(i int, gen *core.BlockGen) {
+	genesisEvmBlock := evmcore.EvmBlock{
+		EvmHeader:    *evmcore.ConvertFromEthHeader(genesis.Header()),
+		Transactions: genesis.Transactions(),
+	}
+	chain, receipts, _ := evmcore.GenerateChain(params.TestChainConfig, &genesisEvmBlock, backend.db, 1000, func(i int, gen *evmcore.BlockGen) {
 		switch i {
 		case 1:
 			receipt := types.NewReceipt(nil, false, 0)
@@ -182,10 +189,10 @@ func TestFilters(t *testing.T) {
 		}
 	})
 	for i, block := range chain {
-		rawdb.WriteBlock(backend.db, block)
-		rawdb.WriteCanonicalHash(backend.db, block.Hash(), block.NumberU64())
-		rawdb.WriteHeadBlockHash(backend.db, block.Hash())
-		rawdb.WriteReceipts(backend.db, block.Hash(), block.NumberU64(), receipts[i])
+		rawdb.WriteBlock(backend.db, block.EthBlock())
+		rawdb.WriteCanonicalHash(backend.db, block.EthBlock().Hash(), block.NumberU64())
+		rawdb.WriteHeadBlockHash(backend.db, block.EthBlock().Hash())
+		rawdb.WriteReceipts(backend.db, block.EthBlock().Hash(), block.NumberU64(), receipts[i])
 	}
 
 	var (

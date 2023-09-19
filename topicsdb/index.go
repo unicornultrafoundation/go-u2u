@@ -3,12 +3,12 @@ package topicsdb
 import (
 	"context"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/batched"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/table"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
 )
 
 // index is a specialized indexes for log records storing and fetching.
@@ -80,8 +80,10 @@ func (tt *index) ForEachInBlocks(ctx context.Context, from, to idx.Block, patter
 		return
 	}
 
-	return tt.searchParallel(ctx, pattern, uint64(from), uint64(to), onMatched)
+	return tt.searchParallel(ctx, pattern, uint64(from), uint64(to), onMatched, doNothing)
 }
+
+func doNothing() {}
 
 // Push log record to database batch
 func (tt *index) Push(recs ...*types.Log) error {

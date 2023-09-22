@@ -28,7 +28,7 @@ do
 	--http --http.addr="127.0.0.1" --http.port=${RPCP} --http.corsdomain="*" --http.api="eth,debug,net,admin,web3,personal,txpool,dag" \
 	--ws --ws.addr="127.0.0.1" --ws.port=${WSP} --ws.origins="*" --ws.api="eth,debug,net,admin,web3,personal,txpool,dag" \
     --pprof --pprof.addr="127.0.0.1" --pprof.port=${PPROFP} \
-	--verbosity=3 --tracing --metrics >> u2u$i.log 2>&1
+	--verbosity=3 --tracing --metrics >> u2u$i.log 2>&1)&
 
     echo -e "\tnode$i ok"
 done

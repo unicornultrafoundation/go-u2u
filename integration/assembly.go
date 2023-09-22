@@ -210,7 +210,7 @@ func makeEngine(chaindataDir string, g *genesis.Genesis, genesisProc bool, cfg C
 
 		// drop previous epoch DBs, which do not survive restart
 		epoch := getEpoch(dbs, cfg)
-		leDB, err := dbs.OpenDB(fmt.Sprintf("lachesis-%d", epoch))
+		leDB, err := dbs.OpenDB(fmt.Sprintf("hashgraph-%d", epoch))
 		if err != nil {
 			_ = dbs.Close()
 			return nil, nil, nil, nil, gossip.BlockProc{}, nil, err

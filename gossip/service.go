@@ -50,6 +50,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/logger"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/utils/signers/gsignercache"
+	"github.com/unicornultrafoundation/go-u2u/utils/txtime"
 	"github.com/unicornultrafoundation/go-u2u/utils/wgmutex"
 	"github.com/unicornultrafoundation/go-u2u/valkeystore"
 	"github.com/unicornultrafoundation/go-u2u/vecmt"
@@ -345,6 +346,7 @@ func (s *Service) EmitterWorld(signer valkeystore.SignerI) emitter.World {
 
 // RegisterEmitter must be called before service is started
 func (s *Service) RegisterEmitter(em *emitter.Emitter) {
+	txtime.Enabled = true // enable tracking of tx times
 	s.emitters = append(s.emitters, em)
 }
 

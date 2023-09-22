@@ -1,6 +1,7 @@
 package emitter
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -8,19 +9,18 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/unicornultrafoundation/go-hashgraph/emitter/ancestor"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/piecefunc"
-	"github.com/ethereum/go-ethereum/core/types"
-	lru "github.com/hashicorp/golang-lru"
 
-	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter/originatedtxs"
 	"github.com/unicornultrafoundation/go-u2u/logger"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/tracing"
+	"github.com/unicornultrafoundation/go-u2u/utils/errlock"
 	"github.com/unicornultrafoundation/go-u2u/utils/rate"
 )
 
@@ -30,8 +30,6 @@ const (
 )
 
 type Emitter struct {
-	txTime *lru.Cache // tx hash -> tx time
-
 	config Config
 
 	world World
@@ -63,7 +61,8 @@ type Emitter struct {
 	fcIndexer      *ancestor.FCIndexer
 	payloadIndexer *ancestor.PayloadIndexer
 
-	intervals EmitIntervals
+	intervals                EmitIntervals
+	globalConfirmingInterval time.Duration
 
 	done chan struct{}
 	wg   sync.WaitGroup
@@ -98,12 +97,10 @@ func NewEmitter(
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	config.EmitIntervals = config.EmitIntervals.RandomizeEmitTime(r)
 
-	txTime, _ := lru.New(TxTimeBufferSize)
 	return &Emitter{
 		config:            config,
 		world:             world,
 		originatedTxs:     originatedtxs.New(SenderCountBufferSize),
-		txTime:            txTime,
 		intervals:         config.EmitIntervals,
 		Periodic:          logger.Periodic{Instance: logger.New()},
 		validatorVersions: make(map[idx.ValidatorID]uint64),
@@ -142,9 +139,6 @@ func (em *Emitter) Start() {
 	em.init()
 	em.done = make(chan struct{})
 
-	newTxsCh := make(chan evmcore.NewTxsNotify)
-	em.world.TxPool.SubscribeNewTxsNotify(newTxsCh)
-
 	done := em.done
 	if em.config.EmitIntervals.Min == 0 {
 		return
@@ -157,8 +151,6 @@ func (em *Emitter) Start() {
 		defer timer.Stop()
 		for {
 			select {
-			case txNotify := <-newTxsCh:
-				em.memorizeTxTimes(txNotify.Txs)
 			case <-timer.C:
 				em.tick()
 			case <-done:
@@ -320,6 +312,12 @@ func (em *Emitter) createEvent(sortedTxs *types.TransactionsByPriceAndNonce) (*n
 	if !ok {
 		return nil, nil
 	}
+	prevEmitted := em.readLastEmittedEventID()
+	if prevEmitted != nil && prevEmitted.Epoch() >= em.epoch {
+		if selfParent == nil || *selfParent != *prevEmitted {
+			errlock.Permanent(errors.New("local database is corrupted, which may lead to a double sign"))
+		}
+	}
 
 	// Set parent-dependent fields
 	parentHeaders := make(native.Events, len(parents))
@@ -376,7 +374,6 @@ func (em *Emitter) createEvent(sortedTxs *types.TransactionsByPriceAndNonce) (*n
 	// set consensus fields
 	var metric ancestor.Metric
 	err := em.world.Build(mutEvent, func() {
-		// calculate event metric when it is indexed by the vector clock
 		if em.fcIndexer != nil {
 			pastMe := em.fcIndexer.ValidatorsPastMe()
 			metric = (ancestor.Metric(pastMe) * piecefunc.DecimalUnit) / ancestor.Metric(em.validators.TotalWeight())

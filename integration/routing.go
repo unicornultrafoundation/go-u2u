@@ -7,6 +7,8 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/cachedproducer"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/multidb"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/skipkeys"
+
+	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/threads"
 )
 
 type RoutingConfig struct {
@@ -38,7 +40,7 @@ func MakeMultiProducer(rawProducers map[multidb.TypeName]u2udb.IterableDBProduce
 	}
 
 	p, err := makeMultiProducer(cachedProducers, cfg)
-	return p, err
+	return threads.CountedFullDBProducer(p), err
 }
 
 func MakeDirectMultiProducer(rawProducers map[multidb.TypeName]u2udb.IterableDBProducer, cfg RoutingConfig) (u2udb.FullDBProducer, error) {

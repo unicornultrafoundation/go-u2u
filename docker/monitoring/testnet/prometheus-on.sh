@@ -25,7 +25,7 @@ done
 echo -e "\nStart Prometheus:\n"
 
 docker run --rm -d --name=prometheus \
-    --net=${TESTNET_NETWORK} \
+    --net=${NETWORK} \
     -p 9090:9090 \
     -v ${PWD}/${CONF}:/etc/prometheus/${CONF} \
     prom/prometheus

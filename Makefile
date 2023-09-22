@@ -14,8 +14,10 @@ u2u:
 
 
 TAG ?= "latest"
+NET ?= "mainnet"
 .PHONY: u2u-image
 u2u-image:
+	curl -O https://raw.githubusercontent.com/unicornultrafoundation/u2u-genesis/main/$(NET).g
 	docker build \
     	    --network=host \
     	    -f ./docker/Dockerfile.u2u -t "u2u:$(TAG)" .

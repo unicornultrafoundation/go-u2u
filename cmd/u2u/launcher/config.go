@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"path"
 	"path/filepath"
@@ -28,12 +29,12 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/gossip/gasprice"
 	"github.com/unicornultrafoundation/go-u2u/integration"
 	"github.com/unicornultrafoundation/go-u2u/integration/makefakegenesis"
+	"github.com/unicornultrafoundation/go-u2u/monitoring"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesis"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesisstore"
 	futils "github.com/unicornultrafoundation/go-u2u/utils"
 	"github.com/unicornultrafoundation/go-u2u/utils/memory"
 	"github.com/unicornultrafoundation/go-u2u/vecmt"
-	"github.com/unicornultrafoundation/go-u2u/monitoring"
 )
 
 var (
@@ -542,6 +543,13 @@ func mayMakeAllConfigs(ctx *cli.Context) (*config, error) {
 
 	// Process DBs defaults in the end because they are applied only in absence of config or flags
 	cfg = setDBConfigDefault(cfg, cacheRatio)
+	// Sanitize GPO config
+	if cfg.U2U.GPO.MinGasTip == nil || cfg.U2U.GPO.MinGasTip.Sign() == 0 {
+		cfg.U2U.GPO.MinGasTip = new(big.Int).SetUint64(cfg.TxPool.PriceLimit)
+	}
+	if cfg.U2U.GPO.MinGasTip.Cmp(new(big.Int).SetUint64(cfg.TxPool.PriceLimit)) < 0 {
+		log.Warn(fmt.Sprintf("GPO minimum gas tip (Opera.GPO.MinGasTip=%s) is lower than txpool minimum gas tip (TxPool.PriceLimit=%d)", cfg.U2U.GPO.MinGasTip.String(), cfg.TxPool.PriceLimit))
+	}
 
 	if err := cfg.U2U.Validate(); err != nil {
 		return nil, err

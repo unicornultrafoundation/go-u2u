@@ -1,17 +1,16 @@
 # go-u2u
 
-Golang implementation of Unicorn Ultra Distributed Network followed by this [https://uniultra.xyz/docs/UnicornUltraWhitepaper.pdf][Whitepaper] based on various open-source and documentations
-- [https://arxiv.org/pdf/1907.02900.pdf][Hashgraph]
-- [https://www.mdpi.com/2076-3417/13/15/8726][Hashgraph Sharding]
-- [https://www.mdpi.com/2079-9292/12/11/2393][TEE Directed Acyclic Graph]
-- [https://arxiv.org/abs/2108.01900][Lachesis]
-- [https://www.mdpi.com/1099-4300/25/9/1320][Delegated Proof-of-Stake]
-- [https://ieeexplore.ieee.org/document/9472787][Proof-of-Elapsed-Time]
-
-- [https://github.com/ethereum/go-ethereum][Ethereum]
-- [https://github.com/hashgraph/hedera-services][Hedera]
-- [https://github.com/Fantom-foundation/go-opera][Fantom Opera]
-- [https://github.com/ledgerwatch/erigon][Erigon]
+Golang implementation of Unicorn Ultra Distributed Network followed by this [Whitepaper](https://uniultra.xyz/docs/UnicornUltraWhitepaper.pdf) based on various open-source and documentations:
+- [Hashgraph](https://arxiv.org/pdf/1907.02900.pdf)
+- [Hashgraph Sharding](https://www.mdpi.com/2076-3417/13/15/8726)
+- [TEE Directed Acyclic Graph](https://www.mdpi.com/2079-9292/12/11/2393)
+- [Lachesis](https://arxiv.org/abs/2108.01900)
+- [Delegated Proof-of-Stake](https://www.mdpi.com/1099-4300/25/9/1320)
+- [Proof-of-Elapsed-Time](https://ieeexplore.ieee.org/document/9472787)
+- [Ethereum](https://github.com/ethereum/go-ethereum)
+- [Hedera](https://github.com/hashgraph/hedera-services)
+- [Opera](https://github.com/Fantom-foundation/go-opera)
+- [Erigon](https://github.com/ledgerwatch/erigon)
 
 ## Building the source
 

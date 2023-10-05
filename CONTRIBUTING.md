@@ -103,7 +103,7 @@ To be accepted, the PR should adhere to these quality standards (https://gorepor
    Update: update/...
    Tests Coverage: test/
 - The PR/Issue needs a clear description
-- Go coding style should be followed by [https://go.dev/doc/effective_go][go best practices]
+- Go coding style should be followed by [https://go.dev/doc/effective_go](go best practices)
 - Code functions as documented and expected
 - Thoroughly documented (README, godoc comments, etc.) in english language, so everyone is able to understand the project's intention and how it works
 - Tests, where practical. If the library/program is testable, then coverage should be >= 80% for non-data-related packages and >=90% for data related packages. **Notice**: the tests will be reviewed too. 

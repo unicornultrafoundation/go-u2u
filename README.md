@@ -93,7 +93,7 @@ $ u2u --datadir /path/to/datadir attach # attach to IPC
 
 ### Testing
 
-Hashgraph has extensive unit-testing. Use the Go tool to run tests:
+Client has extensive unit-testing. Use the Go tool to run tests:
 ```shell
 go test ./...
 ```

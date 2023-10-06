@@ -62,7 +62,7 @@ var (
 		Usage: "TOML configuration file",
 	}
 
-	// DataDirFlag defines directory to store Hashgraph state and user's wallets
+	// DataDirFlag defines directory to store state and user's wallets
 	DataDirFlag = utils.DirectoryFlag{
 		Name:  "datadir",
 		Usage: "Data directory for the databases and keystore",

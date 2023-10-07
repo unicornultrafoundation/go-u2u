@@ -144,7 +144,8 @@ func (tr *TraceStructLogger) CaptureState(env *vm.EVM, pc uint64, op vm.OpCode, 
 		inputSize := stackPosFromEnd(scope.Stack.Data(), 2).Uint64()
 		var input []byte
 		if inputSize > 0 {
-			if offset < offset+inputSize {
+			if offset <= offset+inputSize &&
+				offset+inputSize <= uint64(len(scope.Memory.Data())) {
 				input = make([]byte, inputSize)
 				copy(input, scope.Memory.Data()[offset:offset+inputSize])
 			}
@@ -182,7 +183,8 @@ func (tr *TraceStructLogger) CaptureState(env *vm.EVM, pc uint64, op vm.OpCode, 
 			value = stackPosFromEnd(scope.Stack.Data(), 2)
 		}
 		if inSize > 0 {
-			if inOffset < inOffset+inSize {
+			if inOffset <= inOffset+inSize &&
+				inOffset+inSize <= uint64(len(scope.Memory.Data())) {
 				input = make([]byte, inSize)
 				copy(input, scope.Memory.Data()[inOffset:inOffset+inSize])
 			}
@@ -212,7 +214,8 @@ func (tr *TraceStructLogger) CaptureState(env *vm.EVM, pc uint64, op vm.OpCode, 
 					offset := stackPosFromEnd(scope.Stack.Data(), 0).Uint64()
 					size := stackPosFromEnd(scope.Stack.Data(), 1).Uint64()
 					if size > 0 {
-						if offset < offset+size {
+						if offset <= offset+size &&
+							offset+size <= uint64(len(scope.Memory.Data())) {
 							data = make([]byte, size)
 							copy(data, scope.Memory.Data()[offset:offset+size])
 						}

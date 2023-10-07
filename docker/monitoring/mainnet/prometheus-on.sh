@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 cd $(dirname $0)
 
-CONF=prometheus.yml
+. ../_params.sh
+
+set -e
 
 cat << HEADER > $CONF
 global:
@@ -11,16 +13,19 @@ global:
 scrape_configs:
 HEADER
 
-cat << NODE >> $CONF
-  - job_name: 'txgen0'
+docker ps -f network=${MAINNET_NETWORK} --format '{{.Names}}' | while read svc
+do
+    cat << NODE >> $CONF
+  - job_name: '$svc'
     static_configs:
-      - targets: ['localhost:19090']
+      - targets: ['$svc:19090']
 NODE
-
+done
 
 echo -e "\nStart Prometheus:\n"
 
 docker run --rm -d --name=prometheus \
-    --net=host \
+    --net=${MAINNET_NETWORK} \
+    -p 9090:9090 \
     -v ${PWD}/${CONF}:/etc/prometheus/${CONF} \
     prom/prometheus

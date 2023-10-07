@@ -1,6 +1,16 @@
 # go-u2u
 
-EVM-compatible chain secured by the Hashgraph consensus algorithm.
+Golang implementation of Unicorn Ultra Distributed Network followed by this [Whitepaper](https://uniultra.xyz/docs/UnicornUltraWhitepaper.pdf) based on various open-source and documentations:
+- [Hashgraph](https://arxiv.org/pdf/1907.02900.pdf)
+- [Hashgraph Sharding](https://www.mdpi.com/2076-3417/13/15/8726)
+- [TEE Directed Acyclic Graph](https://www.mdpi.com/2079-9292/12/11/2393)
+- [Lachesis](https://arxiv.org/abs/2108.01900)
+- [Delegated Proof-of-Stake](https://www.mdpi.com/1099-4300/25/9/1320)
+- [Proof-of-Elapsed-Time](https://ieeexplore.ieee.org/document/9472787)
+- [Ethereum](https://github.com/ethereum/go-ethereum)
+- [Hedera](https://github.com/hashgraph/hedera-services)
+- [Opera](https://github.com/Fantom-foundation/go-opera)
+- [Erigon](https://github.com/ledgerwatch/erigon)
 
 ## Building the source
 
@@ -83,7 +93,7 @@ $ u2u --datadir /path/to/datadir attach # attach to IPC
 
 ### Testing
 
-Hashgraph has extensive unit-testing. Use the Go tool to run tests:
+Client has extensive unit-testing. Use the Go tool to run tests:
 ```shell
 go test ./...
 ```

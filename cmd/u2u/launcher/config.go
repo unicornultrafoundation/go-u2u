@@ -548,7 +548,7 @@ func mayMakeAllConfigs(ctx *cli.Context) (*config, error) {
 		cfg.U2U.GPO.MinGasTip = new(big.Int).SetUint64(cfg.TxPool.PriceLimit)
 	}
 	if cfg.U2U.GPO.MinGasTip.Cmp(new(big.Int).SetUint64(cfg.TxPool.PriceLimit)) < 0 {
-		log.Warn(fmt.Sprintf("GPO minimum gas tip (Opera.GPO.MinGasTip=%s) is lower than txpool minimum gas tip (TxPool.PriceLimit=%d)", cfg.U2U.GPO.MinGasTip.String(), cfg.TxPool.PriceLimit))
+		log.Warn(fmt.Sprintf("GPO minimum gas tip (U2U.GPO.MinGasTip=%s) is lower than txpool minimum gas tip (TxPool.PriceLimit=%d)", cfg.U2U.GPO.MinGasTip.String(), cfg.TxPool.PriceLimit))
 	}
 
 	if err := cfg.U2U.Validate(); err != nil {

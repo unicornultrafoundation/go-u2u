@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/memorydb"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
 )
 
 func cachedStore() *Store {

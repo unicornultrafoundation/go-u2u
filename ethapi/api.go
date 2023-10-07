@@ -27,6 +27,14 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/syndtr/goleveldb/leveldb/opt"
+	"github.com/tyler-smith/go-bip39"
+
+	"github.com/unicornultrafoundation/go-hashgraph/hash"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+
+	"github.com/unicornultrafoundation/go-u2u/evmcore"
+	"github.com/unicornultrafoundation/go-u2u/gossip/gasprice"
 	"github.com/unicornultrafoundation/go-u2u/libs/accounts"
 	"github.com/unicornultrafoundation/go-u2u/libs/accounts/abi"
 	"github.com/unicornultrafoundation/go-u2u/libs/accounts/keystore"
@@ -46,13 +54,6 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/libs/rlp"
 	"github.com/unicornultrafoundation/go-u2u/libs/rpc"
 	"github.com/unicornultrafoundation/go-u2u/libs/trie"
-	"github.com/syndtr/goleveldb/leveldb/opt"
-	"github.com/tyler-smith/go-bip39"
-	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-
-	"github.com/unicornultrafoundation/go-u2u/evmcore"
-	"github.com/unicornultrafoundation/go-u2u/gossip/gasprice"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/utils/adapters/ethdb2udb"
 	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/compactdb"

@@ -1,8 +1,8 @@
 package logger
 
 import (
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/sirupsen/logrus"
+	"github.com/unicornultrafoundation/go-u2u/libs/log"
 )
 
 // LogrusHandler converts logrus hook to log handler.

@@ -5,7 +5,7 @@ import (
 
 	"github.com/status-im/keycard-go/hexutils"
 
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/unicornultrafoundation/go-u2u/libs/log"
 
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 )

@@ -6,12 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/holiman/uint256"
 	txtracer "github.com/unicornultrafoundation/go-u2u/gossip/txtracer"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/libs/common/hexutil"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/libs/log"
 )
 
 // TraceStructLogger is a transaction trace creator

@@ -1,8 +1,8 @@
 package logger
 
 import (
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/evalphobia/logrus_sentry"
+	"github.com/unicornultrafoundation/go-u2u/libs/log"
 )
 
 // init with defaults.

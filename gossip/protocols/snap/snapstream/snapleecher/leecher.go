@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/eth/protocols/snap"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/trie"
+	"github.com/unicornultrafoundation/go-u2u/libs"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/rawdb"
+	"github.com/unicornultrafoundation/go-u2u/libs/eth/protocols/snap"
+	"github.com/unicornultrafoundation/go-u2u/libs/ethdb"
+	"github.com/unicornultrafoundation/go-u2u/libs/trie"
 )
 
 var (

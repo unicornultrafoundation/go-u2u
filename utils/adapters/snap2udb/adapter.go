@@ -1,9 +1,9 @@
 package snap2udb
 
 import (
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/devnulldb"
+	"github.com/unicornultrafoundation/go-u2u/libs/log"
 )
 
 type Adapter struct {

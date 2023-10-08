@@ -3,8 +3,8 @@ package tracing
 import (
 	"sync"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/opentracing/opentracing-go"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
 )
 
 var (

@@ -22,7 +22,7 @@ import (
 	"io"
 	"sort"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
+	"github.com/unicornultrafoundation/go-u2u/libs/cmd/utils"
 	cli "gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/debug"

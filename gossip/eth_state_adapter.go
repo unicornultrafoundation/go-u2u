@@ -1,9 +1,9 @@
 package gossip
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/state/snapshot"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/state"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/state/snapshot"
 )
 
 // ethBlockChain wraps store to implement eth/protocols/snap.BlockChain interface.

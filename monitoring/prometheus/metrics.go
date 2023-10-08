@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/unicornultrafoundation/go-u2u/libs/metrics"
 )
 
 var namespace = "u2u"

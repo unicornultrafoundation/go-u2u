@@ -7,14 +7,15 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter/mock"
 	"github.com/unicornultrafoundation/go-u2u/integration/makefakegenesis"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/utils/txtime"
@@ -52,6 +53,9 @@ func TestEmitter(t *testing.T) {
 	external.EXPECT().PeersNum().
 		Return(int(3)).
 		AnyTimes()
+	external.EXPECT().StateDB().
+		Return(nil).
+		AnyTimes()
 
 	em := NewEmitter(cfg, World{
 		External: external,
@@ -86,10 +90,6 @@ func TestEmitter(t *testing.T) {
 		tx1 := types.NewTransaction(1, common.Address{}, big.NewInt(1), 1, big.NewInt(1), nil)
 		tx2 := types.NewTransaction(2, common.Address{}, big.NewInt(2), 2, big.NewInt(2), nil)
 
-		external.EXPECT().IsBusy().
-			Return(true).
-			AnyTimes()
-
 		txtime.Saw(tx1.Hash(), time.Unix(1, 0))
 
 		require.Equal(time.Unix(1, 0), txtime.Of(tx1.Hash()))
@@ -109,7 +109,37 @@ func TestEmitter(t *testing.T) {
 		require.Equal(time.Unix(3, 0), txtime.Of(tx2.Hash()))
 	})
 
+	external.EXPECT().IsBusy().Return(true).Times(1)
 	t.Run("tick", func(t *testing.T) {
 		em.tick()
 	})
+
+	t.Run("tick", func(t *testing.T) {
+		tx1 := types.NewTransaction(1, common.Address{}, big.NewInt(1), 1, big.NewInt(1), nil)
+		tx2 := types.NewTransaction(2, common.Address{}, big.NewInt(2), 2, big.NewInt(2), nil)
+
+		txPool.EXPECT().Count().
+			Return(1).
+			AnyTimes()
+		txPool.EXPECT().Pending(true).
+			Return(map[common.Address]types.Transactions{
+				common.Address{}: {tx1, tx2},
+			}, nil).AnyTimes()
+
+		external.EXPECT().IsBusy().
+			Return(false).
+			AnyTimes()
+		external.EXPECT().GetLatestBlockIndex().
+			Return(idx.Block(0)).
+			AnyTimes()
+
+		txSigner.EXPECT().Sender(tx1).
+			Return(common.Address{}, nil).
+			AnyTimes()
+		txSigner.EXPECT().Sender(tx2).
+			Return(common.Address{}, nil).
+			AnyTimes()
+		em.tick()
+	})
+
 }

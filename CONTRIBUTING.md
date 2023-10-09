@@ -95,8 +95,16 @@ available at [http://contributor-covenant.org/version/1/4][version]
 
 To be accepted, the PR should adhere to these quality standards (https://goreportcard.com/report/github.com/ **github_user** / **github_repo**):
 
+- The PR needs linked to at least one related issue
+- The PR naming should follow by this standard
+   Fix: fix/...
+   Add new feature: ft/...
+   Improvement: improve/...
+   Update: update/...
+   Tests Coverage: test/
+- The PR/Issue needs a clear description
+- Go coding style should be followed by [https://go.dev/doc/effective_go](go best practices)
 - Code functions as documented and expected
-- Generally useful to the wider community of Go programmers
 - Thoroughly documented (README, godoc comments, etc.) in english language, so everyone is able to understand the project's intention and how it works
 - Tests, where practical. If the library/program is testable, then coverage should be >= 80% for non-data-related packages and >=90% for data related packages. **Notice**: the tests will be reviewed too. 
 

@@ -106,7 +106,7 @@ be gzipped
 					DataDirFlag,
 				},
 				Description: `
-    opera export txtraces
+    client export txtraces
 
 Requires a first argument of the file to write to.
 Optional second and third arguments control the first and
@@ -131,7 +131,7 @@ be gzipped
 					DataDirFlag,
 				},
 				Description: `
-    opera delete txtracer
+    client delete txtracer
 
 Optional first and second arguments control the first and
 last block to delete transaction traces from. If the file ends with .gz, the output will

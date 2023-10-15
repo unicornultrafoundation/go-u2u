@@ -6,8 +6,8 @@ import (
 	"io/ioutil"
 	"strings"
 
+	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
-	"github.com/unicornultrafoundation/go-u2u/libs/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/libs/node"
 	"github.com/unicornultrafoundation/go-u2u/log"
 	cli "gopkg.in/urfave/cli.v1"

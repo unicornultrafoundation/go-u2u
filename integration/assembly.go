@@ -15,9 +15,9 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/multidb"
 	"github.com/unicornultrafoundation/go-u2u/accounts"
 	"github.com/unicornultrafoundation/go-u2u/accounts/keystore"
+	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
-	"github.com/unicornultrafoundation/go-u2u/libs/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/log"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip"

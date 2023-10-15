@@ -27,10 +27,10 @@ import (
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/accounts/abi/bind"
+	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/common/compiler"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
 	"github.com/unicornultrafoundation/go-u2u/flags"
-	"github.com/unicornultrafoundation/go-u2u/libs/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/log"
 )
 

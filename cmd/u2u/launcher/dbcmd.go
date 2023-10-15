@@ -8,7 +8,7 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/cachedproducer"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/multidb"
-	"github.com/unicornultrafoundation/go-u2u/libs/cmd/utils"
+	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/libs/ethdb"
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"gopkg.in/urfave/cli.v1"

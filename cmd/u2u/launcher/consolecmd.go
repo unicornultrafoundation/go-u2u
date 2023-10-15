@@ -22,8 +22,8 @@ import (
 
 	"gopkg.in/urfave/cli.v1"
 
+	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/console"
-	"github.com/unicornultrafoundation/go-u2u/libs/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/libs/node"
 	"github.com/unicornultrafoundation/go-u2u/rpc"
 )

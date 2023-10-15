@@ -26,10 +26,10 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/accounts"
 	"github.com/unicornultrafoundation/go-u2u/accounts/keystore"
+	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/console/prompt"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
-	"github.com/unicornultrafoundation/go-u2u/libs/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"gopkg.in/urfave/cli.v1"
 )

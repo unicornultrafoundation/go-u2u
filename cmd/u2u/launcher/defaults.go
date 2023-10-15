@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/cmd/utils"
+	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/libs/node"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/nat"

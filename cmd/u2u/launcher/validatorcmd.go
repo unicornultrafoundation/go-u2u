@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"path"
 	"strings"
-
-	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/crypto"
-	"github.com/unicornultrafoundation/go-u2u/libs/cmd/utils"
+	
 	"gopkg.in/urfave/cli.v1"
 
+	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/crypto"
 	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"
 	"github.com/unicornultrafoundation/go-u2u/valkeystore"
 	"github.com/unicornultrafoundation/go-u2u/valkeystore/encryption"

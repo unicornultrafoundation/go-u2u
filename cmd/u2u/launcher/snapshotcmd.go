@@ -23,8 +23,8 @@ import (
 	"path"
 	"time"
 
+	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/rawdb"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/state"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/types"

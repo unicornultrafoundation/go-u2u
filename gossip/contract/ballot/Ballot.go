@@ -5,7 +5,6 @@ package ballot
 
 import (
 	"errors"
-	"github.com/ethereum/go-ethereum"
 	"math/big"
 	"strings"
 

@@ -25,7 +25,6 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
-	ethereum "github.com/unicornultrafoundation/go-u2u/libs"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p"
 	"github.com/unicornultrafoundation/go-u2u/rpc"

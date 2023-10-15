@@ -20,7 +20,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/unicornultrafoundation/go-u2u/libs"
+	u2u "github.com/unicornultrafoundation/go-u2u"
 	"github.com/unicornultrafoundation/go-u2u/libs/event"
 	"github.com/unicornultrafoundation/go-u2u/rpc"
 )
@@ -121,8 +121,8 @@ func (api *PublicDownloaderAPI) Syncing(ctx context.Context) (*rpc.Subscription,
 
 // SyncingResult provides information about the current synchronisation status for this node.
 type SyncingResult struct {
-	Syncing bool                  `json:"syncing"`
-	Status  ethereum.SyncProgress `json:"status"`
+	Syncing bool             `json:"syncing"`
+	Status  u2u.SyncProgress `json:"status"`
 }
 
 // uninstallSyncSubscriptionRequest uninstalles a syncing subscription in the API event loop.

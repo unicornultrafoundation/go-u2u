@@ -25,7 +25,7 @@ import (
 
 	"github.com/dop251/goja"
 
-	"github.com/unicornultrafoundation/go-u2u/internal/ethapi"
+	"github.com/unicornultrafoundation/go-u2u/ethapi"
 	"github.com/unicornultrafoundation/go-u2u/internal/jsre/deps"
 	"github.com/unicornultrafoundation/go-u2u/libs/signer/core"
 	"github.com/unicornultrafoundation/go-u2u/libs/signer/storage"

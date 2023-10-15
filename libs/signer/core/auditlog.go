@@ -22,7 +22,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
-	"github.com/unicornultrafoundation/go-u2u/internal/ethapi"
+	"github.com/unicornultrafoundation/go-u2u/ethapi"
 	"github.com/unicornultrafoundation/go-u2u/libs/signer/core/apitypes"
 	"github.com/unicornultrafoundation/go-u2u/log"
 )

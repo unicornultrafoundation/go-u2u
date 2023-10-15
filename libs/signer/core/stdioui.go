@@ -19,7 +19,7 @@ package core
 import (
 	"context"
 
-	"github.com/unicornultrafoundation/go-u2u/internal/ethapi"
+	"github.com/unicornultrafoundation/go-u2u/ethapi"
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/rpc"
 )

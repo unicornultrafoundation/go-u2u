@@ -26,7 +26,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
 	"github.com/unicornultrafoundation/go-u2u/console/prompt"
-	"github.com/unicornultrafoundation/go-u2u/internal/ethapi"
+	"github.com/unicornultrafoundation/go-u2u/ethapi"
 	"github.com/unicornultrafoundation/go-u2u/log"
 )
 

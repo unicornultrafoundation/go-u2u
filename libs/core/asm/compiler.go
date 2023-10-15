@@ -22,7 +22,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/common/math"
+	"github.com/unicornultrafoundation/go-u2u/common/math"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/vm"
 )
 

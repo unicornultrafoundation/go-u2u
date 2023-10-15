@@ -27,11 +27,11 @@ import (
 	"time"
 
 	"github.com/prometheus/tsdb/fileutil"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/libs/ethdb"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
-	"github.com/unicornultrafoundation/go-u2u/libs/metrics"
-	"github.com/unicornultrafoundation/go-u2u/libs/params"
+	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/metrics"
+	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
 var (

@@ -20,11 +20,11 @@ import (
 	"crypto/ecdsa"
 	"net"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/common/mclock"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
+	"github.com/unicornultrafoundation/go-u2u/common/mclock"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/enode"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/enr"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/netutil"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // UDPConn is a network connection on which discovery can operate.

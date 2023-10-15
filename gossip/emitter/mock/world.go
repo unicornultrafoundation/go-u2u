@@ -12,7 +12,7 @@ import (
 	hash "github.com/unicornultrafoundation/go-hashgraph/hash"
 	idx "github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	pos "github.com/unicornultrafoundation/go-hashgraph/native/pos"
-	common "github.com/unicornultrafoundation/go-u2u/libs/common"
+	common "github.com/unicornultrafoundation/go-u2u/common"
 	state "github.com/unicornultrafoundation/go-u2u/libs/core/state"
 	types "github.com/unicornultrafoundation/go-u2u/libs/core/types"
 	native "github.com/unicornultrafoundation/go-u2u/native"

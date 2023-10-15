@@ -26,12 +26,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/rawdb"
 	"github.com/unicornultrafoundation/go-u2u/libs/ethdb"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
-	"github.com/unicornultrafoundation/go-u2u/libs/rlp"
-	"github.com/unicornultrafoundation/go-u2u/libs/trie"
+	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/rlp"
+	"github.com/unicornultrafoundation/go-u2u/trie"
 )
 
 // trieKV represents a trie key-value pair

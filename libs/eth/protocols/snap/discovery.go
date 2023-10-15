@@ -17,7 +17,7 @@
 package snap
 
 import (
-	"github.com/unicornultrafoundation/go-u2u/libs/rlp"
+	"github.com/unicornultrafoundation/go-u2u/rlp"
 )
 
 // enrEntry is the ENR entry which advertises `snap` protocol on the discovery.

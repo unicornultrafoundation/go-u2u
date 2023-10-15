@@ -28,7 +28,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/metrics"
+	"github.com/unicornultrafoundation/go-u2u/metrics"
 )
 
 func init() {

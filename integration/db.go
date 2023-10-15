@@ -17,8 +17,8 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/pebble"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/fmtfilter"
 	"github.com/unicornultrafoundation/go-u2u/libs/cmd/utils"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
-	"github.com/unicornultrafoundation/go-u2u/libs/metrics"
+	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/metrics"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/asyncflushproducer"

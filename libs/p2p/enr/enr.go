@@ -40,7 +40,7 @@ import (
 	"io"
 	"sort"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/rlp"
+	"github.com/unicornultrafoundation/go-u2u/rlp"
 )
 
 const SizeLimit = 300 // maximum encoded size of a node record in bytes

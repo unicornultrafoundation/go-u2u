@@ -22,10 +22,10 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/rawdb"
 	"github.com/unicornultrafoundation/go-u2u/libs/ethdb"
-	"github.com/unicornultrafoundation/go-u2u/libs/params"
+	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
 func TestDefaultGenesisBlock(t *testing.T) {

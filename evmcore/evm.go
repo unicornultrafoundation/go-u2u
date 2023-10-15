@@ -19,7 +19,7 @@ package evmcore
 import (
 	"math/big"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/vm"
 )
 

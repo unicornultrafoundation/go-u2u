@@ -26,12 +26,12 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/unicornultrafoundation/go-u2u/libs/event"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
 	"github.com/unicornultrafoundation/go-u2u/libs/node"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/enode"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/simulations/pipes"
-	"github.com/unicornultrafoundation/go-u2u/libs/rpc"
+	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/rpc"
 )
 
 // SimAdapter is a NodeAdapter which creates in-memory simulation nodes and

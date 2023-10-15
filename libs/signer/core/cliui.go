@@ -24,10 +24,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/common/hexutil"
-	"github.com/unicornultrafoundation/go-u2u/libs/console/prompt"
-	"github.com/unicornultrafoundation/go-u2u/libs/internal/ethapi"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
+	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
+	"github.com/unicornultrafoundation/go-u2u/console/prompt"
+	"github.com/unicornultrafoundation/go-u2u/internal/ethapi"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 type CommandlineUI struct {

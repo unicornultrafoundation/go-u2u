@@ -2,7 +2,7 @@ package migration
 
 import (
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // U2UdbIDStore stores id

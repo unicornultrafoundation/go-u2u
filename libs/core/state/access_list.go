@@ -17,7 +17,7 @@
 package state
 
 import (
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/common"
 )
 
 type accessList struct {

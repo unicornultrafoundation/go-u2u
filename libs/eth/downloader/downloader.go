@@ -25,8 +25,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/libs"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/rawdb"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/state/snapshot"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
@@ -34,10 +34,10 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/libs/eth/protocols/snap"
 	"github.com/unicornultrafoundation/go-u2u/libs/ethdb"
 	"github.com/unicornultrafoundation/go-u2u/libs/event"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
-	"github.com/unicornultrafoundation/go-u2u/libs/metrics"
-	"github.com/unicornultrafoundation/go-u2u/libs/params"
-	"github.com/unicornultrafoundation/go-u2u/libs/trie"
+	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/metrics"
+	"github.com/unicornultrafoundation/go-u2u/params"
+	"github.com/unicornultrafoundation/go-u2u/trie"
 )
 
 var (

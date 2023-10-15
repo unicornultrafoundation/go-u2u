@@ -5,10 +5,10 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/accounts/abi"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
+	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/vm"
-	"github.com/unicornultrafoundation/go-u2u/libs/params"
+	"github.com/unicornultrafoundation/go-u2u/params"
 
 	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/driver"
 )

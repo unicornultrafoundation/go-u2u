@@ -24,9 +24,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/enode"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/simulations/adapters"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // a map of mocker names to its function

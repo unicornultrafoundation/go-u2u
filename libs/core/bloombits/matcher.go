@@ -26,8 +26,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/common/bitutil"
-	"github.com/unicornultrafoundation/go-u2u/libs/crypto"
+	"github.com/unicornultrafoundation/go-u2u/common/bitutil"
+	"github.com/unicornultrafoundation/go-u2u/crypto"
 )
 
 // bloomIndexes represents the bit indexes inside the bloom filter that belong

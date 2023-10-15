@@ -26,11 +26,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/internal/debug"
 	"github.com/unicornultrafoundation/go-u2u/libs/eth/ethconfig"
-	"github.com/unicornultrafoundation/go-u2u/libs/internal/debug"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
 	"github.com/unicornultrafoundation/go-u2u/libs/node"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"gopkg.in/urfave/cli.v1"
 )
 

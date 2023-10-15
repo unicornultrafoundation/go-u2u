@@ -22,7 +22,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/enode"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/enr"
-	"github.com/unicornultrafoundation/go-u2u/libs/rpc"
+	"github.com/unicornultrafoundation/go-u2u/rpc"
 )
 
 // NoopService is the service that does not do anything

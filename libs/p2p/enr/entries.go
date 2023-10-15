@@ -21,7 +21,7 @@ import (
 	"io"
 	"net"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/rlp"
+	"github.com/unicornultrafoundation/go-u2u/rlp"
 )
 
 // Entry is implemented by known node record entry types.

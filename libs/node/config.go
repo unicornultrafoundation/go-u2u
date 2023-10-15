@@ -26,17 +26,17 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/accounts"
-	"github.com/unicornultrafoundation/go-u2u/libs/accounts/external"
-	"github.com/unicornultrafoundation/go-u2u/libs/accounts/keystore"
-	"github.com/unicornultrafoundation/go-u2u/libs/accounts/scwallet"
-	"github.com/unicornultrafoundation/go-u2u/libs/accounts/usbwallet"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/crypto"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
+	"github.com/unicornultrafoundation/go-u2u/accounts"
+	"github.com/unicornultrafoundation/go-u2u/accounts/external"
+	"github.com/unicornultrafoundation/go-u2u/accounts/keystore"
+	"github.com/unicornultrafoundation/go-u2u/accounts/scwallet"
+	"github.com/unicornultrafoundation/go-u2u/accounts/usbwallet"
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/crypto"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/enode"
-	"github.com/unicornultrafoundation/go-u2u/libs/rpc"
+	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/rpc"
 )
 
 const (

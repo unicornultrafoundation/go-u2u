@@ -2,7 +2,7 @@ package gossip
 
 import (
 	"github.com/unicornultrafoundation/go-u2u/libs/core/forkid"
-	"github.com/unicornultrafoundation/go-u2u/libs/rlp"
+	"github.com/unicornultrafoundation/go-u2u/rlp"
 )
 
 // Enr is ENR entry which advertises eth protocol

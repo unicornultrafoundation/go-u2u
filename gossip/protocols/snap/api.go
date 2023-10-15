@@ -22,7 +22,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/libs"
 	"github.com/unicornultrafoundation/go-u2u/libs/event"
-	"github.com/unicornultrafoundation/go-u2u/libs/rpc"
+	"github.com/unicornultrafoundation/go-u2u/rpc"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/snap/snapstream/snapleecher"
 )

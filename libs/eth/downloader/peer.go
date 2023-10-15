@@ -27,11 +27,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/libs/eth/protocols/eth"
 	"github.com/unicornultrafoundation/go-u2u/libs/event"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/msgrate"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 const (

@@ -25,11 +25,11 @@ import (
 	"time"
 
 	"github.com/olekukonko/tablewriter"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/libs/ethdb"
 	"github.com/unicornultrafoundation/go-u2u/libs/ethdb/leveldb"
 	"github.com/unicornultrafoundation/go-u2u/libs/ethdb/memorydb"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // freezerdb is a database wrapper that enabled freezer data retrievals.

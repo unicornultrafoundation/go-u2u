@@ -23,8 +23,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/accounts/abi"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
+	"github.com/unicornultrafoundation/go-u2u/common"
 )
 
 // decodedCallData is an internal type to represent a method call parsed according

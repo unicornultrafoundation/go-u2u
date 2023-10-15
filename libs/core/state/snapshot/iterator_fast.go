@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/common"
 )
 
 // weightedIterator is a iterator with an assigned weight. It is used to prioritise

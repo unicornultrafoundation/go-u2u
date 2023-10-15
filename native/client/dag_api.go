@@ -5,9 +5,9 @@ import (
 	"math/big"
 
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
 	ethereum "github.com/unicornultrafoundation/go-u2u/libs"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/common/hexutil"
 
 	"github.com/unicornultrafoundation/go-u2u/native"
 )

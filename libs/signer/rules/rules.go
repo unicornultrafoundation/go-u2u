@@ -25,11 +25,11 @@ import (
 
 	"github.com/dop251/goja"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/internal/ethapi"
-	"github.com/unicornultrafoundation/go-u2u/libs/internal/jsre/deps"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
+	"github.com/unicornultrafoundation/go-u2u/internal/ethapi"
+	"github.com/unicornultrafoundation/go-u2u/internal/jsre/deps"
 	"github.com/unicornultrafoundation/go-u2u/libs/signer/core"
 	"github.com/unicornultrafoundation/go-u2u/libs/signer/storage"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // consoleOutput is an override for the console.log and console.error methods to

@@ -19,9 +19,9 @@ package core
 import (
 	"context"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/internal/ethapi"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
-	"github.com/unicornultrafoundation/go-u2u/libs/rpc"
+	"github.com/unicornultrafoundation/go-u2u/internal/ethapi"
+	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/rpc"
 )
 
 type StdIOUI struct {

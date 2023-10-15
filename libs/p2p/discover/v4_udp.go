@@ -29,12 +29,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/crypto"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
+	"github.com/unicornultrafoundation/go-u2u/crypto"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/discover/discfilter"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/discover/v4wire"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/enode"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/netutil"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // Errors

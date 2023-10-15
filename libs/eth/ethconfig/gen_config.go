@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/libs/consensus/ethash"
 	"github.com/unicornultrafoundation/go-u2u/libs/core"
 	"github.com/unicornultrafoundation/go-u2u/libs/eth/downloader"
 	"github.com/unicornultrafoundation/go-u2u/libs/eth/gasprice"
 	"github.com/unicornultrafoundation/go-u2u/libs/miner"
-	"github.com/unicornultrafoundation/go-u2u/libs/params"
+	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
 // MarshalTOML marshals as TOML.

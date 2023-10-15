@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/common/mclock"
+	"github.com/unicornultrafoundation/go-u2u/common/mclock"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/enode"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/enr"
-	"github.com/unicornultrafoundation/go-u2u/libs/rlp"
+	"github.com/unicornultrafoundation/go-u2u/rlp"
 )
 
 // Packet is implemented by all message types.

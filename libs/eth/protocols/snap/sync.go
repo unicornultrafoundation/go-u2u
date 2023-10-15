@@ -29,19 +29,19 @@ import (
 
 	"golang.org/x/crypto/sha3"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/common/math"
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/common/math"
+	"github.com/unicornultrafoundation/go-u2u/crypto"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/rawdb"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/state"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/state/snapshot"
-	"github.com/unicornultrafoundation/go-u2u/libs/crypto"
 	"github.com/unicornultrafoundation/go-u2u/libs/ethdb"
 	"github.com/unicornultrafoundation/go-u2u/libs/event"
 	"github.com/unicornultrafoundation/go-u2u/libs/light"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/msgrate"
-	"github.com/unicornultrafoundation/go-u2u/libs/rlp"
-	"github.com/unicornultrafoundation/go-u2u/libs/trie"
+	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/rlp"
+	"github.com/unicornultrafoundation/go-u2u/trie"
 )
 
 var (

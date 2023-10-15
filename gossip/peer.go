@@ -12,11 +12,11 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/datasemaphore"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
 	"github.com/unicornultrafoundation/go-u2u/libs/eth/protocols/snap"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p"
-	"github.com/unicornultrafoundation/go-u2u/libs/rlp"
+	"github.com/unicornultrafoundation/go-u2u/rlp"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/blockrecords/brstream"
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/blockvotes/bvstream"

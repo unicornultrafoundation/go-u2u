@@ -21,8 +21,8 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/common/hexutil"
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
 )
 
 // txJSON is the JSON representation of transactions.

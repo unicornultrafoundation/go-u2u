@@ -27,7 +27,7 @@ import (
 	"strings"
 
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/enr"
-	"github.com/unicornultrafoundation/go-u2u/libs/rlp"
+	"github.com/unicornultrafoundation/go-u2u/rlp"
 )
 
 var errMissingPrefix = errors.New("missing 'enr:' prefix for base64-encoded record")

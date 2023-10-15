@@ -19,7 +19,7 @@ package gasprice
 import (
 	"math/big"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/params"
+	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
 const sampleNumber = 3 // Number of transactions sampled in a block

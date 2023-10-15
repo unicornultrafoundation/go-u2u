@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/common/mclock"
+	"github.com/unicornultrafoundation/go-u2u/common/mclock"
 )
 
 const (

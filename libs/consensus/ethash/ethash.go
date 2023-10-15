@@ -36,9 +36,9 @@ import (
 	"github.com/edsrzf/mmap-go"
 	"github.com/hashicorp/golang-lru/simplelru"
 	"github.com/unicornultrafoundation/go-u2u/libs/consensus"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
-	"github.com/unicornultrafoundation/go-u2u/libs/metrics"
-	"github.com/unicornultrafoundation/go-u2u/libs/rpc"
+	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/metrics"
+	"github.com/unicornultrafoundation/go-u2u/rpc"
 )
 
 var ErrInvalidDumpMagic = errors.New("invalid dump magic")

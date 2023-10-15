@@ -27,10 +27,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
 	"github.com/unicornultrafoundation/go-u2u/libs/node"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/enode"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/simulations/adapters"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // Tests that a created snapshot with a minimal service only contains the expected connections

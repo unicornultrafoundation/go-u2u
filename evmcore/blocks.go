@@ -17,7 +17,7 @@
 package evmcore
 
 import (
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/common"
 )
 
 // BadHashes represent a set of manually tracked bad hashes (usually hard forks)

@@ -21,7 +21,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/common/hexutil"
+	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
 )
 
 func TestBytesPadding(t *testing.T) {

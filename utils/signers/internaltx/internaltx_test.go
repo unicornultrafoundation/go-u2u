@@ -6,7 +6,7 @@ import (
 
 	"github.com/status-im/keycard-go/hexutils"
 	"github.com/stretchr/testify/require"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
 )
 

@@ -27,11 +27,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/common/mclock"
-	"github.com/unicornultrafoundation/go-u2u/libs/internal/testlog"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
+	"github.com/unicornultrafoundation/go-u2u/common/mclock"
+	"github.com/unicornultrafoundation/go-u2u/internal/testlog"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/enode"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/netutil"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // This test checks that dynamic dials are launched from discovery results.

@@ -19,7 +19,7 @@
 package downloader
 
 import (
-	"github.com/unicornultrafoundation/go-u2u/libs/metrics"
+	"github.com/unicornultrafoundation/go-u2u/metrics"
 )
 
 var (

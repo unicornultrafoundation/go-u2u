@@ -3,7 +3,7 @@ package valkeystore
 import (
 	"crypto/ecdsa"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/crypto"
+	"github.com/unicornultrafoundation/go-u2u/crypto"
 
 	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"
 	"github.com/unicornultrafoundation/go-u2u/valkeystore/encryption"

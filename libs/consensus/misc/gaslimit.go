@@ -20,7 +20,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/params"
+	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
 // VerifyGaslimit verifies the header gas limit according increase/decrease

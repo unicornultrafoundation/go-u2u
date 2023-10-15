@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/common"
 )
 
 type ContainerI interface {

@@ -34,7 +34,7 @@ import (
 	"strconv"
 
 	"github.com/unicornultrafoundation/go-u2u/libs/core"
-	"github.com/unicornultrafoundation/go-u2u/libs/rlp"
+	"github.com/unicornultrafoundation/go-u2u/rlp"
 )
 
 type allocItem struct{ Addr, Balance *big.Int }

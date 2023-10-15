@@ -38,11 +38,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
 	"github.com/unicornultrafoundation/go-u2u/gossip/contract/driver100"
 	"github.com/unicornultrafoundation/go-u2u/gossip/contract/driverauth100"
 	"github.com/unicornultrafoundation/go-u2u/gossip/contract/netinit100"
 	"github.com/unicornultrafoundation/go-u2u/gossip/contract/sfc100"
-	"github.com/unicornultrafoundation/go-u2u/libs/common/hexutil"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
 	"github.com/unicornultrafoundation/go-u2u/logger"
 	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/driver"

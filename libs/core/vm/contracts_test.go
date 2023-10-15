@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/common"
 )
 
 // precompiledTest defines the input/output pairs for precompiled contract tests.

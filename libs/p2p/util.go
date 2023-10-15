@@ -19,7 +19,7 @@ package p2p
 import (
 	"container/heap"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/common/mclock"
+	"github.com/unicornultrafoundation/go-u2u/common/mclock"
 )
 
 // expHeap tracks strings and their expiry time.

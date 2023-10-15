@@ -28,10 +28,10 @@ import (
 	"time"
 
 	"github.com/unicornultrafoundation/go-u2u/libs/event"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/enode"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/simulations/adapters"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 var DialBanTimeout = 200 * time.Millisecond

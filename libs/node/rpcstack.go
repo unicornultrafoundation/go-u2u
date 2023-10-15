@@ -30,8 +30,8 @@ import (
 	"sync/atomic"
 
 	"github.com/rs/cors"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
-	"github.com/unicornultrafoundation/go-u2u/libs/rpc"
+	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/rpc"
 )
 
 // httpConfig is the JSON-RPC/HTTP configuration.

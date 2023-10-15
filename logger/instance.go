@@ -1,7 +1,7 @@
 package logger
 
 import (
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 type Instance struct {

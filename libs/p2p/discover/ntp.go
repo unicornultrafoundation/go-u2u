@@ -25,7 +25,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 const (

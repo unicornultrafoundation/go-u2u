@@ -26,9 +26,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/enr"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p/netutil"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 const (

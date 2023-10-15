@@ -25,13 +25,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/unicornultrafoundation/go-u2u/common"
 	ethereum "github.com/unicornultrafoundation/go-u2u/libs"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
 	notify "github.com/unicornultrafoundation/go-u2u/libs/event"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
-	"github.com/unicornultrafoundation/go-u2u/libs/rpc"
-	"github.com/unicornultrafoundation/go-u2u/libs/trie"
+	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/rpc"
+	"github.com/unicornultrafoundation/go-u2u/trie"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 )

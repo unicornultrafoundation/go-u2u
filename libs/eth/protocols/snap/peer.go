@@ -17,9 +17,9 @@
 package snap
 
 import (
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
+	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/libs/p2p"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // Peer is a collection of relevant information we have about a `snap` peer.

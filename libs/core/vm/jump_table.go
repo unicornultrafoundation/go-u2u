@@ -17,7 +17,7 @@
 package vm
 
 import (
-	"github.com/unicornultrafoundation/go-u2u/libs/params"
+	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
 type (

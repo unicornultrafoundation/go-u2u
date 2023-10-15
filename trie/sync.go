@@ -22,8 +22,8 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/common/prque"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/rawdb"
-	"github.com/unicornultrafoundation/go-u2u/libs/ethdb"
+	"github.com/unicornultrafoundation/go-u2u/core/rawdb"
+	"github.com/unicornultrafoundation/go-u2u/ethdb"
 )
 
 // ErrNotRequested is returned by the trie sync when it's requested to process a

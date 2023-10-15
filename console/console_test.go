@@ -26,11 +26,11 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/console/prompt"
+	"github.com/unicornultrafoundation/go-u2u/core"
+	"github.com/unicornultrafoundation/go-u2u/eth/ethconfig"
 	"github.com/unicornultrafoundation/go-u2u/internal/jsre"
-	"github.com/unicornultrafoundation/go-u2u/libs/core"
-	"github.com/unicornultrafoundation/go-u2u/libs/eth/ethconfig"
-	"github.com/unicornultrafoundation/go-u2u/libs/miner"
-	"github.com/unicornultrafoundation/go-u2u/libs/node"
+	"github.com/unicornultrafoundation/go-u2u/miner"
+	"github.com/unicornultrafoundation/go-u2u/node"
 )
 
 const (

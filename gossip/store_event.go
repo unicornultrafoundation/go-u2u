@@ -9,7 +9,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-	"github.com/unicornultrafoundation/go-u2u/libs/ethdb"
+	"github.com/unicornultrafoundation/go-u2u/ethdb"
 	"github.com/unicornultrafoundation/go-u2u/rlp"
 
 	"github.com/unicornultrafoundation/go-u2u/native"

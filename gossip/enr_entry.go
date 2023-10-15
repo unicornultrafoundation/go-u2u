@@ -1,7 +1,7 @@
 package gossip
 
 import (
-	"github.com/unicornultrafoundation/go-u2u/libs/core/forkid"
+	"github.com/unicornultrafoundation/go-u2u/core/forkid"
 	"github.com/unicornultrafoundation/go-u2u/rlp"
 )
 

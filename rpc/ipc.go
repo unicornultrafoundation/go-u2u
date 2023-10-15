@@ -20,8 +20,8 @@ import (
 	"context"
 	"net"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/p2p/netutil"
 	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/p2p/netutil"
 )
 
 // ServeListener accepts connections on l, serving JSON-RPC on them.

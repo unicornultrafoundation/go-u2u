@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
 )
 
 // nonceHeap is a heap.Interface implementation over 64bit unsigned integers for

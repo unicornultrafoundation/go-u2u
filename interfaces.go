@@ -23,7 +23,7 @@ import (
 	"math/big"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
 )
 
 // NotFound is returned by API methods if the requested item does not exist.

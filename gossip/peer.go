@@ -13,9 +13,9 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/datasemaphore"
 	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
-	"github.com/unicornultrafoundation/go-u2u/libs/eth/protocols/snap"
-	"github.com/unicornultrafoundation/go-u2u/libs/p2p"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
+	"github.com/unicornultrafoundation/go-u2u/eth/protocols/snap"
+	"github.com/unicornultrafoundation/go-u2u/p2p"
 	"github.com/unicornultrafoundation/go-u2u/rlp"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/blockrecords/brstream"

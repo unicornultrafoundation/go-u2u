@@ -31,7 +31,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/accounts"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
-	"github.com/unicornultrafoundation/go-u2u/libs/event"
+	"github.com/unicornultrafoundation/go-u2u/event"
 )
 
 var testSigData = make([]byte, 32)

@@ -20,7 +20,7 @@ import (
 	"math/big"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/core/vm"
 )
 
 // DummyChain supports retrieving headers and consensus parameters from the

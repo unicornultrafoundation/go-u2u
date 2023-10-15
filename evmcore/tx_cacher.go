@@ -19,7 +19,7 @@ package evmcore
 import (
 	"runtime"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
 )
 
 // senderCacher is a concurrent transaction sender recoverer and cacher.

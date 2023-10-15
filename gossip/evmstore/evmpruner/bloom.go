@@ -23,7 +23,7 @@ import (
 
 	bloomfilter "github.com/holiman/bloomfilter/v2"
 	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/rawdb"
+	"github.com/unicornultrafoundation/go-u2u/core/rawdb"
 	"github.com/unicornultrafoundation/go-u2u/log"
 )
 

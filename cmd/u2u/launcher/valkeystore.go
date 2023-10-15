@@ -8,8 +8,8 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
-	"github.com/unicornultrafoundation/go-u2u/libs/node"
 	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/node"
 	cli "gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"

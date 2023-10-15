@@ -22,7 +22,7 @@ import (
 	"sync"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/event"
+	"github.com/unicornultrafoundation/go-u2u/event"
 )
 
 // Config contains the settings of the global account manager.

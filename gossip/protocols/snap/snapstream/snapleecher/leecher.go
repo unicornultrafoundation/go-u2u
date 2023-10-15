@@ -6,9 +6,9 @@ import (
 	"sync"
 
 	u2u "github.com/unicornultrafoundation/go-u2u"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/rawdb"
-	"github.com/unicornultrafoundation/go-u2u/libs/eth/protocols/snap"
-	"github.com/unicornultrafoundation/go-u2u/libs/ethdb"
+	"github.com/unicornultrafoundation/go-u2u/core/rawdb"
+	"github.com/unicornultrafoundation/go-u2u/eth/protocols/snap"
+	"github.com/unicornultrafoundation/go-u2u/ethdb"
 	"github.com/unicornultrafoundation/go-u2u/trie"
 )
 

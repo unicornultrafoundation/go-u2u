@@ -16,7 +16,7 @@
 
 package snap
 
-import "github.com/unicornultrafoundation/go-u2u/libs/core/types"
+import "github.com/unicornultrafoundation/go-u2u/core/types"
 
 type DoneEvent struct {
 	Latest *types.Header

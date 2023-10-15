@@ -21,8 +21,8 @@ import (
 	"sync"
 
 	u2u "github.com/unicornultrafoundation/go-u2u"
+	"github.com/unicornultrafoundation/go-u2u/event"
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/snap/snapstream/snapleecher"
-	"github.com/unicornultrafoundation/go-u2u/libs/event"
 	"github.com/unicornultrafoundation/go-u2u/rpc"
 )
 

@@ -25,7 +25,7 @@ import (
 
 	"github.com/karalabe/usb"
 	"github.com/unicornultrafoundation/go-u2u/accounts"
-	"github.com/unicornultrafoundation/go-u2u/libs/event"
+	"github.com/unicornultrafoundation/go-u2u/event"
 	"github.com/unicornultrafoundation/go-u2u/log"
 )
 

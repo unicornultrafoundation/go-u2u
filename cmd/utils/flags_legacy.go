@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/eth/ethconfig"
-	"github.com/unicornultrafoundation/go-u2u/libs/node"
+	"github.com/unicornultrafoundation/go-u2u/eth/ethconfig"
+	"github.com/unicornultrafoundation/go-u2u/node"
 	"gopkg.in/urfave/cli.v1"
 )
 

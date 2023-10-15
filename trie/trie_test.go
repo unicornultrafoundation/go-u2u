@@ -33,9 +33,9 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
-	"github.com/unicornultrafoundation/go-u2u/libs/ethdb"
-	"github.com/unicornultrafoundation/go-u2u/libs/ethdb/leveldb"
-	"github.com/unicornultrafoundation/go-u2u/libs/ethdb/memorydb"
+	"github.com/unicornultrafoundation/go-u2u/ethdb"
+	"github.com/unicornultrafoundation/go-u2u/ethdb/leveldb"
+	"github.com/unicornultrafoundation/go-u2u/ethdb/memorydb"
 	"github.com/unicornultrafoundation/go-u2u/rlp"
 	"golang.org/x/crypto/sha3"
 )

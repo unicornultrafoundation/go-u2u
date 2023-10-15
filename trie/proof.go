@@ -22,8 +22,8 @@ import (
 	"fmt"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/ethdb"
-	"github.com/unicornultrafoundation/go-u2u/libs/ethdb/memorydb"
+	"github.com/unicornultrafoundation/go-u2u/ethdb"
+	"github.com/unicornultrafoundation/go-u2u/ethdb/memorydb"
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/rlp"
 )

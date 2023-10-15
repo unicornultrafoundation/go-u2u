@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
-	"github.com/unicornultrafoundation/go-u2u/libs/node"
-	"github.com/unicornultrafoundation/go-u2u/libs/p2p"
-	"github.com/unicornultrafoundation/go-u2u/libs/p2p/nat"
+	"github.com/unicornultrafoundation/go-u2u/node"
+	"github.com/unicornultrafoundation/go-u2u/p2p"
+	"github.com/unicornultrafoundation/go-u2u/p2p/nat"
 	"github.com/unicornultrafoundation/go-u2u/rpc"
 )
 

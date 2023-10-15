@@ -20,7 +20,7 @@ import (
 	"sync"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/state"
+	"github.com/unicornultrafoundation/go-u2u/core/state"
 )
 
 // txNoncer is a tiny virtual state database to manage the executable nonces of

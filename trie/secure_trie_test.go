@@ -24,7 +24,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
-	"github.com/unicornultrafoundation/go-u2u/libs/ethdb/memorydb"
+	"github.com/unicornultrafoundation/go-u2u/ethdb/memorydb"
 )
 
 func newEmptySecure() *SecureTrie {

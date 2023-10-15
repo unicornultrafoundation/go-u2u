@@ -24,7 +24,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/console"
-	"github.com/unicornultrafoundation/go-u2u/libs/node"
+	"github.com/unicornultrafoundation/go-u2u/node"
 	"github.com/unicornultrafoundation/go-u2u/rpc"
 )
 

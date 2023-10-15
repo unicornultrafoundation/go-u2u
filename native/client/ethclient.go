@@ -3,7 +3,7 @@ package native
 import (
 	"context"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/ethclient"
+	"github.com/unicornultrafoundation/go-u2u/ethclient"
 	"github.com/unicornultrafoundation/go-u2u/rpc"
 )
 

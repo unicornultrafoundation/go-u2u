@@ -8,7 +8,7 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/leveldb"
 	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/rawdb"
+	"github.com/unicornultrafoundation/go-u2u/core/rawdb"
 )
 
 type exactSetStore struct {

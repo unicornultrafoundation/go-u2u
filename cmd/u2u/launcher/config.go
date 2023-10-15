@@ -17,9 +17,9 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/utils/cachescale"
 	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/node"
-	"github.com/unicornultrafoundation/go-u2u/libs/p2p/enode"
 	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/node"
+	"github.com/unicornultrafoundation/go-u2u/p2p/enode"
 	"github.com/unicornultrafoundation/go-u2u/params"
 	"gopkg.in/urfave/cli.v1"
 

@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
+	go_u2u "github.com/unicornultrafoundation/go-u2u"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
 
@@ -18,7 +19,7 @@ func (ec *Client) GetEvent(ctx context.Context, h hash.Event) (e native.EventI, 
 	if err != nil {
 		return
 	} else if len(raw) == 0 {
-		err = u2u.NotFound
+		err = go_u2u.NotFound
 		return
 	}
 
@@ -33,7 +34,7 @@ func (ec *Client) GetEventPayload(ctx context.Context, h hash.Event, inclTx bool
 	if err != nil {
 		return
 	} else if len(raw) == 0 {
-		err = u2u.NotFound
+		err = go_u2u.NotFound
 		return
 	}
 
@@ -72,7 +73,7 @@ func (ec *Client) GetEpochStats(ctx context.Context, epoch *big.Int) (map[string
 	if err != nil {
 		return nil, err
 	} else if len(raw) == 0 {
-		return nil, u2u.NotFound
+		return nil, go_u2u.NotFound
 	}
 
 	return raw, nil

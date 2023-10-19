@@ -19,11 +19,8 @@ package web3ext
 
 var Modules = map[string]string{
 	"admin":    AdminJs,
-	"clique":   CliqueJs,
-	"u2uhash":  U2uhashJs,
 	"debug":    DebugJs,
 	"u2u":      U2uJs,
-	"miner":    MinerJs,
 	"net":      NetJs,
 	"personal": PersonalJs,
 	"rpc":      RpcJs,
@@ -31,91 +28,6 @@ var Modules = map[string]string{
 	"les":      LESJs,
 	"vflux":    VfluxJs,
 }
-
-const CliqueJs = `
-web3._extend({
-	property: 'clique',
-	methods: [
-		new web3._extend.Method({
-			name: 'getSnapshot',
-			call: 'clique_getSnapshot',
-			params: 1,
-			inputFormatter: [web3._extend.formatters.inputBlockNumberFormatter]
-		}),
-		new web3._extend.Method({
-			name: 'getSnapshotAtHash',
-			call: 'clique_getSnapshotAtHash',
-			params: 1
-		}),
-		new web3._extend.Method({
-			name: 'getSigners',
-			call: 'clique_getSigners',
-			params: 1,
-			inputFormatter: [web3._extend.formatters.inputBlockNumberFormatter]
-		}),
-		new web3._extend.Method({
-			name: 'getSignersAtHash',
-			call: 'clique_getSignersAtHash',
-			params: 1
-		}),
-		new web3._extend.Method({
-			name: 'propose',
-			call: 'clique_propose',
-			params: 2
-		}),
-		new web3._extend.Method({
-			name: 'discard',
-			call: 'clique_discard',
-			params: 1
-		}),
-		new web3._extend.Method({
-			name: 'status',
-			call: 'clique_status',
-			params: 0
-		}),
-		new web3._extend.Method({
-			name: 'getSigner',
-			call: 'clique_getSigner',
-			params: 1,
-			inputFormatter: [null]
-		}),
-	],
-	properties: [
-		new web3._extend.Property({
-			name: 'proposals',
-			getter: 'clique_proposals'
-		}),
-	]
-});
-`
-
-const U2uhashJs = `
-web3._extend({
-	property: 'U2uhash',
-	methods: [
-		new web3._extend.Method({
-			name: 'getWork',
-			call: 'ethash_getWork',
-			params: 0
-		}),
-		new web3._extend.Method({
-			name: 'getHashrate',
-			call: 'ethash_getHashrate',
-			params: 0
-		}),
-		new web3._extend.Method({
-			name: 'submitWork',
-			call: 'ethash_submitWork',
-			params: 3,
-		}),
-		new web3._extend.Method({
-			name: 'submitHashrate',
-			call: 'ethash_submitHashrate',
-			params: 2,
-		}),
-	]
-});
-`
 
 const AdminJs = `
 web3._extend({
@@ -586,57 +498,6 @@ web3._extend({
 			outputFormatter: web3._extend.utils.toBigNumber
 		}),
 	]
-});
-`
-
-const MinerJs = `
-web3._extend({
-	property: 'miner',
-	methods: [
-		new web3._extend.Method({
-			name: 'start',
-			call: 'miner_start',
-			params: 1,
-			inputFormatter: [null]
-		}),
-		new web3._extend.Method({
-			name: 'stop',
-			call: 'miner_stop'
-		}),
-		new web3._extend.Method({
-			name: 'setEtherbase',
-			call: 'miner_setEtherbase',
-			params: 1,
-			inputFormatter: [web3._extend.formatters.inputAddressFormatter]
-		}),
-		new web3._extend.Method({
-			name: 'setExtra',
-			call: 'miner_setExtra',
-			params: 1
-		}),
-		new web3._extend.Method({
-			name: 'setGasPrice',
-			call: 'miner_setGasPrice',
-			params: 1,
-			inputFormatter: [web3._extend.utils.fromDecimal]
-		}),
-		new web3._extend.Method({
-			name: 'setGasLimit',
-			call: 'miner_setGasLimit',
-			params: 1,
-			inputFormatter: [web3._extend.utils.fromDecimal]
-		}),
-		new web3._extend.Method({
-			name: 'setRecommitInterval',
-			call: 'miner_setRecommitInterval',
-			params: 1,
-		}),
-		new web3._extend.Method({
-			name: 'getHashrate',
-			call: 'miner_getHashrate'
-		}),
-	],
-	properties: []
 });
 `
 

@@ -25,9 +25,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/consensus/misc"
 	"github.com/unicornultrafoundation/go-u2u/libs/common"
 	"github.com/unicornultrafoundation/go-u2u/libs/common/prque"
+	"github.com/unicornultrafoundation/go-u2u/libs/consensus/misc"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/state"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
 	notify "github.com/unicornultrafoundation/go-u2u/libs/event"
@@ -234,6 +234,7 @@ type TxPool struct {
 	mu          sync.RWMutex
 
 	istanbul bool // Fork indicator whether we are in the istanbul stage.
+	eip2938  bool // Fork indicator whether we are using EIP-2938 type transactions.
 	eip2718  bool // Fork indicator whether we are using EIP-2718 type transactions.
 	eip1559  bool // Fork indicator whether we are using EIP-1559 type transactions.
 
@@ -591,6 +592,10 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	if !pool.eip1559 && tx.Type() == types.DynamicFeeTxType {
 		return ErrTxTypeNotSupported
 	}
+	// Reject account abstraction transactions until EIP-2938 activates.
+	if !pool.eip2938 && tx.Type() == types.AccountAbstractionTxType {
+		return ErrTxTypeNotSupported
+	}
 	// Reject transactions over defined size to prevent DOS attacks
 	if uint64(tx.Size()) > txMaxSize {
 		return ErrOversizedData
@@ -614,6 +619,10 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	// Ensure gasFeeCap is greater than or equal to gasTipCap.
 	if tx.GasFeeCapIntCmp(tx.GasTipCap()) < 0 {
 		return ErrTipAboveFeeCap
+	}
+	// Ensure the AA transaction has recipient
+	if tx.Type() == types.AccountAbstractionTxType && tx.To() == nil {
+		return ErrNoRecipient
 	}
 	// Make sure the transaction is signed properly.
 	from, err := types.Sender(pool.signer, tx)
@@ -1322,6 +1331,7 @@ func (pool *TxPool) reset(oldHead, newHead *EvmHeader) {
 	pool.istanbul = pool.chainconfig.IsIstanbul(next)
 	pool.eip2718 = pool.chainconfig.IsBerlin(next)
 	pool.eip1559 = pool.chainconfig.IsLondon(next)
+	pool.eip2938 = pool.chainconfig.IsEIP2938(next)
 }
 
 // promoteExecutables moves transactions that have become processable from the

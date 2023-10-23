@@ -208,8 +208,6 @@ func enable2938(jt *JumpTable) {
 	jt[CREATE2].execute = revertBeforePaygas(CREATE2, opCreate2)
 	jt[DIFFICULTY].execute = revertBeforePaygas(DIFFICULTY, opDifficulty)
 	jt[EXTCODECOPY].execute = revertBeforePaygas(EXTCODECOPY, opExtCodeCopy)
-	jt[EXTCODEHASH].execute = revertBeforePaygas(EXTCODEHASH, opExtCodeHash)
-	jt[EXTCODESIZE].execute = revertBeforePaygas(EXTCODESIZE, opExtCodeSize)
 	jt[GASLIMIT].execute = revertBeforePaygas(GASLIMIT, opGasLimit)
 	jt[NUMBER].execute = revertBeforePaygas(NUMBER, opNumber)
 	jt[TIMESTAMP].execute = revertBeforePaygas(TIMESTAMP, opTimestamp)

@@ -75,6 +75,7 @@ type Message interface {
 
 	Nonce() uint64
 	IsFake() bool
+	IsAA() bool
 	Data() []byte
 	AccessList() types.AccessList
 }

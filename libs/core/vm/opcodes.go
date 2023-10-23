@@ -104,6 +104,7 @@ const (
 	CHAINID     OpCode = 0x46
 	SELFBALANCE OpCode = 0x47
 	BASEFEE     OpCode = 0x48
+	NONCE       OpCode = 0x49
 )
 
 // 0x50 range - 'storage' and execution.
@@ -282,6 +283,7 @@ var opCodeToString = map[OpCode]string{
 	CHAINID:     "CHAINID",
 	SELFBALANCE: "SELFBALANCE",
 	BASEFEE:     "BASEFEE",
+	NONCE:       "NONCE",
 
 	// 0x50 range - 'storage' and execution.
 	POP: "POP",

@@ -27,6 +27,7 @@ import (
 var activators = map[int]func(*JumpTable){
 	3529: enable3529,
 	3198: enable3198,
+	2938: enable2938,
 	2929: enable2929,
 	2200: enable2200,
 	1884: enable1884,
@@ -168,9 +169,27 @@ func enable3198(jt *JumpTable) {
 	}
 }
 
+// enable2938 enabled "EIP-2938: Account abstraction"
+// - Adds an opcode that returns current transaction NONCE
+func enable2938(jt *JumpTable) {
+	jt[NONCE] = &operation{
+		execute:     opNonce,
+		constantGas: GasQuickStep,
+		minStack:    minStack(0, 1),
+		maxStack:    maxStack(0, 1),
+	}
+}
+
 // opBaseFee implements BASEFEE opcode
 func opBaseFee(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byte, error) {
 	baseFee, _ := uint256.FromBig(interpreter.evm.Context.BaseFee)
 	scope.Stack.push(baseFee)
+	return nil, nil
+}
+
+// opNonce implements NONCE opcode
+func opNonce(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byte, error) {
+	nonce, _ := uint256.FromBig(interpreter.evm.Nonce)
+	scope.Stack.push(nonce)
 	return nil, nil
 }

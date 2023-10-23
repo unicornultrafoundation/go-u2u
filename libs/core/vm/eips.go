@@ -260,7 +260,7 @@ func opPaygas(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]b
 	balance := interpreter.evm.StateDB.GetBalance(address)
 
 	if balance.Cmp(mgval) < 0 {
-		return nil, ErrInsufficientBalance
+		return nil, ErrInsufficientFunds
 	}
 
 	interpreter.evm.TransactionFeePaid = true

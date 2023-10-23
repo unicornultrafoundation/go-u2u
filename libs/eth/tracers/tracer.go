@@ -690,7 +690,7 @@ func (jst *Tracer) CaptureStart(env *vm.EVM, from common.Address, to common.Addr
 	jst.activePrecompiles = vm.ActivePrecompiles(rules)
 
 	// Compute intrinsic gas
-	intrinsicGas, err := evmcore.IntrinsicGas(input, nil, jst.ctx["type"] == "CREATE")
+	intrinsicGas, err := evmcore.IntrinsicGas(input, nil, jst.ctx["type"] == "CREATE", env.TxContext.AccountAbstraction)
 	if err != nil {
 		return
 	}

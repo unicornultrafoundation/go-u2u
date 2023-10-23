@@ -253,14 +253,22 @@ func opPaygas(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]b
 		return nil, nil
 	}
 
+	gasLimit := interpreter.evm.GasLimit
 	mgval := new(big.Int).Set(interpreter.evm.GasPrice)
-	mgval = mgval.Mul(mgval, new(big.Int).SetUint64(interpreter.evm.GasLimit))
+	mgval = mgval.Mul(mgval, new(big.Int).SetUint64(gasLimit))
 
 	address := scope.Contract.Address()
 	balance := interpreter.evm.StateDB.GetBalance(address)
 
 	if balance.Cmp(mgval) < 0 {
 		return nil, ErrInsufficientFunds
+	}
+
+	// Gas limit for AA transaction was explicitly reduced to VerificationGasCap,
+	// if it exceeded the gas verification capabilites. After this opcode,
+	// we should restore the original gas limit
+	if gasLimit > params.VerificationGasCap {
+		scope.Contract.Gas += gasLimit - params.VerificationGasCap
 	}
 
 	interpreter.evm.StateDB.SubBalance(address, mgval)

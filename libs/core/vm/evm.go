@@ -152,6 +152,11 @@ func NewEVM(blockCtx BlockContext, txCtx TxContext, statedb StateDB, chainConfig
 	return evm
 }
 
+// HaltOnPaygas halts execution after PAYGAS opcode
+func (evm *EVM) HaltOnPaygas() {
+	evm.interpreter.cfg.JumpTable = paygasHaltInstructionSet
+}
+
 // Reset resets the EVM with a new transaction context.Reset
 // This is not threadsafe and should only be done very cautiously.
 func (evm *EVM) Reset(txCtx TxContext, statedb StateDB) {

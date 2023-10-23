@@ -58,10 +58,20 @@ var (
 	istanbulInstructionSet         = newIstanbulInstructionSet()
 	berlinInstructionSet           = newBerlinInstructionSet()
 	londonInstructionSet           = newLondonInstructionSet()
+	paygasHaltInstructionSet       = newPaygasHaltInstructionSet()
 )
 
 // JumpTable contains the EVM opcodes supported at a given fork.
 type JumpTable [256]*operation
+
+// newPaygasHaltInstructionSet returns the frontier, homestead, byzantium,
+// contantinople, istanbul, petersburg, berlin and london instructions.
+// PAYGAS opcode halts execution
+func newPaygasHaltInstructionSet() JumpTable {
+	instructionSet := newLondonInstructionSet()
+	instructionSet[PAYGAS].halts = true
+	return instructionSet
+}
 
 // newLondonInstructionSet returns the frontier, homestead, byzantium,
 // contantinople, istanbul, petersburg, berlin and london instructions.

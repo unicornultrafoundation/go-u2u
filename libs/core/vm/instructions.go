@@ -756,6 +756,12 @@ func opStaticCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) 
 	// Pop other call parameters.
 	addr, inOffset, inSize, retOffset, retSize := stack.pop(), stack.pop(), stack.pop(), stack.pop(), stack.pop()
 	toAddr := common.Address(addr.Bytes20())
+	if !interpreter.evm.TransactionFeePaid && addr.Cmp(new(uint256.Int).SetUint64(0x10000)) != -1 {
+		temp.Clear()
+		stack.push(&temp)
+		return nil, &ErrInvalidOpCode{opcode: STATICCALL}
+	}
+
 	// Get arguments from the memory.
 	args := scope.Memory.GetPtr(int64(inOffset.Uint64()), int64(inSize.Uint64()))
 

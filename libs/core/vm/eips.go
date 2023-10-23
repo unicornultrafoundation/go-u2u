@@ -17,7 +17,6 @@
 package vm
 
 import (
-	"errors"
 	"fmt"
 	"math/big"
 	"sort"
@@ -172,11 +171,10 @@ func enable3198(jt *JumpTable) {
 	}
 }
 
-func revertBeforePaygas(opcode string, execution executionFunc) executionFunc {
+func revertBeforePaygas(opcode OpCode, execution executionFunc) executionFunc {
 	return func(pc *uint64, interpreter *EVMInterpreter, callContext *ScopeContext) ([]byte, error) {
 		if !interpreter.evm.TransactionFeePaid {
-			error := errors.New("opcode " + opcode + " must be executed after paygas opcode")
-			return nil, error
+			return nil, &ErrInvalidOpcodeBeforePaygas{opcode: opcode}
 		}
 
 		return execution(pc, interpreter, callContext)
@@ -200,24 +198,22 @@ func enable2938(jt *JumpTable) {
 		minStack:    minStack(0, 0),
 		maxStack:    maxStack(0, 0),
 	}
-	jt[BALANCE].execute = revertBeforePaygas(BALANCE.String(), opBalance)
-	jt[SELFBALANCE].execute = revertBeforePaygas(SELFBALANCE.String(), opSelfBalance)
-	jt[BLOCKHASH].execute = revertBeforePaygas(BLOCKHASH.String(), opBlockhash)
-	jt[CALLCODE].execute = revertBeforePaygas(CALLCODE.String(), opCallCode)
-	jt[CALLCODE].execute = revertBeforePaygas(CALLCODE.String(), opCallCode)
-	jt[CALL].execute = revertBeforePaygas(CALL.String(), opCall)
-	jt[COINBASE].execute = revertBeforePaygas(COINBASE.String(), opCoinbase)
-	jt[CREATE].execute = revertBeforePaygas(CREATE.String(), opCreate)
-	jt[CREATE2].execute = revertBeforePaygas(CREATE2.String(), opCreate2)
-	jt[DELEGATECALL].execute = revertBeforePaygas(DELEGATECALL.String(), opDelegateCall)
-	jt[DIFFICULTY].execute = revertBeforePaygas(DIFFICULTY.String(), opDifficulty)
-	jt[EXTCODECOPY].execute = revertBeforePaygas(EXTCODECOPY.String(), opExtCodeCopy)
-	jt[EXTCODEHASH].execute = revertBeforePaygas(EXTCODEHASH.String(), opExtCodeHash)
-	jt[EXTCODESIZE].execute = revertBeforePaygas(EXTCODESIZE.String(), opExtCodeSize)
-	jt[GASLIMIT].execute = revertBeforePaygas(GASLIMIT.String(), opGasLimit)
-	jt[NUMBER].execute = revertBeforePaygas(NUMBER.String(), opNumber)
-	jt[STATICCALL].execute = revertBeforePaygas(STATICCALL.String(), opStaticCall)
-	jt[TIMESTAMP].execute = revertBeforePaygas(TIMESTAMP.String(), opTimestamp)
+	jt[BALANCE].execute = revertBeforePaygas(BALANCE, opBalance)
+	jt[SELFBALANCE].execute = revertBeforePaygas(SELFBALANCE, opSelfBalance)
+	jt[BLOCKHASH].execute = revertBeforePaygas(BLOCKHASH, opBlockhash)
+	jt[CALLCODE].execute = revertBeforePaygas(CALLCODE, opCallCode)
+	jt[CALL].execute = revertBeforePaygas(CALL, opCall)
+	jt[COINBASE].execute = revertBeforePaygas(COINBASE, opCoinbase)
+	jt[CREATE].execute = revertBeforePaygas(CREATE, opCreate)
+	jt[CREATE2].execute = revertBeforePaygas(CREATE2, opCreate2)
+	jt[DELEGATECALL].execute = revertBeforePaygas(DELEGATECALL, opDelegateCall)
+	jt[DIFFICULTY].execute = revertBeforePaygas(DIFFICULTY, opDifficulty)
+	jt[EXTCODECOPY].execute = revertBeforePaygas(EXTCODECOPY, opExtCodeCopy)
+	jt[EXTCODEHASH].execute = revertBeforePaygas(EXTCODEHASH, opExtCodeHash)
+	jt[EXTCODESIZE].execute = revertBeforePaygas(EXTCODESIZE, opExtCodeSize)
+	jt[GASLIMIT].execute = revertBeforePaygas(GASLIMIT, opGasLimit)
+	jt[NUMBER].execute = revertBeforePaygas(NUMBER, opNumber)
+	jt[TIMESTAMP].execute = revertBeforePaygas(TIMESTAMP, opTimestamp)
 	jt[CALLER].execute = opPaygasCaller
 }
 

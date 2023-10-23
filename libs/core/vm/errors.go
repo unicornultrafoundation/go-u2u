@@ -67,3 +67,12 @@ type ErrInvalidOpCode struct {
 }
 
 func (e *ErrInvalidOpCode) Error() string { return fmt.Sprintf("invalid opcode: %s", e.opcode) }
+
+// ErrInvalidOpcodeBeforePaygas wraps an evm error in AA transactions
+type ErrInvalidOpcodeBeforePaygas struct {
+	opcode OpCode
+}
+
+func (e *ErrInvalidOpcodeBeforePaygas) Error() string {
+	return fmt.Sprintf("opcode %s must be executed after PAYGAS opcode", e.opcode)
+}

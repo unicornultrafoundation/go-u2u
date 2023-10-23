@@ -90,9 +90,11 @@ type BlockContext struct {
 // All fields can change between transactions.
 type TxContext struct {
 	// Message information
-	Origin   common.Address // Provides information for ORIGIN
-	GasPrice *big.Int       // Provides information for GASPRICE
-	Nonce    *big.Int       // Provides information for NONCE
+	Origin             common.Address // Provides information for ORIGIN
+	GasPrice           *big.Int       // Provides information for GASPRICE
+	Nonce              *big.Int       // Provides information for NONCE
+	GasLimit           *big.Int       // Provides information for GASLIMIT
+	TransactionFeePaid bool
 }
 
 // EVM is the Ethereum Virtual Machine base object and provides

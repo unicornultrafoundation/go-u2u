@@ -17,7 +17,9 @@
 package vm
 
 import (
+	"errors"
 	"fmt"
+	"math/big"
 	"sort"
 
 	"github.com/holiman/uint256"
@@ -169,8 +171,21 @@ func enable3198(jt *JumpTable) {
 	}
 }
 
+func revertBeforePaygas(opcode string, execution executionFunc) executionFunc {
+	return func(pc *uint64, interpreter *EVMInterpreter, callContext *ScopeContext) ([]byte, error) {
+		if !interpreter.evm.TransactionFeePaid {
+			error := errors.New("opcode " + opcode + " must be executed after paygas opcode")
+			return nil, error
+		}
+
+		return execution(pc, interpreter, callContext)
+	}
+}
+
 // enable2938 enabled "EIP-2938: Account abstraction"
 // - Adds an opcode that returns current transaction NONCE
+// - Adds an PAYGAS opcode
+// - Changes behaviour of some other opcodes
 func enable2938(jt *JumpTable) {
 	jt[NONCE] = &operation{
 		execute:     opNonce,
@@ -178,6 +193,29 @@ func enable2938(jt *JumpTable) {
 		minStack:    minStack(0, 1),
 		maxStack:    maxStack(0, 1),
 	}
+	jt[PAYGAS] = &operation{
+		execute:     opPaygas,
+		constantGas: GasQuickStep,
+		minStack:    minStack(2, 0),
+		maxStack:    maxStack(2, 0),
+	}
+	jt[BALANCE].execute = revertBeforePaygas(BALANCE.String(), opBalance)
+	jt[BLOCKHASH].execute = revertBeforePaygas(BLOCKHASH.String(), opBlockhash)
+	jt[CALLCODE].execute = revertBeforePaygas(CALLCODE.String(), opCallCode)
+	jt[CALLCODE].execute = revertBeforePaygas(CALLCODE.String(), opCallCode)
+	jt[CALL].execute = revertBeforePaygas(CALL.String(), opCall)
+	jt[COINBASE].execute = revertBeforePaygas(COINBASE.String(), opCoinbase)
+	jt[CREATE].execute = revertBeforePaygas(CREATE.String(), opCreate)
+	jt[CREATE2].execute = revertBeforePaygas(CREATE2.String(), opCreate2)
+	jt[DELEGATECALL].execute = revertBeforePaygas(DELEGATECALL.String(), opDelegateCall)
+	jt[DIFFICULTY].execute = revertBeforePaygas(DIFFICULTY.String(), opDifficulty)
+	jt[EXTCODECOPY].execute = revertBeforePaygas(EXTCODECOPY.String(), opExtCodeCopy)
+	jt[EXTCODEHASH].execute = revertBeforePaygas(EXTCODEHASH.String(), opExtCodeHash)
+	jt[EXTCODESIZE].execute = revertBeforePaygas(EXTCODESIZE.String(), opExtCodeSize)
+	jt[GASLIMIT].execute = revertBeforePaygas(GASLIMIT.String(), opGasLimit)
+	jt[NUMBER].execute = revertBeforePaygas(NUMBER.String(), opNumber)
+	jt[STATICCALL].execute = revertBeforePaygas(STATICCALL.String(), opStaticCall)
+	jt[TIMESTAMP].execute = revertBeforePaygas(TIMESTAMP.String(), opTimestamp)
 }
 
 // opBaseFee implements BASEFEE opcode
@@ -191,5 +229,31 @@ func opBaseFee(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]
 func opNonce(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byte, error) {
 	nonce, _ := uint256.FromBig(interpreter.evm.Nonce)
 	scope.Stack.push(nonce)
+	return nil, nil
+}
+
+// opPaygas implements PAYGAS opcode
+func opPaygas(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byte, error) {
+	gasPrice, gasLimit := scope.Stack.pop(), scope.Stack.pop()
+
+	if interpreter.evm.TransactionFeePaid {
+		return nil, nil
+	}
+
+	mgval := new(big.Int).Set(gasPrice.ToBig())
+	mgval = mgval.Mul(mgval, gasLimit.ToBig())
+
+	address := scope.Contract.Address()
+	balance := interpreter.evm.StateDB.GetBalance(address)
+
+	if balance.Cmp(mgval) < 0 {
+		return nil, ErrInsufficientBalance
+	}
+
+	interpreter.evm.GasPrice = gasPrice.ToBig()
+	interpreter.evm.GasLimit = gasLimit.ToBig()
+	interpreter.evm.TransactionFeePaid = true
+	interpreter.evm.StateDB.SubBalance(address, mgval)
+
 	return nil, nil
 }

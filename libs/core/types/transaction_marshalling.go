@@ -95,7 +95,6 @@ func (t *Transaction) MarshalJSON() ([]byte, error) {
 		enc.R = (*hexutil.Big)(tx.R)
 		enc.S = (*hexutil.Big)(tx.S)
 	case *AccountAbstractionTx:
-		enc.ChainID = (*hexutil.Big)(tx.ChainID)
 		enc.Nonce = (*hexutil.Uint64)(&tx.Nonce)
 		enc.Gas = (*hexutil.Uint64)(&tx.Gas)
 		enc.GasPrice = (*hexutil.Big)(tx.GasPrice)
@@ -277,10 +276,6 @@ func (t *Transaction) UnmarshalJSON(input []byte) error {
 	case AccountAbstractionTxType:
 		var itx AccountAbstractionTx
 		inner = &itx
-		if dec.ChainID == nil {
-			return errors.New("missing required field 'chainId' in transaction")
-		}
-		itx.ChainID = (*big.Int)(dec.ChainID)
 		if dec.To != nil {
 			itx.To = dec.To
 		}

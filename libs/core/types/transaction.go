@@ -187,6 +187,10 @@ func (tx *Transaction) decodeTyped(b []byte) (TxData, error) {
 		var inner DynamicFeeTx
 		err := rlp.DecodeBytes(b[1:], &inner)
 		return &inner, err
+	case AccountAbstractionTxType:
+		var inner AccountAbstractionTx
+		err := rlp.DecodeBytes(b[1:], &inner)
+		return &inner, err
 	default:
 		return nil, ErrTxTypeNotSupported
 	}
@@ -409,10 +413,10 @@ func (tx *Transaction) WithSignature(signer Signer, sig []byte) (*Transaction, e
 	return &Transaction{inner: cpy, time: tx.time}, nil
 }
 
-func (tx *Transaction) WithAASignature(chainId *big.Int) *Transaction {
+func (tx *Transaction) WithAASignature() *Transaction {
 	v := big.NewInt(27)
 	cpy := tx.inner.copy()
-	cpy.setSignatureValues(chainId, v, common.Big0, common.Big0)
+	cpy.setSignatureValues(common.Big0, v, common.Big0, common.Big0)
 	return &Transaction{inner: cpy, time: tx.time}
 }
 

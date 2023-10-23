@@ -7,7 +7,6 @@ import (
 )
 
 type AccountAbstractionTx struct {
-	ChainID  *big.Int
 	Nonce    uint64          // nonce of sender account
 	GasPrice *big.Int        // wei per gas
 	Gas      uint64          // gas limit
@@ -24,15 +23,11 @@ func (tx *AccountAbstractionTx) copy() TxData {
 		Data:  common.CopyBytes(tx.Data),
 		Gas:   tx.Gas,
 		// These are initialized below.
-		ChainID:  new(big.Int),
 		Value:    new(big.Int),
 		GasPrice: new(big.Int),
 		V:        new(big.Int),
 		R:        new(big.Int),
 		S:        new(big.Int),
-	}
-	if tx.ChainID != nil {
-		cpy.ChainID.Set(tx.ChainID)
 	}
 	if tx.Value != nil {
 		cpy.Value.Set(tx.Value)
@@ -53,7 +48,7 @@ func (tx *AccountAbstractionTx) copy() TxData {
 }
 
 func (tx *AccountAbstractionTx) txType() byte           { return AccountAbstractionTxType }
-func (tx *AccountAbstractionTx) chainID() *big.Int      { return tx.ChainID }
+func (tx *AccountAbstractionTx) chainID() *big.Int      { return deriveChainId(tx.V) }
 func (tx *AccountAbstractionTx) protected() bool        { return true }
 func (tx *AccountAbstractionTx) accessList() AccessList { return nil }
 func (tx *AccountAbstractionTx) data() []byte           { return tx.Data }
@@ -70,5 +65,5 @@ func (tx *AccountAbstractionTx) rawSignatureValues() (v, r, s *big.Int) {
 }
 
 func (tx *AccountAbstractionTx) setSignatureValues(chainID, v, r, s *big.Int) {
-	tx.ChainID, tx.V, tx.R, tx.S = chainID, v, r, s
+	tx.V, tx.R, tx.S = v, r, s
 }

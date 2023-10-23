@@ -225,6 +225,16 @@ func IsHexAddress(s string) bool {
 	return len(s) == 2*AddressLength && isHex(s)
 }
 
+// IsEntryPointAddress returns true if the Address is the ENTRY_POINT Address.
+func (a Address) IsEntryPoint() bool {
+	for i := range a {
+		if a[i] != 0xFF {
+			return false
+		}
+	}
+	return true
+}
+
 // Bytes gets the string representation of the underlying address.
 func (a Address) Bytes() []byte { return a[:] }
 

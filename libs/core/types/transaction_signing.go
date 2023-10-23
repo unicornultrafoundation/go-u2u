@@ -27,7 +27,12 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/libs/params"
 )
 
-var ErrInvalidChainId = errors.New("invalid chain id for signer")
+var (
+	ErrInvalidChainId = errors.New("invalid chain id for signer")
+	ErrNoRecipient    = errors.New("no recipient specified for account abstraction transaction")
+)
+
+var AAEntryPoint = common.HexToAddress("0xffffffffffffffffffffffffffffffffffffffff")
 
 // sigCache is used to cache the derived sender and contains
 // the signer used to derive it.
@@ -182,6 +187,13 @@ func NewLondonSigner(chainId *big.Int) Signer {
 }
 
 func (s londonSigner) Sender(tx *Transaction) (common.Address, error) {
+	if tx.Type() == AccountAbstractionTxType {
+		if tx.To() == nil {
+			return common.Address{}, ErrNoRecipient
+		}
+		return *tx.To(), nil
+	}
+
 	if tx.Type() != DynamicFeeTxType {
 		return s.eip2930Signer.Sender(tx)
 	}

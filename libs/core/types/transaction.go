@@ -45,6 +45,7 @@ const (
 	LegacyTxType = iota
 	AccessListTxType
 	DynamicFeeTxType
+	AccountAbstractionTxType
 )
 
 // Transaction is an Ethereum transaction.
@@ -408,6 +409,13 @@ func (tx *Transaction) WithSignature(signer Signer, sig []byte) (*Transaction, e
 	return &Transaction{inner: cpy, time: tx.time}, nil
 }
 
+func (tx *Transaction) WithAASignature(chainId *big.Int) *Transaction {
+	v := big.NewInt(27)
+	cpy := tx.inner.copy()
+	cpy.setSignatureValues(chainId, v, common.Big0, common.Big0)
+	return &Transaction{inner: cpy, time: tx.time}
+}
+
 // Transactions implements DerivableList for transactions.
 type Transactions []*Transaction
 
@@ -520,10 +528,11 @@ func NewTransactionsByPriceAndNonce(signer Signer, txs map[common.Address]Transa
 	// Initialize a price and received time based heap with the head transactions
 	heads := make(TxByPriceAndTime, 0, len(txs))
 	for from, accTxs := range txs {
-		acc, _ := Sender(signer, accTxs[0])
-		wrapped, err := NewTxWithMinerFee(accTxs[0], baseFee)
+		tx := accTxs[0]
+		acc, _ := Sender(signer, tx)
+		wrapped, err := NewTxWithMinerFee(tx, baseFee)
 		// Remove transaction if sender doesn't match from, or if wrapping fails.
-		if acc != from || err != nil {
+		if (tx.Type() != AccountAbstractionTxType && acc != from) || err != nil {
 			delete(txs, from)
 			continue
 		}
@@ -597,9 +606,14 @@ type Message struct {
 	data       []byte
 	accessList AccessList
 	isFake     bool
+	isAA       bool
 }
 
 func NewMessage(from common.Address, to *common.Address, nonce uint64, amount *big.Int, gasLimit uint64, gasPrice, gasFeeCap, gasTipCap *big.Int, data []byte, accessList AccessList, isFake bool) Message {
+	isAA := from.IsEntryPoint()
+	if isAA && to != nil {
+		from = *to
+	}
 	return Message{
 		from:       from,
 		to:         to,
@@ -612,6 +626,7 @@ func NewMessage(from common.Address, to *common.Address, nonce uint64, amount *b
 		data:       data,
 		accessList: accessList,
 		isFake:     isFake,
+		isAA:       isAA,
 	}
 }
 
@@ -634,7 +649,13 @@ func (tx *Transaction) AsMessage(s Signer, baseFee *big.Int) (Message, error) {
 		msg.gasPrice = math.BigMin(msg.gasPrice.Add(msg.gasTipCap, baseFee), msg.gasFeeCap)
 	}
 	var err error
-	msg.from, err = Sender(s, tx)
+	if tx.Type() == AccountAbstractionTxType {
+		msg.isAA = true
+		msg.from = *tx.To()
+	} else {
+		msg.from, err = Sender(s, tx)
+	}
+
 	return msg, err
 }
 
@@ -649,3 +670,4 @@ func (m Message) Nonce() uint64          { return m.nonce }
 func (m Message) Data() []byte           { return m.data }
 func (m Message) AccessList() AccessList { return m.accessList }
 func (m Message) IsFake() bool           { return m.isFake }
+func (m Message) IsAA() bool             { return m.isAA }

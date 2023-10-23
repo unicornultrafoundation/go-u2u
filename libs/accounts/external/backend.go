@@ -216,7 +216,7 @@ func (api *ExternalSigner) SignTx(account accounts.Account, tx *types.Transactio
 		From:  common.NewMixedcaseAddress(account.Address),
 	}
 	switch tx.Type() {
-	case types.LegacyTxType, types.AccessListTxType:
+	case types.LegacyTxType, types.AccessListTxType, types.AccountAbstractionTxType:
 		args.GasPrice = (*hexutil.Big)(tx.GasPrice())
 	case types.DynamicFeeTxType:
 		args.MaxFeePerGas = (*hexutil.Big)(tx.GasFeeCap())
@@ -236,7 +236,9 @@ func (api *ExternalSigner) SignTx(account accounts.Account, tx *types.Transactio
 			args.ChainID = (*hexutil.Big)(tx.ChainId())
 		}
 		accessList := tx.AccessList()
-		args.AccessList = &accessList
+		if accessList != nil {
+			args.AccessList = &accessList
+		}
 	}
 	var res signTransactionResult
 	if err := api.client.Call(&res, "account_signTransaction", args); err != nil {

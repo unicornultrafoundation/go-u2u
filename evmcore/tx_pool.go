@@ -30,10 +30,12 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/libs/consensus/misc"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/state"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/vm"
 	notify "github.com/unicornultrafoundation/go-u2u/libs/event"
 	"github.com/unicornultrafoundation/go-u2u/libs/log"
 	"github.com/unicornultrafoundation/go-u2u/libs/metrics"
 	"github.com/unicornultrafoundation/go-u2u/libs/params"
+	"github.com/unicornultrafoundation/go-u2u/u2u"
 
 	"github.com/unicornultrafoundation/go-u2u/utils/signers/gsignercache"
 	"github.com/unicornultrafoundation/go-u2u/utils/txtime"
@@ -141,6 +143,7 @@ const (
 type StateReader interface {
 	Config() *params.ChainConfig
 	CurrentBlock() *EvmBlock
+	GetHeader(hash common.Hash, number uint64) *EvmHeader
 	GetBlock(hash common.Hash, number uint64) *EvmBlock
 	StateAt(root common.Hash) (*state.StateDB, error)
 	MinGasPrice() *big.Int
@@ -637,6 +640,30 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	from, err := types.Sender(pool.signer, tx)
 	if err != nil {
 		return ErrInvalidSender
+	}
+	block := pool.chain.CurrentBlock()
+	if tx.Type() == types.AccountAbstractionTxType && block != nil {
+		header := block.Header()
+		msg, err := tx.AsMessage(pool.signer, header.BaseFee)
+		if err != nil {
+			return ErrMalformedAATransaction
+		}
+
+		blockContext := NewEVMBlockContext(header, pool.chain, nil)
+		txContext := NewEVMTxContext(msg)
+		evm := vm.NewEVM(blockContext, txContext, pool.currentState, pool.chain.Config(), u2u.DefaultVMConfig)
+		evm.HaltOnPaygas()
+
+		gp := new(GasPool).AddGas(msg.Gas())
+		snapshot := pool.currentState.Snapshot()
+		result, err := ApplyMessage(evm, msg, gp)
+		pool.currentState.RevertToSnapshot(snapshot)
+		if err != nil {
+			return err
+		}
+		if result.Err != nil {
+			return result.Err
+		}
 	}
 	// Drop non-local transactions under our own minimal accepted gas price or tip
 	local = local || pool.locals.contains(from) // account may be local even if the transaction arrived from the network

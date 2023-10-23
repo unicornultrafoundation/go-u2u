@@ -36,6 +36,7 @@ var (
 	ErrReturnDataOutOfBounds    = errors.New("return data out of bounds")
 	ErrGasUintOverflow          = errors.New("gas uint64 overflow")
 	ErrInvalidCode              = errors.New("invalid code: must not begin with 0xef")
+	ErrPaygasNotCalled          = errors.New("account abstraction transaction did not call paygas")
 )
 
 // ErrStackUnderflow wraps an evm error when the items on the stack less

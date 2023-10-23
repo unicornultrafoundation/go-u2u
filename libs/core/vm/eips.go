@@ -263,9 +263,9 @@ func opPaygas(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]b
 		return nil, ErrInsufficientFunds
 	}
 
-	interpreter.evm.TransactionFeePaid = true
 	interpreter.evm.StateDB.SubBalance(address, mgval)
 	interpreter.evm.TransactionFeePaid = true
+	interpreter.evm.snapshots[len(interpreter.evm.snapshots)-1] = interpreter.evm.StateDB.Snapshot()
 
 	return nil, nil
 }

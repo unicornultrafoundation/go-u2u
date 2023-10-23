@@ -114,6 +114,8 @@ type EVM struct {
 	StateDB StateDB
 	// Depth is the current call stack
 	depth int
+	// Snapshots is a stack of state snapshots
+	snapshots []int
 
 	// chainConfig contains information about the current chain
 	chainConfig *params.ChainConfig
@@ -172,6 +174,16 @@ func (evm *EVM) Interpreter() *EVMInterpreter {
 	return evm.interpreter
 }
 
+func (evm *EVM) pushSnapshot() {
+	evm.snapshots = append(evm.snapshots, evm.StateDB.Snapshot())
+}
+
+func (evm *EVM) popSnapshot() int {
+	last := evm.snapshots[len(evm.snapshots)-1]
+	evm.snapshots = evm.snapshots[:len(evm.snapshots)-1]
+	return last
+}
+
 // Call executes the contract associated with the addr with the given input as
 // parameters. It also handles any necessary value transfer required and takes
 // the necessary steps to create accounts and reverses the state in case of an
@@ -188,7 +200,8 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	if value.Sign() != 0 && !evm.Context.CanTransfer(evm.StateDB, caller.Address(), value) {
 		return nil, gas, ErrInsufficientBalance
 	}
-	snapshot := evm.StateDB.Snapshot()
+
+	evm.pushSnapshot()
 	p, isPrecompile := evm.precompile(addr)
 	sp, isStatePrecompile := evm.statePrecompile(addr)
 
@@ -199,6 +212,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 				evm.Config.Tracer.CaptureStart(evm, caller.Address(), addr, false, input, gas, value)
 				evm.Config.Tracer.CaptureEnd(ret, 0, 0, nil)
 			}
+			evm.popSnapshot()
 			return nil, gas, nil
 		}
 		evm.StateDB.CreateAccount(addr)
@@ -241,6 +255,11 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			gas = contract.Gas
 		}
 	}
+	if !evm.TxContext.TransactionFeePaid {
+		err = ErrPaygasNotCalled
+	}
+	snapshot := evm.popSnapshot()
+
 	// When an error was returned by the EVM or when setting the creation code
 	// above we revert to the snapshot and consume any gas remaining. Additionally
 	// when we're in homestead this also counts for code storage gas errors.
@@ -278,7 +297,7 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 	if !evm.Context.CanTransfer(evm.StateDB, caller.Address(), value) {
 		return nil, gas, ErrInsufficientBalance
 	}
-	var snapshot = evm.StateDB.Snapshot()
+	evm.pushSnapshot()
 
 	// Invoke tracer hooks that signal entering/exiting a call frame
 	if evm.Config.Debug {
@@ -300,6 +319,8 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 		ret, err = evm.interpreter.Run(contract, input, false)
 		gas = contract.Gas
 	}
+
+	snapshot := evm.popSnapshot()
 	if err != nil {
 		evm.StateDB.RevertToSnapshot(snapshot)
 		if err != ErrExecutionReverted {
@@ -322,7 +343,7 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 	if evm.depth > int(params.CallCreateDepth) {
 		return nil, gas, ErrDepth
 	}
-	var snapshot = evm.StateDB.Snapshot()
+	evm.pushSnapshot()
 
 	// Invoke tracer hooks that signal entering/exiting a call frame
 	if evm.Config.Debug {
@@ -343,6 +364,8 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 		ret, err = evm.interpreter.Run(contract, input, false)
 		gas = contract.Gas
 	}
+
+	snapshot := evm.popSnapshot()
 	if err != nil {
 		evm.StateDB.RevertToSnapshot(snapshot)
 		if err != ErrExecutionReverted {
@@ -369,7 +392,7 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 	// after all empty accounts were deleted, so this is not required. However, if we omit this,
 	// then certain tests start failing; stRevertTest/RevertPrecompiledTouchExactOOG.json.
 	// We could change this, but for now it's left for legacy reasons
-	var snapshot = evm.StateDB.Snapshot()
+	evm.pushSnapshot()
 
 	// We do an AddBalance of zero here, just in order to trigger a touch.
 	// This doesn't matter on Mainnet, where all empties are gone at the time of Byzantium,
@@ -402,6 +425,8 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 		ret, err = evm.interpreter.Run(contract, input, true)
 		gas = contract.Gas
 	}
+
+	snapshot := evm.popSnapshot()
 	if err != nil {
 		evm.StateDB.RevertToSnapshot(snapshot)
 		if err != ErrExecutionReverted {
@@ -446,7 +471,7 @@ func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64,
 		return nil, common.Address{}, 0, ErrContractAddressCollision
 	}
 	// Create a new account on the state
-	snapshot := evm.StateDB.Snapshot()
+	evm.pushSnapshot()
 	evm.StateDB.CreateAccount(address)
 	if evm.chainRules.IsEIP158 {
 		evm.StateDB.SetNonce(address, 1)
@@ -459,6 +484,7 @@ func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64,
 	contract.SetCodeOptionalHash(&address, codeAndHash)
 
 	if evm.Config.NoRecursion && evm.depth > 0 {
+		evm.popSnapshot()
 		return nil, address, gas, nil
 	}
 
@@ -496,6 +522,7 @@ func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64,
 			err = ErrCodeStoreOutOfGas
 		}
 	}
+	snapshot := evm.popSnapshot()
 
 	// When an error was returned by the EVM or when setting the creation code
 	// above we revert to the snapshot and consume any gas remaining. Additionally

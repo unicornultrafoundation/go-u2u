@@ -209,10 +209,11 @@ func enable2938(jt *JumpTable) {
 	jt[PAYGAS] = &operation{
 		execute:     opPaygas,
 		constantGas: GasQuickStep,
-		minStack:    minStack(2, 0),
-		maxStack:    maxStack(2, 0),
+		minStack:    minStack(0, 0),
+		maxStack:    maxStack(0, 0),
 	}
 	jt[BALANCE].execute = revertBeforePaygas(BALANCE.String(), opBalance)
+	jt[SELFBALANCE].execute = revertBeforePaygas(SELFBALANCE.String(), opSelfBalance)
 	jt[BLOCKHASH].execute = revertBeforePaygas(BLOCKHASH.String(), opBlockhash)
 	jt[CALLCODE].execute = revertBeforePaygas(CALLCODE.String(), opCallCode)
 	jt[CALLCODE].execute = revertBeforePaygas(CALLCODE.String(), opCallCode)

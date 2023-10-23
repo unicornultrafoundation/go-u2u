@@ -94,7 +94,8 @@ type TxContext struct {
 	GasPrice           *big.Int       // Provides information for GASPRICE
 	Nonce              uint64         // Provides information for NONCE
 	GasLimit           uint64         // Provides information for GASLIMIT
-	TransactionFeePaid bool
+	TransactionFeePaid bool           // Provides information for PAYGAS
+	AccountAbstraction bool           // Provides information for CALLER
 }
 
 // EVM is the Ethereum Virtual Machine base object and provides

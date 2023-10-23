@@ -255,7 +255,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			gas = contract.Gas
 		}
 	}
-	if !evm.TxContext.TransactionFeePaid {
+	if !evm.TxContext.TransactionFeePaid && err == nil {
 		err = ErrPaygasNotCalled
 	}
 	snapshot := evm.popSnapshot()

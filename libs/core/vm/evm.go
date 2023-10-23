@@ -92,8 +92,8 @@ type TxContext struct {
 	// Message information
 	Origin             common.Address // Provides information for ORIGIN
 	GasPrice           *big.Int       // Provides information for GASPRICE
-	Nonce              *big.Int       // Provides information for NONCE
-	GasLimit           *big.Int       // Provides information for GASLIMIT
+	Nonce              uint64         // Provides information for NONCE
+	GasLimit           uint64         // Provides information for GASLIMIT
 	TransactionFeePaid bool
 }
 

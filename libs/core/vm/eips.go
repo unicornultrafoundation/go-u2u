@@ -227,21 +227,19 @@ func opBaseFee(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]
 
 // opNonce implements NONCE opcode
 func opNonce(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byte, error) {
-	nonce, _ := uint256.FromBig(interpreter.evm.Nonce)
+	nonce := new(uint256.Int).SetUint64(interpreter.evm.Nonce)
 	scope.Stack.push(nonce)
 	return nil, nil
 }
 
 // opPaygas implements PAYGAS opcode
 func opPaygas(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byte, error) {
-	gasPrice, gasLimit := scope.Stack.pop(), scope.Stack.pop()
-
 	if interpreter.evm.TransactionFeePaid {
 		return nil, nil
 	}
 
-	mgval := new(big.Int).Set(gasPrice.ToBig())
-	mgval = mgval.Mul(mgval, gasLimit.ToBig())
+	mgval := new(big.Int).Set(interpreter.evm.GasPrice)
+	mgval = mgval.Mul(mgval, new(big.Int).SetUint64(interpreter.evm.GasLimit))
 
 	address := scope.Contract.Address()
 	balance := interpreter.evm.StateDB.GetBalance(address)
@@ -250,10 +248,9 @@ func opPaygas(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]b
 		return nil, ErrInsufficientBalance
 	}
 
-	interpreter.evm.GasPrice = gasPrice.ToBig()
-	interpreter.evm.GasLimit = gasLimit.ToBig()
 	interpreter.evm.TransactionFeePaid = true
 	interpreter.evm.StateDB.SubBalance(address, mgval)
+	interpreter.evm.TransactionFeePaid = true
 
 	return nil, nil
 }

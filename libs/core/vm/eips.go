@@ -23,6 +23,7 @@ import (
 	"sort"
 
 	"github.com/holiman/uint256"
+	"github.com/unicornultrafoundation/go-u2u/libs/common"
 	"github.com/unicornultrafoundation/go-u2u/libs/params"
 )
 
@@ -182,6 +183,18 @@ func revertBeforePaygas(opcode string, execution executionFunc) executionFunc {
 	}
 }
 
+func pushEntryPoint(execution executionFunc) executionFunc {
+	return func(pc *uint64, interpreter *EVMInterpreter, callContext *ScopeContext) ([]byte, error) {
+		if !interpreter.evm.TransactionFeePaid {
+			entryPoint := common.HexToAddress("0xffffffffffffffffffffffffffffffffffffffff")
+			callContext.Stack.push(new(uint256.Int).SetBytes(entryPoint.Bytes()))
+			return nil, nil
+		} else {
+			return execution(pc, interpreter, callContext)
+		}
+	}
+}
+
 // enable2938 enabled "EIP-2938: Account abstraction"
 // - Adds an opcode that returns current transaction NONCE
 // - Adds an PAYGAS opcode
@@ -216,6 +229,8 @@ func enable2938(jt *JumpTable) {
 	jt[NUMBER].execute = revertBeforePaygas(NUMBER.String(), opNumber)
 	jt[STATICCALL].execute = revertBeforePaygas(STATICCALL.String(), opStaticCall)
 	jt[TIMESTAMP].execute = revertBeforePaygas(TIMESTAMP.String(), opTimestamp)
+	jt[CALLER].execute = pushEntryPoint(opCaller)
+	jt[ORIGIN].execute = pushEntryPoint(opOrigin)
 }
 
 // opBaseFee implements BASEFEE opcode

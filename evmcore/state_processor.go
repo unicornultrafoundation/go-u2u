@@ -27,7 +27,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/libs/crypto"
 	"github.com/unicornultrafoundation/go-u2u/libs/params"
 
-	"github.com/unicornultrafoundation/go-u2u/evmcore/txtracer"
+	txtracer "github.com/unicornultrafoundation/go-u2u/txtrace"
 	"github.com/unicornultrafoundation/go-u2u/utils/signers/gsignercache"
 	"github.com/unicornultrafoundation/go-u2u/utils/signers/internaltx"
 )

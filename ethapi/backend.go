@@ -31,12 +31,12 @@ import (
 	notify "github.com/unicornultrafoundation/go-u2u/libs/event"
 	"github.com/unicornultrafoundation/go-u2u/libs/params"
 	"github.com/unicornultrafoundation/go-u2u/libs/rpc"
+	"github.com/unicornultrafoundation/go-u2u/txtrace"
 
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
-	"github.com/unicornultrafoundation/go-u2u/evmcore/txtracer"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 )
@@ -82,7 +82,7 @@ type Backend interface {
 	MaxGasLimit() uint64
 
 	// Transaction trace API
-	TxTraceByHash(ctx context.Context, h common.Hash) (*[]txtracer.ActionTrace, error)
+	TxTraceByHash(ctx context.Context, h common.Hash) (*[]txtrace.ActionTrace, error)
 	TxTraceSave(ctx context.Context, h common.Hash, traces []byte) error
 
 	// Transaction pool API

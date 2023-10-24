@@ -15,13 +15,14 @@ phases:
       - echo Build started on `date`
       - echo Building the Docker image...
       - export DOCKER_CLI_EXPERIMENTAL=enabled
-      - mkdir -p ~/.docker/cli-plugins/
-      - curl --silent -L "https://github.com/docker/buildx/releases/download/v0.11.2/buildx-v0.11.2.linux-amd64" > ~/.docker/cli-plugins/docker-buildx
-      - chmod a+x ~/.docker/cli-plugins/docker-buildx
+      #- mkdir -p ~/.docker/cli-plugins/
+      #- curl --silent -L "https://github.com/docker/buildx/releases/download/v0.11.2/buildx-v0.11.2.linux-amd64" > ~/.docker/cli-plugins/docker-buildx
+      #- chmod a+x ~/.docker/cli-plugins/docker-buildx
       - echo "$REPOSITORY_URI:$IMAGE_TAG"
       - curl -O https://raw.githubusercontent.com/unicornultrafoundation/u2u-genesis/main/mainnet.g
-      - docker buildx create --use
-      - docker buildx build --platform linux/arm64,linux/amd64 --tag $REPOSITORY_URI:$IMAGE_TAG -f ./docker/Dockerfile.u2u . --push
+      #- docker buildx create --use
+      #- docker buildx build --platform linux/arm64,linux/amd64 --tag $REPOSITORY_URI:$IMAGE_TAG -f ./docker/Dockerfile.u2u . --push
+      - docker build --tag $REPOSITORY_URI:$IMAGE_TAG -f ./docker/Dockerfile.u2u . --push
   post_build:
     commands:
       - echo Build completed on `date`

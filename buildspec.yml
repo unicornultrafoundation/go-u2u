@@ -17,7 +17,7 @@ phases:
       - echo Building the Docker image...
       - export DOCKER_CLI_EXPERIMENTAL=enabled
       - mkdir -p ~/.docker/cli-plugins/
-      - curl --silent -L "https://github.com/docker/buildx/releases/download/v0.11.2/buildx-v0.11.2.linux-arm64" > ~/.docker/cli-plugins/docker-buildx
+      - curl --silent -L "https://github.com/docker/buildx/releases/download/v0.11.2/buildx-v0.11.2.darwin-amd64" > ~/.docker/cli-plugins/docker-buildx
       - chmod a+x ~/.docker/cli-plugins/docker-buildx
       #- docker run --privileged --rm public.ecr.aws/v5t9f2i2/go-u2u:binfmt --install all
       #- docker buildx create --use --name build --node build

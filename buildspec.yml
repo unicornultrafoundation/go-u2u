@@ -10,7 +10,6 @@ phases:
       - REPOSITORY_URI=public.ecr.aws/v5t9f2i2/go-u2u
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-40)
       - IMAGE_TAG=${COMMIT_HASH:=latest}
-      - docker pull $REPOSITORY_URI:latest || true
   build:
     commands:
       - echo Build started on `date`
@@ -21,6 +20,7 @@ phases:
       - chmod a+x ~/.docker/cli-plugins/docker-buildx
       - echo "$REPOSITORY_URI:$IMAGE_TAG"
       - curl -O https://raw.githubusercontent.com/unicornultrafoundation/u2u-genesis/main/mainnet.g
+      - docker buildx create --use
       - docker buildx build --platform linux/arm64,linux/amd64 --tag $REPOSITORY_URI:$IMAGE_TAG -f ./docker/Dockerfile.u2u . --push
   post_build:
     commands:

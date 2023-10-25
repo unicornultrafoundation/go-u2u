@@ -359,6 +359,9 @@ func gossipConfigWithFlags(ctx *cli.Context, src gossip.Config) (gossip.Config, 
 		}
 		cfg.AllowSnapsync = ctx.GlobalString(SyncModeFlag.Name) == "snap"
 	}
+	if ctx.GlobalIsSet(utils.AllowUnprotectedTxs.Name) {
+		cfg.AllowUnprotectedTxs = ctx.GlobalBool(utils.AllowUnprotectedTxs.Name)
+	}
 
 	return cfg, nil
 }

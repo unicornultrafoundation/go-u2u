@@ -276,6 +276,9 @@ func newService(config Config, store *Store, blockProc BlockProc, engine utypes.
 
 	// create API backend
 	svc.EthAPI = &EthAPIBackend{false, svc, stateReader, txSigner, config.AllowUnprotectedTxs}
+	if svc.EthAPI.allowUnprotectedTxs {
+		log.Info("Unprotected transactions allowed")
+	}
 
 	svc.verWatcher = verwatcher.New(netVerStore)
 	svc.tflusher = svc.makePeriodicFlusher()

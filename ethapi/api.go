@@ -65,6 +65,11 @@ const (
 	// defaultTraceTimeout is the amount of time a single transaction can execute
 	// by default before being forcefully aborted.
 	defaultTraceTimeout = 5 * time.Second
+
+	// defaultTraceReexec is the number of blocks the tracer is willing to go back
+	// and reexecute to produce missing historical state necessary to run a specific
+	// trace.
+	defaultTraceReexec = uint64(128)
 )
 
 var (
@@ -956,6 +961,69 @@ func (diff *StateOverride) Apply(state *state.StateDB) error {
 		}
 	}
 	return nil
+}
+
+// BlockOverrides is a set of header fields to override.
+type BlockOverrides struct {
+	Number     *hexutil.Big
+	Difficulty *hexutil.Big
+	Time       *hexutil.Uint64
+	GasLimit   *hexutil.Uint64
+	Coinbase   *common.Address
+	Random     *common.Hash
+	BaseFee    *hexutil.Big
+}
+
+// Apply overrides the given header fields into the given block context.
+func (diff *BlockOverrides) Apply(blockCtx *vm.BlockContext) {
+	if diff == nil {
+		return
+	}
+	if diff.Number != nil {
+		blockCtx.BlockNumber = diff.Number.ToInt()
+	}
+	if diff.Difficulty != nil {
+		blockCtx.Difficulty = diff.Difficulty.ToInt()
+	}
+	if diff.Time != nil {
+		blockCtx.Time = big.NewInt(int64(*diff.Time))
+	}
+	if diff.GasLimit != nil {
+		blockCtx.GasLimit = uint64(*diff.GasLimit)
+	}
+	if diff.Coinbase != nil {
+		blockCtx.Coinbase = *diff.Coinbase
+	}
+	if diff.BaseFee != nil {
+		blockCtx.BaseFee = diff.BaseFee.ToInt()
+	}
+}
+
+// ChainContextBackend provides methods required to implement ChainContext.
+type ChainContextBackend interface {
+	HeaderByNumber(context.Context, rpc.BlockNumber) (*evmcore.EvmHeader, error)
+}
+
+// ChainContext is an implementation of core.ChainContext. It's main use-case
+// is instantiating a vm.BlockContext without having access to the BlockChain object.
+type ChainContext struct {
+	b   ChainContextBackend
+	ctx context.Context
+}
+
+// NewChainContext creates a new ChainContext object.
+func NewChainContext(ctx context.Context, backend ChainContextBackend) *ChainContext {
+	return &ChainContext{ctx: ctx, b: backend}
+}
+
+func (context *ChainContext) GetHeader(hash common.Hash, number uint64) *evmcore.EvmHeader {
+	// This method is called to get the hash for a block number when executing the BLOCKHASH
+	// opcode. Hence no need to search for non-canonical blocks.
+	header, err := context.b.HeaderByNumber(context.ctx, rpc.BlockNumber(number))
+	if err != nil || header.Hash != hash {
+		return nil
+	}
+	return header
 }
 
 func DoCall(ctx context.Context, b Backend, args TransactionArgs, blockNrOrHash rpc.BlockNumberOrHash, overrides *StateOverride, timeout time.Duration, globalGasCap uint64) (*evmcore.ExecutionResult, error) {
@@ -2072,6 +2140,14 @@ type TraceConfig struct {
 	Reexec  *uint64
 }
 
+// TraceCallConfig is the config for traceCall API. It holds one more
+// field to override the state for tracing.
+type TraceCallConfig struct {
+	TraceConfig
+	StateOverrides *StateOverride
+	BlockOverrides *BlockOverrides
+}
+
 // TraceTransaction returns the structured logs created during the execution of EVM
 // and returns them as a JSON object.
 func (api *PublicDebugAPI) TraceTransaction(ctx context.Context, hash common.Hash, config *TraceConfig) (interface{}, error) {
@@ -2105,6 +2181,60 @@ func (api *PublicDebugAPI) TraceTransaction(ctx context.Context, hash common.Has
 	}
 
 	return api.traceTx(ctx, msg, txctx, vmctx, statedb, config)
+}
+
+// TraceCall lets you trace a given eth_call. It collects the structured logs
+// created during the execution of EVM if the given transaction was added on
+// top of the provided block and returns them as a JSON object.
+// You can provide -2 as a block number to trace on top of the pending block.
+func (api *PublicDebugAPI) TraceCall(ctx context.Context, args TransactionArgs, blockNrOrHash rpc.BlockNumberOrHash, config *TraceCallConfig) (interface{}, error) {
+	// Try to retrieve the specified block
+	var (
+		err   error
+		block *evmcore.EvmBlock
+	)
+	if hash, ok := blockNrOrHash.Hash(); ok {
+		block, err = api.blockByHash(ctx, hash)
+	} else if number, ok := blockNrOrHash.Number(); ok {
+		block, err = api.blockByNumber(ctx, number)
+	} else {
+		return nil, errors.New("invalid arguments; neither block nor hash specified")
+	}
+	if err != nil {
+		return nil, err
+	}
+	// try to recompute the state
+	reexec := defaultTraceReexec
+	if config != nil && config.Reexec != nil {
+		reexec = *config.Reexec
+	}
+	statedb, err := api.b.StateAtBlock(ctx, block, reexec, nil, true)
+	if err != nil {
+		return nil, err
+	}
+	// Apply the customized state rules if required.
+	if config != nil {
+		if err := config.StateOverrides.Apply(statedb); err != nil {
+			return nil, err
+		}
+	}
+	// Execute the trace
+	msg, err := args.ToMessage(api.b.RPCGasCap(), block.EthHeader().BaseFee)
+	if err != nil {
+		return nil, err
+	}
+	vmctx := evmcore.NewEVMBlockContext(block.Header(), api.chainContext(ctx), nil)
+
+	var traceConfig *TraceConfig
+	if config != nil {
+		traceConfig = &TraceConfig{
+			LogConfig: config.LogConfig,
+			Tracer:    config.Tracer,
+			Timeout:   config.Timeout,
+			Reexec:    config.Reexec,
+		}
+	}
+	return api.traceTx(ctx, msg, new(tracers.Context), vmctx, statedb, traceConfig)
 }
 
 // traceTx configures a new tracer according to the provided configuration, and
@@ -2228,6 +2358,12 @@ func (api *PublicDebugAPI) TraceBlockByHash(ctx context.Context, hash common.Has
 		return nil, err
 	}
 	return api.traceBlock(ctx, block, config)
+}
+
+// chainContext constructs the context reader which is used by the evm for reading
+// the necessary chain context.
+func (api *PublicDebugAPI) chainContext(ctx context.Context) evmcore.DummyChain {
+	return NewChainContext(ctx, api.b)
 }
 
 // blockByNumber is the wrapper of the chain access function offered by the backend.

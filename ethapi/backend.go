@@ -66,7 +66,8 @@ type Backend interface {
 	RPCTimeout() time.Duration
 	UnprotectedAllowed() bool // allows only for EIP155 transactions.
 	CalcBlockExtApi() bool
-
+	StateAtBlock(ctx context.Context, block *evmcore.EvmBlock, reexec uint64, base *state.StateDB, checkLive bool) (*state.StateDB, error)
+	StateAtTransaction(ctx context.Context, block *evmcore.EvmBlock, txIndex int, reexec uint64) (evmcore.Message, vm.BlockContext, *state.StateDB, error)
 	// Blockchain API
 	HeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*evmcore.EvmHeader, error)
 	HeaderByHash(ctx context.Context, hash common.Hash) (*evmcore.EvmHeader, error)

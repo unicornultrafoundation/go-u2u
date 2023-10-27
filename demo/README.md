@@ -27,7 +27,7 @@ go run ../cmd/u2u attach http://localhost:4000
 
 * Check the balance to ensure that node0 has something to transfer (node0 js-console):
 ```js
-eth.getBalance(eth.accounts[0]);
+u2u.getBalance(u2u.accounts[0]);
 ```
  
  output shows the balance value:
@@ -37,7 +37,7 @@ eth.getBalance(eth.accounts[0]);
 
 * Get node1 address:
 ```sh
-go run ../cmd/u2u attach --exec "eth.accounts[0]" http://localhost:4001
+go run ../cmd/u2u attach --exec "u2u.accounts[0]" http://localhost:4001
 ```
  output shows address:
 ```js
@@ -46,8 +46,8 @@ go run ../cmd/u2u attach --exec "eth.accounts[0]" http://localhost:4001
 
 * Transfer some amount from node0 to node1 address as receiver (node0 js-console):
 ```js
-eth.sendTransaction(
-	{from: eth.accounts[0], to: "0x02aff1d0a9ed566e644f06fcfe7efe00a3261d03", value:  "1000000000"},
+u2u.sendTransaction(
+	{from: u2u.accounts[0], to: "0x39F2b8b6B7c772A218fB1a1c438e375047f72d88", value:  "1000000000000000000"},
 	function(err, transactionHash) {
         if (!err)
             console.log(transactionHash + " success");
@@ -60,7 +60,7 @@ eth.sendTransaction(
 
 * Check the transaction status by its unique hash (js-console):
 ```sh
-eth.getTransactionReceipt("0x68a7c1daeee7e7ab5aedf0d0dba337dbf79ce0988387cf6d63ea73b98193adfd").blockNumber
+u2u.getTransactionReceipt("0x68a7c1daeee7e7ab5aedf0d0dba337dbf79ce0988387cf6d63ea73b98193adfd").blockNumber
 ```
  output shows number of block, transaction was included in:
 ```
@@ -69,8 +69,8 @@ eth.getTransactionReceipt("0x68a7c1daeee7e7ab5aedf0d0dba337dbf79ce0988387cf6d63e
 
 * As soon as transaction is included into a block you will see new balance of both node addresses:
 ```sh
-go run ../cmd/u2u attach --exec "eth.getBalance(eth.accounts[0])" http://localhost:4000
-go run ../cmd/u2u attach --exec "eth.getBalance(eth.accounts[0])" http://localhost:4001
+go run ../cmd/u2u attach --exec "u2u.getBalance(u2u.accounts[0])" http://localhost:4000
+go run ../cmd/u2u attach --exec "u2u.getBalance(u2u.accounts[0])" http://localhost:4001
 ```
  outputs:
 ```js

@@ -62,7 +62,6 @@ require (
 	github.com/deepmap/oapi-codegen v1.8.2 // indirect
 	github.com/dlclark/regexp2 v1.7.0 // indirect
 	github.com/dop251/goja v0.0.0-20230122112309-96b1610dd4f7
-	github.com/edsrzf/mmap-go v1.0.0
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/fatih/color v1.7.0
 	github.com/gballet/go-libpcsclite v0.0.0-20191108122812-4678299bea08

@@ -22,6 +22,9 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/unicornultrafoundation/go-hashgraph/hash"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+
 	"github.com/unicornultrafoundation/go-u2u/accounts"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/state"
@@ -29,16 +32,12 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/ethdb"
 	notify "github.com/unicornultrafoundation/go-u2u/event"
-	"github.com/unicornultrafoundation/go-u2u/params"
-	"github.com/unicornultrafoundation/go-u2u/rpc"
-
-	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
-	"github.com/unicornultrafoundation/go-u2u/evmcore/txtracer"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/params"
+	"github.com/unicornultrafoundation/go-u2u/rpc"
+	"github.com/unicornultrafoundation/go-u2u/txtrace"
 )
 
 // PeerProgress is synchronization status of a peer
@@ -66,7 +65,8 @@ type Backend interface {
 	RPCTimeout() time.Duration
 	UnprotectedAllowed() bool // allows only for EIP155 transactions.
 	CalcBlockExtApi() bool
-
+	StateAtBlock(ctx context.Context, block *evmcore.EvmBlock, reexec uint64, base *state.StateDB, checkLive bool) (*state.StateDB, error)
+	StateAtTransaction(ctx context.Context, block *evmcore.EvmBlock, txIndex int, reexec uint64) (evmcore.Message, vm.BlockContext, *state.StateDB, error)
 	// Blockchain API
 	HeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*evmcore.EvmHeader, error)
 	HeaderByHash(ctx context.Context, hash common.Hash) (*evmcore.EvmHeader, error)
@@ -82,7 +82,7 @@ type Backend interface {
 	MaxGasLimit() uint64
 
 	// Transaction trace API
-	TxTraceByHash(ctx context.Context, h common.Hash) (*[]txtracer.ActionTrace, error)
+	TxTraceByHash(ctx context.Context, h common.Hash) (*[]txtrace.ActionTrace, error)
 	TxTraceSave(ctx context.Context, h common.Hash, traces []byte) error
 
 	// Transaction pool API

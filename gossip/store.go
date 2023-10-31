@@ -15,7 +15,7 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/table"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/wlru"
 	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"
-	txtracer "github.com/unicornultrafoundation/go-u2u/gossip/txtracer"
+	txtracer "github.com/unicornultrafoundation/go-u2u/gossip/txtrace"
 	"github.com/unicornultrafoundation/go-u2u/logger"
 	"github.com/unicornultrafoundation/go-u2u/utils/adapters/snap2udb"
 	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/switchable"

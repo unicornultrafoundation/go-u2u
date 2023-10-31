@@ -4,31 +4,30 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/unicornultrafoundation/go-u2u/txtrace"
 	"math/big"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/unicornultrafoundation/go-hashgraph/hash"
+	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+
 	"github.com/unicornultrafoundation/go-u2u/accounts"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/ethapi"
 	"github.com/unicornultrafoundation/go-u2u/ethdb"
 	notify "github.com/unicornultrafoundation/go-u2u/event"
-	"github.com/unicornultrafoundation/go-u2u/params"
-	"github.com/unicornultrafoundation/go-u2u/rpc"
-
-	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-
-	"github.com/unicornultrafoundation/go-u2u/ethapi"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
-	"github.com/unicornultrafoundation/go-u2u/evmcore/txtracer"
 	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/params"
+	"github.com/unicornultrafoundation/go-u2u/rpc"
 	"github.com/unicornultrafoundation/go-u2u/topicsdb"
 	"github.com/unicornultrafoundation/go-u2u/tracing"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
@@ -98,12 +97,12 @@ func (b *EthAPIBackend) HeaderByHash(ctx context.Context, h common.Hash) (*evmco
 }
 
 // TxTraceByHash returns transaction trace from store db by the hash.
-func (b *EthAPIBackend) TxTraceByHash(ctx context.Context, h common.Hash) (*[]txtracer.ActionTrace, error) {
+func (b *EthAPIBackend) TxTraceByHash(ctx context.Context, h common.Hash) (*[]txtrace.ActionTrace, error) {
 	if b.state.store.txtracer == nil {
 		return nil, errors.New("Transaction trace key-value store db is not initialized")
 	}
 	txBytes := b.state.store.txtracer.GetTx(h)
-	traces := make([]txtracer.ActionTrace, 0)
+	traces := make([]txtrace.ActionTrace, 0)
 	json.Unmarshal(txBytes, &traces)
 	if len(traces) == 0 {
 		return nil, fmt.Errorf("No trace for tx hash: %s", h.String())
@@ -569,4 +568,12 @@ func (b *EthAPIBackend) CalcBlockExtApi() bool {
 func (b *EthAPIBackend) SealedEpochTiming(ctx context.Context) (start native.Timestamp, end native.Timestamp) {
 	es := b.svc.store.GetEpochState()
 	return es.PrevEpochStart, es.EpochStart
+}
+
+func (b *EthAPIBackend) StateAtBlock(ctx context.Context, block *evmcore.EvmBlock, reexec uint64, base *state.StateDB, checkLive bool) (*state.StateDB, error) {
+	return b.svc.stateAtBlock(block, reexec, base, checkLive)
+}
+
+func (b *EthAPIBackend) StateAtTransaction(ctx context.Context, block *evmcore.EvmBlock, txIndex int, reexec uint64) (evmcore.Message, vm.BlockContext, *state.StateDB, error) {
+	return b.svc.stateAtTransaction(block, txIndex, reexec)
 }

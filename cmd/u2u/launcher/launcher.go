@@ -144,6 +144,7 @@ func initFlags() {
 		utils.WSPathPrefixFlag,
 		utils.IPCDisabledFlag,
 		utils.IPCPathFlag,
+		utils.AllowUnprotectedTxs,
 		RPCGlobalGasCapFlag,
 		RPCGlobalTxFeeCapFlag,
 		RPCGlobalTimeoutFlag,

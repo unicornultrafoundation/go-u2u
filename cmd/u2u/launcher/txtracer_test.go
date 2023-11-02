@@ -13,7 +13,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	txtracer "github.com/unicornultrafoundation/go-u2u/txtrace"
+	"github.com/unicornultrafoundation/go-u2u/evmcore/txtracer"
 )
 
 func TestTxTracing(t *testing.T) {

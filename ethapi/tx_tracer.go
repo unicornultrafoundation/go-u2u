@@ -37,6 +37,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/txtrace"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
+	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/sfc"
 	"github.com/unicornultrafoundation/go-u2u/utils/signers/gsignercache"
 )
 
@@ -208,6 +209,7 @@ func (s *PublicTxTraceAPI) traceBlock(ctx context.Context, block *evmcore.EvmBlo
 		// loop thru all transactions in the block and process them
 		for i, tx := range block.Transactions {
 			if txHash == nil || *txHash == tx.Hash() {
+
 				log.Info("Replaying transaction", "txHash", tx.Hash().String())
 				// get full transaction info
 				tx, _, index, err := s.b.GetTransaction(ctx, tx.Hash())
@@ -221,16 +223,26 @@ func (s *PublicTxTraceAPI) traceBlock(ctx context.Context, block *evmcore.EvmBlo
 					callTrace.AddTrace(txtrace.GetErrorTrace(block.Hash, *block.Number, nil, tx.To(), tx.Hash(), index, errors.New("not able to decode tx")))
 					continue
 				}
-				txTraces, err := s.traceTx(ctx, blockCtx, msg, state, block, tx, index, receipts[i].Status, s.b.ChainConfig())
-				if err != nil {
-					log.Debug("Cannot get transaction trace for transaction", "txHash", tx.Hash().String(), "err", err.Error())
-					callTrace.AddTrace(txtrace.GetErrorTraceFromMsg(&msg, block.Hash, *block.Number, tx.Hash(), index, err))
-				} else {
-					callTrace.AddTraces(txTraces, traceIndex)
-
-					// Save trace result into persistent key-value store
-					jsonTraceBytes, _ := json.Marshal(txTraces)
+				from := msg.From()
+				if tx.To() != nil && *tx.To() == sfc.ContractAddress {
+					errTrace := txtrace.GetErrorTrace(block.Hash, *block.Number, &from, tx.To(), tx.Hash(), index, errors.New("sfc tx"))
+					at := make([]txtrace.ActionTrace, 0)
+					at = append(at, *errTrace)
+					callTrace.AddTrace(errTrace)
+					jsonTraceBytes, _ := json.Marshal(&at)
 					s.b.TxTraceSave(ctx, tx.Hash(), jsonTraceBytes)
+				} else {
+					txTraces, err := s.traceTx(ctx, blockCtx, msg, state, block, tx, index, receipts[i].Status, s.b.ChainConfig())
+					if err != nil {
+						log.Debug("Cannot get transaction trace for transaction", "txHash", tx.Hash().String(), "err", err.Error())
+						callTrace.AddTrace(txtrace.GetErrorTraceFromMsg(&msg, block.Hash, *block.Number, tx.Hash(), index, err))
+					} else {
+						callTrace.AddTraces(txTraces, traceIndex)
+
+						// Save trace result into persistent key-value store
+						jsonTraceBytes, _ := json.Marshal(txTraces)
+						s.b.TxTraceSave(ctx, tx.Hash(), jsonTraceBytes)
+					}
 				}
 				if txHash != nil {
 					break
@@ -556,9 +568,6 @@ func worker(id int,
 	toAddresses map[common.Address]struct{}) {
 
 	for i := range blocks {
-		if i == 7654343 {
-			println("hehe")
-		}
 		block, err := s.b.BlockByNumber(ctx, i)
 		if err != nil {
 			break

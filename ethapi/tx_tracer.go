@@ -171,10 +171,20 @@ func traceBlock(ctx context.Context, block *evmcore.EvmBlock, backend Backend, t
 				callTrace.AddTraces(traces, traceIndex)
 			} else {
 				log.Info("Replaying transaction", "txHash", tx.Hash().String())
+
+				// in case tx is updated with nil value
+				shallow_tx := tx
 				// get full transaction info
 				tx, _, index, err := backend.GetTransaction(ctx, tx.Hash())
 				if err != nil {
 					log.Debug("Cannot get transaction", "txHash", tx.Hash().String(), "err", err.Error())
+					callTrace.AddTrace(txtracer.GetErrorTrace(block.Hash, *block.Number, nil, tx.To(), tx.Hash(), index, err))
+					continue
+				}
+				if tx == nil {
+					// put shallow tx back 
+					tx = shallow_tx
+					log.Warn("Full tx info found without errors (tx index problem)", "txHash", shallow_tx.Hash().String())
 					callTrace.AddTrace(txtracer.GetErrorTrace(block.Hash, *block.Number, nil, shallow_tx.To(), shallow_tx.Hash(), index, errors.New("full tx info not found without errors")))
 					continue
 				}

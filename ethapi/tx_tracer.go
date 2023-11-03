@@ -175,7 +175,7 @@ func traceBlock(ctx context.Context, block *evmcore.EvmBlock, backend Backend, t
 				tx, _, index, err := backend.GetTransaction(ctx, tx.Hash())
 				if err != nil {
 					log.Debug("Cannot get transaction", "txHash", tx.Hash().String(), "err", err.Error())
-					callTrace.AddTrace(txtracer.GetErrorTrace(block.Hash, *block.Number, tx.To(), tx.Hash(), index, err))
+					callTrace.AddTrace(txtracer.GetErrorTrace(block.Hash, *block.Number, nil, shallow_tx.To(), shallow_tx.Hash(), index, errors.New("full tx info not found without errors")))
 					continue
 				}
 
@@ -190,7 +190,7 @@ func traceBlock(ctx context.Context, block *evmcore.EvmBlock, backend Backend, t
 					receipt := receipts[index]
 					if receipt.Status == types.ReceiptStatusFailed {
 						log.Debug("Transaction has status failed", "block", blockNumber, "err", err.Error())
-						callTrace.AddTrace(txtracer.GetErrorTrace(block.Hash, *block.Number, tx.To(), tx.Hash(), index, nil))
+						callTrace.AddTrace(txtracer.GetErrorTrace(block.Hash, *block.Number, &from, tx.To(), tx.Hash(), index, errors.New("tx produces receipt status failed")))
 						continue
 					}
 				}
@@ -203,15 +203,15 @@ func traceBlock(ctx context.Context, block *evmcore.EvmBlock, backend Backend, t
 					state, header, err := backend.StateAndHeaderByNumberOrHash(ctx, rpc.BlockNumberOrHash{BlockNumber: &parentBlockNr})
 					if err != nil {
 						log.Debug("Cannot get state for blockblock ", "block", block.NumberU64(), "err", err.Error())
-						callTrace.AddTrace(txtracer.GetErrorTrace(block.Hash, *block.Number, nil, common.Hash{}, 0, err))
-						continue
+					callTrace.AddTrace(txtracer.GetErrorTrace(block.Hash, *block.Number, nil, nil, common.Hash{}, 0, err))
+					continue
 					}
 
 					txTraces, err := traceTx(ctx, state, header, backend, block, tx, index)
 					if err != nil {
 						log.Debug("Cannot get transaction trace for transaction", "txHash", tx.Hash().String(), "err", err.Error())
-						callTrace.AddTrace(txtracer.GetErrorTrace(block.Hash, *block.Number, tx.To(), tx.Hash(), index, err))
-					} else {
+					callTrace.AddTrace(txtracer.GetErrorTrace(block.Hash, *block.Number, &from, tx.To(), tx.Hash(), index, err))
+				} else {
 						callTrace.AddTraces(txTraces, traceIndex)
 
 						// Save trace result into persistent key-value store

@@ -10,6 +10,7 @@ import (
 	txtracer "github.com/unicornultrafoundation/go-u2u/gossip/txtracer"
 	"github.com/unicornultrafoundation/go-u2u/libs/common"
 	"github.com/unicornultrafoundation/go-u2u/libs/common/hexutil"
+	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/libs/log"
 )
@@ -367,7 +368,7 @@ func (tr *TraceStructLogger) ProcessTx() {
 func (tr *TraceStructLogger) SaveTrace() {
 	if tr.rootTrace == nil {
 		tr.rootTrace = &CallTrace{}
-		tr.rootTrace.AddTrace(GetErrorTrace(tr.blockHash, tr.blockNumber, tr.to, tr.tx, tr.gasUsed, tr.err))
+		tr.rootTrace.AddTrace(GetErrorTrace(tr.blockHash, tr.blockNumber, tr.from, tr.to, tr.tx, tr.gasUsed, tr.err))
 
 	}
 
@@ -592,17 +593,50 @@ func (callTrace *CallTrace) processTrace(trace *ActionTrace) {
 }
 
 // GetErrorTrace constructs filled error trace
-func GetErrorTrace(blockHash common.Hash, blockNumber big.Int, to *common.Address, txHash common.Hash, index uint64, err error) *ActionTrace {
+func GetErrorTrace(blockHash common.Hash, blockNumber big.Int, from *common.Address, to *common.Address, txHash common.Hash, index uint64, err error) *ActionTrace {
+	return createErrorTrace(blockHash, blockNumber, from, to, txHash, 0, []byte{}, hexutil.Big{}, index, err)
+}
+
+// GetErrorTrace constructs filled error trace
+func GetErrorTraceFromLogger(tr *TraceStructLogger) *ActionTrace {
+	if tr == nil {
+		return nil
+	} else {
+		return createErrorTrace(tr.blockHash, tr.blockNumber, tr.from, tr.to, tr.tx, tr.gasUsed, tr.inputData, hexutil.Big(tr.value), uint64(tr.txIndex), tr.err)
+	}
+}
+
+// GetErrorTrace constructs filled error trace
+func GetErrorTraceFromMsg(msg *types.Message, blockHash common.Hash, blockNumber big.Int, txHash common.Hash, index uint64, err error) *ActionTrace {
+	if msg == nil {
+		return createErrorTrace(blockHash, blockNumber, nil, &common.Address{}, txHash, 0, []byte{}, hexutil.Big{}, index, err)
+	} else {
+		from := msg.From()
+		return createErrorTrace(blockHash, blockNumber, &from, msg.To(), txHash, msg.Gas(), msg.Data(), hexutil.Big(*msg.Value()), index, err)
+	}
+}
+
+// createErrorTrace constructs filled error trace
+func createErrorTrace(blockHash common.Hash, blockNumber big.Int,
+	from *common.Address, to *common.Address,
+	txHash common.Hash, gas uint64, input []byte,
+	value hexutil.Big,
+	index uint64, err error) *ActionTrace {
 
 	var blockTrace *ActionTrace
 	var txAction *AddressAction
 
+	if from == nil {
+		from = &common.Address{}
+	}
+
+	callType := CALL
 	if to != nil {
-		blockTrace = NewActionTrace(blockHash, blockNumber, txHash, index, "empty")
-		txAction = NewAddressAction(&common.Address{}, 0, []byte{}, to, hexutil.Big{}, nil)
+		blockTrace = NewActionTrace(blockHash, blockNumber, txHash, index, CALL)
+		txAction = NewAddressAction(from, gas, input, to, hexutil.Big{}, &callType)
 	} else {
-		blockTrace = NewActionTrace(blockHash, blockNumber, txHash, index, "empty")
-		txAction = NewAddressAction(&common.Address{}, 0, []byte{}, nil, hexutil.Big{}, nil)
+		blockTrace = NewActionTrace(blockHash, blockNumber, txHash, index, CREATE)
+		txAction = NewAddressAction(from, gas, input, nil, hexutil.Big{}, nil)
 	}
 	blockTrace.Action = *txAction
 	blockTrace.Result = nil

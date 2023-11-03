@@ -19,6 +19,7 @@ package ethapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -156,8 +157,16 @@ func traceBlock(ctx context.Context, block *evmcore.EvmBlock, backend Backend, t
 		return nil, fmt.Errorf("Invalid block %v for tracing, current block is %v", blockNumber, backend.CurrentBlock())
 	}
 
+	signer := gsignercache.Wrap(types.MakeSigner(backend.ChainConfig(), block.Number))
+
 	callTrace := txtracer.CallTrace{
 		Actions: make([]txtracer.ActionTrace, 0),
+	}
+
+	receipts, err := backend.GetReceiptsByNumber(ctx, rpc.BlockNumber(blockNumber))
+	if err != nil {
+		log.Debug("Cannot get receipts for block", "block", blockNumber, "err", err.Error())
+		return nil, fmt.Errorf("cannot get receipts for block %v, error: %v", block.NumberU64(), err.Error())
 	}
 
 	// loop thru all transactions in the block and process them
@@ -189,17 +198,17 @@ func traceBlock(ctx context.Context, block *evmcore.EvmBlock, backend Backend, t
 					continue
 				}
 
-				receipts, err := backend.GetReceiptsByNumber(ctx, rpc.BlockNumber(blockNumber))
+				msg, err := tx.AsMessage(signer, block.BaseFee)
 				if err != nil {
-					log.Debug("Cannot get receipts for block", "block", blockNumber, "err", err.Error())
-					callTrace.AddTrace(txtracer.GetErrorTrace(block.Hash, *block.Number, tx.To(), tx.Hash(), index, err))
+					callTrace.AddTrace(txtracer.GetErrorTrace(block.Hash, *block.Number, nil, tx.To(), tx.Hash(), index, errors.New("not able to decode tx")))
 					continue
 				}
+				from := msg.From()
 
-				if len(receipts) < int(index) {
+				if len(receipts) > int(index) {
 					receipt := receipts[index]
 					if receipt.Status == types.ReceiptStatusFailed {
-						log.Debug("Transaction has status failed", "block", blockNumber, "err", err.Error())
+						log.Debug("Transaction has status failed", "block", blockNumber, "err", errors.New("tx produces receipt status failed"))
 						callTrace.AddTrace(txtracer.GetErrorTrace(block.Hash, *block.Number, &from, tx.To(), tx.Hash(), index, errors.New("tx produces receipt status failed")))
 						continue
 					}

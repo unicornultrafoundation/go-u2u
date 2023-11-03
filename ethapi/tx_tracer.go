@@ -190,8 +190,6 @@ func traceBlock(ctx context.Context, block *evmcore.EvmBlock, backend Backend, t
 					continue
 				}
 				if tx == nil {
-					// put shallow tx back 
-					tx = shallow_tx
 					log.Warn("Full tx info found without errors (tx index problem)", "txHash", shallow_tx.Hash().String())
 					callTrace.AddTrace(txtracer.GetErrorTrace(block.Hash, *block.Number, nil, shallow_tx.To(), shallow_tx.Hash(), index, errors.New("full tx info not found without errors")))
 					continue

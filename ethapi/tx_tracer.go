@@ -35,7 +35,6 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/evmcore/txtracer"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
-	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/sfc"
 	"github.com/unicornultrafoundation/go-u2u/utils/signers/gsignercache"
 )
 
@@ -214,29 +213,24 @@ func traceBlock(ctx context.Context, block *evmcore.EvmBlock, backend Backend, t
 					}
 				}
 
-				if tx.To() != nil && *tx.To() == sfc.ContractAddress {
-					callTrace.AddTrace(txtracer.GetErrorTrace(block.Hash, *block.Number, tx.To(), tx.Hash(), index, err))
-				} else {
-
-					// get state and header from block parent, to be able to recreate correct nonces
-					state, header, err := backend.StateAndHeaderByNumberOrHash(ctx, rpc.BlockNumberOrHash{BlockNumber: &parentBlockNr})
-					if err != nil {
-						log.Debug("Cannot get state for blockblock ", "block", block.NumberU64(), "err", err.Error())
+				// get state and header from block parent, to be able to recreate correct nonces
+				state, header, err := backend.StateAndHeaderByNumberOrHash(ctx, rpc.BlockNumberOrHash{BlockNumber: &parentBlockNr})
+				if err != nil {
+					log.Debug("Cannot get state for blockblock ", "block", block.NumberU64(), "err", err.Error())
 					callTrace.AddTrace(txtracer.GetErrorTrace(block.Hash, *block.Number, nil, nil, common.Hash{}, 0, err))
 					continue
-					}
+				}
 
-					txTraces, err := traceTx(ctx, state, header, backend, block, tx, index)
-					if err != nil {
-						log.Debug("Cannot get transaction trace for transaction", "txHash", tx.Hash().String(), "err", err.Error())
+				txTraces, err := traceTx(ctx, state, header, backend, block, tx, index)
+				if err != nil {
+					log.Debug("Cannot get transaction trace for transaction", "txHash", tx.Hash().String(), "err", err.Error())
 					callTrace.AddTrace(txtracer.GetErrorTrace(block.Hash, *block.Number, &from, tx.To(), tx.Hash(), index, err))
 				} else {
-						callTrace.AddTraces(txTraces, traceIndex)
+					callTrace.AddTraces(txTraces, traceIndex)
 
-						// Save trace result into persistent key-value store
-						jsonTraceBytes, _ := json.Marshal(txTraces)
-						backend.TxTraceSave(ctx, tx.Hash(), jsonTraceBytes)
-					}
+					// Save trace result into persistent key-value store
+					jsonTraceBytes, _ := json.Marshal(txTraces)
+					backend.TxTraceSave(ctx, tx.Hash(), jsonTraceBytes)
 				}
 			}
 		}

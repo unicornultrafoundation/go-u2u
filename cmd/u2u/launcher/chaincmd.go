@@ -98,6 +98,42 @@ be gzipped
 `,
 			},
 			{
+				Name:      "genesis",
+				Usage:     "Export current state into a genesis file",
+				ArgsUsage: "<filename or dry-run> [<epochFrom> <epochTo>] [--export.evm.mode=MODE --export.evm.exclude=DB_PATH --export.sections=A,B,C]",
+				Action:    utils.MigrateFlags(exportGenesis),
+				Flags: []cli.Flag{
+					DataDirFlag,
+					EvmExportMode,
+					EvmExportExclude,
+					GenesisExportSections,
+				},
+				Description: `
+    u2u export genesis
+
+Export current state into a genesis file.
+Requires a first argument of the file to write to.
+Optional second and third arguments control the first and
+last epoch to write.
+Pass dry-run instead of filename for calculation of hashes without exporting data.
+EVM export mode is configured with --export.evm.mode.
+`,
+			},
+			{
+				Name:      "evm-keys",
+				Usage:     "Export EVM node keys",
+				ArgsUsage: "<directory>",
+				Action:    utils.MigrateFlags(exportEvmKeys),
+				Flags: []cli.Flag{
+					DataDirFlag,
+				},
+				Description: `
+    u2u export evm-keys
+
+Requires a first argument of the DB directory to write to.
+`,
+			},
+			{
 				Name:      "txtraces",
 				Usage:     "Export stored transaction traces",
 				ArgsUsage: "<filename> [<blockFrom> <blockTo>]",
@@ -136,42 +172,6 @@ be gzipped
 Optional first and second arguments control the first and
 last block to delete transaction traces from. If the file ends with .gz, the output will
 be gzipped
-`,
-			},
-			{
-				Name:      "genesis",
-				Usage:     "Export current state into a genesis file",
-				ArgsUsage: "<filename or dry-run> [<epochFrom> <epochTo>] [--export.evm.mode=MODE --export.evm.exclude=DB_PATH --export.sections=A,B,C]",
-				Action:    utils.MigrateFlags(exportGenesis),
-				Flags: []cli.Flag{
-					DataDirFlag,
-					EvmExportMode,
-					EvmExportExclude,
-					GenesisExportSections,
-				},
-				Description: `
-    u2u export genesis
-
-Export current state into a genesis file.
-Requires a first argument of the file to write to.
-Optional second and third arguments control the first and
-last epoch to write.
-Pass dry-run instead of filename for calculation of hashes without exporting data.
-EVM export mode is configured with --export.evm.mode.
-`,
-			},
-			{
-				Name:      "evm-keys",
-				Usage:     "Export EVM node keys",
-				ArgsUsage: "<directory>",
-				Action:    utils.MigrateFlags(exportEvmKeys),
-				Flags: []cli.Flag{
-					DataDirFlag,
-				},
-				Description: `
-    u2u export evm-keys
-
-Requires a first argument of the DB directory to write to.
 `,
 			},
 		},

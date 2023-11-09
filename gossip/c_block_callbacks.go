@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/unicornultrafoundation/go-u2u/evmcore/txtracer"
 	"github.com/unicornultrafoundation/go-u2u/libs/common"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
 	"github.com/unicornultrafoundation/go-u2u/libs/log"
@@ -262,6 +263,14 @@ func consensusCallbackBeginBlockFn(
 					})
 				}
 
+				// Providing default config
+				// In case of trace transaction node, this config is changed
+				evmCfg := u2u.DefaultVMConfig
+				if store.txtracer != nil {
+					evmCfg.Debug = true
+					evmCfg.Tracer = txtracer.NewTraceStructLogger(store.txtracer)
+				}
+
 				evmProcessor := blockProc.EVMModule.Start(blockCtx, statedb, evmStateReader, onNewLogAll, es.Rules, es.Rules.EvmChainConfig(store.GetUpgradeHeights()))
 				executionStart := time.Now()
 
@@ -485,6 +494,13 @@ func (s *Service) ReexecuteBlocks(from, to idx.Block) {
 			log.Crit("Failue to re-execute blocks", "err", err)
 		}
 		es := s.store.GetHistoryEpochState(s.store.FindBlockEpoch(b))
+		// Providing default config
+		// In case of trace transaction node, this config is changed
+		evmCfg := u2u.DefaultVMConfig
+		if s.store.txtracer != nil {
+			evmCfg.Debug = true
+			evmCfg.Tracer = txtracer.NewTraceStructLogger(s.store.txtracer)
+		}
 		evmProcessor := blockProc.EVMModule.Start(blockCtx, statedb, evmStateReader, func(t *types.Log) {}, es.Rules, es.Rules.EvmChainConfig(upgradeHeights))
 		txs := s.store.GetBlockTxs(b, block)
 		evmProcessor.Execute(txs)

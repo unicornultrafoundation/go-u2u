@@ -25,9 +25,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/consensus/misc"
 	"github.com/unicornultrafoundation/go-u2u/libs/common"
 	"github.com/unicornultrafoundation/go-u2u/libs/common/prque"
+	"github.com/unicornultrafoundation/go-u2u/libs/consensus/misc"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/state"
 	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
 	notify "github.com/unicornultrafoundation/go-u2u/libs/event"
@@ -1313,7 +1313,7 @@ func (pool *TxPool) reset(oldHead, newHead *EvmHeader) {
 	pool.currentMaxGas = pool.chain.MaxGasLimit()
 
 	// Inject any transactions discarded due to reorgs
-	log.Debug("Reinjecting stale transactions", "count", len(reinject))
+	//log.Debug("Reinjecting stale transactions", "count", len(reinject))
 	senderCacher.recover(pool.signer, reinject)
 	pool.addTxsLocked(reinject, false)
 

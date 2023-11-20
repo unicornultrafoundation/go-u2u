@@ -1369,7 +1369,7 @@ func (h *handler) BroadcastEvent(event *native.EventPayload, passed time.Duratio
 	id := event.ID()
 	peers := h.peers.PeersWithoutEvent(id)
 	if len(peers) == 0 {
-		log.Trace("Event is already known to all peers", "hash", id)
+		//log.Trace("Event is already known to all peers", "hash", id)
 		return 0
 	}
 

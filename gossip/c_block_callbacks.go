@@ -1,7 +1,6 @@
 package gossip
 
 import (
-	"fmt"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -27,7 +26,6 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
-	"github.com/unicornultrafoundation/go-u2u/utils"
 )
 
 var (
@@ -236,7 +234,7 @@ func consensusCallbackBeginBlockFn(
 				if skipBlock {
 					// save the latest block state even if block is skipped
 					store.SetBlockEpochState(bs, es)
-					log.Debug("Frame is skipped", "atropos", cBlock.Event.String())
+					//log.Debug("Frame is skipped", "atropos", cBlock.Event.String())
 					return nil
 				}
 
@@ -451,9 +449,9 @@ func consensusCallbackBeginBlockFn(
 
 					now := time.Now()
 					blockAge := now.Sub(block.Time.Time())
-					log.Info("New block", "index", blockCtx.Idx, "id", block.Atropos, "gas_used",
-						evmBlock.GasUsed, "txs", fmt.Sprintf("%d/%d", len(evmBlock.Transactions), len(block.SkippedTxs)),
-						"age", utils.PrettyDuration(blockAge), "t", utils.PrettyDuration(now.Sub(start)))
+					//log.Info("New block", "index", blockCtx.Idx, "id", block.Atropos, "gas_used",
+					//	evmBlock.GasUsed, "txs", fmt.Sprintf("%d/%d", len(evmBlock.Transactions), len(block.SkippedTxs)),
+					//	"age", utils.PrettyDuration(blockAge), "t", utils.PrettyDuration(now.Sub(start)))
 					blockAgeGauge.Update(int64(blockAge.Nanoseconds()))
 				}
 				if confirmedEvents.Len() != 0 {

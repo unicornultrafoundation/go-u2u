@@ -3,9 +3,8 @@ package proclogger
 import (
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/logger"
-	"github.com/unicornultrafoundation/go-u2u/utils"
+	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
 func NewLogger() *Logger {
@@ -28,15 +27,15 @@ func (l *Logger) EventConnectionStarted(e native.EventPayloadI, emitted bool) fu
 	return func() {
 		now := time.Now()
 		// logging for the individual item
-		msg := "New event"
-		logType := l.Log.Debug
-		if emitted {
-			msg = "New event emitted"
-			logType = l.Log.Info
-		}
-		logType(msg, "id", e.ID(), "parents", len(e.Parents()), "by", e.Creator(),
-			"frame", e.Frame(), "txs", e.Txs().Len(),
-			"age", utils.PrettyDuration(now.Sub(e.CreationTime().Time())), "t", utils.PrettyDuration(now.Sub(start)))
+		//msg := "New event"
+		//logType := l.Log.Debug
+		//if emitted {
+		//	msg = "New event emitted"
+		//	logType = l.Log.Info
+		//}
+		//logType(msg, "id", e.ID(), "parents", len(e.Parents()), "by", e.Creator(),
+		//	"frame", e.Frame(), "txs", e.Txs().Len(),
+		//	"age", utils.PrettyDuration(now.Sub(e.CreationTime().Time())), "t", utils.PrettyDuration(now.Sub(start)))
 		// logging for the summary
 		l.dagSum.totalProcessing += now.Sub(start)
 		l.emitting = false

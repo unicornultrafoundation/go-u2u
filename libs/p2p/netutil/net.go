@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/unicornultrafoundation/go-u2u/libs/log"
 	"net"
 	"sort"
 	"strings"
@@ -192,6 +193,7 @@ var (
 //   - LAN addresses are OK if relayed by a LAN host.
 //   - All other addresses are always acceptable.
 func CheckRelayIP(sender, addr net.IP) error {
+	log.Info("Check relay ip with ", "sender", sender.To4().String(), "addr", addr.To4().String())
 	if len(addr) != net.IPv4len && len(addr) != net.IPv6len {
 		return errInvalid
 	}

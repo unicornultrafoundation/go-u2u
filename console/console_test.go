@@ -26,6 +26,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/console/prompt"
+	"github.com/unicornultrafoundation/go-u2u/core"
 	"github.com/unicornultrafoundation/go-u2u/eth/ethconfig"
 	"github.com/unicornultrafoundation/go-u2u/internal/jsre"
 	"github.com/unicornultrafoundation/go-u2u/miner"
@@ -90,6 +91,7 @@ func newTester(t *testing.T, confOverride func(*ethconfig.Config)) *tester {
 		t.Fatalf("failed to create node: %v", err)
 	}
 	ethConf := &ethconfig.Config{
+		Genesis: core.DeveloperGenesisBlock(common.Address{}),
 		Miner: miner.Config{
 			Etherbase: common.HexToAddress(testAddress),
 		},

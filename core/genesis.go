@@ -1,13 +1,18 @@
 package core
 
 import (
+	"bytes"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
+	"github.com/unicornultrafoundation/go-u2u/common/math"
 	"github.com/unicornultrafoundation/go-u2u/core/rawdb"
 	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
+	"github.com/unicornultrafoundation/go-u2u/crypto"
 	"github.com/unicornultrafoundation/go-u2u/ethdb"
 	"github.com/unicornultrafoundation/go-u2u/params"
 	"github.com/unicornultrafoundation/go-u2u/trie"
@@ -132,6 +137,30 @@ func GenesisBlockForTesting(db ethdb.Database, addr common.Address, balance *big
 	return g.MustCommit(db)
 }
 
+// DeveloperGenesisBlock returns the 'geth --dev' genesis block.
+func DeveloperGenesisBlock(faucet common.Address) *Genesis {
+	// Assemble and return the genesis with the precompiles and faucet pre-funded
+	return &Genesis{
+		Config:     params.AllEthashProtocolChanges,
+		ExtraData:  append(append(make([]byte, 32), faucet[:]...), make([]byte, crypto.SignatureLength)...),
+		GasLimit:   11500000,
+		BaseFee:    big.NewInt(params.InitialBaseFee),
+		Difficulty: big.NewInt(1),
+		Alloc: map[common.Address]GenesisAccount{
+			common.BytesToAddress([]byte{1}): {Balance: big.NewInt(1)}, // ECRecover
+			common.BytesToAddress([]byte{2}): {Balance: big.NewInt(1)}, // SHA256
+			common.BytesToAddress([]byte{3}): {Balance: big.NewInt(1)}, // RIPEMD
+			common.BytesToAddress([]byte{4}): {Balance: big.NewInt(1)}, // Identity
+			common.BytesToAddress([]byte{5}): {Balance: big.NewInt(1)}, // ModExp
+			common.BytesToAddress([]byte{6}): {Balance: big.NewInt(1)}, // ECAdd
+			common.BytesToAddress([]byte{7}): {Balance: big.NewInt(1)}, // ECScalarMul
+			common.BytesToAddress([]byte{8}): {Balance: big.NewInt(1)}, // ECPairing
+			common.BytesToAddress([]byte{9}): {Balance: big.NewInt(1)}, // BLAKE2b
+			faucet:                           {Balance: new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 256), big.NewInt(9))},
+		},
+	}
+}
+
 // GenesisAlloc specifies the initial state that is part of the genesis block.
 type GenesisAlloc map[common.Address]GenesisAccount
 
@@ -142,4 +171,46 @@ type GenesisAccount struct {
 	Balance    *big.Int                    `json:"balance" gencodec:"required"`
 	Nonce      uint64                      `json:"nonce,omitempty"`
 	PrivateKey []byte                      `json:"secretKey,omitempty"` // for tests
+}
+
+// field type overrides for gencodec
+type genesisSpecMarshaling struct {
+	Nonce      math.HexOrDecimal64
+	Timestamp  math.HexOrDecimal64
+	ExtraData  hexutil.Bytes
+	GasLimit   math.HexOrDecimal64
+	GasUsed    math.HexOrDecimal64
+	Number     math.HexOrDecimal64
+	Difficulty *math.HexOrDecimal256
+	BaseFee    *math.HexOrDecimal256
+	Alloc      map[common.UnprefixedAddress]GenesisAccount
+}
+
+type genesisAccountMarshaling struct {
+	Code       hexutil.Bytes
+	Balance    *math.HexOrDecimal256
+	Nonce      math.HexOrDecimal64
+	Storage    map[storageJSON]storageJSON
+	PrivateKey hexutil.Bytes
+}
+
+// storageJSON represents a 256 bit byte array, but allows less than 256 bits when
+// unmarshaling from hex.
+type storageJSON common.Hash
+
+func (h *storageJSON) UnmarshalText(text []byte) error {
+	text = bytes.TrimPrefix(text, []byte("0x"))
+	if len(text) > 64 {
+		return fmt.Errorf("too many hex characters in storage key/value %q", text)
+	}
+	offset := len(h) - len(text)/2 // pad on the left
+	if _, err := hex.Decode(h[offset:], text); err != nil {
+		fmt.Println(err)
+		return fmt.Errorf("invalid hex storage key/value %q", text)
+	}
+	return nil
+}
+
+func (h storageJSON) MarshalText() ([]byte, error) {
+	return hexutil.Bytes(h[:]).MarshalText()
 }

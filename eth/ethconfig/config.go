@@ -27,6 +27,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/consensus/ethash"
+	"github.com/unicornultrafoundation/go-u2u/core"
 	"github.com/unicornultrafoundation/go-u2u/eth/downloader"
 	"github.com/unicornultrafoundation/go-u2u/eth/gasprice"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
@@ -103,6 +104,10 @@ func init() {
 
 // Config contains configuration options for of the ETH and LES protocols.
 type Config struct {
+	// The genesis block, which is inserted if the database is empty.
+	// If nil, the Ethereum main net block is used.
+	Genesis *core.Genesis `toml:",omitempty"`
+
 	// Protocol options
 	NetworkId uint64 // Network ID to use for selecting peers to connect to
 	SyncMode  downloader.SyncMode

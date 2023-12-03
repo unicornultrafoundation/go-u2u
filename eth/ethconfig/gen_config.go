@@ -8,7 +8,6 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/consensus/ethash"
 	"github.com/unicornultrafoundation/go-u2u/eth/downloader"
 	"github.com/unicornultrafoundation/go-u2u/eth/gasprice"
 	"github.com/unicornultrafoundation/go-u2u/miner"
@@ -47,7 +46,6 @@ func (c Config) MarshalTOML() (interface{}, error) {
 		SnapshotCache           int
 		Preimages               bool
 		Miner                   miner.Config
-		Ethash                  ethash.Config
 		TxPool                  evmcore.TxPoolConfig
 		GPO                     gasprice.Config
 		EnablePreimageRecording bool
@@ -87,7 +85,6 @@ func (c Config) MarshalTOML() (interface{}, error) {
 	enc.SnapshotCache = c.SnapshotCache
 	enc.Preimages = c.Preimages
 	enc.Miner = c.Miner
-	enc.Ethash = c.Ethash
 	enc.TxPool = c.TxPool
 	enc.GPO = c.GPO
 	enc.EnablePreimageRecording = c.EnablePreimageRecording
@@ -131,7 +128,6 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 		SnapshotCache           *int
 		Preimages               *bool
 		Miner                   *miner.Config
-		Ethash                  *ethash.Config
 		TxPool                  *evmcore.TxPoolConfig
 		GPO                     *gasprice.Config
 		EnablePreimageRecording *bool
@@ -233,9 +229,6 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 	}
 	if dec.Miner != nil {
 		c.Miner = *dec.Miner
-	}
-	if dec.Ethash != nil {
-		c.Ethash = *dec.Ethash
 	}
 	if dec.TxPool != nil {
 		c.TxPool = *dec.TxPool

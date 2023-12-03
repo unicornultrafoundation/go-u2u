@@ -124,7 +124,7 @@ type UpgradeHeight struct {
 
 // EvmChainConfig returns ChainConfig for transactions signing and execution
 func (r Rules) EvmChainConfig(hh []UpgradeHeight) *ethparams.ChainConfig {
-	cfg := *ethparams.AllEthashProtocolChanges
+	cfg := *ethparams.AllProtocolChanges
 	cfg.ChainID = new(big.Int).SetUint64(r.NetworkID)
 	cfg.BerlinBlock = nil
 	cfg.LondonBlock = nil

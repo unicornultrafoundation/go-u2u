@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/memorydb"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
 )
 
 func cachedStore() *Store {

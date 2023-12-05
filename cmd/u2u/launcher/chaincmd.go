@@ -1,8 +1,9 @@
 package launcher
 
 import (
-	"github.com/unicornultrafoundation/go-u2u/libs/cmd/utils"
 	"gopkg.in/urfave/cli.v1"
+
+	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 )
 
 var (

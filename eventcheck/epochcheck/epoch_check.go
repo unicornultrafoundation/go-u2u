@@ -5,7 +5,7 @@ import (
 
 	base "github.com/unicornultrafoundation/go-hashgraph/eventcheck/epochcheck"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
 
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/u2u"

@@ -22,9 +22,9 @@ import (
 	"io"
 	"sort"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/cmd/utils"
 	cli "gopkg.in/urfave/cli.v1"
 
+	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/debug"
 	"github.com/unicornultrafoundation/go-u2u/flags"
 )

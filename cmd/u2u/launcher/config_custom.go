@@ -5,7 +5,7 @@ import (
 
 	"github.com/naoina/toml"
 	"github.com/naoina/toml/ast"
-	"github.com/unicornultrafoundation/go-u2u/libs/p2p/enode"
+	"github.com/unicornultrafoundation/go-u2u/p2p/enode"
 )
 
 // asDefault is slice with one empty element

@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"math/big"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/rlp"
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/rlp"
 
 	"github.com/unicornultrafoundation/go-hashgraph/gossip/basestream"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"

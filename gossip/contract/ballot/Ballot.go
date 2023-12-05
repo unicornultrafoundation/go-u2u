@@ -8,12 +8,12 @@ import (
 	"math/big"
 	"strings"
 
-	ethereum "github.com/unicornultrafoundation/go-u2u/libs"
-	"github.com/unicornultrafoundation/go-u2u/libs/accounts/abi"
-	"github.com/unicornultrafoundation/go-u2u/libs/accounts/abi/bind"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
-	"github.com/unicornultrafoundation/go-u2u/libs/event"
+	u2u "github.com/unicornultrafoundation/go-u2u"
+	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
+	"github.com/unicornultrafoundation/go-u2u/accounts/abi/bind"
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
+	"github.com/unicornultrafoundation/go-u2u/event"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -21,7 +21,7 @@ var (
 	_ = errors.New
 	_ = big.NewInt
 	_ = strings.NewReader
-	_ = ethereum.NotFound
+	_ = u2u.NotFound
 	_ = bind.Bind
 	_ = common.Big1
 	_ = types.BloomLookup
@@ -465,7 +465,7 @@ type BallotNewProposalIterator struct {
 	event    string              // Event name to use for unpacking event data
 
 	logs chan types.Log        // Log channel receiving the found contract events
-	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	sub  u2u.Subscription // Subscription for errors, completion and termination
 	done bool                  // Whether the subscription completed delivering logs
 	fail error                 // Occurred error to stop iteration
 }

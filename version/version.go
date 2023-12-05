@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/params"
+	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
 func init() {

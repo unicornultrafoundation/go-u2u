@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/unicornultrafoundation/go-u2u/libs/rlp"
+	"github.com/unicornultrafoundation/go-u2u/rlp"
 )
 
 func TestUpdateRules(t *testing.T) {

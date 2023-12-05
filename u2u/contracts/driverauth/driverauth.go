@@ -1,9 +1,9 @@
 package driverauth
 
 import (
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
 	"github.com/unicornultrafoundation/go-u2u/gossip/contract/driverauth100"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/common/hexutil"
 )
 
 // GetContractBin is NodeDriverAuth contract genesis implementation bin code

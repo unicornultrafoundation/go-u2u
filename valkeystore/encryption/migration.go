@@ -5,8 +5,8 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/accounts/keystore"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/accounts/keystore"
+	"github.com/unicornultrafoundation/go-u2u/common"
 
 	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"
 )

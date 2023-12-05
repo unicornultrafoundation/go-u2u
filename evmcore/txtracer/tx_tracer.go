@@ -7,12 +7,13 @@ import (
 	"time"
 
 	"github.com/holiman/uint256"
+
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
+	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	txtracer "github.com/unicornultrafoundation/go-u2u/gossip/txtracer"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/common/hexutil"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/vm"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // TraceStructLogger is a transaction trace creator

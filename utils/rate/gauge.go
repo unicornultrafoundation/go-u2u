@@ -3,7 +3,7 @@ package rate
 import (
 	"sync/atomic"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/metrics"
+	"github.com/unicornultrafoundation/go-u2u/metrics"
 )
 
 // Gauge represents an exponentially-weighted moving average of given values

@@ -3,7 +3,7 @@ package utils
 import (
 	"math/big"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/common"
 )
 
 // BigTo256 converts big number to 32 bytes array

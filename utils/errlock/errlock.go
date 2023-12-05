@@ -6,7 +6,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/cmd/utils"
+	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 )
 
 // Check if errlock is written

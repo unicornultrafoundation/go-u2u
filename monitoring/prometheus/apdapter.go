@@ -5,7 +5,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
-	"github.com/unicornultrafoundation/go-u2u/libs/metrics"
+	"github.com/unicornultrafoundation/go-u2u/metrics"
 )
 
 // NewCollector constructor.

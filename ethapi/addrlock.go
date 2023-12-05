@@ -19,7 +19,7 @@ package ethapi
 import (
 	"sync"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/common"
 )
 
 type AddrLocker struct {

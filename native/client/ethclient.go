@@ -3,8 +3,8 @@ package native
 import (
 	"context"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/ethclient"
-	"github.com/unicornultrafoundation/go-u2u/libs/rpc"
+	"github.com/unicornultrafoundation/go-u2u/ethclient"
+	"github.com/unicornultrafoundation/go-u2u/rpc"
 )
 
 // Client extends Ethereum API client with typed wrappers for the Backend API.

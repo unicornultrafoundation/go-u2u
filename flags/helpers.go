@@ -20,8 +20,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/params"
-	cli "gopkg.in/urfave/cli.v1"
+	"gopkg.in/urfave/cli.v1"
+
+	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
 var (
@@ -36,14 +37,25 @@ SUBCOMMANDS:
 {{end}}
 {{end}}{{end}}`
 
+	OriginCommandHelpTemplate = `{{.Name}}{{if .Subcommands}} command{{end}}{{if .Flags}} [command options]{{end}} {{.ArgsUsage}}
+{{if .Description}}{{.Description}}
+{{end}}{{if .Subcommands}}
+SUBCOMMANDS:
+  {{range .Subcommands}}{{.Name}}{{with .ShortName}}, {{.}}{{end}}{{ "\t" }}{{.Usage}}
+  {{end}}{{end}}{{if .Flags}}
+OPTIONS:
+{{range $.Flags}}   {{.}}
+{{end}}
+{{end}}`
+
 	// AppHelpTemplate is the test template for the default, global app help topic.
 	AppHelpTemplate = `NAME:
    {{.App.Name}} - {{.App.Usage}}
 
-   Copyright 2019-2021 The go-u2u Authors
+   Copyright 2013-2021 The go-ethereum Authors
 
 USAGE:
-   {{.App.HelpName}} [options]{{if .App.Commands}} command [command options]{{end}} {{if .App.ArgsUsage}}{{.App.ArgsUsage}}{{else}}[arguments...]{{end}}
+   {{.App.HelpName}} [options]{{if .App.Commands}} [command] [command options]{{end}} {{if .App.ArgsUsage}}{{.App.ArgsUsage}}{{else}}[arguments...]{{end}}
    {{if .App.Version}}
 VERSION:
    {{.App.Version}}
@@ -51,6 +63,26 @@ VERSION:
 AUTHOR(S):
    {{range .App.Authors}}{{ . }}{{end}}
    {{end}}{{if .App.Commands}}
+COMMANDS:
+   {{range .App.Commands}}{{join .Names ", "}}{{ "\t" }}{{.Usage}}
+   {{end}}{{end}}{{if .FlagGroups}}
+{{range .FlagGroups}}{{.Name}} OPTIONS:
+  {{range .Flags}}{{.}}
+  {{end}}
+{{end}}{{end}}{{if .App.Copyright }}
+COPYRIGHT:
+   {{.App.Copyright}}
+   {{end}}
+`
+	// ClefAppHelpTemplate is the template for the default, global app help topic.
+	ClefAppHelpTemplate = `NAME:
+   {{.App.Name}} - {{.App.Usage}}
+
+   Copyright 2013-2021 The go-ethereum Authors
+
+USAGE:
+   {{.App.HelpName}} [options]{{if .App.Commands}} command [command options]{{end}} {{if .App.ArgsUsage}}{{.App.ArgsUsage}}{{else}}[arguments...]{{end}}
+   {{if .App.Version}}
 COMMANDS:
    {{range .App.Commands}}{{join .Names ", "}}{{ "\t" }}{{.Usage}}
    {{end}}{{end}}{{if .FlagGroups}}

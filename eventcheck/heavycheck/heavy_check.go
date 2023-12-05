@@ -8,8 +8,8 @@ import (
 
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
-	"github.com/unicornultrafoundation/go-u2u/libs/crypto"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
+	"github.com/unicornultrafoundation/go-u2u/crypto"
 
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/basiccheck"
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/epochcheck"

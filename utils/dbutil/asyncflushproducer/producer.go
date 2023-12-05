@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
-	"github.com/unicornultrafoundation/go-u2u/libs/metrics"
+	"github.com/unicornultrafoundation/go-u2u/metrics"
 )
 
 type Producer struct {

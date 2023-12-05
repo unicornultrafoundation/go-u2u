@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/unicornultrafoundation/go-hashgraph/utils/piecefunc"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
 )
 
 const (

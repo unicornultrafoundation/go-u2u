@@ -15,15 +15,15 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/cachescale"
-	ethereum "github.com/unicornultrafoundation/go-u2u/libs"
-	"github.com/unicornultrafoundation/go-u2u/libs/accounts/abi/bind"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/common/hexutil"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/state"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/vm"
-	"github.com/unicornultrafoundation/go-u2u/libs/crypto"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
+	go_u2u "github.com/unicornultrafoundation/go-u2u"
+	"github.com/unicornultrafoundation/go-u2u/accounts/abi/bind"
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
+	"github.com/unicornultrafoundation/go-u2u/core/state"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
+	"github.com/unicornultrafoundation/go-u2u/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/crypto"
+	"github.com/unicornultrafoundation/go-u2u/log"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip/blockproc"
@@ -403,7 +403,7 @@ func (env *testEnv) CodeAt(ctx context.Context, contract common.Address, blockNu
 
 // ContractCall executes an Ethereum contract call with the specified data as the
 // input.
-func (env *testEnv) CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
+func (env *testEnv) CallContract(ctx context.Context, call go_u2u.CallMsg, blockNumber *big.Int) ([]byte, error) {
 	if blockNumber != nil && idx.Block(blockNumber.Uint64()) != env.store.GetLatestBlockIndex() {
 		return nil, errBlockNumberUnsupported
 	}
@@ -430,7 +430,7 @@ func (env *testEnv) HeaderByNumber(ctx context.Context, number *big.Int) (*types
 // callContract implements common code between normal and pending contract calls.
 // state is modified during execution, make sure to copy it if necessary.
 func (env *testEnv) callContract(
-	ctx context.Context, call ethereum.CallMsg, block *evmcore.EvmBlock, state *state.StateDB,
+	ctx context.Context, call go_u2u.CallMsg, block *evmcore.EvmBlock, state *state.StateDB,
 ) (
 	ret []byte, usedGas uint64, failed bool, err error,
 ) {
@@ -495,7 +495,7 @@ func (env *testEnv) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
 // There is no guarantee that this is the true gas limit requirement as other
 // transactions may be added or removed by miners, but it should provide a basis
 // for setting a reasonable default.
-func (env *testEnv) EstimateGas(ctx context.Context, call ethereum.CallMsg) (gas uint64, err error) {
+func (env *testEnv) EstimateGas(ctx context.Context, call go_u2u.CallMsg) (gas uint64, err error) {
 	if call.To == nil {
 		gas = gasLimit * 10000
 	} else {
@@ -516,21 +516,21 @@ func (env *testEnv) SendTransaction(ctx context.Context, tx *types.Transaction) 
 
 // FilterLogs executes a log filter operation, blocking during execution and
 // returning all the results in one batch.
-func (env *testEnv) FilterLogs(ctx context.Context, query ethereum.FilterQuery) ([]types.Log, error) {
+func (env *testEnv) FilterLogs(ctx context.Context, query go_u2u.FilterQuery) ([]types.Log, error) {
 	panic("not implemented yet")
 	return nil, nil
 }
 
 // SubscribeFilterLogs creates a background log filtering operation, returning
 // a subscription immediately, which can be used to stream the found events.
-func (env *testEnv) SubscribeFilterLogs(ctx context.Context, query ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error) {
+func (env *testEnv) SubscribeFilterLogs(ctx context.Context, query go_u2u.FilterQuery, ch chan<- types.Log) (go_u2u.Subscription, error) {
 	panic("not implemented yet")
 	return nil, nil
 }
 
 // callmsg implements evmcore.Message to allow passing it as a transaction simulator.
 type callmsg struct {
-	ethereum.CallMsg
+	go_u2u.CallMsg
 }
 
 func (m callmsg) From() common.Address         { return m.CallMsg.From }

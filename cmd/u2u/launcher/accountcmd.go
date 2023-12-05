@@ -24,13 +24,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/accounts"
-	"github.com/unicornultrafoundation/go-u2u/libs/accounts/keystore"
-	"github.com/unicornultrafoundation/go-u2u/libs/cmd/utils"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/console/prompt"
-	"github.com/unicornultrafoundation/go-u2u/libs/crypto"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
+	"github.com/unicornultrafoundation/go-u2u/accounts"
+	"github.com/unicornultrafoundation/go-u2u/accounts/keystore"
+	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/console/prompt"
+	"github.com/unicornultrafoundation/go-u2u/crypto"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"gopkg.in/urfave/cli.v1"
 )
 

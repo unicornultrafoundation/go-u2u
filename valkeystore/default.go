@@ -1,7 +1,7 @@
 package valkeystore
 
 import (
-	"github.com/unicornultrafoundation/go-u2u/libs/accounts/keystore"
+	"github.com/unicornultrafoundation/go-u2u/accounts/keystore"
 
 	"github.com/unicornultrafoundation/go-u2u/valkeystore/encryption"
 )

@@ -3,7 +3,7 @@ package logger
 import (
 	"testing"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // SetTestMode sets test mode.

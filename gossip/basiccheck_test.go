@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
 
 	lbasiccheck "github.com/unicornultrafoundation/go-hashgraph/eventcheck/basiccheck"
 	"github.com/unicornultrafoundation/go-hashgraph/hash"

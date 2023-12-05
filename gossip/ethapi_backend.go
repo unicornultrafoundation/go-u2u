@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/unicornultrafoundation/go-u2u/txtrace"
 	"math/big"
 	"strconv"
 	"strings"
@@ -23,6 +22,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/ethdb"
 	notify "github.com/unicornultrafoundation/go-u2u/event"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
+	"github.com/unicornultrafoundation/go-u2u/evmcore/txtracer"
 	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
@@ -97,12 +97,12 @@ func (b *EthAPIBackend) HeaderByHash(ctx context.Context, h common.Hash) (*evmco
 }
 
 // TxTraceByHash returns transaction trace from store db by the hash.
-func (b *EthAPIBackend) TxTraceByHash(ctx context.Context, h common.Hash) (*[]txtrace.ActionTrace, error) {
+func (b *EthAPIBackend) TxTraceByHash(ctx context.Context, h common.Hash) (*[]txtracer.ActionTrace, error) {
 	if b.state.store.txtracer == nil {
 		return nil, errors.New("Transaction trace key-value store db is not initialized")
 	}
 	txBytes := b.state.store.txtracer.GetTx(h)
-	traces := make([]txtrace.ActionTrace, 0)
+	traces := make([]txtracer.ActionTrace, 0)
 	json.Unmarshal(txBytes, &traces)
 	if len(traces) == 0 {
 		return nil, fmt.Errorf("No trace for tx hash: %s", h.String())

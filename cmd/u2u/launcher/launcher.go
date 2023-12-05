@@ -214,6 +214,7 @@ func init() {
 		snapshotCommand,
 		// See dbcmd.go
 		dbCommand,
+		deleteCommand,
 	}
 	sort.Sort(cli.CommandsByName(app.Commands))
 

@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/eth/protocols/eth"
 	"github.com/unicornultrafoundation/go-u2u/event"
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/p2p/msgrate"
@@ -35,6 +34,11 @@ import (
 
 const (
 	maxLackingHashes = 4096 // Maximum number of entries allowed on the list or lacking items
+
+	// ETH protocol constants
+	eth65       = 65
+	eth66       = 66
+	nodeDataMsg = 0x0e
 )
 
 var (
@@ -104,14 +108,14 @@ func (p *peerConnection) FetchNodeData(hashes []common.Hash) error {
 // data retrieval requests. Its estimated state retrieval throughput is updated
 // with that measured just now.
 func (p *peerConnection) SetNodeDataIdle(delivered int, deliveryTime time.Time) {
-	p.rates.Update(eth.NodeDataMsg, deliveryTime.Sub(p.stateStarted), delivered)
+	p.rates.Update(nodeDataMsg, deliveryTime.Sub(p.stateStarted), delivered)
 	atomic.StoreInt32(&p.stateIdle, 0)
 }
 
 // NodeDataCapacity retrieves the peers state download allowance based on its
 // previously discovered throughput.
 func (p *peerConnection) NodeDataCapacity(targetRTT time.Duration) int {
-	cap := p.rates.Capacity(eth.NodeDataMsg, targetRTT)
+	cap := p.rates.Capacity(nodeDataMsg, targetRTT)
 	if cap > MaxStateFetch {
 		cap = MaxStateFetch
 	}
@@ -261,9 +265,9 @@ func (ps *peerSet) NodeDataIdlePeers() ([]*peerConnection, int) {
 		return atomic.LoadInt32(&p.stateIdle) == 0
 	}
 	throughput := func(p *peerConnection) int {
-		return p.rates.Capacity(eth.NodeDataMsg, time.Second)
+		return p.rates.Capacity(nodeDataMsg, time.Second)
 	}
-	return ps.idlePeers(eth.ETH65, eth.ETH66, idle, throughput)
+	return ps.idlePeers(eth65, eth66, idle, throughput)
 }
 
 // idlePeers retrieves a flat list of all currently idle peers satisfying the

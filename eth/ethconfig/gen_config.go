@@ -8,7 +8,6 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/eth/downloader"
 	"github.com/unicornultrafoundation/go-u2u/eth/gasprice"
 	"github.com/unicornultrafoundation/go-u2u/miner"
 )
@@ -17,7 +16,7 @@ import (
 func (c Config) MarshalTOML() (interface{}, error) {
 	type Config struct {
 		NetworkId               uint64
-		SyncMode                downloader.SyncMode
+		SyncMode                SyncMode
 		EthDiscoveryURLs        []string
 		SnapDiscoveryURLs       []string
 		NoPruning               bool
@@ -99,7 +98,7 @@ func (c Config) MarshalTOML() (interface{}, error) {
 func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 	type Config struct {
 		NetworkId               *uint64
-		SyncMode                *downloader.SyncMode
+		SyncMode                *SyncMode
 		EthDiscoveryURLs        []string
 		SnapDiscoveryURLs       []string
 		NoPruning               *bool

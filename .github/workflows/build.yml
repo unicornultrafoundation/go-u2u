@@ -24,7 +24,7 @@ jobs:
           # Semantic version range syntax or exact version of Go
           go-version: '1.21.3'
       - name: Test with the Go CLI
-        run: go test -coverprofile=coverage.out ./...
+        run: go test --timeout 10m -coverprofile=coverage.out ./...
       - uses: sonarsource/sonarqube-scan-action@master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

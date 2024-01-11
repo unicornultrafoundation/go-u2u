@@ -353,7 +353,7 @@ func makeNode(ctx *cli.Context, cfg *config, genesisStore *genesisstore.Store) (
 	if err != nil {
 		utils.Fatalf("Failed to create the service: %v", err)
 	}
-	err = engine.Bootstrap(svc.GetConsensusCallbacks())
+	err = engine.StartFrom(svc.GetConsensusCallbacks(), gdb.GetEpoch(), gdb.GetValidators())
 	if err != nil {
 		utils.Fatalf("Failed to bootstrap the engine: %v", err)
 	}

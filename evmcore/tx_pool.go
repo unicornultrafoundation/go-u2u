@@ -27,7 +27,6 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/common/prque"
-	"github.com/unicornultrafoundation/go-u2u/consensus/misc"
 	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	notify "github.com/unicornultrafoundation/go-u2u/event"
@@ -1191,7 +1190,7 @@ func (pool *TxPool) runReorg(done chan struct{}, reset *txpoolResetRequest, dirt
 		} else {
 			// for tests only
 			if reset.newHead != nil && pool.chainconfig.IsLondon(new(big.Int).Add(reset.newHead.Number, big.NewInt(1))) {
-				pendingBaseFee := misc.CalcBaseFee(pool.chainconfig, reset.newHead.EthHeader())
+				pendingBaseFee := calcBaseFee(pool.chainconfig, reset.newHead.EthHeader())
 				pool.priced.SetBaseFee(pendingBaseFee)
 			}
 		}

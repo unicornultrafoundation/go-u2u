@@ -187,7 +187,7 @@ func (b *BlockGen) OffsetTime(seconds int64) {
 // a similar non-validating proof of work implementation.
 func GenerateChain(config *params.ChainConfig, parent *EvmBlock, db ethdb.Database, n int, gen func(int, *BlockGen)) ([]*EvmBlock, []types.Receipts, DummyChain) {
 	if config == nil {
-		config = params.AllEthashProtocolChanges
+		config = params.AllProtocolChanges
 	}
 
 	chain := &TestChain{

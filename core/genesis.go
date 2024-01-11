@@ -102,7 +102,7 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 	}
 	config := g.Config
 	if config == nil {
-		config = params.AllEthashProtocolChanges
+		config = params.AllProtocolChanges
 	}
 	if err := config.CheckConfigForkOrder(); err != nil {
 		return nil, err
@@ -141,7 +141,7 @@ func GenesisBlockForTesting(db ethdb.Database, addr common.Address, balance *big
 func DeveloperGenesisBlock(faucet common.Address) *Genesis {
 	// Assemble and return the genesis with the precompiles and faucet pre-funded
 	return &Genesis{
-		Config:     params.AllEthashProtocolChanges,
+		Config:     params.AllProtocolChanges,
 		ExtraData:  append(append(make([]byte, 32), faucet[:]...), make([]byte, crypto.SignatureLength)...),
 		GasLimit:   11500000,
 		BaseFee:    big.NewInt(params.InitialBaseFee),

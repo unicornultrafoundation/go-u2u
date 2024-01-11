@@ -33,28 +33,26 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
+	"github.com/unicornultrafoundation/go-u2u/accounts"
+	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
+	"github.com/unicornultrafoundation/go-u2u/accounts/keystore"
+	"github.com/unicornultrafoundation/go-u2u/accounts/scwallet"
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
+	"github.com/unicornultrafoundation/go-u2u/common/math"
+	"github.com/unicornultrafoundation/go-u2u/core/state"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
+	"github.com/unicornultrafoundation/go-u2u/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/crypto"
+	"github.com/unicornultrafoundation/go-u2u/eth/tracers"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip/gasprice"
-	"github.com/unicornultrafoundation/go-u2u/libs/accounts"
-	"github.com/unicornultrafoundation/go-u2u/libs/accounts/abi"
-	"github.com/unicornultrafoundation/go-u2u/libs/accounts/keystore"
-	"github.com/unicornultrafoundation/go-u2u/libs/accounts/scwallet"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/common/hexutil"
-	"github.com/unicornultrafoundation/go-u2u/libs/common/math"
-	"github.com/unicornultrafoundation/go-u2u/libs/consensus/ethash"
-	"github.com/unicornultrafoundation/go-u2u/libs/core"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/state"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/vm"
-	"github.com/unicornultrafoundation/go-u2u/libs/crypto"
-	"github.com/unicornultrafoundation/go-u2u/libs/eth/tracers"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
-	"github.com/unicornultrafoundation/go-u2u/libs/p2p"
-	"github.com/unicornultrafoundation/go-u2u/libs/params"
-	"github.com/unicornultrafoundation/go-u2u/libs/rlp"
-	"github.com/unicornultrafoundation/go-u2u/libs/rpc"
-	"github.com/unicornultrafoundation/go-u2u/libs/trie"
+	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/p2p"
+	"github.com/unicornultrafoundation/go-u2u/params"
+	"github.com/unicornultrafoundation/go-u2u/rlp"
+	"github.com/unicornultrafoundation/go-u2u/rpc"
+	"github.com/unicornultrafoundation/go-u2u/trie"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/utils/adapters/ethdb2udb"
 	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/compactdb"
@@ -1145,7 +1143,7 @@ func executeEstimate(ctx context.Context, b Backend, args TransactionArgs, state
 	args.Gas = (*hexutil.Uint64)(&gasLimit)
 	result, err := doCall(ctx, b, args, state, header, nil, 0, gasCap)
 	if err != nil {
-		if errors.Is(err, core.ErrIntrinsicGas) {
+		if errors.Is(err, evmcore.ErrIntrinsicGas) {
 			return true, nil, nil // Special case, raise gas limit
 		}
 		return true, nil, err // Bail out
@@ -1199,7 +1197,7 @@ func DoEstimateGas(ctx context.Context, b Backend, args TransactionArgs, blockNr
 		available := new(big.Int).Set(balance)
 		if args.Value != nil {
 			if args.Value.ToInt().Cmp(available) >= 0 {
-				return 0, core.ErrInsufficientFundsForTransfer
+				return 0, evmcore.ErrInsufficientFundsForTransfer
 			}
 			available.Sub(available, args.Value.ToInt())
 		}
@@ -2122,18 +2120,6 @@ func (api *PublicDebugAPI) PrintBlock(ctx context.Context, number uint64) (strin
 		return "", fmt.Errorf("block #%d not found", number)
 	}
 	return spew.Sdump(block), nil
-}
-
-// SeedHash retrieves the seed hash of a block.
-func (api *PublicDebugAPI) SeedHash(ctx context.Context, number uint64) (string, error) {
-	block, err := api.b.BlockByNumber(ctx, rpc.BlockNumber(number))
-	if err != nil {
-		return "", err
-	}
-	if block == nil {
-		return "", fmt.Errorf("block #%d not found", number)
-	}
-	return fmt.Sprintf("0x%x", ethash.SeedHash(number)), nil
 }
 
 // BlocksTransactionTimes returns the map time => number of transactions

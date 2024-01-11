@@ -21,13 +21,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/core/state"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
+	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/state"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/vm"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
-	"github.com/unicornultrafoundation/go-u2u/libs/trie"
+	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/trie"
 )
 
 // stateAtBlock retrieves the state database associated with a certain block.

@@ -6,8 +6,8 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
 
 	"github.com/unicornultrafoundation/go-u2u/eventcheck"
 	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"

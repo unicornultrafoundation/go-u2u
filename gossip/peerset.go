@@ -21,9 +21,9 @@ import (
 	"sync"
 
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/eth/protocols/snap"
-	"github.com/unicornultrafoundation/go-u2u/libs/p2p"
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/eth/protocols/snap"
+	"github.com/unicornultrafoundation/go-u2u/p2p"
 )
 
 var (

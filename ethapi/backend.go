@@ -22,23 +22,22 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/accounts"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/state"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/vm"
-	"github.com/unicornultrafoundation/go-u2u/libs/ethdb"
-	notify "github.com/unicornultrafoundation/go-u2u/libs/event"
-	"github.com/unicornultrafoundation/go-u2u/libs/params"
-	"github.com/unicornultrafoundation/go-u2u/libs/rpc"
-
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 
+	"github.com/unicornultrafoundation/go-u2u/accounts"
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/core/state"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
+	"github.com/unicornultrafoundation/go-u2u/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/ethdb"
+	notify "github.com/unicornultrafoundation/go-u2u/event"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/evmcore/txtracer"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/params"
+	"github.com/unicornultrafoundation/go-u2u/rpc"
 )
 
 // PeerProgress is synchronization status of a peer

@@ -6,8 +6,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/cmd/utils"
-	"github.com/unicornultrafoundation/go-u2u/libs/params"
+	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
+	"github.com/unicornultrafoundation/go-u2u/params"
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip"

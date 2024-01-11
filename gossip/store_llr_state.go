@@ -2,7 +2,7 @@ package gossip
 
 import (
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 type LlrState struct {

@@ -5,7 +5,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
+	"github.com/unicornultrafoundation/go-u2u/log"
 
 	"github.com/unicornultrafoundation/go-u2u/utils"
 )

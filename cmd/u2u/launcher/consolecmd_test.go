@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/params"
+	"github.com/unicornultrafoundation/go-u2u/params"
 
 	"github.com/unicornultrafoundation/go-u2u/integration/makefakegenesis"
 )
@@ -26,7 +26,7 @@ const (
 func TestConsoleWelcome(t *testing.T) {
 	// Start an u2u console, make sure it's cleaned up and terminate the console
 	cli := exec(t,
-		"--fakenet", "0/1", "--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
+		"--fakenet", "0/1", "--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none", "--cache", "7923",
 		"console")
 
 	// Gather all the infos the welcome message needs to contain

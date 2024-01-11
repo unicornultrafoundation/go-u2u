@@ -4,8 +4,9 @@ import (
 	"context"
 
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-	"github.com/unicornultrafoundation/go-u2u/libs/common/hexutil"
-	"github.com/unicornultrafoundation/go-u2u/libs/rpc"
+
+	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
+	"github.com/unicornultrafoundation/go-u2u/rpc"
 )
 
 // PublicAbftAPI provides an API to access consensus related information.

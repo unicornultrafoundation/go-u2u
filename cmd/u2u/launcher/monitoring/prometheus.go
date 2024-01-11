@@ -7,8 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/metrics"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
+	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/metrics"
 
 	"github.com/unicornultrafoundation/go-u2u/monitoring/prometheus"
 )

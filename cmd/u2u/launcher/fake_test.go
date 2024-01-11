@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/crypto"
-	"github.com/unicornultrafoundation/go-u2u/libs/params"
+	"github.com/unicornultrafoundation/go-u2u/crypto"
+	"github.com/unicornultrafoundation/go-u2u/params"
 
 	"github.com/unicornultrafoundation/go-u2u/integration/makefakegenesis"
 	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"

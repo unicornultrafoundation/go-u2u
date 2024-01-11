@@ -11,8 +11,8 @@ import (
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/batched"
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb/multidb"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/integration"

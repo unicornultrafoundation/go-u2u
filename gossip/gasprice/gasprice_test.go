@@ -6,9 +6,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/common/math"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/types"
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/common/math"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
 
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
 	"github.com/unicornultrafoundation/go-u2u/u2u"

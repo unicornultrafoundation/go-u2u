@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
+	"github.com/unicornultrafoundation/go-u2u/common"
 )
 
 var (

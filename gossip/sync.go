@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-	"github.com/unicornultrafoundation/go-u2u/libs/common"
-	"github.com/unicornultrafoundation/go-u2u/libs/p2p/enode"
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/p2p/enode"
 )
 
 type syncStage uint32

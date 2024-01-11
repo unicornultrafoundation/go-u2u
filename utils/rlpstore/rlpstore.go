@@ -2,8 +2,8 @@ package rlpstore
 
 import (
 	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
-	"github.com/unicornultrafoundation/go-u2u/libs/rlp"
 	"github.com/unicornultrafoundation/go-u2u/logger"
+	"github.com/unicornultrafoundation/go-u2u/rlp"
 )
 
 type Helper struct {

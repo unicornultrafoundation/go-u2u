@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/unicornultrafoundation/go-u2u/libs/log"
-	"github.com/unicornultrafoundation/go-u2u/libs/rlp"
+	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/rlp"
 
 	"github.com/unicornultrafoundation/go-u2u/native/ibr"
 	"github.com/unicornultrafoundation/go-u2u/native/ier"

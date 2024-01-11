@@ -17,8 +17,8 @@
 package gossip
 
 import (
-	"github.com/unicornultrafoundation/go-u2u/libs/eth/protocols/snap"
-	"github.com/unicornultrafoundation/go-u2u/libs/p2p/enode"
+	"github.com/unicornultrafoundation/go-u2u/eth/protocols/snap"
+	"github.com/unicornultrafoundation/go-u2u/p2p/enode"
 )
 
 // snapHandler implements the snap.Backend interface to handle the various network

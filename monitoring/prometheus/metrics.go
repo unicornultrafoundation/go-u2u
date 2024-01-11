@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/unicornultrafoundation/go-u2u/libs/metrics"
+	"github.com/unicornultrafoundation/go-u2u/metrics"
 )
 
 var namespace = "u2u"

@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/unicornultrafoundation/go-u2u/libs"
-	"github.com/unicornultrafoundation/go-u2u/libs/core/rawdb"
-	"github.com/unicornultrafoundation/go-u2u/libs/eth/protocols/snap"
-	"github.com/unicornultrafoundation/go-u2u/libs/ethdb"
-	"github.com/unicornultrafoundation/go-u2u/libs/trie"
+	u2u "github.com/unicornultrafoundation/go-u2u"
+	"github.com/unicornultrafoundation/go-u2u/core/rawdb"
+	"github.com/unicornultrafoundation/go-u2u/eth/protocols/snap"
+	"github.com/unicornultrafoundation/go-u2u/ethdb"
+	"github.com/unicornultrafoundation/go-u2u/trie"
 )
 
 var (
@@ -119,12 +119,12 @@ func (d *Leecher) DeliverSnapPacket(peer *snap.Peer, packet snap.Packet) error {
 // In addition, during the state download phase of fast synchronisation the number
 // of processed and the total number of known states are also returned. Otherwise
 // these are zero.
-func (d *Leecher) Progress() ethereum.SyncProgress {
+func (d *Leecher) Progress() u2u.SyncProgress {
 	// Lock the current stats and return the progress
 	d.syncStatsLock.RLock()
 	defer d.syncStatsLock.RUnlock()
 
-	return ethereum.SyncProgress{
+	return u2u.SyncProgress{
 		PulledStates: d.syncStatsState.processed,
 		KnownStates:  d.syncStatsState.processed + d.syncStatsState.pending,
 	}

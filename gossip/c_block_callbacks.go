@@ -7,11 +7,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/core/types"
-	"github.com/unicornultrafoundation/go-u2u/log"
-	"github.com/unicornultrafoundation/go-u2u/metrics"
-
 	"github.com/unicornultrafoundation/go-hashgraph/hash"
 	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
 	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
@@ -19,10 +14,15 @@ import (
 	utypes "github.com/unicornultrafoundation/go-hashgraph/types"
 	"github.com/unicornultrafoundation/go-hashgraph/utils/workers"
 
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
+	"github.com/unicornultrafoundation/go-u2u/evmcore/txtracer"
 	"github.com/unicornultrafoundation/go-u2u/gossip/blockproc/verwatcher"
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter"
 	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"
+	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/metrics"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
@@ -262,6 +262,14 @@ func consensusCallbackBeginBlockFn(
 					})
 				}
 
+				// Providing default config
+				// In case of trace transaction node, this config is changed
+				evmCfg := u2u.DefaultVMConfig
+				if store.txtracer != nil {
+					evmCfg.Debug = true
+					evmCfg.Tracer = txtracer.NewTraceStructLogger(store.txtracer)
+				}
+
 				evmProcessor := blockProc.EVMModule.Start(blockCtx, statedb, evmStateReader, onNewLogAll, es.Rules, es.Rules.EvmChainConfig(store.GetUpgradeHeights()))
 				executionStart := time.Now()
 
@@ -485,6 +493,13 @@ func (s *Service) ReexecuteBlocks(from, to idx.Block) {
 			log.Crit("Failue to re-execute blocks", "err", err)
 		}
 		es := s.store.GetHistoryEpochState(s.store.FindBlockEpoch(b))
+		// Providing default config
+		// In case of trace transaction node, this config is changed
+		evmCfg := u2u.DefaultVMConfig
+		if s.store.txtracer != nil {
+			evmCfg.Debug = true
+			evmCfg.Tracer = txtracer.NewTraceStructLogger(s.store.txtracer)
+		}
 		evmProcessor := blockProc.EVMModule.Start(blockCtx, statedb, evmStateReader, func(t *types.Log) {}, es.Rules, es.Rules.EvmChainConfig(upgradeHeights))
 		txs := s.store.GetBlockTxs(b, block)
 		evmProcessor.Execute(txs)

@@ -33,11 +33,11 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/ethdb"
 	notify "github.com/unicornultrafoundation/go-u2u/event"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
+	"github.com/unicornultrafoundation/go-u2u/evmcore/txtracer"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 	"github.com/unicornultrafoundation/go-u2u/params"
 	"github.com/unicornultrafoundation/go-u2u/rpc"
-	"github.com/unicornultrafoundation/go-u2u/txtrace"
 )
 
 // PeerProgress is synchronization status of a peer
@@ -82,7 +82,7 @@ type Backend interface {
 	MaxGasLimit() uint64
 
 	// Transaction trace API
-	TxTraceByHash(ctx context.Context, h common.Hash) (*[]txtrace.ActionTrace, error)
+	TxTraceByHash(ctx context.Context, h common.Hash) (*[]txtracer.ActionTrace, error)
 	TxTraceSave(ctx context.Context, h common.Hash, traces []byte) error
 
 	// Transaction pool API

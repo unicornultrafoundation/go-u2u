@@ -41,6 +41,26 @@ var (
 		},
 
 		{
+			Name:   "Mainnet-6321132-Full",
+			Header: mainnetHeader,
+			Hashes: genesis.Hashes{
+				genesisstore.EpochsSection(0): hash.HexToHash("0x7e0a3f77a734819b9d9c48b9c8c8756534b1f081e7eaabded85b4d2f4bf42bfa"),
+				genesisstore.BlocksSection(0): hash.HexToHash("0x580d1417f8be5e605c86354e490cc635b9a2e3b3d2fab37e9ae5cdba6401be41"),
+				genesisstore.EvmSection(0):    hash.HexToHash("0x8df818beac276736e2bebbc650514414da62e222ac23d629fbeb748a5dabcbc8"),
+			},
+		},
+
+		{
+			Name:   "Mainnet-6321132-MPT",
+			Header: mainnetHeader,
+			Hashes: genesis.Hashes{
+				genesisstore.EpochsSection(0): hash.HexToHash("0x7e0a3f77a734819b9d9c48b9c8c8756534b1f081e7eaabded85b4d2f4bf42bfa"),
+				genesisstore.BlocksSection(0): hash.HexToHash("0x580d1417f8be5e605c86354e490cc635b9a2e3b3d2fab37e9ae5cdba6401be41"),
+				genesisstore.EvmSection(0):    hash.HexToHash("0x33799f09da9aedd5afcadb630a76aaa729054bbd829efa4b1fd04dcff11f1cab"),
+			},
+		},
+
+		{
 			Name:   "Testnet",
 			Header: testnetHeader,
 			Hashes: genesis.Hashes{

@@ -125,7 +125,7 @@ func getLastEpochWithState(gdb *gossip.Store, epochsToTry idx.Epoch) (epochIdx i
 		endEpoch = currentEpoch - epochsToTry
 	}
 
-	for epochIdx = currentEpoch - 1; epochIdx > endEpoch; epochIdx-- {
+	for epochIdx = currentEpoch; epochIdx > endEpoch; epochIdx-- {
 		blockState, epochState = gdb.GetHistoryBlockEpochState(epochIdx)
 		if blockState == nil || epochState == nil {
 			log.Debug("Epoch is not available", "epoch", epochIdx)

@@ -1,6 +1,6 @@
 package asyncflushproducer
 
-import "github.com/unicornultrafoundation/go-hashgraph/u2udb"
+import "github.com/unicornultrafoundation/go-helios/u2udb"
 
 type store struct {
 	u2udb.Store

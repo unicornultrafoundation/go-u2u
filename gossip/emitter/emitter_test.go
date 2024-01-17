@@ -8,9 +8,9 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
+	"github.com/unicornultrafoundation/go-helios/hash"
+	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"github.com/unicornultrafoundation/go-helios/native/pos"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"

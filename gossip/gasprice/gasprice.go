@@ -30,8 +30,8 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/params"
 
-	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/utils/piecefunc"
+	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"github.com/unicornultrafoundation/go-helios/utils/piecefunc"
 
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 )

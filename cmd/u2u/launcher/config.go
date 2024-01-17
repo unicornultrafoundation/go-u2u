@@ -13,8 +13,8 @@ import (
 
 	"github.com/naoina/toml"
 	"github.com/syndtr/goleveldb/leveldb/opt"
-	"github.com/unicornultrafoundation/go-hashgraph/consensus"
-	"github.com/unicornultrafoundation/go-hashgraph/utils/cachescale"
+	"github.com/unicornultrafoundation/go-helios/consensus"
+	"github.com/unicornultrafoundation/go-helios/utils/cachescale"
 	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/log"

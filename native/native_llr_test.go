@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/unicornultrafoundation/go-hashgraph/hash"
+	"github.com/unicornultrafoundation/go-helios/hash"
 )
 
 var test_block_votes = LlrBlockVotes{

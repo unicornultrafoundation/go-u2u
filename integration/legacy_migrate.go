@@ -8,11 +8,11 @@ import (
 	"strings"
 
 	"github.com/syndtr/goleveldb/leveldb/opt"
-	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
-	"github.com/unicornultrafoundation/go-hashgraph/u2udb/batched"
-	"github.com/unicornultrafoundation/go-hashgraph/u2udb/pebble"
-	"github.com/unicornultrafoundation/go-hashgraph/u2udb/skipkeys"
-	"github.com/unicornultrafoundation/go-hashgraph/u2udb/table"
+	"github.com/unicornultrafoundation/go-helios/u2udb"
+	"github.com/unicornultrafoundation/go-helios/u2udb/batched"
+	"github.com/unicornultrafoundation/go-helios/u2udb/pebble"
+	"github.com/unicornultrafoundation/go-helios/u2udb/skipkeys"
+	"github.com/unicornultrafoundation/go-helios/u2udb/table"
 
 	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/common"

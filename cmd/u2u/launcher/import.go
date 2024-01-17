@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/status-im/keycard-go/hexutils"
-	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-helios/hash"
+	"github.com/unicornultrafoundation/go-helios/native/idx"
 	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/log"

@@ -4,9 +4,9 @@ import (
 	"errors"
 	"math"
 
-	base "github.com/unicornultrafoundation/go-hashgraph/eventcheck/basiccheck"
-	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	base "github.com/unicornultrafoundation/go-helios/eventcheck/basiccheck"
+	"github.com/unicornultrafoundation/go-helios/hash"
+	"github.com/unicornultrafoundation/go-helios/native/idx"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"

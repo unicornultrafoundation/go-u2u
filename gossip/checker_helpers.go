@@ -3,8 +3,8 @@ package gossip
 import (
 	"sync/atomic"
 
-	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
+	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"github.com/unicornultrafoundation/go-helios/native/pos"
 
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/gaspowercheck"
 	"github.com/unicornultrafoundation/go-u2u/native"

@@ -3,9 +3,9 @@ package emitter
 import (
 	"math/rand"
 
-	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/utils/piecefunc"
+	"github.com/unicornultrafoundation/go-helios/hash"
+	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"github.com/unicornultrafoundation/go-helios/utils/piecefunc"
 
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/basiccheck"
 	"github.com/unicornultrafoundation/go-u2u/native"

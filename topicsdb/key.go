@@ -1,7 +1,7 @@
 package topicsdb
 
 import (
-	"github.com/unicornultrafoundation/go-hashgraph/common/bigendian"
+	"github.com/unicornultrafoundation/go-helios/common/bigendian"
 	"github.com/unicornultrafoundation/go-u2u/common"
 )
 

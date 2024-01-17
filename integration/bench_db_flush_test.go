@@ -5,10 +5,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/unicornultrafoundation/go-hashgraph/consensus"
-	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/utils/cachescale"
+	"github.com/unicornultrafoundation/go-helios/consensus"
+	"github.com/unicornultrafoundation/go-helios/hash"
+	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"github.com/unicornultrafoundation/go-helios/utils/cachescale"
 	"github.com/unicornultrafoundation/go-u2u/common"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip"

@@ -1,10 +1,10 @@
 package vecmt
 
 import (
-	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
-	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/vecengine"
-	"github.com/unicornultrafoundation/go-hashgraph/vecfc"
+	"github.com/unicornultrafoundation/go-helios/native/dag"
+	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"github.com/unicornultrafoundation/go-helios/vecengine"
+	"github.com/unicornultrafoundation/go-helios/vecfc"
 
 	"github.com/unicornultrafoundation/go-u2u/native"
 )

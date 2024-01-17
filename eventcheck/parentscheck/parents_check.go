@@ -3,7 +3,7 @@ package parentscheck
 import (
 	"errors"
 
-	base "github.com/unicornultrafoundation/go-hashgraph/eventcheck/parentscheck"
+	base "github.com/unicornultrafoundation/go-helios/eventcheck/parentscheck"
 
 	"github.com/unicornultrafoundation/go-u2u/native"
 )

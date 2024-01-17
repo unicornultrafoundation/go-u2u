@@ -1,8 +1,8 @@
 package epstreamseeder
 
 import (
-	"github.com/unicornultrafoundation/go-hashgraph/gossip/basestream/basestreamseeder"
-	"github.com/unicornultrafoundation/go-hashgraph/utils/cachescale"
+	"github.com/unicornultrafoundation/go-helios/gossip/basestream/basestreamseeder"
+	"github.com/unicornultrafoundation/go-helios/utils/cachescale"
 )
 
 type Config basestreamseeder.Config

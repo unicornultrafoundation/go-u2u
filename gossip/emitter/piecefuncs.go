@@ -1,9 +1,9 @@
 package emitter
 
 import (
-	"github.com/unicornultrafoundation/go-hashgraph/emitter/ancestor"
-	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/utils/piecefunc"
+	"github.com/unicornultrafoundation/go-helios/emitter/ancestor"
+	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"github.com/unicornultrafoundation/go-helios/utils/piecefunc"
 )
 
 var (

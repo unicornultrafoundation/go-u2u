@@ -3,11 +3,11 @@ package epstreamseeder
 import (
 	"errors"
 
-	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-helios/native/idx"
 	"github.com/unicornultrafoundation/go-u2u/rlp"
 
-	"github.com/unicornultrafoundation/go-hashgraph/gossip/basestream"
-	"github.com/unicornultrafoundation/go-hashgraph/gossip/basestream/basestreamseeder"
+	"github.com/unicornultrafoundation/go-helios/gossip/basestream"
+	"github.com/unicornultrafoundation/go-helios/gossip/basestream/basestreamseeder"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/epochpacks/epstream"
 )

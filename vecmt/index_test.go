@@ -3,11 +3,11 @@ package vecmt
 import (
 	"testing"
 
-	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
-	"github.com/unicornultrafoundation/go-hashgraph/native/dag/tdag"
-	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
-	"github.com/unicornultrafoundation/go-hashgraph/u2udb/memorydb"
+	"github.com/unicornultrafoundation/go-helios/hash"
+	"github.com/unicornultrafoundation/go-helios/native/dag"
+	"github.com/unicornultrafoundation/go-helios/native/dag/tdag"
+	"github.com/unicornultrafoundation/go-helios/native/pos"
+	"github.com/unicornultrafoundation/go-helios/u2udb/memorydb"
 
 	"github.com/unicornultrafoundation/go-u2u/native"
 )

@@ -1,7 +1,7 @@
 package parentlesscheck
 
 import (
-	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
+	"github.com/unicornultrafoundation/go-helios/native/dag"
 )
 
 type Checker struct {

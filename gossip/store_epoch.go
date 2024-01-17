@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
-	"github.com/unicornultrafoundation/go-hashgraph/u2udb/skiperrors"
-	"github.com/unicornultrafoundation/go-hashgraph/u2udb/table"
+	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"github.com/unicornultrafoundation/go-helios/u2udb"
+	"github.com/unicornultrafoundation/go-helios/u2udb/skiperrors"
+	"github.com/unicornultrafoundation/go-helios/u2udb/table"
 
 	"github.com/unicornultrafoundation/go-u2u/logger"
 )

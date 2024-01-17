@@ -1,12 +1,12 @@
 package gossip
 
 import (
-	"github.com/unicornultrafoundation/go-hashgraph/common/bigendian"
-	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
-	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
-	"github.com/unicornultrafoundation/go-hashgraph/utils/simplewlru"
+	"github.com/unicornultrafoundation/go-helios/common/bigendian"
+	"github.com/unicornultrafoundation/go-helios/hash"
+	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"github.com/unicornultrafoundation/go-helios/native/pos"
+	"github.com/unicornultrafoundation/go-helios/u2udb"
+	"github.com/unicornultrafoundation/go-helios/utils/simplewlru"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/rlp"
 

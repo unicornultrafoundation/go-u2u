@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/unicornultrafoundation/go-hashgraph/u2udb/memorydb"
+	"github.com/unicornultrafoundation/go-helios/u2udb/memorydb"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 )
 

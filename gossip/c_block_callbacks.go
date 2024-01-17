@@ -7,12 +7,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
-	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
-	utypes "github.com/unicornultrafoundation/go-hashgraph/types"
-	"github.com/unicornultrafoundation/go-hashgraph/utils/workers"
+	"github.com/unicornultrafoundation/go-helios/hash"
+	"github.com/unicornultrafoundation/go-helios/native/dag"
+	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"github.com/unicornultrafoundation/go-helios/native/pos"
+	utypes "github.com/unicornultrafoundation/go-helios/types"
+	"github.com/unicornultrafoundation/go-helios/utils/workers"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"

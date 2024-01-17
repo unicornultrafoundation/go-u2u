@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/unicornultrafoundation/go-helios/hash"
+	"github.com/unicornultrafoundation/go-helios/u2udb"
 	"github.com/unicornultrafoundation/go-u2u/common"
 
 	"github.com/unicornultrafoundation/go-u2u/native"

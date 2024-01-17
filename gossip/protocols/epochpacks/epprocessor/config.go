@@ -5,8 +5,8 @@ import (
 
 	"github.com/syndtr/goleveldb/leveldb/opt"
 
-	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
-	"github.com/unicornultrafoundation/go-hashgraph/utils/cachescale"
+	"github.com/unicornultrafoundation/go-helios/native/dag"
+	"github.com/unicornultrafoundation/go-helios/utils/cachescale"
 )
 
 type Config struct {

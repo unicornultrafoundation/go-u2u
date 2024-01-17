@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/status-im/keycard-go/hexutils"
-	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/unicornultrafoundation/go-helios/u2udb"
 	"github.com/unicornultrafoundation/go-u2u/log"
 )
 

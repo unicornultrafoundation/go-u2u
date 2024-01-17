@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
+	"github.com/unicornultrafoundation/go-helios/native/idx"
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/accounts"

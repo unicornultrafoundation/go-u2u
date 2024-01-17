@@ -2,17 +2,17 @@ package vecmt
 
 import (
 	"github.com/syndtr/goleveldb/leveldb/opt"
-	"github.com/unicornultrafoundation/go-hashgraph/vecengine/vecflushable"
-	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
-	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
-	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
-	"github.com/unicornultrafoundation/go-hashgraph/u2udb/table"
-	"github.com/unicornultrafoundation/go-hashgraph/utils/cachescale"
-	"github.com/unicornultrafoundation/go-hashgraph/utils/wlru"
-	"github.com/unicornultrafoundation/go-hashgraph/vecengine"
-	"github.com/unicornultrafoundation/go-hashgraph/vecfc"
+	"github.com/unicornultrafoundation/go-helios/hash"
+	"github.com/unicornultrafoundation/go-helios/native/dag"
+	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"github.com/unicornultrafoundation/go-helios/native/pos"
+	"github.com/unicornultrafoundation/go-helios/u2udb"
+	"github.com/unicornultrafoundation/go-helios/u2udb/table"
+	"github.com/unicornultrafoundation/go-helios/utils/cachescale"
+	"github.com/unicornultrafoundation/go-helios/utils/wlru"
+	"github.com/unicornultrafoundation/go-helios/vecengine"
+	"github.com/unicornultrafoundation/go-helios/vecengine/vecflushable"
+	"github.com/unicornultrafoundation/go-helios/vecfc"
 )
 
 // IndexCacheConfig - config for cache sizes of Engine

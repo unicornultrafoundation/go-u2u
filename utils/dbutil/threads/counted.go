@@ -1,7 +1,7 @@
 package threads
 
 import (
-	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/unicornultrafoundation/go-helios/u2udb"
 
 	"github.com/unicornultrafoundation/go-u2u/logger"
 )

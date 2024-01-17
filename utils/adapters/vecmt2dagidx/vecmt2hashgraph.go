@@ -1,11 +1,11 @@
 package vecmt2dagidx
 
 import (
-	"github.com/unicornultrafoundation/go-hashgraph/consensus"
-	"github.com/unicornultrafoundation/go-hashgraph/consensus/dagidx"
-	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/vecfc"
+	"github.com/unicornultrafoundation/go-helios/consensus"
+	"github.com/unicornultrafoundation/go-helios/consensus/dagidx"
+	"github.com/unicornultrafoundation/go-helios/hash"
+	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"github.com/unicornultrafoundation/go-helios/vecfc"
 
 	"github.com/unicornultrafoundation/go-u2u/vecmt"
 )

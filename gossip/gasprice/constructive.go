@@ -3,7 +3,7 @@ package gasprice
 import (
 	"math/big"
 
-	"github.com/unicornultrafoundation/go-hashgraph/utils/piecefunc"
+	"github.com/unicornultrafoundation/go-helios/utils/piecefunc"
 )
 
 func (gpo *Oracle) maxTotalGasPower() *big.Int {

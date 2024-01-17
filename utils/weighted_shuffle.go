@@ -3,9 +3,9 @@ package utils
 import (
 	"crypto/sha256"
 
-	"github.com/unicornultrafoundation/go-hashgraph/common/littleendian"
-	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
+	"github.com/unicornultrafoundation/go-helios/common/littleendian"
+	"github.com/unicornultrafoundation/go-helios/hash"
+	"github.com/unicornultrafoundation/go-helios/native/pos"
 )
 
 type weightedShuffleNode struct {

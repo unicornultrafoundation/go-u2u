@@ -1,7 +1,7 @@
 package heavycheck
 
 import (
-	"github.com/unicornultrafoundation/go-hashgraph/native/dag"
+	"github.com/unicornultrafoundation/go-helios/native/dag"
 
 	"github.com/unicornultrafoundation/go-u2u/native"
 )

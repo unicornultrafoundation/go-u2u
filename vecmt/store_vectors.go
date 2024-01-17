@@ -1,8 +1,8 @@
 package vecmt
 
 import (
-	"github.com/unicornultrafoundation/go-hashgraph/hash"
-	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
+	"github.com/unicornultrafoundation/go-helios/hash"
+	"github.com/unicornultrafoundation/go-helios/u2udb"
 )
 
 func (vi *Index) getBytes(table u2udb.Store, id hash.Event) []byte {

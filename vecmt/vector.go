@@ -3,8 +3,8 @@ package vecmt
 import (
 	"encoding/binary"
 
-	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/vecfc"
+	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"github.com/unicornultrafoundation/go-helios/vecfc"
 
 	"github.com/unicornultrafoundation/go-u2u/native"
 )

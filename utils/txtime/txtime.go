@@ -5,7 +5,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 
-	"github.com/unicornultrafoundation/go-hashgraph/utils/wlru"
+	"github.com/unicornultrafoundation/go-helios/utils/wlru"
 )
 
 var (

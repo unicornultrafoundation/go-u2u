@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/unicornultrafoundation/go-hashgraph/emitter/doublesign"
-	"github.com/unicornultrafoundation/go-hashgraph/hash"
+	"github.com/unicornultrafoundation/go-helios/emitter/doublesign"
+	"github.com/unicornultrafoundation/go-helios/hash"
 
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/utils/errlock"

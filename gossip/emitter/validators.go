@@ -2,9 +2,10 @@ package emitter
 
 import (
 	"time"
-	"github.com/unicornultrafoundation/go-hashgraph/native/idx"
-	"github.com/unicornultrafoundation/go-hashgraph/native/pos"
-	"github.com/unicornultrafoundation/go-hashgraph/utils/piecefunc"
+
+	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"github.com/unicornultrafoundation/go-helios/native/pos"
+	"github.com/unicornultrafoundation/go-helios/utils/piecefunc"
 )
 
 const (

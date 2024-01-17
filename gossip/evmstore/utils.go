@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/unicornultrafoundation/go-hashgraph/u2udb"
-	"github.com/unicornultrafoundation/go-hashgraph/u2udb/table"
-	"github.com/unicornultrafoundation/go-hashgraph/utils/simplewlru"
+	"github.com/unicornultrafoundation/go-helios/u2udb"
+	"github.com/unicornultrafoundation/go-helios/u2udb/table"
+	"github.com/unicornultrafoundation/go-helios/utils/simplewlru"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/rawdb"
 	"github.com/unicornultrafoundation/go-u2u/core/state"

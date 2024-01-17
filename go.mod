@@ -44,6 +44,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/mattn/go-ieproxy v0.0.1 // indirect
+	github.com/unicornultrafoundation/go-helios v0.0.0-20240117032343-43d91eb58369 // indirect
 )
 
 require (

@@ -32,7 +32,7 @@ require (
 	github.com/tyler-smith/go-bip39 v1.1.0
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/uber/jaeger-lib v2.4.1+incompatible
-	github.com/unicornultrafoundation/go-hashgraph v0.0.0-20240112082643-1766efa1c9d6
+	github.com/unicornultrafoundation/go-helios v0.0.0-20240117032343-43d91eb58369
 	golang.org/x/crypto v0.6.0
 	golang.org/x/sys v0.7.0
 	gopkg.in/urfave/cli.v1 v1.20.0
@@ -44,7 +44,6 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/mattn/go-ieproxy v0.0.1 // indirect
-	github.com/unicornultrafoundation/go-helios v0.0.0-20240117032343-43d91eb58369 // indirect
 )
 
 require (

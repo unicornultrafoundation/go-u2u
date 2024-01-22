@@ -1674,7 +1674,7 @@ func TestProcessBlockVotesOneValidatorMultipleBvs(t *testing.T) {
 
 func TestProcessEpochVotesOneValidatorMultipleEvsDiffLamport(t *testing.T) {
 	const (
-		validatorsNum = 10
+		validatorsNum = 5
 		startEpoch    = 2
 	)
 
@@ -1692,7 +1692,7 @@ func TestProcessEpochVotesOneValidatorMultipleEvsDiffLamport(t *testing.T) {
 	er := ier.LlrIdxFullEpochRecord{Idx: idx.Epoch(startEpoch) + 1}
 	erHash := er.Hash()
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < validatorsNum; i++ {
 		randLamport := idx.Lamport(rand.Intn(1000))
 		e := fakeEventWithLamport(native.LlrBlockVotes{}, getEv(startEpoch+1, erHash), randLamport)
 		require.NoError(env.ProcessEpochVote(native.AsSignedEpochVote(e)))

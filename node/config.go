@@ -188,9 +188,8 @@ type Config struct {
 	// Logger is a custom logger to use with the p2p.Server.
 	Logger log.Logger `toml:",omitempty"`
 
-	staticNodesWarning     bool
-	trustedNodesWarning    bool
-	oldGethResourceWarning bool
+	staticNodesWarning  bool
+	trustedNodesWarning bool
 
 	// AllowUnprotectedTxs allows non EIP-155 protected transactions to be send over RPC.
 	AllowUnprotectedTxs bool `toml:",omitempty"`
@@ -306,15 +305,6 @@ func (c *Config) name() string {
 	return c.Name
 }
 
-// These resources are resolved differently for "geth" instances.
-var isOldGethResource = map[string]bool{
-	"chaindata":          true,
-	"nodes":              true,
-	"nodekey":            true,
-	"static-nodes.json":  false, // no warning for these because they have their
-	"trusted-nodes.json": false, // own separate warning.
-}
-
 // ResolvePath resolves path in the instance directory.
 func (c *Config) ResolvePath(path string) string {
 	if filepath.IsAbs(path) {
@@ -322,20 +312,6 @@ func (c *Config) ResolvePath(path string) string {
 	}
 	if c.DataDir == "" {
 		return ""
-	}
-	// Backwards-compatibility: ensure that data directory files created
-	// by geth 1.4 are used if they exist.
-	if warn, isOld := isOldGethResource[path]; isOld {
-		oldpath := ""
-		if c.name() == "geth" {
-			oldpath = filepath.Join(c.DataDir, path)
-		}
-		if oldpath != "" && common.FileExist(oldpath) {
-			if warn {
-				c.warnOnce(&c.oldGethResourceWarning, "Using deprecated resource file %s, please move this file to the 'geth' subdirectory of datadir.", oldpath)
-			}
-			return oldpath
-		}
 	}
 	return filepath.Join(c.instanceDir(), path)
 }

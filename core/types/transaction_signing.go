@@ -232,13 +232,11 @@ func (s eip712Signer) Hash(tx *Transaction) common.Hash {
 		[]interface{}{
 			s.chainId,
 			tx.Nonce(),
-			tx.GasTipCap(),
-			tx.GasFeeCap(),
+			tx.GasPrice(),
 			tx.Gas(),
 			tx.To(),
 			tx.Value(),
 			tx.Data(),
-			tx.AccessList(),
 			tx.PaymasterParams(),
 		})
 }

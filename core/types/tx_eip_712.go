@@ -14,12 +14,12 @@ type PaymasterParams struct {
 // EIP712Tx is the transaction data of regular Ethereum transactions.
 type EIP712Tx struct {
 	ChainID         *big.Int
-	Nonce           uint64          // nonce of sender account
-	GasPrice        *big.Int        // wei per gas
-	Gas             uint64          // gas limit
+	Nonce           uint64
+	GasPrice        *big.Int
+	Gas             uint64
 	To              *common.Address `rlp:"nil"` // nil means contract creation
-	Value           *big.Int        // wei amount
-	Data            []byte          // contract invocation input data
+	Value           *big.Int
+	Data            []byte
 	PaymasterParams *PaymasterParams
 	V, R, S         *big.Int // signature values
 }
@@ -27,12 +27,14 @@ type EIP712Tx struct {
 // copy creates a deep copy of the transaction data and initializes all fields.
 func (tx *EIP712Tx) copy() TxData {
 	cpy := &EIP712Tx{
-		Nonce: tx.Nonce,
-		To:    tx.To, // TODO: copy pointed-to address
-		Data:  common.CopyBytes(tx.Data),
-		Gas:   tx.Gas,
+		Nonce:           tx.Nonce,
+		To:              tx.To, // TODO: copy pointed-to address
+		Data:            common.CopyBytes(tx.Data),
+		Gas:             tx.Gas,
+		PaymasterParams: tx.PaymasterParams,
 		// These are initialized below.
 		Value:    new(big.Int),
+		ChainID:  new(big.Int),
 		GasPrice: new(big.Int),
 		V:        new(big.Int),
 		R:        new(big.Int),
@@ -40,6 +42,9 @@ func (tx *EIP712Tx) copy() TxData {
 	}
 	if tx.Value != nil {
 		cpy.Value.Set(tx.Value)
+	}
+	if tx.ChainID != nil {
+		cpy.ChainID.Set(tx.ChainID)
 	}
 	if tx.GasPrice != nil {
 		cpy.GasPrice.Set(tx.GasPrice)

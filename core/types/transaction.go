@@ -45,6 +45,7 @@ const (
 	LegacyTxType = iota
 	AccessListTxType
 	DynamicFeeTxType
+	EIP712TxType = 0x71
 )
 
 // Transaction is an Ethereum transaction.
@@ -82,6 +83,7 @@ type TxData interface {
 	value() *big.Int
 	nonce() uint64
 	to() *common.Address
+	paymasterParams() *PaymasterParams
 
 	rawSignatureValues() (v, r, s *big.Int)
 	setSignatureValues(chainID, v, r, s *big.Int)
@@ -298,6 +300,10 @@ func (tx *Transaction) Cost() *big.Int {
 	total := new(big.Int).Mul(tx.GasPrice(), new(big.Int).SetUint64(tx.Gas()))
 	total.Add(total, tx.Value())
 	return total
+}
+
+func (tx *Transaction) PaymasterParams() *PaymasterParams {
+	return tx.inner.paymasterParams()
 }
 
 // RawSignatureValues returns the V, R, S signature values of the transaction.

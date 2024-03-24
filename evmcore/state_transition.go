@@ -51,15 +51,16 @@ The state transitioning model does all the necessary work to work out a valid ne
 6) Derive new state root
 */
 type StateTransition struct {
-	gp         *GasPool
-	msg        Message
-	gas        uint64
-	gasPrice   *big.Int
-	initialGas uint64
-	value      *big.Int
-	data       []byte
-	state      vm.StateDB
-	evm        *vm.EVM
+	gp              *GasPool
+	msg             Message
+	gas             uint64
+	gasPrice        *big.Int
+	initialGas      uint64
+	value           *big.Int
+	data            []byte
+	state           vm.StateDB
+	evm             *vm.EVM
+	paymasterParams *types.PaymasterParams
 }
 
 // Message represents a message sent to a contract.
@@ -77,6 +78,7 @@ type Message interface {
 	IsFake() bool
 	Data() []byte
 	AccessList() types.AccessList
+	PaymasterParams() *types.PaymasterParams
 }
 
 // ExecutionResult includes all output after executing given evm
@@ -154,13 +156,14 @@ func IntrinsicGas(data []byte, accessList types.AccessList, isContractCreation b
 // NewStateTransition initialises and returns a new state transition object.
 func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition {
 	return &StateTransition{
-		gp:       gp,
-		evm:      evm,
-		msg:      msg,
-		gasPrice: msg.GasPrice(),
-		value:    msg.Value(),
-		data:     msg.Data(),
-		state:    evm.StateDB,
+		gp:              gp,
+		evm:             evm,
+		msg:             msg,
+		gasPrice:        msg.GasPrice(),
+		value:           msg.Value(),
+		data:            msg.Data(),
+		state:           evm.StateDB,
+		paymasterParams: msg.PaymasterParams(),
 	}
 }
 

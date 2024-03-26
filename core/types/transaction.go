@@ -606,7 +606,8 @@ type Message struct {
 	paymasterParams *PaymasterParams
 }
 
-func NewMessage(from common.Address, to *common.Address, nonce uint64, amount *big.Int, gasLimit uint64, gasPrice, gasFeeCap, gasTipCap *big.Int, data []byte, accessList AccessList, isFake bool, paymasterParams *PaymasterParams) Message {
+func NewMessage(from common.Address, to *common.Address, nonce uint64, amount *big.Int, gasLimit uint64, gasPrice, gasFeeCap,
+	gasTipCap *big.Int, data []byte, accessList AccessList, isFake bool, paymasterParams *PaymasterParams) Message {
 	return Message{
 		from:            from,
 		to:              to,

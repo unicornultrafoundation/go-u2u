@@ -226,6 +226,11 @@ func (st *StateTransition) preCheck() error {
 		}
 	}
 	// Note: U2U doesn't need to check gasFeeCap >= BaseFee, because it's already checked by epochcheck
+	if st.paymasterParams != nil {
+		msg := craftValidateAndPayForPaymasterTransactionMsg(st.msg)
+		// TODO(b1m0n): remember to add correct gas after previous operations
+		ret, err := ApplyMessage(st.evm, msg, new(GasPool).AddGas(msg.Gas()))
+	}
 	return st.buyGas()
 }
 

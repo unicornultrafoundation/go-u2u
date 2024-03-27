@@ -1,66 +1,63 @@
 package evmcore
 
 import (
-	"math/big"
-
-	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 )
 
-func craftValidateAndPayForPaymasterTransaction(originalMsg Message, paymasterParams *types.PaymasterParams) types.Message {
+func craftValidateAndPayForPaymasterTransaction(st *StateTransition) ([4]byte, []byte, error) {
+	// Pack msg payload and apply
 	payload, err := IPaymasterABI.Pack("validateAndPayForPaymasterTransaction")
 	if err != nil {
-		return err
+		return [4]byte{}, nil, err
 	}
 	if err != nil {
-		return nil, err
+		return [4]byte{}, nil, err
 	}
-	if len(res) == 0 {
-		return nil, nil
+	res := ConstructAndApplySmcCallMsg(st, payload)
+	if len(res.ReturnData) == 0 {
+		return [4]byte{}, nil, nil
 	}
+	// Unpack call result
+	result := new(struct {
+		magic   [4]byte
+		context []byte
+	})
+	if err := IPaymasterABI.UnpackIntoInterface(result, "mint", res.ReturnData); err != nil {
+		return [4]byte{}, nil, err
+	}
+	return result.magic, result.context, nil
+}
 
-	return types.NewMessage(
-		originalMsg.From(),
-		originalMsg.To(),
-		originalMsg.Nonce(),
-		originalMsg.Value(),
-		originalMsg.Gas(),
-		originalMsg.GasPrice(),
-		originalMsg.GasFeeCap(),
-		originalMsg.GasTipCap(),
-		originalMsg.Data(),
-		originalMsg.AccessList(),
+func ConstructAndApplySmcCallMsg(st *StateTransition, payload []byte) *ExecutionResult {
+	// Apply this fake message just to get the function output
+	msg := types.NewMessage(
+		st.msg.From(),
+		st.msg.To(),
+		0,
+		st.msg.Value(),
+		st.msg.Gas(),
+		st.msg.GasPrice(),
+		st.msg.GasFeeCap(),
+		st.msg.GasTipCap(),
+		payload,
+		nil,
 		true,
 		nil,
 	)
+	return Apply(st, msg)
 }
 
-func ConstructAndApplySmcCallMsg(statedb *state.StateDB, header *types.Header, bc vm.ChainContext, cfg vm.Config, payload []byte) ([]byte, error) {
-	msg := types.NewMessage(
-		s.ContractAddress,
-		&s.ContractAddress,
-		0,
-		big.NewInt(0),
-		100000000,
-		big.NewInt(0),
-		payload,
-		false,
+func Apply(st *StateTransition, msg types.Message) *ExecutionResult {
+	sender := vm.AccountRef(msg.From())
+	var (
+		ret   []byte
+		vmerr error // vm errors do not effect consensus and are therefore not assigned to err
 	)
-	return Apply(s.logger, bc, statedb, header, cfg, msg)
-}
-
-// Apply ...
-func Apply(logger log.Logger, bc vm.ChainContext, statedb *state.StateDB, header *types.Header, cfg kvm.Config, msg types.Message) ([]byte, error) {
-	// Create a new context to be used in the KVM environment
-	context := vm.NewKVMContext(msg, header, bc)
-	vmenv := kvm.NewKVM(context, kvm.TxContext{}, statedb, configs.MainnetChainConfig, cfg)
-	sender := kvm.AccountRef(msg.From())
-	ret, _, vmerr := vmenv.Call(sender, *msg.To(), msg.Data(), msg.Gas(), msg.Value())
-	if vmerr != nil {
-		return nil, vmerr
+	ret, st.gas, vmerr = st.evm.Call(sender, *msg.To(), msg.Data(), msg.Gas(), msg.Value())
+	return &ExecutionResult{
+		UsedGas:    st.gasUsed(),
+		Err:        vmerr,
+		ReturnData: ret,
 	}
-	// Update the state with pending changes
-	statedb.Finalise(true)
-	return ret, nil
 }

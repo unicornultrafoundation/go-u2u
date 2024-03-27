@@ -35,6 +35,9 @@ import (
 var (
 	emptyCodeHash              = crypto.Keccak256Hash(nil)
 	IPaymasterABI, IAccountABI abi.ABI
+	magic                      [4]byte
+	context                    []byte
+	paymasterSuccessMagic      [4]byte
 )
 
 func init() {
@@ -47,6 +50,8 @@ func init() {
 	if err != nil {
 		panic(fmt.Sprintf("Error reading IAccount ABI: %v", err))
 	}
+	// Mark the paymasterSuccessMagic as the selector of ValidateAndPayForPaymasterTransaction function for later use
+	copy(IPaymasterABI.Methods["ValidateAndPayForPaymasterTransaction"].ID[:4], paymasterSuccessMagic[:])
 }
 
 /*
@@ -208,11 +213,12 @@ func (st *StateTransition) to() common.Address {
 	return *st.msg.To()
 }
 
-func (st *StateTransition) buyGas() error {
+// buyGas subtract the balance of from address for gas
+func (st *StateTransition) buyGas(from common.Address) error {
 	mgval := new(big.Int).SetUint64(st.msg.Gas())
 	mgval = mgval.Mul(mgval, st.gasPrice)
 	// Note: U2U doesn't need to check against gasFeeCap instead of gasPrice, as it's too aggressive in the asynchronous environment
-	if have, want := st.state.GetBalance(st.msg.From()), mgval; have.Cmp(want) < 0 {
+	if have, want := st.state.GetBalance(from), mgval; have.Cmp(want) < 0 {
 		return fmt.Errorf("%w: address %v have %v want %v", ErrInsufficientFunds, st.msg.From().Hex(), have, want)
 	}
 	if err := st.gp.SubGas(st.msg.Gas()); err != nil {
@@ -221,7 +227,7 @@ func (st *StateTransition) buyGas() error {
 	st.gas += st.msg.Gas()
 
 	st.initialGas = st.msg.Gas()
-	st.state.SubBalance(st.msg.From(), mgval)
+	st.state.SubBalance(from, mgval)
 	return nil
 }
 
@@ -244,12 +250,22 @@ func (st *StateTransition) preCheck() error {
 		}
 	}
 	// Note: U2U doesn't need to check gasFeeCap >= BaseFee, because it's already checked by epochcheck
+
+	// Verify if this transaction is eligible for gas sponsoring by calling
+	// ValidateAndPayForPaymasterTransaction function of the dedicated paymaster
 	if st.paymasterParams != nil {
-		msg := craftValidateAndPayForPaymasterTransaction(st.msg, st.paymasterParams)
 		// TODO(b1m0n): remember to add correct gas after previous operations
-		ret, err := ApplyMessage(st.evm, msg, new(GasPool).AddGas(msg.Gas()))
+		var err error
+		magic, context, err = craftValidateAndPayForPaymasterTransaction(st)
+		if err != nil {
+			return err
+		}
+		// This transaction is eligible for gas sponsoring, take
+		if magic == paymasterSuccessMagic {
+			return st.buyGas(*st.paymasterParams.Paymaster)
+		}
 	}
-	return st.buyGas()
+	return st.buyGas(st.msg.From())
 }
 
 func (st *StateTransition) internal() bool {

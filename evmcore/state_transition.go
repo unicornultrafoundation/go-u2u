@@ -20,16 +20,34 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"strings"
 
+	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/params"
+	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/eip712"
 )
 
-var emptyCodeHash = crypto.Keccak256Hash(nil)
+var (
+	emptyCodeHash              = crypto.Keccak256Hash(nil)
+	IPaymasterABI, IAccountABI abi.ABI
+)
+
+func init() {
+	var err error
+	IPaymasterABI, err = abi.JSON(strings.NewReader(eip712.IPaymasterMetaData.ABI))
+	if err != nil {
+		panic(fmt.Sprintf("Error reading IPaymaster ABI: %v", err))
+	}
+	IAccountABI, err = abi.JSON(strings.NewReader(eip712.IAccountMetaData.ABI))
+	if err != nil {
+		panic(fmt.Sprintf("Error reading IAccount ABI: %v", err))
+	}
+}
 
 /*
 The State Transitioning Model
@@ -227,7 +245,7 @@ func (st *StateTransition) preCheck() error {
 	}
 	// Note: U2U doesn't need to check gasFeeCap >= BaseFee, because it's already checked by epochcheck
 	if st.paymasterParams != nil {
-		msg := craftValidateAndPayForPaymasterTransactionMsg(st.msg)
+		msg := craftValidateAndPayForPaymasterTransaction(st.msg, st.paymasterParams)
 		// TODO(b1m0n): remember to add correct gas after previous operations
 		ret, err := ApplyMessage(st.evm, msg, new(GasPool).AddGas(msg.Gas()))
 	}

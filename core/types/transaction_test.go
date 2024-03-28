@@ -214,6 +214,82 @@ func TestEIP2718TransactionEncode(t *testing.T) {
 	}
 }
 
+// This test checks signature operations on EIP-712 transactions.
+func TestEIP712Signer(t *testing.T) {
+	var (
+		key, _  = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
+		keyAddr = crypto.PubkeyToAddress(key.PublicKey)
+		signer1 = NewEIP712Signer(big.NewInt(1))
+		signer2 = NewEIP712Signer(big.NewInt(2))
+		tx0     = NewTx(&EIP712Tx{Nonce: 1})
+		tx1     = NewTx(&EIP712Tx{ChainID: big.NewInt(1), Nonce: 1})
+		tx2, _  = SignNewTx(key, signer2, &EIP712Tx{ChainID: big.NewInt(2), Nonce: 1})
+	)
+
+	tests := []struct {
+		tx             *Transaction
+		signer         Signer
+		wantSignerHash common.Hash
+		wantSenderErr  error
+		wantSignErr    error
+		wantHash       common.Hash // after signing
+	}{
+		{
+			tx:             tx0,
+			signer:         signer1,
+			wantSignerHash: common.HexToHash("9cc5f1081ee971da40190c41227761eca3239508f8bad66715e5e6ec68ce9eba"),
+			wantSenderErr:  ErrInvalidChainId,
+			wantHash:       common.HexToHash("b869e500d35460779e3c74ba95e9d7eb9fce55cc76f79bdca51d92f2747973e9"),
+		},
+		{
+			tx:             tx1,
+			signer:         signer1,
+			wantSenderErr:  ErrInvalidSig,
+			wantSignerHash: common.HexToHash("9cc5f1081ee971da40190c41227761eca3239508f8bad66715e5e6ec68ce9eba"),
+			wantHash:       common.HexToHash("ede7e2ff83364bb6ee50b9366d451e013dd0677cb30698667645c191cb5377ed"),
+		},
+		{
+			// This checks what happens when trying to sign an unsigned tx for the wrong chain.
+			tx:             tx1,
+			signer:         signer2,
+			wantSenderErr:  ErrInvalidChainId,
+			wantSignerHash: common.HexToHash("1af9c278f2e53000e52de34c8c0efa78de65f1851506e39ca472f472804feee3"),
+			wantSignErr:    ErrInvalidChainId,
+		},
+		{
+			// This checks what happens when trying to re-sign a signed tx for the wrong chain.
+			tx:             tx2,
+			signer:         signer1,
+			wantSenderErr:  ErrInvalidChainId,
+			wantSignerHash: common.HexToHash("9cc5f1081ee971da40190c41227761eca3239508f8bad66715e5e6ec68ce9eba"),
+			wantSignErr:    ErrInvalidChainId,
+		},
+	}
+
+	for i, test := range tests {
+		sigHash := test.signer.Hash(test.tx)
+		if sigHash != test.wantSignerHash {
+			t.Errorf("test %d: wrong sig hash: got %x, want %x", i, sigHash, test.wantSignerHash)
+		}
+		sender, err := Sender(test.signer, test.tx)
+		if err != test.wantSenderErr {
+			t.Errorf("test %d: wrong Sender error %q", i, err)
+		}
+		if err == nil && sender != keyAddr {
+			t.Errorf("test %d: wrong sender address %x", i, sender)
+		}
+		signedTx, err := SignTx(test.tx, test.signer, key)
+		if err != test.wantSignErr {
+			t.Fatalf("test %d: wrong SignTx error %q", i, err)
+		}
+		if signedTx != nil {
+			if signedTx.Hash() != test.wantHash {
+				t.Errorf("test %d: wrong tx hash after signing: got %x, want %x", i, signedTx.Hash(), test.wantHash)
+			}
+		}
+	}
+}
+
 func decodeTx(data []byte) (*Transaction, error) {
 	var tx Transaction
 	t, err := &tx, rlp.Decode(bytes.NewReader(data), &tx)

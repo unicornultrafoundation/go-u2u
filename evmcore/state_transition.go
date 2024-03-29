@@ -51,7 +51,7 @@ func init() {
 		panic(fmt.Sprintf("Error reading IAccount ABI: %v", err))
 	}
 	// Mark the paymasterSuccessMagic as the selector of ValidateAndPayForPaymasterTransaction function for later use
-	copy(IPaymasterABI.Methods["ValidateAndPayForPaymasterTransaction"].ID[:4], paymasterSuccessMagic[:])
+	copy(IPaymasterABI.Methods["validateAndPayForPaymasterTransaction"].ID, paymasterSuccessMagic[:])
 }
 
 /*

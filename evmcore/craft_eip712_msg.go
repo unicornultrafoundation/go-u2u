@@ -1,20 +1,67 @@
 package evmcore
 
 import (
+	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/eip712"
+	"math/big"
 )
 
 func craftValidateAndPayForPaymasterTransaction(st *StateTransition) ([4]byte, []byte, error) {
 	// Pack msg payload and apply
-	payload, err := IPaymasterABI.Pack("validateAndPayForPaymasterTransaction")
+	tx := &eip712.Transaction{
+		TxType:                 big.NewInt(types.EIP712TxType),
+		From:                   new(big.Int).SetBytes(st.msg.From().Bytes()),
+		To:                     new(big.Int).SetBytes(st.msg.To().Bytes()),
+		GasLimit:               new(big.Int).SetUint64(st.msg.Gas()),
+		GasPerPubdataByteLimit: big.NewInt(0),
+		MaxFeePerGas:           st.msg.GasFeeCap(),
+		MaxPriorityFeePerGas:   st.msg.GasTipCap(),
+		Nonce:                  new(big.Int).SetUint64(st.msg.Nonce()),
+		Value:                  st.msg.Value(),
+		Reserved: [4]*big.Int{
+			big.NewInt(0),
+			big.NewInt(0),
+			big.NewInt(0),
+			big.NewInt(0),
+		},
+		Data:      st.msg.Data(),
+		Signature: []byte{},
+	}
+	// Sanity checks
+	if st.paymasterParams != nil {
+		if st.paymasterParams.Paymaster != nil {
+			tx.Paymaster = new(big.Int).SetBytes(st.paymasterParams.Paymaster.Bytes())
+		}
+		if st.paymasterParams.Paymaster != nil {
+			tx.PaymasterInput = st.paymasterParams.PaymasterInput
+		}
+	}
+	// Pack payload
+	payload, err := IPaymasterABI.Pack("validateAndPayForPaymasterTransaction", common.Hash{1}, common.Hash{2}, tx)
 	if err != nil {
 		return [4]byte{}, nil, err
 	}
 	if err != nil {
 		return [4]byte{}, nil, err
 	}
-	res := ConstructAndApplySmcCallMsg(st, payload)
+	// Apply validateAndPayForPaymasterTransaction msg
+	msg := types.NewMessage(
+		st.msg.From(),
+		st.paymasterParams.Paymaster,
+		0,
+		st.msg.Value(),
+		st.msg.Gas(),
+		st.msg.GasPrice(),
+		st.msg.GasFeeCap(),
+		st.msg.GasTipCap(),
+		payload,
+		nil,
+		true,
+		nil,
+	)
+	res := Apply(st, msg)
 	if len(res.ReturnData) == 0 {
 		return [4]byte{}, nil, nil
 	}

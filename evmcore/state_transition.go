@@ -178,7 +178,7 @@ func IntrinsicGas(data []byte, accessList types.AccessList, isContractCreation b
 
 // NewStateTransition initialises and returns a new state transition object.
 func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition {
-	return &StateTransition{
+	st := &StateTransition{
 		gp:              gp,
 		evm:             evm,
 		msg:             msg,
@@ -188,6 +188,11 @@ func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition 
 		state:           evm.StateDB,
 		paymasterParams: msg.PaymasterParams(),
 	}
+	// Invalidate paymaster params at message level
+	if msg.PaymasterParams() != nil && (msg.PaymasterParams().Paymaster == nil || msg.PaymasterParams().PaymasterInput == nil) {
+		st.paymasterParams = nil
+	}
+	return st
 }
 
 // ApplyMessage computes the new state by applying the given message
@@ -198,7 +203,11 @@ func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition 
 // indicates a core error meaning that the message would always fail for that particular
 // state and would never be accepted within a block.
 func ApplyMessage(evm *vm.EVM, msg Message, gp *GasPool) (*ExecutionResult, error) {
-	res, err := NewStateTransition(evm, msg, gp).TransitionDb()
+	st := NewStateTransition(evm, msg, gp)
+	if msg.PaymasterParams() != nil && st.paymasterParams == nil {
+		return nil, ErrInvalidPaymasterParams
+	}
+	res, err := st.TransitionDb()
 	if err != nil {
 		log.Debug("Tx skipped", "err", err)
 	}

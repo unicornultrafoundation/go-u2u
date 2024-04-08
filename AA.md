@@ -1,3 +1,7 @@
+## Basics
+    Inspired by EIP712, EIP2938 and ERC4337 we have created a new standard for transaction validation and execution, it called Native Account Abstraction (NAA). The main goal of this standard is to provide a way to abstract the some of the validation and execution process from the EVM to custom contracts, allowing for more flexibility and extensibility in the way transactions are validated and executed (mainly tx.origin and alternative fee validation).
+    Due to complexitiy of the EIP712 and EIP2938, we have decided to create a new standard that will be more simple and easy to understand.
+
 ## Transaction flow
 
 ### The validation step

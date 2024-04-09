@@ -165,7 +165,7 @@ func TestBlockSubscription(t *testing.T) {
 		api     = NewPublicFilterAPI(backend, testConfig())
 
 		statedb, _  = state.New(common.Hash{}, state.NewDatabase(backend.db), nil)
-		genesis     = evmcore.MustApplyFakeGenesis(statedb, evmcore.FakeGenesisTime, map[common.Address]*big.Int{})
+		genesis     = evmcore.MustApplyFakeGenesis(statedb, evmcore.FakeGenesisTime, nil)
 		chain, _, _ = evmcore.GenerateChain(
 			params.TestChainConfig, genesis, backend.db, 10, nil)
 		chainEvents = []evmcore.ChainHeadNotify{}

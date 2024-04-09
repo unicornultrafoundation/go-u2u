@@ -39,7 +39,8 @@ func craftValidateAndPayForPaymasterTransaction(st *StateTransition) ([4]byte, [
 		}
 	}
 	// Pack payload
-	payload, err := IPaymasterABI.Pack("validateAndPayForPaymasterTransaction", common.Hash{1}, common.Hash{2}, tx)
+	payload, err := IPaymasterABI.Pack("validateAndPayForPaymasterTransaction",
+		common.Hash{1}, common.Hash{2}, common.Hash{3}.Bytes(), tx)
 	if err != nil {
 		return [4]byte{}, nil, err
 	}

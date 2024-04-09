@@ -26,9 +26,10 @@ var (
 	_ = common.Big1
 	_ = types.BloomLookup
 	_ = event.NewSubscription
+	_ = abi.ConvertType
 )
 
-// Transaction is an auto generated low-level Go binding around an user-defined struct.
+//// Transaction is an auto generated low-level Go binding around an user-defined struct.
 //type Transaction struct {
 //	TxType                 *big.Int
 //	From                   *big.Int
@@ -48,7 +49,7 @@ var (
 
 // IPaymasterMetaData contains all meta data concerning the IPaymaster contract.
 var IPaymasterMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"_context\",\"type\":\"bytes\"},{\"components\":[{\"internalType\":\"uint256\",\"name\":\"txType\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"from\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"to\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasLimit\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasPerPubdataByteLimit\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"maxFeePerGas\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"maxPriorityFeePerGas\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"paymaster\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256[4]\",\"name\":\"reserved\",\"type\":\"uint256[4]\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"paymasterInput\",\"type\":\"bytes\"}],\"internalType\":\"structTransaction\",\"name\":\"_transaction\",\"type\":\"tuple\"},{\"internalType\":\"bytes32\",\"name\":\"_txHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"_suggestedSignedHash\",\"type\":\"bytes32\"},{\"internalType\":\"enumExecutionResult\",\"name\":\"_txResult\",\"type\":\"uint8\"},{\"internalType\":\"uint256\",\"name\":\"_maxRefundedGas\",\"type\":\"uint256\"}],\"name\":\"postTransaction\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_txHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"_suggestedSignedHash\",\"type\":\"bytes32\"},{\"components\":[{\"internalType\":\"uint256\",\"name\":\"txType\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"from\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"to\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasLimit\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasPerPubdataByteLimit\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"maxFeePerGas\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"maxPriorityFeePerGas\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"paymaster\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256[4]\",\"name\":\"reserved\",\"type\":\"uint256[4]\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"paymasterInput\",\"type\":\"bytes\"}],\"internalType\":\"structTransaction\",\"name\":\"_transaction\",\"type\":\"tuple\"}],\"name\":\"validateAndPayForPaymasterTransaction\",\"outputs\":[{\"internalType\":\"bytes4\",\"name\":\"magic\",\"type\":\"bytes4\"},{\"internalType\":\"bytes\",\"name\":\"context\",\"type\":\"bytes\"}],\"stateMutability\":\"payable\",\"type\":\"function\"}]",
+	ABI: "[{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"_context\",\"type\":\"bytes\"},{\"components\":[{\"internalType\":\"uint256\",\"name\":\"txType\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"from\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"to\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasLimit\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasPerPubdataByteLimit\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"maxFeePerGas\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"maxPriorityFeePerGas\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"paymaster\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256[4]\",\"name\":\"reserved\",\"type\":\"uint256[4]\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"paymasterInput\",\"type\":\"bytes\"}],\"internalType\":\"structTransaction\",\"name\":\"_transaction\",\"type\":\"tuple\"},{\"internalType\":\"bytes32\",\"name\":\"_txHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"_suggestedSignedHash\",\"type\":\"bytes32\"},{\"internalType\":\"enumExecutionResult\",\"name\":\"_txResult\",\"type\":\"uint8\"},{\"internalType\":\"uint256\",\"name\":\"_maxRefundedGas\",\"type\":\"uint256\"}],\"name\":\"postTransaction\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_txHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"_suggestedSignedHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"_authenticationSignature\",\"type\":\"bytes\"},{\"components\":[{\"internalType\":\"uint256\",\"name\":\"txType\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"from\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"to\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasLimit\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasPerPubdataByteLimit\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"maxFeePerGas\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"maxPriorityFeePerGas\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"paymaster\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256[4]\",\"name\":\"reserved\",\"type\":\"uint256[4]\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"paymasterInput\",\"type\":\"bytes\"}],\"internalType\":\"structTransaction\",\"name\":\"_transaction\",\"type\":\"tuple\"}],\"name\":\"validateAndPayForPaymasterTransaction\",\"outputs\":[{\"internalType\":\"bytes4\",\"name\":\"magic\",\"type\":\"bytes4\"},{\"internalType\":\"bytes\",\"name\":\"context\",\"type\":\"bytes\"}],\"stateMutability\":\"payable\",\"type\":\"function\"}]",
 }
 
 // IPaymasterABI is the input ABI used to generate the binding from.
@@ -152,11 +153,11 @@ func NewIPaymasterFilterer(address common.Address, filterer bind.ContractFiltere
 
 // bindIPaymaster binds a generic wrapper to an already deployed contract.
 func bindIPaymaster(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
-	parsed, err := abi.JSON(strings.NewReader(IPaymasterABI))
+	parsed, err := IPaymasterMetaData.GetAbi()
 	if err != nil {
 		return nil, err
 	}
-	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
+	return bind.NewBoundContract(address, *parsed, caller, transactor, filterer), nil
 }
 
 // Call invokes the (constant) contract method with params as input values and
@@ -218,23 +219,23 @@ func (_IPaymaster *IPaymasterTransactorSession) PostTransaction(_context []byte,
 	return _IPaymaster.Contract.PostTransaction(&_IPaymaster.TransactOpts, _context, _transaction, _txHash, _suggestedSignedHash, _txResult, _maxRefundedGas)
 }
 
-// ValidateAndPayForPaymasterTransaction is a paid mutator transaction binding the contract method 0xb12b0e2b.
+// ValidateAndPayForPaymasterTransaction is a paid mutator transaction binding the contract method 0x391c91d2.
 //
-// Solidity: function validateAndPayForPaymasterTransaction(bytes32 _txHash, bytes32 _suggestedSignedHash, (uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256[4],bytes,bytes,bytes) _transaction) payable returns(bytes4 magic, bytes context)
-func (_IPaymaster *IPaymasterTransactor) ValidateAndPayForPaymasterTransaction(opts *bind.TransactOpts, _txHash [32]byte, _suggestedSignedHash [32]byte, _transaction Transaction) (*types.Transaction, error) {
-	return _IPaymaster.contract.Transact(opts, "validateAndPayForPaymasterTransaction", _txHash, _suggestedSignedHash, _transaction)
+// Solidity: function validateAndPayForPaymasterTransaction(bytes32 _txHash, bytes32 _suggestedSignedHash, bytes _authenticationSignature, (uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256[4],bytes,bytes,bytes) _transaction) payable returns(bytes4 magic, bytes context)
+func (_IPaymaster *IPaymasterTransactor) ValidateAndPayForPaymasterTransaction(opts *bind.TransactOpts, _txHash [32]byte, _suggestedSignedHash [32]byte, _authenticationSignature []byte, _transaction Transaction) (*types.Transaction, error) {
+	return _IPaymaster.contract.Transact(opts, "validateAndPayForPaymasterTransaction", _txHash, _suggestedSignedHash, _authenticationSignature, _transaction)
 }
 
-// ValidateAndPayForPaymasterTransaction is a paid mutator transaction binding the contract method 0xb12b0e2b.
+// ValidateAndPayForPaymasterTransaction is a paid mutator transaction binding the contract method 0x391c91d2.
 //
-// Solidity: function validateAndPayForPaymasterTransaction(bytes32 _txHash, bytes32 _suggestedSignedHash, (uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256[4],bytes,bytes,bytes) _transaction) payable returns(bytes4 magic, bytes context)
-func (_IPaymaster *IPaymasterSession) ValidateAndPayForPaymasterTransaction(_txHash [32]byte, _suggestedSignedHash [32]byte, _transaction Transaction) (*types.Transaction, error) {
-	return _IPaymaster.Contract.ValidateAndPayForPaymasterTransaction(&_IPaymaster.TransactOpts, _txHash, _suggestedSignedHash, _transaction)
+// Solidity: function validateAndPayForPaymasterTransaction(bytes32 _txHash, bytes32 _suggestedSignedHash, bytes _authenticationSignature, (uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256[4],bytes,bytes,bytes) _transaction) payable returns(bytes4 magic, bytes context)
+func (_IPaymaster *IPaymasterSession) ValidateAndPayForPaymasterTransaction(_txHash [32]byte, _suggestedSignedHash [32]byte, _authenticationSignature []byte, _transaction Transaction) (*types.Transaction, error) {
+	return _IPaymaster.Contract.ValidateAndPayForPaymasterTransaction(&_IPaymaster.TransactOpts, _txHash, _suggestedSignedHash, _authenticationSignature, _transaction)
 }
 
-// ValidateAndPayForPaymasterTransaction is a paid mutator transaction binding the contract method 0xb12b0e2b.
+// ValidateAndPayForPaymasterTransaction is a paid mutator transaction binding the contract method 0x391c91d2.
 //
-// Solidity: function validateAndPayForPaymasterTransaction(bytes32 _txHash, bytes32 _suggestedSignedHash, (uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256[4],bytes,bytes,bytes) _transaction) payable returns(bytes4 magic, bytes context)
-func (_IPaymaster *IPaymasterTransactorSession) ValidateAndPayForPaymasterTransaction(_txHash [32]byte, _suggestedSignedHash [32]byte, _transaction Transaction) (*types.Transaction, error) {
-	return _IPaymaster.Contract.ValidateAndPayForPaymasterTransaction(&_IPaymaster.TransactOpts, _txHash, _suggestedSignedHash, _transaction)
+// Solidity: function validateAndPayForPaymasterTransaction(bytes32 _txHash, bytes32 _suggestedSignedHash, bytes _authenticationSignature, (uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256[4],bytes,bytes,bytes) _transaction) payable returns(bytes4 magic, bytes context)
+func (_IPaymaster *IPaymasterTransactorSession) ValidateAndPayForPaymasterTransaction(_txHash [32]byte, _suggestedSignedHash [32]byte, _authenticationSignature []byte, _transaction Transaction) (*types.Transaction, error) {
+	return _IPaymaster.Contract.ValidateAndPayForPaymasterTransaction(&_IPaymaster.TransactOpts, _txHash, _suggestedSignedHash, _authenticationSignature, _transaction)
 }

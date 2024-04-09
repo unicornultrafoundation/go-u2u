@@ -26,6 +26,7 @@ var (
 	_ = common.Big1
 	_ = types.BloomLookup
 	_ = event.NewSubscription
+	_ = abi.ConvertType
 )
 
 // Transaction is an auto generated low-level Go binding around an user-defined struct.
@@ -54,6 +55,27 @@ var IAccountMetaData = &bind.MetaData{
 // IAccountABI is the input ABI used to generate the binding from.
 // Deprecated: Use IAccountMetaData.ABI instead.
 var IAccountABI = IAccountMetaData.ABI
+
+// IAccountBin is the compiled bytecode used for deploying new contracts.
+// Deprecated: Use IAccountMetaData.Bin instead.
+var IAccountBin = IAccountMetaData.Bin
+
+// DeployIAccount deploys a new Ethereum contract, binding an instance of IAccount to it.
+func DeployIAccount(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *IAccount, error) {
+	parsed, err := IAccountMetaData.GetAbi()
+	if err != nil {
+		return common.Address{}, nil, nil, err
+	}
+	if parsed == nil {
+		return common.Address{}, nil, nil, errors.New("GetABI returned nil")
+	}
+
+	address, tx, contract, err := bind.DeployContract(auth, *parsed, common.FromHex(IAccountBin), backend)
+	if err != nil {
+		return common.Address{}, nil, nil, err
+	}
+	return address, tx, &IAccount{IAccountCaller: IAccountCaller{contract: contract}, IAccountTransactor: IAccountTransactor{contract: contract}, IAccountFilterer: IAccountFilterer{contract: contract}}, nil
+}
 
 // IAccount is an auto generated Go binding around an Ethereum contract.
 type IAccount struct {
@@ -152,11 +174,11 @@ func NewIAccountFilterer(address common.Address, filterer bind.ContractFilterer)
 
 // bindIAccount binds a generic wrapper to an already deployed contract.
 func bindIAccount(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
-	parsed, err := abi.JSON(strings.NewReader(IAccountABI))
+	parsed, err := IAccountMetaData.GetAbi()
 	if err != nil {
 		return nil, err
 	}
-	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
+	return bind.NewBoundContract(address, *parsed, caller, transactor, filterer), nil
 }
 
 // Call invokes the (constant) contract method with params as input values and

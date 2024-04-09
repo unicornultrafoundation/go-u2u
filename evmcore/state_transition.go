@@ -84,6 +84,7 @@ type StateTransition struct {
 	state           vm.StateDB
 	evm             *vm.EVM
 	paymasterParams *types.PaymasterParams
+	gasSpender      common.Address
 }
 
 // Message represents a message sent to a contract.
@@ -187,6 +188,7 @@ func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition 
 		data:            msg.Data(),
 		state:           evm.StateDB,
 		paymasterParams: msg.PaymasterParams(),
+		gasSpender:      msg.From(),
 	}
 	// Invalidate paymaster params at message level
 	if msg.PaymasterParams() != nil && (msg.PaymasterParams().Paymaster == nil || msg.PaymasterParams().PaymasterInput == nil) {
@@ -223,12 +225,12 @@ func (st *StateTransition) to() common.Address {
 }
 
 // buyGas subtract the balance of from address for gas
-func (st *StateTransition) buyGas(from common.Address) error {
+func (st *StateTransition) buyGas() error {
 	mgval := new(big.Int).SetUint64(st.msg.Gas())
 	mgval = mgval.Mul(mgval, st.gasPrice)
 	// Note: U2U doesn't need to check against gasFeeCap instead of gasPrice, as it's too aggressive in the asynchronous environment
-	if have, want := st.state.GetBalance(from), mgval; have.Cmp(want) < 0 {
-		return fmt.Errorf("%w: address %v have %v want %v", ErrInsufficientFunds, st.msg.From().Hex(), have, want)
+	if have, want := st.state.GetBalance(st.gasSpender), mgval; have.Cmp(want) < 0 {
+		return fmt.Errorf("%w: address %v have %v want %v", ErrInsufficientFunds, st.gasSpender.Hex(), have, want)
 	}
 	if err := st.gp.SubGas(st.msg.Gas()); err != nil {
 		return err
@@ -236,7 +238,7 @@ func (st *StateTransition) buyGas(from common.Address) error {
 	st.gas += st.msg.Gas()
 
 	st.initialGas = st.msg.Gas()
-	st.state.SubBalance(from, mgval)
+	st.state.SubBalance(st.gasSpender, mgval)
 	return nil
 }
 
@@ -271,10 +273,10 @@ func (st *StateTransition) preCheck() error {
 		}
 		// This transaction is eligible for gas sponsoring, take
 		if magic == paymasterSuccessMagic {
-			return st.buyGas(*st.paymasterParams.Paymaster)
+			st.gasSpender = *st.paymasterParams.Paymaster
 		}
 	}
-	return st.buyGas(st.msg.From())
+	return st.buyGas()
 }
 
 func (st *StateTransition) internal() bool {
@@ -374,7 +376,7 @@ func (st *StateTransition) refundGas(refundQuotient uint64) {
 
 	// Return wei for remaining gas, exchanged at the original rate.
 	remaining := new(big.Int).Mul(new(big.Int).SetUint64(st.gas), st.gasPrice)
-	st.state.AddBalance(st.msg.From(), remaining)
+	st.state.AddBalance(st.gasSpender, remaining)
 
 	// Also return remaining gas to the block gas counter so it is
 	// available for the next transaction.

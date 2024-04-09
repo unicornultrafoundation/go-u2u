@@ -30,3 +30,7 @@ const (
 func ToU2U(amount uint64) *big.Int {
 	return new(big.Int).Mul(new(big.Int).SetUint64(amount), big.NewInt(U2U))
 }
+
+func ToGWEI(amount uint64) *big.Int {
+	return new(big.Int).Mul(new(big.Int).SetUint64(amount), big.NewInt(GWEI))
+}

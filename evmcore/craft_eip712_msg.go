@@ -1,7 +1,6 @@
 package evmcore
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
@@ -11,14 +10,6 @@ import (
 )
 
 func craftValidateAndPayForPaymasterTransaction(st *StateTransition) ([4]byte, []byte, error) {
-	// Pack payload
-	payload, err := craftValidateAndPayForPaymasterPayload(st)
-	if err != nil {
-		return [4]byte{}, nil, err
-	}
-	if err != nil {
-		return [4]byte{}, nil, err
-	}
 	// Apply validateAndPayForPaymasterTransaction msg
 	msg := types.NewMessage(
 		st.msg.From(),
@@ -29,7 +20,7 @@ func craftValidateAndPayForPaymasterTransaction(st *StateTransition) ([4]byte, [
 		st.msg.GasPrice(),
 		st.msg.GasFeeCap(),
 		st.msg.GasTipCap(),
-		payload,
+		st.paymasterParams.PaymasterInput,
 		nil,
 		true,
 		nil,
@@ -40,14 +31,13 @@ func craftValidateAndPayForPaymasterTransaction(st *StateTransition) ([4]byte, [
 	}
 	// Unpack call result
 	result := new(struct {
-		magic   [4]byte
-		context []byte
+		Magic   [4]byte
+		Context []byte
 	})
-	if err := IPaymasterABI.UnpackIntoInterface(result, "mint", res.ReturnData); err != nil {
+	if err := IPaymasterABI.UnpackIntoInterface(result, "validateAndPayForPaymasterTransaction", res.ReturnData); err != nil {
 		return [4]byte{}, nil, err
 	}
-	fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@ result.magic:", common.Bytes2Hex(result.magic[:]))
-	return result.magic, result.context, nil
+	return result.Magic, result.Context, nil
 }
 
 func craftValidateAndPayForPaymasterPayload(st *StateTransition) ([]byte, error) {
@@ -80,7 +70,7 @@ func craftValidateAndPayForPaymasterPayload(st *StateTransition) ([]byte, error)
 		if st.paymasterParams.Paymaster != nil {
 			tx.Paymaster = new(big.Int).SetBytes(st.paymasterParams.Paymaster.Bytes())
 		}
-		if st.paymasterParams.Paymaster != nil {
+		if st.paymasterParams.PaymasterInput != nil {
 			tx.PaymasterInput = st.paymasterParams.PaymasterInput
 		}
 	}

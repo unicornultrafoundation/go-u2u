@@ -103,6 +103,8 @@ type Message interface {
 	Data() []byte
 	AccessList() types.AccessList
 	PaymasterParams() *types.PaymasterParams
+
+	SetGas(uint64)
 }
 
 // ExecutionResult includes all output after executing given evm
@@ -266,14 +268,30 @@ func (st *StateTransition) preCheck() error {
 	// ValidateAndPayForPaymasterTransaction function of the dedicated paymaster
 	if st.paymasterParams != nil {
 		// TODO(b1m0n): remember to add correct gas after previous operations
-		var err error
-		magic, context, err = craftValidateAndPayForPaymasterTransaction(st)
-		if err != nil {
-			return err
-		}
-		// This transaction is eligible for gas sponsoring, take
+		var (
+			execRes *ExecutionResult
+			err     error
+		)
+		magic, context, execRes, err = craftValidateAndPayForPaymasterTransaction(st)
+		log.Info("Paymaster", "magic", magic, "context", context, "execRes", execRes, "err", err)
+		// This transaction is eligible for gas sponsoring
 		if magic == paymasterSuccessMagic {
+			validPaymasterCounter.Inc(1)
 			st.gasSpender = *st.paymasterParams.Paymaster
+			// Count the gas used for the validateAndPayForPaymasterTransaction function
+			// as used gas and st.initialGas later
+			st.msg.SetGas(st.msg.Gas() - execRes.UsedGas)
+		} else {
+			invalidPaymasterCounter.Inc(1)
+			if st.msg.Gas() < execRes.UsedGas {
+				err = fmt.Errorf(AAErr, "paymaster", "validateAndPayForPaymasterTransaction", vm.ErrOutOfGas)
+			}
+			// Extract revert reason if any
+			if len(execRes.Revert()) > 0 {
+				_, err = revertReason(execRes)
+			}
+			log.Warn("Paymaster validateAndPayForPaymasterTransaction failed",
+				"err", err)
 		}
 	}
 	return st.buyGas()

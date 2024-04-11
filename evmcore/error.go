@@ -18,7 +18,10 @@ package evmcore
 
 import (
 	"errors"
+	"fmt"
 
+	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
+	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 )
 
@@ -88,3 +91,16 @@ var (
 	// ErrInvalidPaymasterParams is returned if the paymaster params is malformed.
 	ErrInvalidPaymasterParams = errors.New("invalid paymaster params")
 )
+
+var (
+	AAErr = "%s: function %s failed with error: %s"
+)
+
+func revertReason(result *ExecutionResult) (string, error) {
+	reason, errUnpack := abi.UnpackRevert(result.Revert())
+	err := errors.New("execution reverted")
+	if errUnpack == nil {
+		err = fmt.Errorf("execution reverted: %v", reason)
+	}
+	return hexutil.Encode(result.Revert()), err
+}

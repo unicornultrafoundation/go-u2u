@@ -51,7 +51,7 @@ func init() {
 		panic(fmt.Sprintf("Error reading IAccount ABI: %v", err))
 	}
 	// Mark the paymasterSuccessMagic as the selector of ValidateAndPayForPaymasterTransaction function for later use
-	copy(paymasterSuccessMagic[:], IPaymasterABI.Methods["validateAndPayForPaymasterTransaction"].ID)
+	copy(paymasterSuccessMagic[:], IPaymasterABI.Methods[pmValidateMethod].ID)
 }
 
 /*
@@ -103,8 +103,6 @@ type Message interface {
 	Data() []byte
 	AccessList() types.AccessList
 	PaymasterParams() *types.PaymasterParams
-
-	SetGas(uint64)
 }
 
 // ExecutionResult includes all output after executing given evm
@@ -194,6 +192,8 @@ func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition 
 	}
 	// Invalidate paymaster params at message level
 	if msg.PaymasterParams() != nil && (msg.PaymasterParams().Paymaster == nil || msg.PaymasterParams().PaymasterInput == nil) {
+		fmt.Printf("@@@@@@@@@@@@@@@@ Invalidate paymaster params at message level: %+v,  %+v,  %+v\n",
+			msg.PaymasterParams(), msg.PaymasterParams().PaymasterInput, msg.PaymasterParams().PaymasterInput == nil)
 		st.paymasterParams = nil
 	}
 	return st
@@ -237,7 +237,7 @@ func (st *StateTransition) buyGas() error {
 	if err := st.gp.SubGas(st.msg.Gas()); err != nil {
 		return err
 	}
-	st.gas += st.msg.Gas()
+	st.gas = st.msg.Gas() - st.gas
 
 	st.initialGas = st.msg.Gas()
 	st.state.SubBalance(st.gasSpender, mgval)
@@ -278,21 +278,20 @@ func (st *StateTransition) preCheck() error {
 		if magic == paymasterSuccessMagic {
 			validPaymasterCounter.Inc(1)
 			st.gasSpender = *st.paymasterParams.Paymaster
-			// Count the gas used for the validateAndPayForPaymasterTransaction function
-			// as used gas and st.initialGas later
-			st.msg.SetGas(st.msg.Gas() - execRes.UsedGas)
 		} else {
 			invalidPaymasterCounter.Inc(1)
 			if st.msg.Gas() < execRes.UsedGas {
-				err = fmt.Errorf(AAErr, "paymaster", "validateAndPayForPaymasterTransaction", vm.ErrOutOfGas)
+				err = fmt.Errorf(AAErr, "paymaster", pmValidateMethod, vm.ErrOutOfGas)
 			}
 			// Extract revert reason if any
 			if len(execRes.Revert()) > 0 {
 				_, err = revertReason(execRes)
 			}
-			log.Warn("Paymaster validateAndPayForPaymasterTransaction failed",
-				"err", err)
+			log.Warn("Paymaster pmValidateMethod failed", "err", err)
 		}
+		// Count the gas used for the pmValidateMethod function
+		// as used gas and st.initialGas later
+		st.gas = execRes.UsedGas
 	}
 	return st.buyGas()
 }

@@ -660,4 +660,3 @@ func (m Message) Data() []byte                      { return m.data }
 func (m Message) AccessList() AccessList            { return m.accessList }
 func (m Message) IsFake() bool                      { return m.isFake }
 func (m Message) PaymasterParams() *PaymasterParams { return m.paymasterParams }
-func (m Message) SetGas(newGas uint64)              { m.gasLimit = newGas }

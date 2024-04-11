@@ -9,8 +9,8 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/eip712"
 )
 
-func craftValidateAndPayForPaymasterTransaction(st *StateTransition) ([4]byte, []byte, error) {
-	// Apply validateAndPayForPaymasterTransaction msg
+func craftValidateAndPayForPaymasterTransaction(st *StateTransition) ([4]byte, []byte, *ExecutionResult, error) {
+	// Apply pmValidateMethod msg
 	msg := types.NewMessage(
 		st.msg.From(),
 		st.paymasterParams.Paymaster,
@@ -25,19 +25,22 @@ func craftValidateAndPayForPaymasterTransaction(st *StateTransition) ([4]byte, [
 		true,
 		nil,
 	)
-	res := Apply(st, msg)
-	if len(res.ReturnData) == 0 {
-		return [4]byte{}, nil, nil
+	// Temporarily set total initial gas as transaction gas limit
+	st.initialGas = st.msg.Gas()
+	execRes := Apply(st, msg)
+	st.initialGas = 0
+	if execRes.Failed() {
+		return [4]byte{}, nil, execRes, nil
 	}
 	// Unpack call result
 	result := new(struct {
 		Magic   [4]byte
 		Context []byte
 	})
-	if err := IPaymasterABI.UnpackIntoInterface(result, "validateAndPayForPaymasterTransaction", res.ReturnData); err != nil {
-		return [4]byte{}, nil, err
+	if err := IPaymasterABI.UnpackIntoInterface(result, pmValidateMethod, execRes.ReturnData); err != nil {
+		return [4]byte{}, nil, nil, err
 	}
-	return result.Magic, result.Context, nil
+	return result.Magic, result.Context, execRes, nil
 }
 
 func craftValidateAndPayForPaymasterPayload(st *StateTransition) ([]byte, error) {
@@ -74,7 +77,7 @@ func craftValidateAndPayForPaymasterPayload(st *StateTransition) ([]byte, error)
 			tx.PaymasterInput = st.paymasterParams.PaymasterInput
 		}
 	}
-	return IPaymasterABI.Pack("validateAndPayForPaymasterTransaction",
+	return IPaymasterABI.Pack(pmValidateMethod,
 		common.Hash{1}, common.Hash{2}, common.Hash{3}.Bytes(), tx)
 }
 

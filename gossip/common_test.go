@@ -545,4 +545,3 @@ func (m callmsg) IsFake() bool                            { return true }
 func (m callmsg) Data() []byte                            { return m.CallMsg.Data }
 func (m callmsg) AccessList() types.AccessList            { return nil }
 func (m callmsg) PaymasterParams() *types.PaymasterParams { return nil }
-func (m callmsg) SetGas(newGas uint64)                    { m.CallMsg.Gas = newGas }

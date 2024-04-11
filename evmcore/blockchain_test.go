@@ -42,21 +42,21 @@ func TestEIP712Transition(t *testing.T) {
 				}
 			}()
 			b.SetCoinbase(common.Address{1})
-			// Happy cases when an EIP-712 tx can have the paymaster params field or not
-			// i == 3
+			// Default paymaster params
 			pmParams := &types.PaymasterParams{
 				Paymaster:      &common.Address{},
 				PaymasterInput: []byte{},
 			}
-			if i == 4 {
-				pmParams = nil
-			}
-			// Error cases with invalid paymaster params
-			if i == 1 {
+			switch i {
+			case 1: // invalid paymaster input
 				pmParams.PaymasterInput = nil
-			}
-			if i == 2 {
+				break
+			case 2: // invalid paymaster contract address
 				pmParams.Paymaster = nil
+				break
+			case 4: // happy case, nil params field
+				pmParams = nil
+				break
 			}
 
 			// Construct 1 normal EIP-712 tx for each block
@@ -112,6 +112,7 @@ func TestSimpleValidateAndPayForPaymaster(t *testing.T) {
 		gen   = func(i int, b *BlockGen) {
 			b.SetCoinbase(common.Address{1})
 			signer := types.LatestSigner(params.TestChainConfig)
+			// Construct 1 normal EIP-712 tx for each block
 			rawTx := &types.EIP712Tx{
 				ChainID:         gspec.Config.ChainID,
 				Nonce:           nonce,
@@ -144,14 +145,16 @@ func TestSimpleValidateAndPayForPaymaster(t *testing.T) {
 			postAddrBalance := b.statedb.GetBalance(address)
 			postPMBalance := b.statedb.GetBalance(paymasterSmcAddress)
 			if i == 3 {
-				t.Log("eligible")
+				// paymaster eligible cases, balance of the sender address stays the same
+				// while the balance of the paymaster decreases
 				assert.Equal(t, true, postAddrBalance.Cmp(preAddrBalance) == 0)
+				assert.Equal(t, true, postPMBalance.Cmp(prePMBalance) < 0)
 			} else {
-				t.Log("not eligible")
+				// paymaster illegible cases, balance of the paymaster stays the same
+				// while the balance of the sender address decreases
+				assert.Equal(t, true, postAddrBalance.Cmp(preAddrBalance) < 0)
 				assert.Equal(t, true, postPMBalance.Cmp(prePMBalance) == 0)
 			}
-			t.Logf("addr: Pre %v, post %v\n", preAddrBalance, postAddrBalance)
-			t.Logf("PM: Pre %v, post %v\n", prePMBalance, postPMBalance)
 		}
 		db         = rawdb.NewMemoryDatabase()
 		statedb, _ = state.New(common.Hash{}, state.NewDatabase(db), nil)

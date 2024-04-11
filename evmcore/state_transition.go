@@ -192,8 +192,7 @@ func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition 
 	}
 	// Invalidate paymaster params at message level
 	if msg.PaymasterParams() != nil && (msg.PaymasterParams().Paymaster == nil || msg.PaymasterParams().PaymasterInput == nil) {
-		fmt.Printf("@@@@@@@@@@@@@@@@ Invalidate paymaster params at message level: %+v,  %+v,  %+v\n",
-			msg.PaymasterParams(), msg.PaymasterParams().PaymasterInput, msg.PaymasterParams().PaymasterInput == nil)
+		invalidPaymasterParamsMsgCounter.Inc(1)
 		st.paymasterParams = nil
 	}
 	return st
@@ -209,6 +208,7 @@ func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition 
 func ApplyMessage(evm *vm.EVM, msg Message, gp *GasPool) (*ExecutionResult, error) {
 	st := NewStateTransition(evm, msg, gp)
 	if msg.PaymasterParams() != nil && st.paymasterParams == nil {
+		invalidPaymasterParamsTxCounter.Inc(1)
 		return nil, ErrInvalidPaymasterParams
 	}
 	res, err := st.TransitionDb()
@@ -237,6 +237,8 @@ func (st *StateTransition) buyGas() error {
 	if err := st.gp.SubGas(st.msg.Gas()); err != nil {
 		return err
 	}
+	// At this time, st.gas may be 0 or contains pre-used gas by validateAndPayForPaymasterTransaction of paymasters.
+	// We will count that used gas for st.gasSpender fairly
 	st.gas = st.msg.Gas() - st.gas
 
 	st.initialGas = st.msg.Gas()
@@ -267,13 +269,11 @@ func (st *StateTransition) preCheck() error {
 	// Verify if this transaction is eligible for gas sponsoring by calling
 	// ValidateAndPayForPaymasterTransaction function of the dedicated paymaster
 	if st.paymasterParams != nil {
-		// TODO(b1m0n): remember to add correct gas after previous operations
 		var (
 			execRes *ExecutionResult
 			err     error
 		)
 		magic, context, execRes, err = craftValidateAndPayForPaymasterTransaction(st)
-		log.Info("Paymaster", "magic", magic, "context", context, "execRes", execRes, "err", err)
 		// This transaction is eligible for gas sponsoring
 		if magic == paymasterSuccessMagic {
 			validPaymasterCounter.Inc(1)
@@ -289,8 +289,7 @@ func (st *StateTransition) preCheck() error {
 			}
 			log.Warn("Paymaster pmValidateMethod failed", "err", err)
 		}
-		// Count the gas used for the pmValidateMethod function
-		// as used gas and st.initialGas later
+		// Temporarily use st.gas to mark the gas used for the pmValidateMethod function
 		st.gas = execRes.UsedGas
 	}
 	return st.buyGas()

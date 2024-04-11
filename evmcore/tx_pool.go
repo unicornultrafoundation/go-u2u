@@ -658,6 +658,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	// Check for invalid paymaster params at tx level
 	if tx.Type() == types.EIP712TxType && (tx.PaymasterParams() == nil ||
 		tx.PaymasterParams().Paymaster == nil || tx.PaymasterParams().PaymasterInput == nil) {
+		invalidPaymasterParamsTxCounter.Inc(1)
 		return ErrInvalidPaymasterParams
 	}
 	return nil

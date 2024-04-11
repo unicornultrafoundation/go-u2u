@@ -1,5 +1,5 @@
 package evmcore
 
 const (
-	pmValidateMethod = "ValidateAndPayForPaymasterTransaction"
+	pmValidateMethod = "validateAndPayForPaymasterTransaction"
 )

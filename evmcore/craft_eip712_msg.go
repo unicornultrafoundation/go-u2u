@@ -1,16 +1,12 @@
 package evmcore
 
 import (
-	"math/big"
-
-	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
-	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/eip712"
 )
 
 func craftValidateAndPayForPaymasterTransaction(st *StateTransition) ([4]byte, []byte, *ExecutionResult, error) {
-	// Apply pmValidateMethod msg
+	// Apply a fake ValidateAndPayForPaymasterTransaction msg just to get the result and gas used
 	msg := types.NewMessage(
 		st.msg.From(),
 		st.paymasterParams.Paymaster,
@@ -28,7 +24,7 @@ func craftValidateAndPayForPaymasterTransaction(st *StateTransition) ([4]byte, [
 	// Temporarily set total initial gas as transaction gas limit
 	st.initialGas = st.msg.Gas()
 	execRes := Apply(st, msg)
-	st.initialGas = 0
+	st.initialGas = 0 // reset
 	if execRes.Failed() {
 		return [4]byte{}, nil, execRes, nil
 	}
@@ -38,66 +34,9 @@ func craftValidateAndPayForPaymasterTransaction(st *StateTransition) ([4]byte, [
 		Context []byte
 	})
 	if err := IPaymasterABI.UnpackIntoInterface(result, pmValidateMethod, execRes.ReturnData); err != nil {
-		return [4]byte{}, nil, nil, err
+		return [4]byte{}, nil, execRes, err
 	}
 	return result.Magic, result.Context, execRes, nil
-}
-
-func craftValidateAndPayForPaymasterPayload(st *StateTransition) ([]byte, error) {
-	// Pack msg payload
-	to := big.NewInt(0)
-	if st.msg.To() != nil {
-		to = new(big.Int).SetBytes(st.msg.To().Bytes())
-	}
-	tx := &eip712.Transaction{
-		TxType:                 big.NewInt(types.EIP712TxType),
-		From:                   new(big.Int).SetBytes(st.msg.From().Bytes()),
-		To:                     to,
-		GasLimit:               new(big.Int).SetUint64(st.msg.Gas()),
-		GasPerPubdataByteLimit: big.NewInt(0),
-		MaxFeePerGas:           st.msg.GasFeeCap(),
-		MaxPriorityFeePerGas:   st.msg.GasTipCap(),
-		Nonce:                  new(big.Int).SetUint64(st.msg.Nonce()),
-		Value:                  st.msg.Value(),
-		Reserved: [4]*big.Int{
-			big.NewInt(0),
-			big.NewInt(0),
-			big.NewInt(0),
-			big.NewInt(0),
-		},
-		Data:      st.msg.Data(),
-		Signature: []byte{},
-	}
-	// Sanity checks
-	if st.paymasterParams != nil {
-		if st.paymasterParams.Paymaster != nil {
-			tx.Paymaster = new(big.Int).SetBytes(st.paymasterParams.Paymaster.Bytes())
-		}
-		if st.paymasterParams.PaymasterInput != nil {
-			tx.PaymasterInput = st.paymasterParams.PaymasterInput
-		}
-	}
-	return IPaymasterABI.Pack(pmValidateMethod,
-		common.Hash{1}, common.Hash{2}, common.Hash{3}.Bytes(), tx)
-}
-
-func ConstructAndApplySmcCallMsg(st *StateTransition, payload []byte) *ExecutionResult {
-	// Apply this fake message just to get the function output
-	msg := types.NewMessage(
-		st.msg.From(),
-		st.msg.To(),
-		0,
-		st.msg.Value(),
-		st.msg.Gas(),
-		st.msg.GasPrice(),
-		st.msg.GasFeeCap(),
-		st.msg.GasTipCap(),
-		payload,
-		nil,
-		true,
-		nil,
-	)
-	return Apply(st, msg)
 }
 
 func Apply(st *StateTransition, msg types.Message) *ExecutionResult {

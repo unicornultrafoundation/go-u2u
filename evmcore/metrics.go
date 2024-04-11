@@ -4,7 +4,10 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/metrics"
 )
 
+// Paymaster metrics
 var (
-	validPaymasterCounter   = metrics.NewRegisteredCounter("evmcore/paymaster/valid", nil)
-	invalidPaymasterCounter = metrics.NewRegisteredCounter("evmcore/paymaster/invalid", nil)
+	invalidPaymasterParamsTxCounter  = metrics.NewRegisteredCounter("evmcore/paymaster/params/tx/invalid", nil)
+	invalidPaymasterParamsMsgCounter = metrics.NewRegisteredCounter("evmcore/paymaster/params/msg/invalid", nil)
+	validPaymasterCounter            = metrics.NewRegisteredCounter("evmcore/paymaster/valid", nil)
+	invalidPaymasterCounter          = metrics.NewRegisteredCounter("evmcore/paymaster/invalid", nil)
 )

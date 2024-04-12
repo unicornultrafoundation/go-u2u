@@ -10,4 +10,5 @@ var (
 	invalidPaymasterParamsMsgCounter = metrics.NewRegisteredCounter("evmcore/paymaster/params/msg/invalid", nil)
 	validPaymasterCounter            = metrics.NewRegisteredCounter("evmcore/paymaster/valid", nil)
 	invalidPaymasterCounter          = metrics.NewRegisteredCounter("evmcore/paymaster/invalid", nil)
+	paymasterDepletedCounter         = metrics.NewRegisteredCounter("evmcore/paymaster/depleted", nil)
 )

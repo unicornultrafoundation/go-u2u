@@ -232,7 +232,15 @@ func (st *StateTransition) buyGas() error {
 	mgval = mgval.Mul(mgval, st.gasPrice)
 	// Note: U2U doesn't need to check against gasFeeCap instead of gasPrice, as it's too aggressive in the asynchronous environment
 	if have, want := st.state.GetBalance(st.gasSpender), mgval; have.Cmp(want) < 0 {
-		return fmt.Errorf("%w: address %v have %v want %v", ErrInsufficientFunds, st.gasSpender.Hex(), have, want)
+		if st.gasSpender == st.msg.From() {
+			return fmt.Errorf("%w: address %v have %v want %v", ErrInsufficientFunds, st.gasSpender.Hex(), have, want)
+		}
+		// The paymaster contract is depleted, the original transaction sender will pay for the gas from now on
+		paymasterDepletedCounter.Inc(1)
+		st.gasSpender = st.msg.From()
+		if have = st.state.GetBalance(st.msg.From()); have.Cmp(want) < 0 {
+			return fmt.Errorf("%w: address %v have %v want %v", ErrInsufficientFunds, st.gasSpender.Hex(), have, want)
+		}
 	}
 	if err := st.gp.SubGas(st.msg.Gas()); err != nil {
 		return err

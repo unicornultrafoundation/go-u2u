@@ -655,7 +655,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	if tx.Gas() < intrGas {
 		return ErrIntrinsicGas
 	}
-	if !(tx.Type() == types.EIP712TxType && tx.PaymasterParams() != nil && tx.PaymasterParams().Paymaster != nil) {
+	if tx.Type() == types.EIP712TxType && (tx.PaymasterParams() == nil || tx.PaymasterParams().Paymaster == nil) {
 		return ErrInvalidPaymasterParams
 	}
 	return nil

@@ -65,7 +65,7 @@ type EVMInterpreter struct {
 
 	readOnly   bool   // Whether to throw on stateful modifications
 	returnData []byte // Last CALL's return data for subsequent reuse
-}
+}	
 
 // NewEVMInterpreter returns a new instance of the Interpreter.
 func NewEVMInterpreter(evm *EVM, cfg Config) *EVMInterpreter {
@@ -75,6 +75,8 @@ func NewEVMInterpreter(evm *EVM, cfg Config) *EVMInterpreter {
 	if cfg.JumpTable[STOP] == nil {
 		var jt JumpTable
 		switch {
+		case evm.chainRules.IsEIP712:
+			jt = cancunInstructionSet
 		case evm.chainRules.IsLondon:
 			jt = londonInstructionSet
 		case evm.chainRules.IsBerlin:

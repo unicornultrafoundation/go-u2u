@@ -4,3 +4,6 @@
 /build
 *.out
 *.g
+*.log
+*.diff
+core/vm.*

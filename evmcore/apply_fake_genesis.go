@@ -19,7 +19,7 @@ package evmcore
 import (
 	"crypto/ecdsa"
 	"errors"
-	"math"
+	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"math/big"
 	"time"
 
@@ -74,7 +74,7 @@ func genesisBlock(time native.Timestamp, root common.Hash) *EvmBlock {
 		EvmHeader: EvmHeader{
 			Number:   big.NewInt(0),
 			Time:     time,
-			GasLimit: math.MaxUint64,
+			GasLimit: u2u.FakeNetRules().Blocks.MaxBlockGas,
 			Root:     root,
 			TxHash:   types.EmptyRootHash,
 		},

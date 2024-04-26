@@ -54,6 +54,9 @@ type TransactionArgs struct {
 	// Introduced by AccessListTxType transaction.
 	AccessList *types.AccessList `json:"accessList,omitempty"`
 	ChainID    *hexutil.Big      `json:"chainId,omitempty"`
+
+	// Introduced by EIP712TxType transaction.
+	PaymasterParams *types.PaymasterParams
 }
 
 // from retrieves the transaction sender address.
@@ -229,7 +232,7 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (t
 	if args.AccessList != nil {
 		accessList = *args.AccessList
 	}
-	msg := types.NewMessage(addr, args.To, 0, value, gas, gasPrice, gasFeeCap, gasTipCap, data, accessList, true)
+	msg := types.NewMessage(addr, args.To, 0, value, gas, gasPrice, gasFeeCap, gasTipCap, data, accessList, true, args.PaymasterParams)
 	return msg, nil
 }
 
@@ -264,6 +267,17 @@ func (args *TransactionArgs) toTransaction() *types.Transaction {
 			Value:      (*big.Int)(args.Value),
 			Data:       args.data(),
 			AccessList: *args.AccessList,
+		}
+	case args.PaymasterParams != nil:
+		data = &types.EIP712Tx{
+			To:              args.To,
+			ChainID:         (*big.Int)(args.ChainID),
+			Nonce:           uint64(*args.Nonce),
+			Gas:             uint64(*args.Gas),
+			GasPrice:        (*big.Int)(args.GasPrice),
+			Value:           (*big.Int)(args.Value),
+			Data:            args.data(),
+			PaymasterParams: args.PaymasterParams,
 		}
 	default:
 		data = &types.LegacyTx{

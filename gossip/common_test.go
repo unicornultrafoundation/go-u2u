@@ -15,6 +15,7 @@ import (
 	"github.com/unicornultrafoundation/go-helios/native/dag"
 	"github.com/unicornultrafoundation/go-helios/native/idx"
 	"github.com/unicornultrafoundation/go-helios/utils/cachescale"
+
 	go_u2u "github.com/unicornultrafoundation/go-u2u"
 	"github.com/unicornultrafoundation/go-u2u/accounts/abi/bind"
 	"github.com/unicornultrafoundation/go-u2u/common"
@@ -23,12 +24,11 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
-	"github.com/unicornultrafoundation/go-u2u/log"
-
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip/blockproc"
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter"
 	"github.com/unicornultrafoundation/go-u2u/integration/makefakegenesis"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"
@@ -533,14 +533,15 @@ type callmsg struct {
 	go_u2u.CallMsg
 }
 
-func (m callmsg) From() common.Address         { return m.CallMsg.From }
-func (m callmsg) To() *common.Address          { return m.CallMsg.To }
-func (m callmsg) GasPrice() *big.Int           { return m.CallMsg.GasPrice }
-func (m callmsg) GasTipCap() *big.Int          { return m.CallMsg.GasTipCap }
-func (m callmsg) GasFeeCap() *big.Int          { return m.CallMsg.GasFeeCap }
-func (m callmsg) Gas() uint64                  { return m.CallMsg.Gas }
-func (m callmsg) Value() *big.Int              { return m.CallMsg.Value }
-func (m callmsg) Nonce() uint64                { return 0 }
-func (m callmsg) IsFake() bool                 { return true }
-func (m callmsg) Data() []byte                 { return m.CallMsg.Data }
-func (m callmsg) AccessList() types.AccessList { return nil }
+func (m callmsg) From() common.Address                    { return m.CallMsg.From }
+func (m callmsg) To() *common.Address                     { return m.CallMsg.To }
+func (m callmsg) GasPrice() *big.Int                      { return m.CallMsg.GasPrice }
+func (m callmsg) GasTipCap() *big.Int                     { return m.CallMsg.GasTipCap }
+func (m callmsg) GasFeeCap() *big.Int                     { return m.CallMsg.GasFeeCap }
+func (m callmsg) Gas() uint64                             { return m.CallMsg.Gas }
+func (m callmsg) Value() *big.Int                         { return m.CallMsg.Value }
+func (m callmsg) Nonce() uint64                           { return 0 }
+func (m callmsg) IsFake() bool                            { return true }
+func (m callmsg) Data() []byte                            { return m.CallMsg.Data }
+func (m callmsg) AccessList() types.AccessList            { return nil }
+func (m callmsg) PaymasterParams() *types.PaymasterParams { return nil }

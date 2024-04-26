@@ -205,7 +205,8 @@ func GenerateChain(config *params.ChainConfig, parent *EvmBlock, db ethdb.Databa
 		}
 		// Finalize and seal the block
 		block := &EvmBlock{
-			EvmHeader: *b.header,
+			EvmHeader:    *b.header,
+			Transactions: b.txs,
 		}
 
 		// Write state changes to db

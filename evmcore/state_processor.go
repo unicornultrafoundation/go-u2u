@@ -189,7 +189,7 @@ func TxAsMessage(tx *types.Transaction, signer types.Signer, baseFee *big.Int) (
 	if !internaltx.IsInternal(tx) {
 		return tx.AsMessage(signer, baseFee)
 	} else {
-		msg := types.NewMessage(internaltx.InternalSender(tx), tx.To(), tx.Nonce(), tx.Value(), tx.Gas(), tx.GasPrice(), tx.GasFeeCap(), tx.GasTipCap(), tx.Data(), tx.AccessList(), true)
+		msg := types.NewMessage(internaltx.InternalSender(tx), tx.To(), tx.Nonce(), tx.Value(), tx.Gas(), tx.GasPrice(), tx.GasFeeCap(), tx.GasTipCap(), tx.Data(), tx.AccessList(), true, tx.PaymasterParams())
 		return msg, nil
 	}
 }

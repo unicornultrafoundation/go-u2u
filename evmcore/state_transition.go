@@ -20,16 +20,39 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"strings"
 
+	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/params"
+	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/eip712"
 )
 
-var emptyCodeHash = crypto.Keccak256Hash(nil)
+var (
+	emptyCodeHash              = crypto.Keccak256Hash(nil)
+	IPaymasterABI, IAccountABI abi.ABI
+	magic                      [4]byte
+	context                    []byte
+	paymasterSuccessMagic      [4]byte
+)
+
+func init() {
+	var err error
+	IPaymasterABI, err = abi.JSON(strings.NewReader(eip712.IPaymasterMetaData.ABI))
+	if err != nil {
+		panic(fmt.Sprintf("Error reading IPaymaster ABI: %v", err))
+	}
+	IAccountABI, err = abi.JSON(strings.NewReader(eip712.IAccountMetaData.ABI))
+	if err != nil {
+		panic(fmt.Sprintf("Error reading IAccount ABI: %v", err))
+	}
+	// Mark the paymasterSuccessMagic as the selector of ValidateAndPayForPaymasterTransaction function for later use
+	copy(IPaymasterABI.Methods["validateAndPayForPaymasterTransaction"].ID, paymasterSuccessMagic[:])
+}
 
 /*
 The State Transitioning Model
@@ -51,15 +74,16 @@ The state transitioning model does all the necessary work to work out a valid ne
 6) Derive new state root
 */
 type StateTransition struct {
-	gp         *GasPool
-	msg        Message
-	gas        uint64
-	gasPrice   *big.Int
-	initialGas uint64
-	value      *big.Int
-	data       []byte
-	state      vm.StateDB
-	evm        *vm.EVM
+	gp              *GasPool
+	msg             Message
+	gas             uint64
+	gasPrice        *big.Int
+	initialGas      uint64
+	value           *big.Int
+	data            []byte
+	state           vm.StateDB
+	evm             *vm.EVM
+	paymasterParams *types.PaymasterParams
 }
 
 // Message represents a message sent to a contract.
@@ -77,6 +101,7 @@ type Message interface {
 	IsFake() bool
 	Data() []byte
 	AccessList() types.AccessList
+	PaymasterParams() *types.PaymasterParams
 }
 
 // ExecutionResult includes all output after executing given evm
@@ -153,15 +178,21 @@ func IntrinsicGas(data []byte, accessList types.AccessList, isContractCreation b
 
 // NewStateTransition initialises and returns a new state transition object.
 func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition {
-	return &StateTransition{
-		gp:       gp,
-		evm:      evm,
-		msg:      msg,
-		gasPrice: msg.GasPrice(),
-		value:    msg.Value(),
-		data:     msg.Data(),
-		state:    evm.StateDB,
+	st := &StateTransition{
+		gp:              gp,
+		evm:             evm,
+		msg:             msg,
+		gasPrice:        msg.GasPrice(),
+		value:           msg.Value(),
+		data:            msg.Data(),
+		state:           evm.StateDB,
+		paymasterParams: msg.PaymasterParams(),
 	}
+	// Invalidate paymaster params at message level
+	if msg.PaymasterParams() != nil && (msg.PaymasterParams().Paymaster == nil || msg.PaymasterParams().PaymasterInput == nil) {
+		st.paymasterParams = nil
+	}
+	return st
 }
 
 // ApplyMessage computes the new state by applying the given message
@@ -172,7 +203,11 @@ func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition 
 // indicates a core error meaning that the message would always fail for that particular
 // state and would never be accepted within a block.
 func ApplyMessage(evm *vm.EVM, msg Message, gp *GasPool) (*ExecutionResult, error) {
-	res, err := NewStateTransition(evm, msg, gp).TransitionDb()
+	st := NewStateTransition(evm, msg, gp)
+	if msg.PaymasterParams() != nil && st.paymasterParams == nil {
+		return nil, ErrInvalidPaymasterParams
+	}
+	res, err := st.TransitionDb()
 	if err != nil {
 		log.Debug("Tx skipped", "err", err)
 	}
@@ -187,11 +222,12 @@ func (st *StateTransition) to() common.Address {
 	return *st.msg.To()
 }
 
-func (st *StateTransition) buyGas() error {
+// buyGas subtract the balance of from address for gas
+func (st *StateTransition) buyGas(from common.Address) error {
 	mgval := new(big.Int).SetUint64(st.msg.Gas())
 	mgval = mgval.Mul(mgval, st.gasPrice)
 	// Note: U2U doesn't need to check against gasFeeCap instead of gasPrice, as it's too aggressive in the asynchronous environment
-	if have, want := st.state.GetBalance(st.msg.From()), mgval; have.Cmp(want) < 0 {
+	if have, want := st.state.GetBalance(from), mgval; have.Cmp(want) < 0 {
 		return fmt.Errorf("%w: address %v have %v want %v", ErrInsufficientFunds, st.msg.From().Hex(), have, want)
 	}
 	if err := st.gp.SubGas(st.msg.Gas()); err != nil {
@@ -200,7 +236,7 @@ func (st *StateTransition) buyGas() error {
 	st.gas += st.msg.Gas()
 
 	st.initialGas = st.msg.Gas()
-	st.state.SubBalance(st.msg.From(), mgval)
+	st.state.SubBalance(from, mgval)
 	return nil
 }
 
@@ -223,7 +259,22 @@ func (st *StateTransition) preCheck() error {
 		}
 	}
 	// Note: U2U doesn't need to check gasFeeCap >= BaseFee, because it's already checked by epochcheck
-	return st.buyGas()
+
+	// Verify if this transaction is eligible for gas sponsoring by calling
+	// ValidateAndPayForPaymasterTransaction function of the dedicated paymaster
+	if st.paymasterParams != nil {
+		// TODO(b1m0n): remember to add correct gas after previous operations
+		var err error
+		magic, context, err = craftValidateAndPayForPaymasterTransaction(st)
+		if err != nil {
+			return err
+		}
+		// This transaction is eligible for gas sponsoring, take
+		if magic == paymasterSuccessMagic {
+			return st.buyGas(*st.paymasterParams.Paymaster)
+		}
+	}
+	return st.buyGas(st.msg.From())
 }
 
 func (st *StateTransition) internal() bool {

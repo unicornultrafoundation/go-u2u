@@ -67,7 +67,7 @@ func NewEVMInterpreter(evm *EVM, cfg Config) *EVMInterpreter {
 		var jt JumpTable
 		switch {
 		case evm.chainRules.IsEIP712:
-			jt = cancunInstructionSet
+			jt = eip712InstructionSet
 		case evm.chainRules.IsLondon:
 			jt = londonInstructionSet
 		case evm.chainRules.IsBerlin:

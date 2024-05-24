@@ -18,8 +18,6 @@ package params
 
 import (
 	"math/big"
-
-	"github.com/unicornultrafoundation/go-u2u/common"
 )
 
 const (

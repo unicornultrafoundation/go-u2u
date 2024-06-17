@@ -35,14 +35,6 @@ type precompiledTest struct {
 	NoBenchmark     bool // Benchmark primarily the worst-cases
 }
 
-// precompiledFailureTest defines the input/error pairs for precompiled
-// contract failure tests.
-type precompiledFailureTest struct {
-	Input         string
-	ExpectedError string
-	Name          string
-}
-
 // allPrecompiles does not map to the actual set of precompiles, as it also contains
 // repriced versions of precompiles at certain slots
 var allPrecompiles = map[common.Address]PrecompiledContract{
@@ -97,23 +89,6 @@ func testPrecompiledOOG(addr string, test precompiledTest, t *testing.T) {
 	})
 }
 
-func testPrecompiledFailure(addr string, test precompiledFailureTest, t *testing.T) {
-	p := allPrecompiles[common.HexToAddress(addr)]
-	in := common.Hex2Bytes(test.Input)
-	gas := p.RequiredGas(in)
-	t.Run(test.Name, func(t *testing.T) {
-		_, _, err := RunPrecompiledContract(p, in, gas)
-		if err.Error() != test.ExpectedError {
-			t.Errorf("Expected error [%v], got [%v]", test.ExpectedError, err)
-		}
-		// Verify that the precompile did not touch the input buffer
-		exp := common.Hex2Bytes(test.Input)
-		if !bytes.Equal(in, exp) {
-			t.Errorf("Precompiled %v modified input data", addr)
-		}
-	})
-}
-
 func benchmarkPrecompiled(addr string, test precompiledTest, bench *testing.B) {
 	if test.NoBenchmark {
 		return
@@ -152,7 +127,7 @@ func benchmarkPrecompiled(addr string, test precompiledTest, bench *testing.B) {
 			return
 		}
 		if common.Bytes2Hex(res) != test.Expected {
-			bench.Error(fmt.Sprintf("Expected %v, got %v", test.Expected, common.Bytes2Hex(res)))
+			bench.Errorf("Expected %v, got %v", test.Expected, common.Bytes2Hex(res))
 			return
 		}
 	})
@@ -243,16 +218,6 @@ func testJson(name, addr string, t *testing.T) {
 	}
 }
 
-func testJsonFail(name, addr string, t *testing.T) {
-	tests, err := loadJsonFail(name)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, test := range tests {
-		testPrecompiledFailure(addr, test, t)
-	}
-}
-
 func benchJson(name, addr string, b *testing.B) {
 	tests, err := loadJson(name)
 	if err != nil {
@@ -269,16 +234,6 @@ func loadJson(name string) ([]precompiledTest, error) {
 		return nil, err
 	}
 	var testcases []precompiledTest
-	err = json.Unmarshal(data, &testcases)
-	return testcases, err
-}
-
-func loadJsonFail(name string) ([]precompiledFailureTest, error) {
-	data, err := os.ReadFile(fmt.Sprintf("testdata/precompiles/fail-%v.json", name))
-	if err != nil {
-		return nil, err
-	}
-	var testcases []precompiledFailureTest
 	err = json.Unmarshal(data, &testcases)
 	return testcases, err
 }

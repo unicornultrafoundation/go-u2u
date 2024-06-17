@@ -32,8 +32,6 @@ import (
 // a single data retrieval network packet.
 type stateReq struct {
 	nItems    uint16                    // Number of items requested for download (max is 384, so uint16 is sufficient)
-	trieTasks map[common.Hash]*trieTask // Trie node download tasks to track previous attempts
-	codeTasks map[common.Hash]*codeTask // Byte code download tasks to track previous attempts
 	timeout   time.Duration             // Maximum round trip time for this to complete
 	timer     *time.Timer               // Timer to fire when the RTT timeout expires
 	peer      *peerConnection           // Peer that we're requesting from
@@ -42,17 +40,10 @@ type stateReq struct {
 	dropped   bool                      // Flag whether the peer dropped off early
 }
 
-// timedOut returns if this request timed out.
-func (req *stateReq) timedOut() bool {
-	return req.response == nil
-}
-
 // stateSyncStats is a collection of progress stats to report during a state trie
 // sync to RPC requests as well as to display in user logs.
 type stateSyncStats struct {
 	processed  uint64 // Number of state entries processed
-	duplicate  uint64 // Number of state entries downloaded twice
-	unexpected uint64 // Number of non-requested state entries received
 	pending    uint64 // Number of still pending state entries
 }
 
@@ -261,12 +252,6 @@ type stateSync struct {
 	sched  *trie.Sync         // State trie sync scheduler defining the tasks
 	keccak crypto.KeccakState // Keccak256 hasher to verify deliveries with
 
-	trieTasks map[common.Hash]*trieTask // Set of trie node tasks currently queued for retrieval
-	codeTasks map[common.Hash]*codeTask // Set of byte code tasks currently queued for retrieval
-
-	numUncommitted   int
-	bytesUncommitted int
-
 	started chan struct{} // Started is signalled once the sync loop starts
 
 	deliver    chan *stateReq // Delivery channel multiplexing peer responses
@@ -274,19 +259,6 @@ type stateSync struct {
 	cancelOnce sync.Once      // Ensures cancel only ever gets called once
 	done       chan struct{}  // Channel to signal termination completion
 	err        error          // Any error hit during sync (set before completion)
-}
-
-// trieTask represents a single trie node download task, containing a set of
-// peers already attempted retrieval from to detect stalled syncs and abort.
-type trieTask struct {
-	path     [][]byte
-	attempts map[string]struct{}
-}
-
-// codeTask represents a single byte code download task, containing a set of
-// peers already attempted retrieval from to detect stalled syncs and abort.
-type codeTask struct {
-	attempts map[string]struct{}
 }
 
 // newStateSync creates a new state trie download scheduler. This method does not
@@ -297,8 +269,6 @@ func newStateSync(d *Leecher, root common.Hash) *stateSync {
 		root:      root,
 		sched:     state.NewStateSync(root, d.stateDB, d.stateBloom, nil),
 		keccak:    sha3.NewLegacyKeccak256().(crypto.KeccakState),
-		trieTasks: make(map[common.Hash]*trieTask),
-		codeTasks: make(map[common.Hash]*codeTask),
 		deliver:   make(chan *stateReq),
 		cancel:    make(chan struct{}),
 		done:      make(chan struct{}),

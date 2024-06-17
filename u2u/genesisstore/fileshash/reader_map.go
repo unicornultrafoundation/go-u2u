@@ -6,10 +6,6 @@ import (
 	"github.com/unicornultrafoundation/go-helios/hash"
 )
 
-type Map struct {
-	backend func(string) (io.Reader, error)
-}
-
 func Wrap(backend func(string) (io.Reader, error), maxMemoryUsage uint64, roots map[string]hash.Hash) func(string) (io.Reader, error) {
 	return func(name string) (io.Reader, error) {
 		root, ok := roots[name]

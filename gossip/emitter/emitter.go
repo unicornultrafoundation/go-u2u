@@ -62,7 +62,6 @@ type Emitter struct {
 	payloadIndexer *ancestor.PayloadIndexer
 
 	intervals                EmitIntervals
-	globalConfirmingInterval time.Duration
 
 	done chan struct{}
 	wg   sync.WaitGroup

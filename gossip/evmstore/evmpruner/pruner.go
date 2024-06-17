@@ -415,23 +415,3 @@ func findBloomFilter(datadir string) (string, common.Hash, error) {
 	}
 	return stateBloomPath, stateBloomRoot, nil
 }
-
-const warningLog = `
-
-WARNING!
-
-The clean trie cache is not found. Please delete it by yourself after the 
-pruning. Remember don't start the Geth without deleting the clean trie cache
-otherwise the entire database may be damaged!
-
-Check the command description "geth snapshot prune-state --help" for more details.
-`
-
-func deleteCleanTrieCache(path string) {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		log.Warn(warningLog)
-		return
-	}
-	os.RemoveAll(path)
-	log.Info("Deleted trie clean cache", "path", path)
-}

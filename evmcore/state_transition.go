@@ -51,7 +51,7 @@ func init() {
 		panic(fmt.Sprintf("Error reading IAccount ABI: %v", err))
 	}
 	// Mark the paymasterSuccessMagic as the selector of ValidateAndPayForPaymasterTransaction function for later use
-	copy(paymasterSuccessMagic[:], IPaymasterABI.Methods[pmValidateMethod].ID)
+	copy(paymasterSuccessMagic[:], IPaymasterABI.Methods[pmValidateAndPayMethod].ID)
 }
 
 /*
@@ -289,15 +289,15 @@ func (st *StateTransition) preCheck() error {
 		} else {
 			invalidPaymasterCounter.Inc(1)
 			if st.msg.Gas() < execRes.UsedGas {
-				err = fmt.Errorf(AAErr, "paymaster", pmValidateMethod, vm.ErrOutOfGas)
+				err = fmt.Errorf(PMErr, pmValidateAndPayMethod, vm.ErrOutOfGas)
 			}
 			// Extract revert reason if any
 			if len(execRes.Revert()) > 0 {
 				_, err = revertReason(execRes)
 			}
-			log.Warn("Paymaster pmValidateMethod failed", "err", err)
+			log.Warn("Paymaster pmValidateAndPayMethod failed", "err", err)
 		}
-		// Temporarily use st.gas to mark the gas used for the pmValidateMethod function
+		// Temporarily use st.gas to mark the gas used by the pmValidateAndPayMethod function
 		st.gas = execRes.UsedGas
 	}
 	return st.buyGas()

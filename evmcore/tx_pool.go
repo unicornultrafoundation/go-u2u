@@ -619,13 +619,6 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	if tx.GasFeeCapIntCmp(tx.GasTipCap()) < 0 {
 		return ErrTipAboveFeeCap
 	}
-	// Make sure the transaction is signed properly.
-	from, err := types.Sender(pool.signer, tx)
-	if err != nil {
-		return ErrInvalidSender
-	}
-	// Drop non-local transactions under our own minimal accepted gas price or tip
-	local = local || pool.locals.contains(from) // account may be local even if the transaction arrived from the network
 	if !local && tx.GasTipCapIntCmp(pool.gasPrice) < 0 {
 		return ErrUnderpriced
 	}
@@ -637,15 +630,6 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		if tx.GasFeeCapIntCmp(new(big.Int).Add(recommendedGasTip, minPrice)) < 0 {
 			return ErrUnderpriced
 		}
-	}
-	// Ensure the transaction adheres to nonce ordering
-	if pool.currentState.GetNonce(from) > tx.Nonce() {
-		return ErrNonceTooLow
-	}
-	// Transactor should have enough funds to cover the costs
-	// cost == V + GP * GL
-	if pool.currentState.GetBalance(from).Cmp(tx.Cost()) < 0 {
-		return ErrInsufficientFunds
 	}
 	// Ensure the transaction has more gas than the basic tx fee.
 	intrGas, err := IntrinsicGas(tx.Data(), tx.AccessList(), tx.To() == nil)
@@ -660,6 +644,26 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		tx.PaymasterParams().Paymaster == nil || tx.PaymasterParams().PaymasterInput == nil) {
 		invalidPaymasterParamsTxCounter.Inc(1)
 		return ErrInvalidPaymasterParams
+	}
+	// Make sure the transaction is signed properly.
+	from, err := types.Sender(pool.signer, tx)
+	if err != nil {
+		return ErrInvalidSender
+	}
+	// Drop non-local transactions under our own minimal accepted gas price or tip
+	local = local || pool.locals.contains(from) // account may be local even if the transaction arrived from the network
+	// Ensure the transaction adheres to nonce ordering
+	if pool.currentState.GetNonce(from) > tx.Nonce() {
+		return ErrNonceTooLow
+	}
+	// Transactor (or the paymaster) should have enough funds to cover the transaction cost
+	// cost == V + GP * GL
+	if pool.currentState.GetBalance(from).Cmp(tx.Cost()) < 0 {
+		if tx.Type() == types.EIP712TxType && tx.PaymasterParams() != nil && tx.PaymasterParams().Paymaster != nil &&
+			pool.currentState.GetBalance(*tx.PaymasterParams().Paymaster).Cmp(tx.Cost()) >= 0 {
+			return nil
+		}
+		return ErrInsufficientFunds
 	}
 	return nil
 }

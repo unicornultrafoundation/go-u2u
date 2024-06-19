@@ -93,7 +93,7 @@ var (
 )
 
 var (
-	AAErr = "%s: function %s failed with error: %s"
+	PMErr = "paymaster: function %s failed with error: %s"
 )
 
 func revertReason(result *ExecutionResult) (string, error) {

@@ -1,5 +1,11 @@
 package evmcore
 
 const (
-	pmValidateMethod = "validateAndPayForPaymasterTransaction"
+	pmValidateAndPayMethod       = "validateAndPayForPaymasterTransaction"
+	pmPostTxMethod               = "postTransaction"
+	aaValidateTxMethod           = "validateTransaction"
+	aaExecuteTxMethod            = "executeTransaction"
+	aaPrepareForPmMethod         = "prepareForPaymaster"
+	aaPayForTxMethod             = "payForTransaction"
+	aaExecuteTxFromOutsideMethod = "executeTransactionFromOutside"
 )

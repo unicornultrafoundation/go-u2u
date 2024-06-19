@@ -33,7 +33,7 @@ func craftValidateAndPayForPaymasterTransaction(st *StateTransition) ([4]byte, [
 		Magic   [4]byte
 		Context []byte
 	})
-	if err := IPaymasterABI.UnpackIntoInterface(result, pmValidateMethod, execRes.ReturnData); err != nil {
+	if err := IPaymasterABI.UnpackIntoInterface(result, pmValidateAndPayMethod, execRes.ReturnData); err != nil {
 		return [4]byte{}, nil, execRes, err
 	}
 	return result.Magic, result.Context, execRes, nil

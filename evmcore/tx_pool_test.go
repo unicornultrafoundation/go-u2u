@@ -308,14 +308,19 @@ func TestInvalidTransactions(t *testing.T) {
 	from, _ := deriveSender(tx)
 
 	testAddBalance(pool, from, big.NewInt(1))
-	if err := pool.AddRemote(tx); !errors.Is(err, ErrInsufficientFunds) {
-		t.Error("expected", ErrInsufficientFunds)
+	if err := pool.AddRemote(tx); !errors.Is(err, ErrIntrinsicGas) {
+		t.Error("expected", ErrIntrinsicGas)
 	}
 
 	balance := new(big.Int).Add(tx.Value(), new(big.Int).Mul(new(big.Int).SetUint64(tx.Gas()), tx.GasPrice()))
 	testAddBalance(pool, from, balance)
 	if err := pool.AddRemote(tx); !errors.Is(err, ErrIntrinsicGas) {
 		t.Error("expected", ErrIntrinsicGas, "got", err)
+	}
+
+	tx = transaction(0, 10000000, key)
+	if err := pool.AddRemote(tx); !errors.Is(err, ErrInsufficientFunds) {
+		t.Error("expected", ErrInsufficientFunds)
 	}
 
 	testSetNonce(pool, from, 1)

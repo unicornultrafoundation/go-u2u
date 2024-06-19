@@ -193,6 +193,6 @@ func craftTestValidateAndPayForPaymasterPayload(payload []byte) ([]byte, error) 
 		Paymaster:      fakeBigInt,
 		PaymasterInput: fakeBytes,
 	}
-	return IPaymasterABI.Pack(pmValidateMethod,
+	return IPaymasterABI.Pack(pmValidateAndPayMethod,
 		common.Hash{1}, common.BytesToHash(payload), fakeBigInt.Bytes(), tx)
 }

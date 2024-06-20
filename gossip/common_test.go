@@ -518,14 +518,12 @@ func (env *testEnv) SendTransaction(ctx context.Context, tx *types.Transaction) 
 // returning all the results in one batch.
 func (env *testEnv) FilterLogs(ctx context.Context, query go_u2u.FilterQuery) ([]types.Log, error) {
 	panic("not implemented yet")
-	return nil, nil
 }
 
 // SubscribeFilterLogs creates a background log filtering operation, returning
 // a subscription immediately, which can be used to stream the found events.
 func (env *testEnv) SubscribeFilterLogs(ctx context.Context, query go_u2u.FilterQuery, ch chan<- types.Log) (go_u2u.Subscription, error) {
 	panic("not implemented yet")
-	return nil, nil
 }
 
 // callmsg implements evmcore.Message to allow passing it as a transaction simulator.

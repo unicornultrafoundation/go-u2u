@@ -582,73 +582,54 @@ func (pool *TxPool) local() map[common.Address]types.Transactions {
 // validateTx checks whether a transaction is valid according to the consensus
 // rules and adheres to some heuristic limits of the local node (price and size).
 func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
-	// Accept only legacy transactions until EIP-2718/2930 activates.
-	if !pool.eip2718 && tx.Type() != types.LegacyTxType {
-		return ErrTxTypeNotSupported
+	opts := &ValidationOptions{
+		Config: pool.chainconfig,
+		Local:  local,
+		Accept: 0 |
+			1<<types.LegacyTxType |
+			1<<types.AccessListTxType |
+			1<<types.DynamicFeeTxType,
+		MaxSize:      txMaxSize,
+		MinTip:       pool.chain.EffectiveMinTip(),
+		MinGasPrice:  pool.chain.MinGasPrice(),
+		PoolGasPrice: pool.gasPrice,
 	}
-	// Reject dynamic fee transactions until EIP-1559 activates.
-	if !pool.eip1559 && tx.Type() == types.DynamicFeeTxType {
-		return ErrTxTypeNotSupported
+	if local || opts.MinTip == nil {
+		opts.MinTip = new(big.Int)
 	}
-	// Reject transactions over defined size to prevent DOS attacks
-	if uint64(tx.Size()) > txMaxSize {
-		return ErrOversizedData
+	optsWithState := &ValidationOptionsWithState{
+		State:         pool.currentState,
+		FirstNonceGap: nil, // Pool allows arbitrary arrival order, don't invalidate nonce gaps
+		UsedAndLeftSlots: func(addr common.Address) (int, int) {
+			var have int
+			if list := pool.pending[addr]; list != nil {
+				have += list.Len()
+			}
+			if list := pool.queue[addr]; list != nil {
+				have += list.Len()
+			}
+			return have, math.MaxInt
+		},
+		ExistingExpenditure: func(addr common.Address) *big.Int {
+			if list := pool.pending[addr]; list != nil {
+				return list.totalcost
+			}
+			return new(big.Int)
+		},
+		ExistingCost: func(addr common.Address, nonce uint64) *big.Int {
+			if list := pool.pending[addr]; list != nil {
+				if tx := list.txs.Get(nonce); tx != nil {
+					return tx.Cost()
+				}
+			}
+			return nil
+		},
 	}
-	// Transactions can't be negative. This may never happen using RLP decoded
-	// transactions but may occur if you create a transaction using the RPC.
-	if tx.Value().Sign() < 0 {
-		return ErrNegativeValue
-	}
-	// Ensure the transaction doesn't exceed the current block limit gas.
-	if pool.currentMaxGas < tx.Gas() {
-		return ErrGasLimit
-	}
-	// Sanity check for extremely large numbers
-	if tx.GasFeeCap().BitLen() > 256 {
-		return ErrFeeCapVeryHigh
-	}
-	if tx.GasTipCap().BitLen() > 256 {
-		return ErrTipVeryHigh
-	}
-	// Ensure gasFeeCap is greater than or equal to gasTipCap.
-	if tx.GasFeeCapIntCmp(tx.GasTipCap()) < 0 {
-		return ErrTipAboveFeeCap
-	}
-	// Make sure the transaction is signed properly.
-	from, err := types.Sender(pool.signer, tx)
-	if err != nil {
-		return ErrInvalidSender
-	}
-	// Drop non-local transactions under our own minimal accepted gas price or tip
-	local = local || pool.locals.contains(from) // account may be local even if the transaction arrived from the network
-	if !local && tx.GasTipCapIntCmp(pool.gasPrice) < 0 {
-		return ErrUnderpriced
-	}
-	// Ensure U2U-specific hard bounds
-	if recommendedGasTip, minPrice := pool.chain.EffectiveMinTip(), pool.chain.MinGasPrice(); recommendedGasTip != nil && minPrice != nil {
-		if tx.GasTipCapIntCmp(recommendedGasTip) < 0 {
-			return ErrUnderpriced
-		}
-		if tx.GasFeeCapIntCmp(new(big.Int).Add(recommendedGasTip, minPrice)) < 0 {
-			return ErrUnderpriced
-		}
-	}
-	// Ensure the transaction adheres to nonce ordering
-	if pool.currentState.GetNonce(from) > tx.Nonce() {
-		return ErrNonceTooLow
-	}
-	// Transactor should have enough funds to cover the costs
-	// cost == V + GP * GL
-	if pool.currentState.GetBalance(from).Cmp(tx.Cost()) < 0 {
-		return ErrInsufficientFunds
-	}
-	// Ensure the transaction has more gas than the basic tx fee.
-	intrGas, err := IntrinsicGas(tx.Data(), tx.AccessList(), tx.To() == nil)
-	if err != nil {
+	if err := ValidateTransaction(tx, pool.chain.CurrentBlock().Header(), pool.signer, opts); err != nil {
 		return err
 	}
-	if tx.Gas() < intrGas {
-		return ErrIntrinsicGas
+	if err := ValidateTransactionWithState(tx, pool.signer, optsWithState); err != nil {
+		return err
 	}
 	return nil
 }

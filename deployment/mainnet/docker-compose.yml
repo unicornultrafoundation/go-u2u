@@ -1,0 +1,34 @@
+version: '3'
+services:
+  node:
+    image: u2u:latest
+    container_name: u2u
+    restart: always
+    volumes:
+      - ./data:/root/.u2u
+      - ../../mainnet.g:/mainnet.g
+      - /etc/password:/password
+    ports:
+      - 30303:30303
+      - 30303:30303/udp
+      - 19090:19090
+    logging:
+      driver: "json-file"
+      options:
+        max-size: 300m
+    command:
+      --genesis /mainnet.g
+      --gcmode full
+      --genesis.allowExperimental
+      --cache 3875
+      --port 30303
+      --http
+      --http.addr="0.0.0.0"
+      --http.port=8545
+      --http.corsdomain="*"
+      --http.vhosts="*"
+      --validator.id <id>
+      --validator.pubkey <pubkey>
+      --validator.password /password
+      --bootnodes <bootnodes>
+      --monitor

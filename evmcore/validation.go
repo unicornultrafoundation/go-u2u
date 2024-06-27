@@ -104,6 +104,12 @@ func ValidateTransaction(tx *types.Transaction, head *EvmHeader, signer types.Si
 	if tx.Gas() < intrGas {
 		return fmt.Errorf("%w: gas %v, minimum needed %v", ErrIntrinsicGas, tx.Gas(), intrGas)
 	}
+	// Check for invalid paymaster params at tx level
+	if tx.Type() == types.EIP712TxType && (tx.PaymasterParams() == nil ||
+		tx.PaymasterParams().Paymaster == nil || tx.PaymasterParams().PaymasterInput == nil) {
+		invalidPaymasterParamsTxCounter.Inc(1)
+		return ErrInvalidPaymasterParams
+	}
 	return nil
 }
 
@@ -161,6 +167,10 @@ func ValidateTransactionWithState(tx *types.Transaction, signer types.Signer, op
 		cost    = tx.Cost()
 	)
 	if balance.Cmp(cost) < 0 {
+		if tx.Type() == types.EIP712TxType && tx.PaymasterParams() != nil && tx.PaymasterParams().Paymaster != nil &&
+			opts.State.GetBalance(*tx.PaymasterParams().Paymaster).Cmp(tx.Cost()) < 0 {
+			return fmt.Errorf("%w: paymaster balance %v, tx cost %v, overshot %v", ErrInsufficientFunds, balance, cost, new(big.Int).Sub(cost, balance))
+		}
 		return fmt.Errorf("%w: balance %v, tx cost %v, overshot %v", ErrInsufficientFunds, balance, cost, new(big.Int).Sub(cost, balance))
 	}
 	// Ensure the transactor has enough funds to cover for replacements or nonce

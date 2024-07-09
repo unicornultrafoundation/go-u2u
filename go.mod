@@ -9,6 +9,7 @@ require (
 	github.com/deckarep/golang-set v1.8.0
 	github.com/docker/docker v1.13.1
 	github.com/dvyukov/go-fuzz v0.0.0-20230614170735-95bc4d742dfa
+	github.com/ethereum/go-ethereum v1.10.26
 	github.com/evalphobia/logrus_sentry v0.8.2
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5
 	github.com/golang/mock v1.6.0
@@ -36,6 +37,8 @@ require (
 	golang.org/x/sys v0.7.0
 	gopkg.in/urfave/cli.v1 v1.20.0
 )
+
+replace github.com/unicornultrafoundation/go-u2u/crypto/secp256k1 => github.com/ethereum/go-ethereum/crypto/secp256k1 v1.10.26
 
 require (
 	github.com/Azure/azure-pipeline-go v0.2.3 // indirect

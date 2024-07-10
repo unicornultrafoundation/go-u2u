@@ -7,7 +7,7 @@ require (
 	github.com/cespare/cp v1.1.1
 	github.com/davecgh/go-spew v1.1.1
 	github.com/deckarep/golang-set v1.8.0
-	github.com/docker/docker v1.13.1
+	github.com/docker/docker v24.0.9+incompatible
 	github.com/dvyukov/go-fuzz v0.0.0-20230614170735-95bc4d742dfa
 	github.com/evalphobia/logrus_sentry v0.8.2
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5
@@ -44,6 +44,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/mattn/go-ieproxy v0.0.1 // indirect
+	gotest.tools/v3 v3.5.1 // indirect
 )
 
 require (

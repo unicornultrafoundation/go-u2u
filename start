@@ -1,0 +1,8 @@
+#!/bin/sh
+
+ip=`curl icanhazip.com`
+apis=eth,debug,net,web3,txpool,dag
+nohup ./build/u2u --monitor --cache 16000 --verbosity=3 --port=30303 --http --http.port=8545 --ws --ws.port=8546 --http.corsdomain=* --ws.origins=* --http.api=$apis,admin,personal --ws.api=$apis --genesis /media/data/temp/mainnet.g --genesis.allowExperimental --gcmode=full --syncmode=full --nat extip:$ip &
+disown
+exit 0
+#--enabletxtracer

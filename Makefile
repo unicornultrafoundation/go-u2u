@@ -7,8 +7,9 @@ u2u:
 	GIT_COMMIT=`git rev-list -1 HEAD 2>/dev/null || echo ""` && \
 	GIT_DATE=`git log -1 --date=short --pretty=format:%ct 2>/dev/null || echo ""` && \
 	GOPROXY=$(GOPROXY) \
+	CGO_ENABLED=1 CC=musl-gcc
 	go build \
-	    -ldflags "-s -w -X github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher.gitCommit=$${GIT_COMMIT} -X github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher.gitDate=$${GIT_DATE}" \
+	    -ldflags "-linkmode=external -extldflags=-static -s -w -X github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher.gitCommit=$${GIT_COMMIT} -X github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher.gitDate=$${GIT_DATE}" \
 	    -o build/u2u \
 	    ./cmd/u2u
 

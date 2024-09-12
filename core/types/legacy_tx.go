@@ -91,6 +91,7 @@ func (tx *LegacyTx) copy() TxData {
 }
 
 // accessors for innerTx.
+func (tx *LegacyTx) initiatorAddress() *common.Address { return nil }
 func (tx *LegacyTx) txType() byte                      { return LegacyTxType }
 func (tx *LegacyTx) chainID() *big.Int                 { return deriveChainId(tx.V) }
 func (tx *LegacyTx) accessList() AccessList            { return nil }

@@ -7,21 +7,23 @@ import (
 )
 
 type PaymasterParams struct {
-	Paymaster      *common.Address
-	PaymasterInput []byte
+	Paymaster                *common.Address
+	PrepareForPaymasterInput []byte
+	PaymasterInput           []byte
 }
 
 // EIP712Tx is the transaction data of regular Ethereum transactions.
 type EIP712Tx struct {
-	ChainID         *big.Int
-	Nonce           uint64
-	GasPrice        *big.Int
-	Gas             uint64
-	To              *common.Address `rlp:"nil"` // nil means contract creation
-	Value           *big.Int
-	Data            []byte
-	PaymasterParams *PaymasterParams
-	V, R, S         *big.Int // signature values
+	ChainID          *big.Int
+	Nonce            uint64
+	GasPrice         *big.Int
+	Gas              uint64
+	To               *common.Address `rlp:"nil"` // nil means contract creation
+	Value            *big.Int
+	Data             []byte
+	InitiatorAddress *common.Address
+	PaymasterParams  *PaymasterParams
+	V, R, S          *big.Int // signature values
 }
 
 // copy creates a deep copy of the transaction data and initializes all fields.
@@ -62,6 +64,7 @@ func (tx *EIP712Tx) copy() TxData {
 }
 
 // accessors for innerTx.
+func (tx *EIP712Tx) initiatorAddress() *common.Address { return tx.InitiatorAddress }
 func (tx *EIP712Tx) txType() byte                      { return EIP712TxType }
 func (tx *EIP712Tx) chainID() *big.Int                 { return tx.ChainID }
 func (tx *EIP712Tx) accessList() AccessList            { return nil }

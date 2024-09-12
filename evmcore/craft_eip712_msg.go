@@ -3,7 +3,33 @@ package evmcore
 import (
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
+	"math/big"
 )
+
+func craftPrepareForPaymasterTransaction(st *StateTransition) (*ExecutionResult, error) {
+	to := st.msg.From()
+	// Apply a fake PrepareForPaymasterTransaction msg just to get the result and gas used
+	msg := types.NewMessage(
+		st.msg.From(),
+		&to,
+		0,
+		st.msg.Value(),
+		st.msg.Gas(),
+		big.NewInt(0),
+		st.msg.GasFeeCap(),
+		st.msg.GasTipCap(),
+		st.paymasterParams.PrepareForPaymasterInput,
+		nil,
+		true,
+		nil,
+		nil,
+	)
+	// Temporarily set total initial gas as transaction gas limit
+	st.initialGas = st.msg.Gas()
+	execRes := Apply(st, msg)
+	st.initialGas = 0 // reset
+	return execRes, nil
+}
 
 func craftValidateAndPayForPaymasterTransaction(st *StateTransition) ([4]byte, []byte, *ExecutionResult, error) {
 	// Apply a fake ValidateAndPayForPaymasterTransaction msg just to get the result and gas used
@@ -19,6 +45,7 @@ func craftValidateAndPayForPaymasterTransaction(st *StateTransition) ([4]byte, [
 		st.paymasterParams.PaymasterInput,
 		nil,
 		true,
+		nil,
 		nil,
 	)
 	// Temporarily set total initial gas as transaction gas limit

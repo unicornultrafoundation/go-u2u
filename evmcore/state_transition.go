@@ -274,33 +274,48 @@ func (st *StateTransition) preCheck() error {
 	}
 	// Note: U2U doesn't need to check gasFeeCap >= BaseFee, because it's already checked by epochcheck
 
-	// Verify if this transaction is eligible for gas sponsoring by calling
-	// ValidateAndPayForPaymasterTransaction function of the dedicated paymaster
+	// Verify if this transaction is eligible for gas sponsoring by calling PrepareForPaymaster of AA
+	// and ValidateAndPayForPaymasterTransaction function of the dedicated paymaster
 	if st.paymasterParams != nil {
-		var (
-			execRes *ExecutionResult
-			err     error
-		)
-		magic, context, execRes, err = craftValidateAndPayForPaymasterTransaction(st)
-		// This transaction is eligible for gas sponsoring
-		if magic == paymasterSuccessMagic {
-			validPaymasterCounter.Inc(1)
-			st.gasSpender = *st.paymasterParams.Paymaster
-		} else {
-			invalidPaymasterCounter.Inc(1)
-			if st.msg.Gas() < execRes.UsedGas {
-				err = fmt.Errorf(PMErr, pmValidateAndPayMethod, vm.ErrOutOfGas)
-			}
-			// Extract revert reason if any
-			if len(execRes.Revert()) > 0 {
-				_, err = revertReason(execRes)
-			}
-			log.Warn("Paymaster pmValidateAndPayMethod failed", "err", err)
-		}
-		// Temporarily use st.gas to mark the gas used by the pmValidateAndPayMethod function
-		st.gas = execRes.UsedGas
+		st.processPaymaster()
 	}
 	return st.buyGas()
+}
+
+func (st *StateTransition) processPaymaster() {
+	var (
+		execRes             *ExecutionResult
+		err                 error
+		prepareForPmUsedGas uint64
+	)
+	// Call PrepareForPaymaster of the abstract account first if there is
+	execRes, _ = craftPrepareForPaymasterTransaction(st)
+	if st.msg.Gas() < execRes.UsedGas {
+		invalidPrepareForPaymasterCounter.Inc(1)
+		err = fmt.Errorf(PMErr, aaPrepareForPmMethod, vm.ErrOutOfGas)
+		log.Warn("AA aaPrepareForPmMethod OOG", "err", err)
+	}
+	// Temporarily mark the cumulative gas used by the aaPrepareForPmMethod function
+	prepareForPmUsedGas = execRes.UsedGas
+
+	magic, context, execRes, err = craftValidateAndPayForPaymasterTransaction(st)
+	// This transaction is eligible for gas sponsoring
+	if magic == paymasterSuccessMagic {
+		validPaymasterCounter.Inc(1)
+		st.gasSpender = *st.paymasterParams.Paymaster
+	} else {
+		invalidPaymasterCounter.Inc(1)
+		if st.msg.Gas() < execRes.UsedGas {
+			err = fmt.Errorf(PMErr, pmValidateAndPayMethod, vm.ErrOutOfGas)
+		}
+		// Extract revert reason if any
+		if len(execRes.Revert()) > 0 {
+			_, err = revertReason(execRes)
+		}
+		log.Warn("Paymaster pmValidateAndPayMethod failed", "err", err)
+	}
+	// Temporarily use st.gas to mark the gas used by the pmValidateAndPayMethod (+ aaPrepareForPmMethod) function
+	st.gas = prepareForPmUsedGas + execRes.UsedGas
 }
 
 func (st *StateTransition) internal() bool {

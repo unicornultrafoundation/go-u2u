@@ -94,6 +94,7 @@ func (tx *AccessListTx) copy() TxData {
 }
 
 // accessors for innerTx.
+func (tx *AccessListTx) initiatorAddress() *common.Address { return nil }
 func (tx *AccessListTx) txType() byte                      { return AccessListTxType }
 func (tx *AccessListTx) chainID() *big.Int                 { return tx.ChainID }
 func (tx *AccessListTx) protected() bool                   { return true }

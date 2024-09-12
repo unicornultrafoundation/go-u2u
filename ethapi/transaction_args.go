@@ -38,6 +38,7 @@ import (
 type TransactionArgs struct {
 	From                 *common.Address `json:"from"`
 	To                   *common.Address `json:"to"`
+	InitiatorAddress     *common.Address `json:"initiatorAddress"`
 	Gas                  *hexutil.Uint64 `json:"gas"`
 	GasPrice             *hexutil.Big    `json:"gasPrice"`
 	MaxFeePerGas         *hexutil.Big    `json:"maxFeePerGas"`
@@ -143,6 +144,7 @@ func (args *TransactionArgs) setDefaults(ctx context.Context, b Backend) error {
 		callArgs := TransactionArgs{
 			From:                 args.From,
 			To:                   args.To,
+			InitiatorAddress:     args.InitiatorAddress,
 			GasPrice:             args.GasPrice,
 			MaxFeePerGas:         args.MaxFeePerGas,
 			MaxPriorityFeePerGas: args.MaxPriorityFeePerGas,
@@ -232,7 +234,8 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (t
 	if args.AccessList != nil {
 		accessList = *args.AccessList
 	}
-	msg := types.NewMessage(addr, args.To, 0, value, gas, gasPrice, gasFeeCap, gasTipCap, data, accessList, true, args.PaymasterParams)
+	msg := types.NewMessage(addr, args.To, 0, value, gas, gasPrice, gasFeeCap, gasTipCap, data, accessList,
+		true, args.PaymasterParams, args.InitiatorAddress)
 	return msg, nil
 }
 
@@ -268,16 +271,17 @@ func (args *TransactionArgs) toTransaction() *types.Transaction {
 			Data:       args.data(),
 			AccessList: *args.AccessList,
 		}
-	case args.PaymasterParams != nil:
+	case args.PaymasterParams != nil || args.InitiatorAddress != nil:
 		data = &types.EIP712Tx{
-			To:              args.To,
-			ChainID:         (*big.Int)(args.ChainID),
-			Nonce:           uint64(*args.Nonce),
-			Gas:             uint64(*args.Gas),
-			GasPrice:        (*big.Int)(args.GasPrice),
-			Value:           (*big.Int)(args.Value),
-			Data:            args.data(),
-			PaymasterParams: args.PaymasterParams,
+			To:               args.To,
+			InitiatorAddress: args.InitiatorAddress,
+			ChainID:          (*big.Int)(args.ChainID),
+			Nonce:            uint64(*args.Nonce),
+			Gas:              uint64(*args.Gas),
+			GasPrice:         (*big.Int)(args.GasPrice),
+			Value:            (*big.Int)(args.Value),
+			Data:             args.data(),
+			PaymasterParams:  args.PaymasterParams,
 		}
 	default:
 		data = &types.LegacyTx{

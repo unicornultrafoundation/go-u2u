@@ -82,6 +82,7 @@ func (tx *DynamicFeeTx) copy() TxData {
 }
 
 // accessors for innerTx.
+func (tx *DynamicFeeTx) initiatorAddress() *common.Address { return nil }
 func (tx *DynamicFeeTx) txType() byte                      { return DynamicFeeTxType }
 func (tx *DynamicFeeTx) chainID() *big.Int                 { return tx.ChainID }
 func (tx *DynamicFeeTx) protected() bool                   { return true }

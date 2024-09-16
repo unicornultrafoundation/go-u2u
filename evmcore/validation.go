@@ -104,6 +104,13 @@ func ValidateTransaction(tx *types.Transaction, head *EvmHeader, signer types.Si
 	if tx.Gas() < intrGas {
 		return fmt.Errorf("%w: gas %v, minimum needed %v", ErrIntrinsicGas, tx.Gas(), intrGas)
 	}
+	// Check for invalid AA params at tx level
+	if tx.Type() == types.EIP712TxType && tx.InitiatorAddress() != nil {
+		if tx.AAParams() == nil || (tx.AAParams() != nil && tx.AAParams().ValidationTransactionInput == nil) {
+			invalidAAParamsTxCounter.Inc(1)
+			return ErrInvalidAAParams
+		}
+	}
 	// Check for invalid paymaster params at tx level
 	if tx.Type() == types.EIP712TxType && (tx.PaymasterParams() == nil ||
 		tx.PaymasterParams().Paymaster == nil || tx.PaymasterParams().PaymasterInput == nil) {
@@ -147,8 +154,12 @@ func ValidateTransactionWithState(tx *types.Transaction, signer types.Signer, op
 	// Ensure the transaction adheres to nonce ordering
 	from, err := signer.Sender(tx) // already validated (and cached), but cleaner to check
 	if err != nil {
-		log.Error("Transaction sender recovery failed", "err", err)
-		return err
+		log.Error("Normal transaction sender recovery failed", "err", err)
+		from, err = validateAASignature(tx, opts)
+		if err != nil {
+			log.Error("AA Transaction sender recovery failed", "err", err)
+			return err
+		}
 	}
 	next := opts.State.GetNonce(from)
 	if next > tx.Nonce() {
@@ -195,4 +206,9 @@ func ValidateTransactionWithState(tx *types.Transaction, signer types.Signer, op
 		}
 	}
 	return nil
+}
+
+func validateAASignature(tx *types.Transaction, opts *ValidationOptionsWithState) (common.Address, error) {
+
+	return common.Address{}, nil
 }

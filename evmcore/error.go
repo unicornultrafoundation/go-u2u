@@ -94,6 +94,9 @@ var (
 
 	// ErrInvalidPaymasterParams is returned if the paymaster params is malformed.
 	ErrInvalidPaymasterParams = errors.New("invalid paymaster params")
+
+	// ErrInvalidAAParams is returned if the AA params is malformed.
+	ErrInvalidAAParams = errors.New("invalid AA params")
 )
 
 var (

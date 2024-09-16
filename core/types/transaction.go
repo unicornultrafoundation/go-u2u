@@ -84,6 +84,7 @@ type TxData interface {
 	value() *big.Int
 	nonce() uint64
 	to() *common.Address
+	aaParams() *AAParams
 	paymasterParams() *PaymasterParams
 
 	rawSignatureValues() (v, r, s *big.Int)
@@ -304,6 +305,10 @@ func (tx *Transaction) Cost() *big.Int {
 	total := new(big.Int).Mul(tx.GasPrice(), new(big.Int).SetUint64(tx.Gas()))
 	total.Add(total, tx.Value())
 	return total
+}
+
+func (tx *Transaction) AAParams() *AAParams {
+	return tx.inner.aaParams()
 }
 
 func (tx *Transaction) PaymasterParams() *PaymasterParams {
@@ -608,12 +613,14 @@ type Message struct {
 	data             []byte
 	accessList       AccessList
 	isFake           bool
+	aaParams         *AAParams
 	paymasterParams  *PaymasterParams
 }
 
-func NewMessage(from common.Address, to *common.Address, nonce uint64, amount *big.Int, gasLimit uint64, gasPrice, gasFeeCap,
-	gasTipCap *big.Int, data []byte, accessList AccessList, isFake bool, paymasterParams *PaymasterParams, initiatorAddress *common.Address) Message {
-	return Message{
+func NewMessage(from common.Address, to *common.Address, nonce uint64, amount *big.Int, gasLimit uint64, gasPrice,
+	gasFeeCap, gasTipCap *big.Int, data []byte, accessList AccessList, isFake bool, aaParams *AAParams,
+	paymasterParams *PaymasterParams, initiatorAddress *common.Address) Message {
+	msg := Message{
 		from:             from,
 		to:               to,
 		initiatorAddress: initiatorAddress,
@@ -626,8 +633,13 @@ func NewMessage(from common.Address, to *common.Address, nonce uint64, amount *b
 		data:             data,
 		accessList:       accessList,
 		isFake:           isFake,
+		aaParams:         aaParams,
 		paymasterParams:  paymasterParams,
 	}
+	if initiatorAddress != nil {
+		msg.from = *initiatorAddress
+	}
+	return msg
 }
 
 // AsMessage returns the transaction as a evmcore.Message.
@@ -644,6 +656,7 @@ func (tx *Transaction) AsMessage(s Signer, baseFee *big.Int) (Message, error) {
 		data:             tx.Data(),
 		accessList:       tx.AccessList(),
 		isFake:           false,
+		aaParams:         tx.AAParams(),
 		paymasterParams:  tx.PaymasterParams(),
 	}
 	// If baseFee provided, set gasPrice to effectiveGasPrice.
@@ -651,7 +664,13 @@ func (tx *Transaction) AsMessage(s Signer, baseFee *big.Int) (Message, error) {
 		msg.gasPrice = math.BigMin(msg.gasPrice.Add(msg.gasTipCap, baseFee), msg.gasFeeCap)
 	}
 	var err error
-	msg.from, err = Sender(s, tx)
+	// The tx passed in this function is pre-validated and included in a block,
+	// so the tx.InitialAddress() should be reliable if there is
+	if tx.InitiatorAddress() != nil {
+		msg.from = *tx.InitiatorAddress()
+	} else {
+		msg.from, err = Sender(s, tx)
+	}
 	return msg, err
 }
 
@@ -671,4 +690,5 @@ func (m Message) Nonce() uint64                     { return m.nonce }
 func (m Message) Data() []byte                      { return m.data }
 func (m Message) AccessList() AccessList            { return m.accessList }
 func (m Message) IsFake() bool                      { return m.isFake }
+func (m Message) AAParams() *AAParams               { return m.aaParams }
 func (m Message) PaymasterParams() *PaymasterParams { return m.paymasterParams }

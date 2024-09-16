@@ -95,6 +95,7 @@ func (tx *DynamicFeeTx) gasPrice() *big.Int                { return tx.GasFeeCap
 func (tx *DynamicFeeTx) value() *big.Int                   { return tx.Value }
 func (tx *DynamicFeeTx) nonce() uint64                     { return tx.Nonce }
 func (tx *DynamicFeeTx) to() *common.Address               { return tx.To }
+func (tx *DynamicFeeTx) aaParams() *AAParams               { return nil }
 func (tx *DynamicFeeTx) paymasterParams() *PaymasterParams { return nil }
 
 func (tx *DynamicFeeTx) rawSignatureValues() (v, r, s *big.Int) {

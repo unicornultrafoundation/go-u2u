@@ -238,6 +238,7 @@ func (s eip712Signer) Hash(tx *Transaction) common.Hash {
 			tx.Value(),
 			tx.Data(),
 			tx.InitiatorAddress(),
+			tx.AAParams(),
 			tx.PaymasterParams(),
 		})
 }

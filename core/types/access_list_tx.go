@@ -107,6 +107,7 @@ func (tx *AccessListTx) gasFeeCap() *big.Int               { return tx.GasPrice 
 func (tx *AccessListTx) value() *big.Int                   { return tx.Value }
 func (tx *AccessListTx) nonce() uint64                     { return tx.Nonce }
 func (tx *AccessListTx) to() *common.Address               { return tx.To }
+func (tx *AccessListTx) aaParams() *AAParams               { return nil }
 func (tx *AccessListTx) paymasterParams() *PaymasterParams { return nil }
 
 func (tx *AccessListTx) rawSignatureValues() (v, r, s *big.Int) {

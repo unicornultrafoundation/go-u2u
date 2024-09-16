@@ -6,6 +6,7 @@ import (
 
 // Paymaster metrics
 var (
+	invalidAAParamsTxCounter          = metrics.NewRegisteredCounter("evmcore/aa/params/tx/invalid", nil)
 	invalidPaymasterParamsTxCounter   = metrics.NewRegisteredCounter("evmcore/paymaster/params/tx/invalid", nil)
 	invalidPaymasterParamsMsgCounter  = metrics.NewRegisteredCounter("evmcore/paymaster/params/msg/invalid", nil)
 	validPaymasterCounter             = metrics.NewRegisteredCounter("evmcore/paymaster/valid", nil)

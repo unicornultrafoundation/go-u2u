@@ -35,7 +35,8 @@ import (
 var (
 	emptyCodeHash              = crypto.Keccak256Hash(nil)
 	IPaymasterABI, IAccountABI abi.ABI
-	magic                      [4]byte
+	aaEIP1271Magic             [4]byte
+	pmMagic                    [4]byte
 	context                    []byte
 	paymasterSuccessMagic      [4]byte
 )
@@ -83,6 +84,7 @@ type StateTransition struct {
 	data            []byte
 	state           vm.StateDB
 	evm             *vm.EVM
+	aaParams        *types.AAParams
 	paymasterParams *types.PaymasterParams
 	gasSpender      common.Address
 }
@@ -102,6 +104,8 @@ type Message interface {
 	IsFake() bool
 	Data() []byte
 	AccessList() types.AccessList
+
+	AAParams() *types.AAParams
 	PaymasterParams() *types.PaymasterParams
 }
 
@@ -211,6 +215,10 @@ func ApplyMessage(evm *vm.EVM, msg Message, gp *GasPool) (*ExecutionResult, erro
 		invalidPaymasterParamsTxCounter.Inc(1)
 		return nil, ErrInvalidPaymasterParams
 	}
+	if msg.AAParams() != nil && msg.AAParams().ValidationTransactionInput == nil {
+		invalidAAParamsTxCounter.Inc(1)
+		return nil, ErrInvalidAAParams
+	}
 	res, err := st.TransitionDb()
 	if err != nil {
 		log.Debug("Tx skipped", "err", err)
@@ -289,18 +297,20 @@ func (st *StateTransition) processPaymaster() {
 		prepareForPmUsedGas uint64
 	)
 	// Call PrepareForPaymaster of the abstract account first if there is
-	execRes, _ = craftPrepareForPaymasterTransaction(st)
-	if st.msg.Gas() < execRes.UsedGas {
-		invalidPrepareForPaymasterCounter.Inc(1)
-		err = fmt.Errorf(PMErr, aaPrepareForPmMethod, vm.ErrOutOfGas)
-		log.Warn("AA aaPrepareForPmMethod OOG", "err", err)
+	if st.aaParams != nil && st.aaParams.PrepareForPaymasterInput != nil {
+		execRes, _ = craftPrepareForPaymasterTransaction(st)
+		if st.msg.Gas() < execRes.UsedGas {
+			invalidPrepareForPaymasterCounter.Inc(1)
+			err = fmt.Errorf(PMErr, aaPrepareForPmMethod, vm.ErrOutOfGas)
+			log.Warn("AA aaPrepareForPmMethod OOG", "err", err)
+		}
+		// Temporarily mark the cumulative gas used by the aaPrepareForPmMethod function
+		prepareForPmUsedGas = execRes.UsedGas
 	}
-	// Temporarily mark the cumulative gas used by the aaPrepareForPmMethod function
-	prepareForPmUsedGas = execRes.UsedGas
 
-	magic, context, execRes, err = craftValidateAndPayForPaymasterTransaction(st)
+	pmMagic, context, execRes, err = craftValidateAndPayForPaymasterTransaction(st)
 	// This transaction is eligible for gas sponsoring
-	if magic == paymasterSuccessMagic {
+	if pmMagic == paymasterSuccessMagic {
 		validPaymasterCounter.Inc(1)
 		st.gasSpender = *st.paymasterParams.Paymaster
 	} else {

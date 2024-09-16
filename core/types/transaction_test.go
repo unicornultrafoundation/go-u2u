@@ -237,23 +237,23 @@ func TestEIP712Signer(t *testing.T) {
 		{
 			tx:             tx0,
 			signer:         signer1,
-			wantSignerHash: common.HexToHash("e9da58de7096a3222b9b5e12babd613d1195f5bf27efb8804d2a9fc351a46fc0"),
+			wantSignerHash: common.HexToHash("e6dff8227a5de3dcc9d5470010adf0a186902e6cc16098344ec93bbd8f23151f"),
 			wantSenderErr:  ErrInvalidChainId,
-			wantHash:       common.HexToHash("ecb62836b9b919744fde2fad526fe393e5dcc7dd4d7274095fc9ab35b13915a2"),
+			wantHash:       common.HexToHash("5420c1ee896e44bc2aea37697fd888268f2020f7185afb839b867a5d246d224e"),
 		},
 		{
 			tx:             tx1,
 			signer:         signer1,
 			wantSenderErr:  ErrInvalidSig,
-			wantSignerHash: common.HexToHash("e9da58de7096a3222b9b5e12babd613d1195f5bf27efb8804d2a9fc351a46fc0"),
-			wantHash:       common.HexToHash("8adff2c7ba92929b7ab23a50bf541a0be22b0fd031811e39618d7f27256aa5fd"),
+			wantSignerHash: common.HexToHash("e6dff8227a5de3dcc9d5470010adf0a186902e6cc16098344ec93bbd8f23151f"),
+			wantHash:       common.HexToHash("5934a6a3155a06345c8a91ae53524e533ff877684367d4c8237af1502b49012a"),
 		},
 		{
 			// This checks what happens when trying to sign an unsigned tx for the wrong chain.
 			tx:             tx1,
 			signer:         signer2,
 			wantSenderErr:  ErrInvalidChainId,
-			wantSignerHash: common.HexToHash("c0fba3de3d2a3db9d2cd10a42dd0e2bfc195fabfd7ece73f9fc40f49344105e2"),
+			wantSignerHash: common.HexToHash("02e5eff6e1a33de2b910beea4d4789aa66f9345a1784b2c931ef4a79e98b4163"),
 			wantSignErr:    ErrInvalidChainId,
 		},
 		{
@@ -261,7 +261,7 @@ func TestEIP712Signer(t *testing.T) {
 			tx:             tx2,
 			signer:         signer1,
 			wantSenderErr:  ErrInvalidChainId,
-			wantSignerHash: common.HexToHash("e9da58de7096a3222b9b5e12babd613d1195f5bf27efb8804d2a9fc351a46fc0"),
+			wantSignerHash: common.HexToHash("e6dff8227a5de3dcc9d5470010adf0a186902e6cc16098344ec93bbd8f23151f"),
 			wantSignErr:    ErrInvalidChainId,
 		},
 	}

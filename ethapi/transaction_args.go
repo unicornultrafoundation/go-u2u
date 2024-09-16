@@ -57,6 +57,7 @@ type TransactionArgs struct {
 	ChainID    *hexutil.Big      `json:"chainId,omitempty"`
 
 	// Introduced by EIP712TxType transaction.
+	AAParams        *types.AAParams
 	PaymasterParams *types.PaymasterParams
 }
 
@@ -235,7 +236,7 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (t
 		accessList = *args.AccessList
 	}
 	msg := types.NewMessage(addr, args.To, 0, value, gas, gasPrice, gasFeeCap, gasTipCap, data, accessList,
-		true, args.PaymasterParams, args.InitiatorAddress)
+		true, args.AAParams, args.PaymasterParams, args.InitiatorAddress)
 	return msg, nil
 }
 
@@ -271,7 +272,7 @@ func (args *TransactionArgs) toTransaction() *types.Transaction {
 			Data:       args.data(),
 			AccessList: *args.AccessList,
 		}
-	case args.PaymasterParams != nil || args.InitiatorAddress != nil:
+	case args.PaymasterParams != nil || (args.InitiatorAddress != nil && args.AAParams != nil):
 		data = &types.EIP712Tx{
 			To:               args.To,
 			InitiatorAddress: args.InitiatorAddress,
@@ -281,6 +282,7 @@ func (args *TransactionArgs) toTransaction() *types.Transaction {
 			GasPrice:         (*big.Int)(args.GasPrice),
 			Value:            (*big.Int)(args.Value),
 			Data:             args.data(),
+			AAParams:         args.AAParams,
 			PaymasterParams:  args.PaymasterParams,
 		}
 	default:

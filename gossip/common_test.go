@@ -544,4 +544,5 @@ func (m callmsg) Nonce() uint64                           { return 0 }
 func (m callmsg) IsFake() bool                            { return true }
 func (m callmsg) Data() []byte                            { return m.CallMsg.Data }
 func (m callmsg) AccessList() types.AccessList            { return nil }
+func (m callmsg) AAParams() *types.AAParams               { return nil }
 func (m callmsg) PaymasterParams() *types.PaymasterParams { return nil }

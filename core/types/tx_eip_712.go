@@ -7,9 +7,13 @@ import (
 )
 
 type PaymasterParams struct {
-	Paymaster                *common.Address
-	PrepareForPaymasterInput []byte
-	PaymasterInput           []byte
+	Paymaster      *common.Address
+	PaymasterInput []byte
+}
+
+type AAParams struct {
+	PrepareForPaymasterInput   []byte
+	ValidationTransactionInput []byte
 }
 
 // EIP712Tx is the transaction data of regular Ethereum transactions.
@@ -23,6 +27,7 @@ type EIP712Tx struct {
 	Data             []byte
 	InitiatorAddress *common.Address
 	PaymasterParams  *PaymasterParams
+	AAParams         *AAParams
 	V, R, S          *big.Int // signature values
 }
 
@@ -76,6 +81,7 @@ func (tx *EIP712Tx) gasFeeCap() *big.Int               { return tx.GasPrice }
 func (tx *EIP712Tx) value() *big.Int                   { return tx.Value }
 func (tx *EIP712Tx) nonce() uint64                     { return tx.Nonce }
 func (tx *EIP712Tx) to() *common.Address               { return tx.To }
+func (tx *EIP712Tx) aaParams() *AAParams               { return tx.AAParams }
 func (tx *EIP712Tx) paymasterParams() *PaymasterParams { return tx.PaymasterParams }
 
 func (tx *EIP712Tx) rawSignatureValues() (v, r, s *big.Int) {

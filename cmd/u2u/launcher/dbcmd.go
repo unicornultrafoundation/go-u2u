@@ -72,6 +72,21 @@ u2u db heal --experimental
 Experimental - try to heal dirty DB.
 `,
 			},
+			{
+				Name:      "dump-sfc",
+				Usage:     "Experimental - try to dump the storage of SFC contract to KVDB",
+				ArgsUsage: "",
+				Action:    utils.MigrateFlags(dumpSfcStorage),
+				Category:  "DB COMMANDS",
+				Flags: []cli.Flag{
+					utils.DataDirFlag,
+					experimentalFlag,
+				},
+				Description: `
+u2u db dump-sfc --experimental
+Experimental - try to dump the storage of SFC contract to KVDB.
+`,
+			},
 		},
 	}
 )

@@ -33,12 +33,13 @@ import (
 )
 
 var (
-	emptyCodeHash              = crypto.Keccak256Hash(nil)
-	IPaymasterABI, IAccountABI abi.ABI
-	aaEIP1271Magic             [4]byte
-	pmMagic                    [4]byte
-	context                    []byte
-	paymasterSuccessMagic      [4]byte
+	emptyCodeHash         = crypto.Keccak256Hash(nil)
+	IAccountABI           abi.ABI
+	IPaymasterABI         abi.ABI
+	aaEIP1271Magic        [4]byte
+	pmMagic               [4]byte
+	context               []byte
+	paymasterSuccessMagic [4]byte
 )
 
 func init() {
@@ -53,6 +54,8 @@ func init() {
 	}
 	// Mark the paymasterSuccessMagic as the selector of ValidateAndPayForPaymasterTransaction function for later use
 	copy(paymasterSuccessMagic[:], IPaymasterABI.Methods[pmValidateAndPayMethod].ID)
+	// Mark the aaEIP1271Magic as the selector of validateTransaction function for later use
+	copy(aaEIP1271Magic[:], IAccountABI.Methods[aaValidateTxMethod].ID)
 }
 
 /*
@@ -145,13 +148,17 @@ func (result *ExecutionResult) Revert() []byte {
 }
 
 // IntrinsicGas computes the 'intrinsic gas' for a message with the given data.
-func IntrinsicGas(data []byte, accessList types.AccessList, isContractCreation bool) (uint64, error) {
+func IntrinsicGas(data []byte, accessList types.AccessList, isContractCreation bool, isAATx bool) (uint64, error) {
 	// Set the starting gas for the raw transaction
 	var gas uint64
 	if isContractCreation {
 		gas = params.TxGasContractCreation
 	} else {
 		gas = params.TxGas
+	}
+	// Count the ValidateTransaction used gas as intrinsic
+	if isAATx {
+		gas += params.AAValidateTransactionGasCap
 	}
 	// Bump the required gas by the amount of transactional data
 	if len(data) > 0 {

@@ -1,23 +1,26 @@
 package evmcore
 
 import (
+	"math/big"
+
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
-	"math/big"
+	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
 func craftValidateTxTransaction(st *StateTransition) ([4]byte, *ExecutionResult, error) {
+	to := st.msg.From()
 	// Apply a fake ValidateTransaction msg just to get the result and gas used
 	msg := types.NewMessage(
 		st.msg.From(),
-		st.paymasterParams.Paymaster,
+		&to,
 		0,
 		st.msg.Value(),
-		st.msg.Gas(),
+		params.AAValidateTransactionGasCap,
 		st.msg.GasPrice(),
 		st.msg.GasFeeCap(),
 		st.msg.GasTipCap(),
-		st.paymasterParams.PaymasterInput,
+		st.aaParams.ValidationTransactionInput,
 		nil,
 		true,
 		nil,
@@ -27,7 +30,6 @@ func craftValidateTxTransaction(st *StateTransition) ([4]byte, *ExecutionResult,
 	// Temporarily set total initial gas as transaction gas limit
 	st.initialGas = st.msg.Gas()
 	execRes := Apply(st, msg)
-	st.initialGas = 0 // reset
 	if execRes.Failed() {
 		return [4]byte{}, execRes, nil
 	}

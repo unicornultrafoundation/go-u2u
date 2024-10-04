@@ -347,6 +347,16 @@ func loadJson(name string) ([]precompiledTest, error) {
 	return testcases, err
 }
 
+func loadJsonFail(name string) ([]precompiledFailureTest, error) {
+	data, err := os.ReadFile(fmt.Sprintf("testdata/precompiles/fail-%v.json", name))
+	if err != nil {
+		return nil, err
+	}
+	var testcases []precompiledFailureTest
+	err = json.Unmarshal(data, &testcases)
+	return testcases, err
+}
+
 // BenchmarkPrecompiledBLS12381G1MultiExpWorstCase benchmarks the worst case we could find that still fits a gaslimit of 10MGas.
 func BenchmarkPrecompiledBLS12381G1MultiExpWorstCase(b *testing.B) {
 	task := "0000000000000000000000000000000008d8c4a16fb9d8800cce987c0eadbb6b3b005c213d44ecb5adeed713bae79d606041406df26169c35df63cf972c94be1" +

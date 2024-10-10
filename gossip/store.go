@@ -15,6 +15,7 @@ import (
 	"github.com/unicornultrafoundation/go-helios/u2udb/table"
 	"github.com/unicornultrafoundation/go-helios/utils/wlru"
 	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"
+	"github.com/unicornultrafoundation/go-u2u/gossip/sfcstore"
 	txtracer "github.com/unicornultrafoundation/go-u2u/gossip/txtracer"
 	"github.com/unicornultrafoundation/go-u2u/logger"
 	"github.com/unicornultrafoundation/go-u2u/utils/adapters/snap2udb"
@@ -31,6 +32,7 @@ type Store struct {
 
 	snapshotedEVMDB *switchable.Snapshot
 	evm             *evmstore.Store
+	sfc             *sfcstore.Store
 	txtracer        *txtracer.Store
 	table           struct {
 		Version u2udb.Store `table:"_"`
@@ -127,6 +129,9 @@ func NewStore(dbs u2udb.FlushableDBProducer, cfg StoreConfig) *Store {
 
 	s.initCache()
 	s.evm = evmstore.NewStore(dbs, cfg.EVM)
+	if cfg.SFC.Enable {
+		s.sfc = sfcstore.NewStore(dbs, cfg.SFC)
+	}
 
 	if cfg.TraceTransactions {
 		s.txtracer = txtracer.NewStore(s.table.TransactionTraces)
@@ -180,6 +185,10 @@ func (s *Store) Close() {
 	}
 	_ = s.closeEpochStore()
 	s.evm.Close()
+
+	if s.cfg.SFC.Enable {
+		s.sfc.Close()
+	}
 }
 
 func (s *Store) IsCommitNeeded() bool {
@@ -253,6 +262,10 @@ func (s *Store) flushDBs() error {
 
 func (s *Store) EvmStore() *evmstore.Store {
 	return s.evm
+}
+
+func (s *Store) SfcStore() *sfcstore.Store {
+	return s.sfc
 }
 
 func (s *Store) TxTraceStore() *txtracer.Store {

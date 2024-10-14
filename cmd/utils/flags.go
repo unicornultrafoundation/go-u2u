@@ -587,6 +587,11 @@ var (
 		Usage: "Enable expensive metrics collection and reporting",
 	}
 
+	ConsensusFlag = cli.BoolFlag{
+		Name:  "consensus",
+		Usage: "Enable Consensus storage (dumped from SFC contract's storage)",
+	}
+
 	// MetricsHTTPFlag defines the endpoint for a stand-alone metrics HTTP endpoint.
 	// Since the pprof service enables sensitive/vulnerable behavior, this allows a user
 	// to enable a public-OK metrics endpoint without having to worry about ALSO exposing

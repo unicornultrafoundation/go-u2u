@@ -1,4 +1,4 @@
-// Copyright 2015 The go-ethereum Authors
+// Copyright 2023 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -14,25 +14,31 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package gasprice
+package vm
 
 import (
-	"math/big"
+	"testing"
 
-	"github.com/unicornultrafoundation/go-u2u/params"
+	"github.com/unicornultrafoundation/go-u2u/common"
 )
 
-var (
-	DefaultMaxPrice    = big.NewInt(500 * params.GWei)
-	DefaultIgnorePrice = big.NewInt(2 * params.Wei)
-)
-
-type Config struct {
-	Blocks           int
-	Percentile       int
-	MaxHeaderHistory int
-	MaxBlockHistory  int
-	Default          *big.Int `toml:",omitempty"`
-	MaxPrice         *big.Int `toml:",omitempty"`
-	IgnorePrice      *big.Int `toml:",omitempty"`
+func FuzzPrecompiledContracts(f *testing.F) {
+	// Create list of addresses
+	var addrs []common.Address
+	for k := range allPrecompiles {
+		addrs = append(addrs, k)
+	}
+	f.Fuzz(func(t *testing.T, addr uint8, input []byte) {
+		a := addrs[int(addr)%len(addrs)]
+		p := allPrecompiles[a]
+		gas := p.RequiredGas(input)
+		if gas > 10_000_000 {
+			return
+		}
+		inWant := string(input)
+		RunPrecompiledContract(p, input, gas)
+		if inHave := string(input); inWant != inHave {
+			t.Errorf("Precompiled %v modified input data", a)
+		}
+	})
 }

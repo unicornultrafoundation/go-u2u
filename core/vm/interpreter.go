@@ -17,11 +17,9 @@
 package vm
 
 import (
-	"hash"
-	"sync/atomic"
-
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/common/math"
+	"github.com/unicornultrafoundation/go-u2u/crypto"
 	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
@@ -48,21 +46,13 @@ type ScopeContext struct {
 	Contract *Contract
 }
 
-// keccakState wraps sha3.state. In addition to the usual hash methods, it also supports
-// Read to get a variable amount of data from the hash state. Read is faster than Sum
-// because it doesn't copy the internal state, but also modifies the internal state.
-type keccakState interface {
-	hash.Hash
-	Read([]byte) (int, error)
-}
-
 // EVMInterpreter represents an EVM interpreter
 type EVMInterpreter struct {
 	evm *EVM
 	cfg Config
 
-	hasher    keccakState // Keccak256 hasher instance shared across opcodes
-	hasherBuf common.Hash // Keccak256 hasher result array shared aross opcodes
+	hasher    crypto.KeccakState // Keccak256 hasher instance shared across opcodes
+	hasherBuf common.Hash        // Keccak256 hasher result array shared across opcodes
 
 	readOnly   bool   // Whether to throw on stateful modifications
 	returnData []byte // Last CALL's return data for subsequent reuse
@@ -76,6 +66,8 @@ func NewEVMInterpreter(evm *EVM, cfg Config) *EVMInterpreter {
 	if cfg.JumpTable[STOP] == nil {
 		var jt JumpTable
 		switch {
+		case evm.chainRules.IsEIP712:
+			jt = eip712InstructionSet
 		case evm.chainRules.IsLondon:
 			jt = londonInstructionSet
 		case evm.chainRules.IsBerlin:
@@ -185,7 +177,7 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly bool) (
 	steps := 0
 	for {
 		steps++
-		if steps%1000 == 0 && atomic.LoadInt32(&in.evm.abort) != 0 {
+		if steps%1000 == 0 && in.evm.abort.Load() {
 			break
 		}
 		if in.cfg.Debug {
@@ -206,52 +198,40 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly bool) (
 		} else if sLen > operation.maxStack {
 			return nil, &ErrStackOverflow{stackLen: sLen, limit: operation.maxStack}
 		}
-		// If the operation is valid, enforce write restrictions
-		if in.readOnly && in.evm.chainRules.IsByzantium {
-			// If the interpreter is operating in readonly mode, make sure no
-			// state-modifying operation is performed. The 3rd stack item
-			// for a call operation is the value. Transferring value from one
-			// account to the others means the state is modified and should also
-			// return with an error.
-			if operation.writes || (op == CALL && stack.Back(2).Sign() != 0) {
-				return nil, ErrWriteProtection
-			}
-		}
-		// Static portion of gas
 		cost = operation.constantGas // For tracing
-		if !contract.UseGas(operation.constantGas) {
+		if !contract.UseGas(cost) {
 			return nil, ErrOutOfGas
 		}
 
-		var memorySize uint64
-		// calculate the new memory size and expand the memory to fit
-		// the operation
-		// Memory check needs to be done prior to evaluating the dynamic gas portion,
-		// to detect calculation overflows
-		if operation.memorySize != nil {
-			memSize, overflow := operation.memorySize(stack)
-			if overflow {
-				return nil, ErrGasUintOverflow
-			}
-			// memory is expanded in words of 32 bytes. Gas
-			// is also calculated in words.
-			if memorySize, overflow = math.SafeMul(toWordSize(memSize), 32); overflow {
-				return nil, ErrGasUintOverflow
-			}
-		}
-		// Dynamic portion of gas
-		// consume the gas and return an error if not enough gas is available.
-		// cost is explicitly set so that the capture state defer method can get the proper cost
 		if operation.dynamicGas != nil {
+			// All ops with a dynamic memory usage also has a dynamic gas cost.
+			var memorySize uint64
+			// calculate the new memory size and expand the memory to fit
+			// the operation
+			// Memory check needs to be done prior to evaluating the dynamic gas portion,
+			// to detect calculation overflows
+			if operation.memorySize != nil {
+				memSize, overflow := operation.memorySize(stack)
+				if overflow {
+					return nil, ErrGasUintOverflow
+				}
+				// memory is expanded in words of 32 bytes. Gas
+				// is also calculated in words.
+				if memorySize, overflow = math.SafeMul(toWordSize(memSize), 32); overflow {
+					return nil, ErrGasUintOverflow
+				}
+			}
+			// Consume the gas and return an error if not enough gas is available.
+			// cost is explicitly set so that the capture state defer method can get the proper cost
 			var dynamicCost uint64
 			dynamicCost, err = operation.dynamicGas(in.evm, contract, stack, mem, memorySize)
 			cost += dynamicCost // total cost, for debug tracing
 			if err != nil || !contract.UseGas(dynamicCost) {
 				return nil, ErrOutOfGas
 			}
-		}
-		if memorySize > 0 {
-			mem.Resize(memorySize)
+			if memorySize > 0 {
+				mem.Resize(memorySize)
+			}
 		}
 
 		if in.cfg.Debug {
@@ -261,22 +241,18 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly bool) (
 
 		// execute the operation
 		res, err = operation.execute(&pc, in, callContext)
-		// if the operation clears the return data (e.g. it has returning data)
-		// set the last return to the result of the operation.
 		if operation.returns {
 			in.returnData = res
 		}
-
-		switch {
-		case err != nil:
-			return nil, err
-		case operation.reverts:
-			return res, ErrExecutionReverted
-		case operation.halts:
-			return res, nil
-		case !operation.jumps:
-			pc++
+		if err != nil {
+			break
 		}
+		pc++
 	}
-	return nil, nil
+
+	if err == errStopToken {
+		err = nil // clear stop token error
+	}
+
+	return res, err
 }

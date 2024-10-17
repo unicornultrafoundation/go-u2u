@@ -17,9 +17,7 @@ var (
 )
 
 var (
-	errTimeout          = errors.New("timeout")
 	errCancelStateFetch = errors.New("state data download canceled (requested)")
-	errCanceled         = errors.New("syncing canceled (requested)")
 )
 
 type Leecher struct {
@@ -38,12 +36,6 @@ type Leecher struct {
 	// Statistics
 	syncStatsState stateSyncStats
 	syncStatsLock  sync.RWMutex // Lock protecting the sync stats fields
-
-	// Cancellation and termination
-	cancelPeer string         // Identifier of the peer currently being used as the master (cancel on drop)
-	cancelCh   chan struct{}  // Channel to cancel mid-flight syncs
-	cancelLock sync.RWMutex   // Lock to protect the cancel channel and peer in delivers
-	cancelWg   sync.WaitGroup // Make sure all fetcher goroutines have exited.
 
 	quitCh chan struct{} // Quit channel to signal termination
 }
@@ -66,24 +58,6 @@ func New(stateDb ethdb.Database, stateBloom *trie.SyncBloom, dropPeer peerDropFn
 	}
 	go d.stateFetcher()
 	return d
-}
-
-// cancel aborts all of the operations and resets the queue. However, cancel does
-// not wait for the running download goroutines to finish. This method should be
-// used when cancelling the downloads from inside the downloader.
-func (d *Leecher) cancel() {
-	// Close the current cancel channel
-	d.cancelLock.Lock()
-	defer d.cancelLock.Unlock()
-
-	if d.cancelCh != nil {
-		select {
-		case <-d.cancelCh:
-			// Channel was already closed
-		default:
-			close(d.cancelCh)
-		}
-	}
 }
 
 // DeliverSnapPacket is invoked from a peer's message handler when it transmits a

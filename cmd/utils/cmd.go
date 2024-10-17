@@ -27,16 +27,12 @@ import (
 	"time"
 
 	"gopkg.in/urfave/cli.v1"
-	
+
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/eth/ethconfig"
 	"github.com/unicornultrafoundation/go-u2u/internal/debug"
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/node"
-)
-
-const (
-	importBatchSize = 2500
 )
 
 // Fatalf formats a message to standard error and exits the program.

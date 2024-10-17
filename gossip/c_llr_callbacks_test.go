@@ -1013,44 +1013,6 @@ func fakeEvent(bvsNum int, bvEpoch idx.Epoch, ersNum bool, evEpoch idx.Epoch, va
 	return random.Build()
 }
 
-func randBig(r *rand.Rand) *big.Int {
-	b := make([]byte, r.Intn(8))
-	_, _ = r.Read(b)
-	if len(b) == 0 {
-		b = []byte{0}
-	}
-	return new(big.Int).SetBytes(b)
-}
-
-func randBytes(r *rand.Rand, size int) []byte {
-	b := make([]byte, size)
-	r.Read(b)
-	return b
-}
-
-func randAddrPtr(r *rand.Rand) *common.Address {
-	addr := randAddr(r)
-	return &addr
-}
-
-func randAddr(r *rand.Rand) common.Address {
-	addr := common.Address{}
-	r.Read(addr[:])
-	return addr
-}
-
-func randAccessList(r *rand.Rand, maxAddrs, maxKeys int) types.AccessList {
-	accessList := make(types.AccessList, r.Intn(maxAddrs))
-	for i := range accessList {
-		accessList[i].Address = randAddr(r)
-		accessList[i].StorageKeys = make([]common.Hash, r.Intn(maxKeys))
-		for j := range accessList[i].StorageKeys {
-			r.Read(accessList[i].StorageKeys[j][:])
-		}
-	}
-	return accessList
-}
-
 func TestEpochRecordWithDiffValidators(t *testing.T) {
 	const (
 		validatorsNum = 10

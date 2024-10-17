@@ -930,6 +930,37 @@ func (s *PublicBlockChainAPI) GetStorageAt(ctx context.Context, address common.A
 	return res[:], state.Error()
 }
 
+// GetBlockReceipts returns the block receipts for the given block hash or number or tag.
+func (s *PublicBlockChainAPI) GetBlockReceipts(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) ([]map[string]interface{}, error) {
+	var (
+		block *evmcore.EvmBlock
+		err   error
+	)
+	if blockNrOrHash.BlockNumber != nil {
+		block, err = s.b.BlockByNumber(ctx, *blockNrOrHash.BlockNumber)
+	} else if blockNrOrHash.BlockHash != nil {
+		block, err = s.b.BlockByHash(ctx, *blockNrOrHash.BlockHash)
+	}
+	if block == nil || err != nil {
+		return nil, err
+	}
+	receipts, err := s.b.GetReceiptsByNumber(ctx, rpc.BlockNumber(block.NumberU64()))
+	if err != nil {
+		return nil, err
+	}
+	if i, j := len(block.Transactions), len(receipts); i != j {
+		return nil, fmt.Errorf("receipts length mismatch: %d vs %d", i, j)
+	}
+	// Derive the sender.
+	signer := types.MakeSigner(s.b.ChainConfig(), block.Number)
+	result := make([]map[string]interface{}, len(receipts))
+	baseFee := block.Header().BaseFee
+	for i, receipt := range receipts {
+		result[i] = marshalReceipt(receipt, signer, block.Transactions[i], uint64(i), baseFee)
+	}
+	return result, nil
+}
+
 // OverrideAccount indicates the overriding fields of account during the execution
 // of a message call.
 // Note, state and stateDiff can't be specified at the same time. If state is
@@ -1791,13 +1822,23 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(ctx context.Context, ha
 	// Derive the sender.
 	bigblock := new(big.Int).SetUint64(blockNumber)
 	signer := gsignercache.Wrap(types.MakeSigner(s.b.ChainConfig(), bigblock))
-	from, _ := internaltx.Sender(signer, tx)
 
+	return marshalReceipt(receipt, signer, tx, index, header.BaseFee), nil
+}
+
+// marshalReceipt marshals a transaction receipt into a JSON object.
+func marshalReceipt(receipt *types.Receipt, signer types.Signer, tx *types.Transaction, txIndex uint64, baseFee *big.Int) map[string]interface{} {
+	from, _ := types.Sender(signer, tx)
+	// Assign the effective gas price paid
+	gasPrice := tx.GasPrice()
+	if baseFee != nil {
+		gasPrice = big.NewInt(0).Add(baseFee, tx.EffectiveGasTipValue(baseFee))
+	}
 	fields := map[string]interface{}{
-		"blockHash":         header.Hash,
-		"blockNumber":       hexutil.Uint64(blockNumber),
-		"transactionHash":   hash,
-		"transactionIndex":  hexutil.Uint64(index),
+		"blockHash":         receipt.BlockHash,
+		"blockNumber":       hexutil.Uint64(receipt.BlockNumber.Uint64()),
+		"transactionHash":   tx.Hash(),
+		"transactionIndex":  hexutil.Uint64(txIndex),
 		"from":              from,
 		"to":                tx.To(),
 		"gasUsed":           hexutil.Uint64(receipt.GasUsed),
@@ -1806,13 +1847,7 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(ctx context.Context, ha
 		"logs":              receipt.Logs,
 		"logsBloom":         &receipt.Bloom,
 		"type":              hexutil.Uint(tx.Type()),
-	}
-	// Assign the effective gas price paid
-	if header.BaseFee == nil {
-		fields["effectiveGasPrice"] = hexutil.Uint64(tx.GasPrice().Uint64())
-	} else {
-		gasPrice := new(big.Int).Add(header.BaseFee, tx.EffectiveGasTipValue(header.BaseFee))
-		fields["effectiveGasPrice"] = hexutil.Uint64(gasPrice.Uint64())
+		"effectiveGasPrice": hexutil.Uint64(gasPrice.Uint64()),
 	}
 	// Assign receipt status or post state.
 	if len(receipt.PostState) > 0 {
@@ -1827,7 +1862,7 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(ctx context.Context, ha
 	if tx.To() == nil {
 		fields["contractAddress"] = receipt.ContractAddress
 	}
-	return fields, nil
+	return fields
 }
 
 // sign is a helper function that signs a transaction with the private key of the given address.

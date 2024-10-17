@@ -235,6 +235,7 @@ type TxPool struct {
 	istanbul bool // Fork indicator whether we are in the istanbul stage.
 	eip2718  bool // Fork indicator whether we are using EIP-2718 type transactions.
 	eip1559  bool // Fork indicator whether we are using EIP-1559 type transactions.
+	eip712   bool // Fork indicator whether we are using EIP-712 type transactions.
 
 	currentState  *state.StateDB // Current state in the blockchain head
 	pendingNonces *txNoncer      // Pending state tracking virtual nonces
@@ -590,6 +591,10 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	if !pool.eip1559 && tx.Type() == types.DynamicFeeTxType {
 		return ErrTxTypeNotSupported
 	}
+	// Reject EIP-712 transactions until EIP-712 activates.
+	if !pool.eip712 && tx.Type() == types.EIP712TxType {
+		return ErrTxTypeNotSupported
+	}
 	// Reject transactions over defined size to prevent DOS attacks
 	if uint64(tx.Size()) > txMaxSize {
 		return ErrOversizedData
@@ -649,6 +654,9 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	}
 	if tx.Gas() < intrGas {
 		return ErrIntrinsicGas
+	}
+	if tx.Type() == types.EIP712TxType && (tx.PaymasterParams() == nil || tx.PaymasterParams().Paymaster == nil) {
+		return ErrInvalidPaymasterParams
 	}
 	return nil
 }
@@ -1321,6 +1329,7 @@ func (pool *TxPool) reset(oldHead, newHead *EvmHeader) {
 	pool.istanbul = pool.chainconfig.IsIstanbul(next)
 	pool.eip2718 = pool.chainconfig.IsBerlin(next)
 	pool.eip1559 = pool.chainconfig.IsLondon(next)
+	pool.eip712 = pool.chainconfig.IsEIP712(next)
 }
 
 // promoteExecutables moves transactions that have become processable from the
@@ -1618,10 +1627,6 @@ func newAccountSet(signer types.Signer, addrs ...common.Address) *accountSet {
 func (as *accountSet) contains(addr common.Address) bool {
 	_, exist := as.accounts[addr]
 	return exist
-}
-
-func (as *accountSet) empty() bool {
-	return len(as.accounts) == 0
 }
 
 // containsTx checks if the sender of a given tx is within the set. If the sender

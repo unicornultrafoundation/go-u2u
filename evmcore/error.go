@@ -84,4 +84,11 @@ var (
 
 	// ErrSenderNoEOA is returned if the sender of a transaction is a contract.
 	ErrSenderNoEOA = errors.New("sender not an eoa")
+
+	// ErrAccountLimitExceeded is returned if a transaction would exceed the number
+	// allowed by a pool for a single account.
+	ErrAccountLimitExceeded = errors.New("account limit exceeded")
+
+	// ErrInvalidPaymasterParams is returned if the paymaster params is malformed.
+	ErrInvalidPaymasterParams = errors.New("invalid paymaster params")
 )

@@ -45,7 +45,7 @@ type (
 func (evm *EVM) precompile(addr common.Address) (PrecompiledContract, bool) {
 	var precompiles map[common.Address]PrecompiledContract
 	switch {
-	case evm.chainRules.IsBerlin:
+	case evm.chainRules.IsEIP712, evm.chainRules.IsBerlin:
 		precompiles = PrecompiledContractsBerlin
 	case evm.chainRules.IsIstanbul:
 		precompiles = PrecompiledContractsIstanbul
@@ -83,15 +83,16 @@ type BlockContext struct {
 	BlockNumber *big.Int       // Provides information for NUMBER
 	Time        *big.Int       // Provides information for TIME
 	Difficulty  *big.Int       // Provides information for DIFFICULTY
-	BaseFee     *big.Int       // Provides information for BASEFEE
+	BaseFee     *big.Int       // Provides information for BASEFEE (0 if vm runs with NoBaseFee flag and 0 gas price)
+	Random      *common.Hash   // Provides information for PREVRANDAO
 }
 
 // TxContext provides the EVM with information about a transaction.
 // All fields can change between transactions.
 type TxContext struct {
 	// Message information
-	Origin   common.Address // Provides information for ORIGIN
-	GasPrice *big.Int       // Provides information for GASPRICE
+	Origin     common.Address // Provides information for ORIGIN
+	GasPrice   *big.Int       // Provides information for GASPRICE (and is used to zero the basefee if NoBaseFee is set)
 }
 
 // EVM is the Ethereum Virtual Machine base object and provides
@@ -123,8 +124,7 @@ type EVM struct {
 	// used throughout the execution of the tx.
 	interpreter *EVMInterpreter
 	// abort is used to abort the EVM calling operations
-	// NOTE: must be set atomically
-	abort int32
+	abort atomic.Bool
 	// callGasTemp holds the gas available for the current call. This is needed because the
 	// available gas is calculated in gasCall* according to the 63/64 rule and later
 	// applied in opCall*.
@@ -134,13 +134,22 @@ type EVM struct {
 // NewEVM returns a new EVM. The returned EVM is not thread safe and should
 // only ever be used *once*.
 func NewEVM(blockCtx BlockContext, txCtx TxContext, statedb StateDB, chainConfig *params.ChainConfig, config Config) *EVM {
+	// If basefee tracking is disabled (eth_call, eth_estimateGas, etc), and no
+	// gas prices were specified, lower the basefee to 0 to avoid breaking EVM
+	// invariants (basefee < feecap)
+	if config.NoBaseFee {
+		if txCtx.GasPrice.BitLen() == 0 {
+			blockCtx.BaseFee = new(big.Int)
+		}
+	}
 	evm := &EVM{
 		Context:     blockCtx,
 		TxContext:   txCtx,
 		StateDB:     statedb,
 		Config:      config,
 		chainConfig: chainConfig,
-		chainRules:  chainConfig.Rules(blockCtx.BlockNumber),
+		//chainRules:  chainConfig.Rules(blockCtx.BlockNumber, blockCtx.Random != nil, blockCtx.Time),
+		chainRules: chainConfig.Rules(blockCtx.BlockNumber),
 	}
 	evm.interpreter = NewEVMInterpreter(evm, config)
 	return evm
@@ -156,12 +165,12 @@ func (evm *EVM) Reset(txCtx TxContext, statedb StateDB) {
 // Cancel cancels any running EVM operation. This may be called concurrently and
 // it's safe to be called multiple times.
 func (evm *EVM) Cancel() {
-	atomic.StoreInt32(&evm.abort, 1)
+	evm.abort.Store(true)
 }
 
 // Cancelled returns true if Cancel has been called
 func (evm *EVM) Cancelled() bool {
-	return atomic.LoadInt32(&evm.abort) == 1
+	return evm.abort.Load()
 }
 
 // Interpreter returns the current interpreter

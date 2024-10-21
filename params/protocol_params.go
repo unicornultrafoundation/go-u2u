@@ -16,12 +16,15 @@
 
 package params
 
-import "math/big"
+import (
+	"math/big"
+)
 
 const (
-	GasLimitBoundDivisor uint64 = 1024    // The bound divisor of the gas limit, used in update calculations.
-	MinGasLimit          uint64 = 5000    // Minimum the gas limit may ever be.
-	GenesisGasLimit      uint64 = 4712388 // Gas limit of the Genesis block.
+	GasLimitBoundDivisor uint64 = 1024               // The bound divisor of the gas limit, used in update calculations.
+	MinGasLimit          uint64 = 5000               // Minimum the gas limit may ever be.
+	MaxGasLimit          uint64 = 0x7fffffffffffffff // Maximum the gas limit (2^63-1).
+	GenesisGasLimit      uint64 = 4712388            // Gas limit of the Genesis block.
 
 	MaximumExtraDataSize  uint64 = 32    // Maximum size extra data may be after Genesis.
 	ExpByteGas            uint64 = 10    // Times ceil(log256(exponent)) for the EXP instruction.
@@ -35,8 +38,9 @@ const (
 	LogDataGas            uint64 = 8     // Per byte in a LOG* operation's data.
 	CallStipend           uint64 = 2300  // Free gas given at beginning of call.
 
-	Sha3Gas     uint64 = 30 // Once per SHA3 operation.
-	Sha3WordGas uint64 = 6  // Once per word of the SHA3 operation's data.
+	Keccak256Gas     uint64 = 30 // Once per KECCAK256 operation.
+	Keccak256WordGas uint64 = 6  // Once per word of the KECCAK256 operation's data.
+	InitCodeWordGas  uint64 = 2  // Once per word of the init code when creating a contract.
 
 	SstoreSetGas    uint64 = 20000 // Once per SSTORE operation.
 	SstoreResetGas  uint64 = 5000  // Once per SSTORE operation if the zeroness changes from zero.
@@ -122,7 +126,8 @@ const (
 	ElasticityMultiplier     = 2          // Bounds the maximum gas limit an EIP-1559 block may have.
 	InitialBaseFee           = 1000000000 // Initial base fee for EIP-1559 blocks.
 
-	MaxCodeSize = 24576 // Maximum bytecode to permit for a contract
+	MaxCodeSize     = 24576           // Maximum bytecode to permit for a contract
+	MaxInitCodeSize = 2 * MaxCodeSize // Maximum initcode to permit in a creation transaction and create instructions
 
 	// Precompiled contract gas prices
 

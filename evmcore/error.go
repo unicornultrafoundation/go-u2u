@@ -18,7 +18,10 @@ package evmcore
 
 import (
 	"errors"
+	"fmt"
 
+	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
+	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 )
 
@@ -84,4 +87,24 @@ var (
 
 	// ErrSenderNoEOA is returned if the sender of a transaction is a contract.
 	ErrSenderNoEOA = errors.New("sender not an eoa")
+
+	// ErrAccountLimitExceeded is returned if a transaction would exceed the number
+	// allowed by a pool for a single account.
+	ErrAccountLimitExceeded = errors.New("account limit exceeded")
+
+	// ErrInvalidPaymasterParams is returned if the paymaster params is malformed.
+	ErrInvalidPaymasterParams = errors.New("invalid paymaster params")
 )
+
+var (
+	PMErr = "paymaster: function %s failed with error: %s"
+)
+
+func revertReason(result *ExecutionResult) (string, error) {
+	reason, errUnpack := abi.UnpackRevert(result.Revert())
+	err := errors.New("execution reverted")
+	if errUnpack == nil {
+		err = fmt.Errorf("execution reverted: %v", reason)
+	}
+	return hexutil.Encode(result.Revert()), err
+}

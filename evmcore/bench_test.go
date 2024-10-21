@@ -25,6 +25,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/common/math"
+	"github.com/unicornultrafoundation/go-u2u/core"
 	"github.com/unicornultrafoundation/go-u2u/core/rawdb"
 	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
@@ -152,8 +153,8 @@ func benchInsertChain(b *testing.B, disk bool, gen func(int, *BlockGen)) {
 	if err != nil {
 		b.Fatalf("cannot create statedb: %v", err)
 	}
-	genesisBlock := MustApplyFakeGenesis(statedb, FakeGenesisTime, map[common.Address]*big.Int{
-		benchRootAddr: benchRootFunds,
+	genesisBlock := MustApplyFakeGenesis(statedb, FakeGenesisTime, core.GenesisAlloc{
+		benchRootAddr: core.GenesisAccount{Balance: benchRootFunds},
 	})
 	genesisBlock.GasLimit = 1000000
 

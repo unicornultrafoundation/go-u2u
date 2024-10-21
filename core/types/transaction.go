@@ -45,6 +45,7 @@ const (
 	LegacyTxType = iota
 	AccessListTxType
 	DynamicFeeTxType
+	EIP712TxType = 7
 )
 
 // Transaction is an Ethereum transaction.
@@ -82,6 +83,7 @@ type TxData interface {
 	value() *big.Int
 	nonce() uint64
 	to() *common.Address
+	paymasterParams() *PaymasterParams
 
 	rawSignatureValues() (v, r, s *big.Int)
 	setSignatureValues(chainID, v, r, s *big.Int)
@@ -298,6 +300,10 @@ func (tx *Transaction) Cost() *big.Int {
 	total := new(big.Int).Mul(tx.GasPrice(), new(big.Int).SetUint64(tx.Gas()))
 	total.Add(total, tx.Value())
 	return total
+}
+
+func (tx *Transaction) PaymasterParams() *PaymasterParams {
+	return tx.inner.paymasterParams()
 }
 
 // RawSignatureValues returns the V, R, S signature values of the transaction.
@@ -586,48 +592,52 @@ func (t *TransactionsByPriceAndNonce) Copy() *TransactionsByPriceAndNonce {
 //
 // NOTE: In a future PR this will be removed.
 type Message struct {
-	to         *common.Address
-	from       common.Address
-	nonce      uint64
-	amount     *big.Int
-	gasLimit   uint64
-	gasPrice   *big.Int
-	gasFeeCap  *big.Int
-	gasTipCap  *big.Int
-	data       []byte
-	accessList AccessList
-	isFake     bool
+	to              *common.Address
+	from            common.Address
+	nonce           uint64
+	amount          *big.Int
+	gasLimit        uint64
+	gasPrice        *big.Int
+	gasFeeCap       *big.Int
+	gasTipCap       *big.Int
+	data            []byte
+	accessList      AccessList
+	isFake          bool
+	paymasterParams *PaymasterParams
 }
 
-func NewMessage(from common.Address, to *common.Address, nonce uint64, amount *big.Int, gasLimit uint64, gasPrice, gasFeeCap, gasTipCap *big.Int, data []byte, accessList AccessList, isFake bool) Message {
+func NewMessage(from common.Address, to *common.Address, nonce uint64, amount *big.Int, gasLimit uint64, gasPrice, gasFeeCap,
+	gasTipCap *big.Int, data []byte, accessList AccessList, isFake bool, paymasterParams *PaymasterParams) Message {
 	return Message{
-		from:       from,
-		to:         to,
-		nonce:      nonce,
-		amount:     amount,
-		gasLimit:   gasLimit,
-		gasPrice:   gasPrice,
-		gasFeeCap:  gasFeeCap,
-		gasTipCap:  gasTipCap,
-		data:       data,
-		accessList: accessList,
-		isFake:     isFake,
+		from:            from,
+		to:              to,
+		nonce:           nonce,
+		amount:          amount,
+		gasLimit:        gasLimit,
+		gasPrice:        gasPrice,
+		gasFeeCap:       gasFeeCap,
+		gasTipCap:       gasTipCap,
+		data:            data,
+		accessList:      accessList,
+		isFake:          isFake,
+		paymasterParams: paymasterParams,
 	}
 }
 
 // AsMessage returns the transaction as a evmcore.Message.
 func (tx *Transaction) AsMessage(s Signer, baseFee *big.Int) (Message, error) {
 	msg := Message{
-		nonce:      tx.Nonce(),
-		gasLimit:   tx.Gas(),
-		gasPrice:   new(big.Int).Set(tx.GasPrice()),
-		gasFeeCap:  new(big.Int).Set(tx.GasFeeCap()),
-		gasTipCap:  new(big.Int).Set(tx.GasTipCap()),
-		to:         tx.To(),
-		amount:     tx.Value(),
-		data:       tx.Data(),
-		accessList: tx.AccessList(),
-		isFake:     false,
+		nonce:           tx.Nonce(),
+		gasLimit:        tx.Gas(),
+		gasPrice:        new(big.Int).Set(tx.GasPrice()),
+		gasFeeCap:       new(big.Int).Set(tx.GasFeeCap()),
+		gasTipCap:       new(big.Int).Set(tx.GasTipCap()),
+		to:              tx.To(),
+		amount:          tx.Value(),
+		data:            tx.Data(),
+		accessList:      tx.AccessList(),
+		isFake:          false,
+		paymasterParams: tx.PaymasterParams(),
 	}
 	// If baseFee provided, set gasPrice to effectiveGasPrice.
 	if baseFee != nil {
@@ -638,14 +648,15 @@ func (tx *Transaction) AsMessage(s Signer, baseFee *big.Int) (Message, error) {
 	return msg, err
 }
 
-func (m Message) From() common.Address   { return m.from }
-func (m Message) To() *common.Address    { return m.to }
-func (m Message) GasPrice() *big.Int     { return m.gasPrice }
-func (m Message) GasFeeCap() *big.Int    { return m.gasFeeCap }
-func (m Message) GasTipCap() *big.Int    { return m.gasTipCap }
-func (m Message) Value() *big.Int        { return m.amount }
-func (m Message) Gas() uint64            { return m.gasLimit }
-func (m Message) Nonce() uint64          { return m.nonce }
-func (m Message) Data() []byte           { return m.data }
-func (m Message) AccessList() AccessList { return m.accessList }
-func (m Message) IsFake() bool           { return m.isFake }
+func (m Message) From() common.Address              { return m.from }
+func (m Message) To() *common.Address               { return m.to }
+func (m Message) GasPrice() *big.Int                { return m.gasPrice }
+func (m Message) GasFeeCap() *big.Int               { return m.gasFeeCap }
+func (m Message) GasTipCap() *big.Int               { return m.gasTipCap }
+func (m Message) Value() *big.Int                   { return m.amount }
+func (m Message) Gas() uint64                       { return m.gasLimit }
+func (m Message) Nonce() uint64                     { return m.nonce }
+func (m Message) Data() []byte                      { return m.data }
+func (m Message) AccessList() AccessList            { return m.accessList }
+func (m Message) IsFake() bool                      { return m.isFake }
+func (m Message) PaymasterParams() *PaymasterParams { return m.paymasterParams }

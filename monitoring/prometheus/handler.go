@@ -19,8 +19,8 @@ func PrometheusListener(endpoint string, reg metrics.Registry) {
 	reg.Each(collect)
 
 	go func() {
-		logger.Info("metrics server starts", "endpoint", endpoint)
-		defer logger.Info("metrics server is stopped")
+		logger.Info("Metrics server starts", "endpoint", endpoint)
+		defer logger.Info("Metrics server is stopped")
 
 		http.HandleFunc(
 			"/metrics", promhttp.Handler().ServeHTTP)
@@ -34,8 +34,6 @@ func PrometheusListener(endpoint string, reg metrics.Registry) {
 }
 
 func collect(name string, metric interface{}) {
-	logger.Info("metric to prometheus", "metric", name)
-
 	collector, ok := convertToPrometheusMetric(name, metric)
 	if !ok {
 		return

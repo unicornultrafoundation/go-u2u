@@ -96,7 +96,7 @@ func (ec *Client) BlockNumber(ctx context.Context) (uint64, error) {
 
 func (ec *Client) BlockReceipts(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) ([]*types.Receipt, error) {
 	var r []*types.Receipt
-	err := ec.c.CallContext(ctx, &r, "eth_getBlockReceipts", blockNrOrHash)
+	err := ec.c.CallContext(ctx, &r, "eth_getBlockReceipts", blockNrOrHash.String())
 	if err == nil && r == nil {
 		return nil, u2u.NotFound
 	}

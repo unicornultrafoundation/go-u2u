@@ -23,6 +23,7 @@ import (
 	"math/rand"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
@@ -232,13 +233,13 @@ type TxPool struct {
 	signer      types.Signer
 	mu          sync.RWMutex
 
-	istanbul bool // Fork indicator whether we are in the istanbul stage.
-	eip2718  bool // Fork indicator whether we are using EIP-2718 type transactions.
-	eip1559  bool // Fork indicator whether we are using EIP-1559 type transactions.
+	istanbul atomic.Bool // Fork indicator whether we are in the istanbul stage.
+	eip2718  atomic.Bool // Fork indicator whether we are using EIP-2718 type transactions.
+	eip1559  atomic.Bool // Fork indicator whether we are using EIP-1559 type transactions.
 
 	currentState  *state.StateDB // Current state in the blockchain head
 	pendingNonces *txNoncer      // Pending state tracking virtual nonces
-	currentMaxGas uint64         // Current gas limit for transaction caps
+	currentMaxGas atomic.Uint64  // Current gas limit for transaction caps
 
 	locals  *accountSet // Set of local transaction to exempt from eviction rules
 	journal *txJournal  // Journal of local transaction to back up to disk
@@ -582,73 +583,54 @@ func (pool *TxPool) local() map[common.Address]types.Transactions {
 // validateTx checks whether a transaction is valid according to the consensus
 // rules and adheres to some heuristic limits of the local node (price and size).
 func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
-	// Accept only legacy transactions until EIP-2718/2930 activates.
-	if !pool.eip2718 && tx.Type() != types.LegacyTxType {
-		return ErrTxTypeNotSupported
+	opts := &ValidationOptions{
+		Config: pool.chainconfig,
+		Local:  local,
+		Accept: 0 |
+			1<<types.LegacyTxType |
+			1<<types.AccessListTxType |
+			1<<types.DynamicFeeTxType,
+		MaxSize:      txMaxSize,
+		MinTip:       pool.chain.EffectiveMinTip(),
+		MinGasPrice:  pool.chain.MinGasPrice(),
+		PoolGasPrice: pool.gasPrice,
 	}
-	// Reject dynamic fee transactions until EIP-1559 activates.
-	if !pool.eip1559 && tx.Type() == types.DynamicFeeTxType {
-		return ErrTxTypeNotSupported
+	if local || opts.MinTip == nil {
+		opts.MinTip = new(big.Int)
 	}
-	// Reject transactions over defined size to prevent DOS attacks
-	if uint64(tx.Size()) > txMaxSize {
-		return ErrOversizedData
+	optsWithState := &ValidationOptionsWithState{
+		State:         pool.currentState,
+		FirstNonceGap: nil, // Pool allows arbitrary arrival order, don't invalidate nonce gaps
+		UsedAndLeftSlots: func(addr common.Address) (int, int) {
+			var have int
+			if list := pool.pending[addr]; list != nil {
+				have += list.Len()
+			}
+			if list := pool.queue[addr]; list != nil {
+				have += list.Len()
+			}
+			return have, math.MaxInt
+		},
+		ExistingExpenditure: func(addr common.Address) *big.Int {
+			if list := pool.pending[addr]; list != nil {
+				return list.totalcost
+			}
+			return new(big.Int)
+		},
+		ExistingCost: func(addr common.Address, nonce uint64) *big.Int {
+			if list := pool.pending[addr]; list != nil {
+				if tx := list.txs.Get(nonce); tx != nil {
+					return tx.Cost()
+				}
+			}
+			return nil
+		},
 	}
-	// Transactions can't be negative. This may never happen using RLP decoded
-	// transactions but may occur if you create a transaction using the RPC.
-	if tx.Value().Sign() < 0 {
-		return ErrNegativeValue
-	}
-	// Ensure the transaction doesn't exceed the current block limit gas.
-	if pool.currentMaxGas < tx.Gas() {
-		return ErrGasLimit
-	}
-	// Sanity check for extremely large numbers
-	if tx.GasFeeCap().BitLen() > 256 {
-		return ErrFeeCapVeryHigh
-	}
-	if tx.GasTipCap().BitLen() > 256 {
-		return ErrTipVeryHigh
-	}
-	// Ensure gasFeeCap is greater than or equal to gasTipCap.
-	if tx.GasFeeCapIntCmp(tx.GasTipCap()) < 0 {
-		return ErrTipAboveFeeCap
-	}
-	// Make sure the transaction is signed properly.
-	from, err := types.Sender(pool.signer, tx)
-	if err != nil {
-		return ErrInvalidSender
-	}
-	// Drop non-local transactions under our own minimal accepted gas price or tip
-	local = local || pool.locals.contains(from) // account may be local even if the transaction arrived from the network
-	if !local && tx.GasTipCapIntCmp(pool.gasPrice) < 0 {
-		return ErrUnderpriced
-	}
-	// Ensure U2U-specific hard bounds
-	if recommendedGasTip, minPrice := pool.chain.EffectiveMinTip(), pool.chain.MinGasPrice(); recommendedGasTip != nil && minPrice != nil {
-		if tx.GasTipCapIntCmp(recommendedGasTip) < 0 {
-			return ErrUnderpriced
-		}
-		if tx.GasFeeCapIntCmp(new(big.Int).Add(recommendedGasTip, minPrice)) < 0 {
-			return ErrUnderpriced
-		}
-	}
-	// Ensure the transaction adheres to nonce ordering
-	if pool.currentState.GetNonce(from) > tx.Nonce() {
-		return ErrNonceTooLow
-	}
-	// Transactor should have enough funds to cover the costs
-	// cost == V + GP * GL
-	if pool.currentState.GetBalance(from).Cmp(tx.Cost()) < 0 {
-		return ErrInsufficientFunds
-	}
-	// Ensure the transaction has more gas than the basic tx fee.
-	intrGas, err := IntrinsicGas(tx.Data(), tx.AccessList(), tx.To() == nil)
-	if err != nil {
+	if err := ValidateTransaction(tx, pool.chain.CurrentBlock().Header(), pool.signer, opts); err != nil {
 		return err
 	}
-	if tx.Gas() < intrGas {
-		return ErrIntrinsicGas
+	if err := ValidateTransactionWithState(tx, pool.signer, optsWithState); err != nil {
+		return err
 	}
 	return nil
 }
@@ -1243,7 +1225,6 @@ func (pool *TxPool) reset(oldHead, newHead *EvmHeader) {
 			log.Debug("Skipping deep transaction reorg", "depth", depth)
 		} else {
 			// Reorg seems shallow enough to pull in all transactions into memory
-			var discarded, included types.Transactions
 			var (
 				rem = pool.chain.GetBlock(oldHead.Hash, oldHead.Number.Uint64())
 				add = pool.chain.GetBlock(newHead.Hash, newHead.Number.Uint64())
@@ -1264,6 +1245,15 @@ func (pool *TxPool) reset(oldHead, newHead *EvmHeader) {
 					"old", oldHead.Hash, "oldnum", oldNum, "new", newHead.Hash, "newnum", newNum)
 				// We still need to update the current state s.th. the lost transactions can be readded by the user
 			} else {
+				if add == nil {
+					// if the new head is nil, it means that something happened between
+					// the firing of newhead-event and _now_: most likely a
+					// reorg caused by sync-reversion or explicit sethead back to an
+					// earlier block.
+					log.Warn("Transaction pool reset with missing new head", "number", newHead.Number, "hash", newHead.Hash)
+					return
+				}
+				var discarded, included types.Transactions
 				for rem.NumberU64() > add.NumberU64() {
 					discarded = append(discarded, rem.Transactions...)
 					if rem = pool.chain.GetBlock(rem.ParentHash, rem.NumberU64()-1); rem == nil {
@@ -1309,7 +1299,7 @@ func (pool *TxPool) reset(oldHead, newHead *EvmHeader) {
 	}
 	pool.currentState = statedb
 	pool.pendingNonces = newTxNoncer(statedb)
-	pool.currentMaxGas = pool.chain.MaxGasLimit()
+	pool.currentMaxGas.Store(pool.chain.MaxGasLimit())
 
 	// Inject any transactions discarded due to reorgs
 	log.Debug("Reinjecting stale transactions", "count", len(reinject))
@@ -1318,9 +1308,9 @@ func (pool *TxPool) reset(oldHead, newHead *EvmHeader) {
 
 	// Update all fork indicator by next pending block number.
 	next := new(big.Int).Add(newHead.Number, big.NewInt(1))
-	pool.istanbul = pool.chainconfig.IsIstanbul(next)
-	pool.eip2718 = pool.chainconfig.IsBerlin(next)
-	pool.eip1559 = pool.chainconfig.IsLondon(next)
+	pool.istanbul.Store(pool.chainconfig.IsIstanbul(next))
+	pool.eip2718.Store(pool.chainconfig.IsBerlin(next))
+	pool.eip1559.Store(pool.chainconfig.IsLondon(next))
 }
 
 // promoteExecutables moves transactions that have become processable from the
@@ -1344,7 +1334,7 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) []*types.Trans
 		}
 		log.Trace("Removed old queued transactions", "count", len(forwards))
 		// Drop all transactions that are too costly (low balance or out of gas)
-		drops, _ := list.Filter(pool.currentState.GetBalance(addr), pool.currentMaxGas)
+		drops, _ := list.Filter(pool.currentState.GetBalance(addr), pool.currentMaxGas.Load())
 		for _, tx := range drops {
 			hash := tx.Hash()
 			pool.all.Remove(hash)
@@ -1541,7 +1531,7 @@ func (pool *TxPool) demoteUnexecutables() {
 			log.Trace("Removed old pending transaction", "hash", hash)
 		}
 		// Drop all transactions that are too costly (low balance or out of gas), and queue any invalids back for later
-		drops, invalids := list.Filter(pool.currentState.GetBalance(addr), pool.currentMaxGas)
+		drops, invalids := list.Filter(pool.currentState.GetBalance(addr), pool.currentMaxGas.Load())
 		for _, tx := range drops {
 			hash := tx.Hash()
 			log.Trace("Removed unpayable pending transaction", "hash", hash)

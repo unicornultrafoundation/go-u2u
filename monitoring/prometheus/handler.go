@@ -34,8 +34,6 @@ func PrometheusListener(endpoint string, reg metrics.Registry) {
 }
 
 func collect(name string, metric interface{}) {
-	logger.Info("metric to prometheus", "metric", name)
-
 	collector, ok := convertToPrometheusMetric(name, metric)
 	if !ok {
 		return

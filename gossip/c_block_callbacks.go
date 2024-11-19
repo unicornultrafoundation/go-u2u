@@ -262,6 +262,9 @@ func consensusCallbackBeginBlockFn(
 					})
 				}
 
+				// compute prevRandao
+				prevRandao := computePrevRandao(confirmedEvents)
+
 				// Providing default config
 				// In case of trace transaction node, this config is changed
 				evmCfg := u2u.DefaultVMConfig
@@ -270,7 +273,7 @@ func consensusCallbackBeginBlockFn(
 					evmCfg.Tracer = txtracer.NewTraceStructLogger(store.txtracer)
 				}
 
-				evmProcessor := blockProc.EVMModule.Start(blockCtx, statedb, evmStateReader, onNewLogAll, es.Rules, es.Rules.EvmChainConfig(store.GetUpgradeHeights()))
+				evmProcessor := blockProc.EVMModule.Start(blockCtx, statedb, evmStateReader, onNewLogAll, es.Rules, es.Rules.EvmChainConfig(store.GetUpgradeHeights()), prevRandao)
 				executionStart := time.Now()
 
 				// Execute pre-internal transactions
@@ -495,12 +498,17 @@ func (s *Service) ReexecuteBlocks(from, to idx.Block) {
 		es := s.store.GetHistoryEpochState(s.store.FindBlockEpoch(b))
 		// Providing default config
 		// In case of trace transaction node, this config is changed
+
+		// compute prevRandao
+		confirmedEvents := make(hash.OrderedEvents, 0, 3*es.Validators.Len())
+		prevRandao := computePrevRandao(confirmedEvents)
+
 		evmCfg := u2u.DefaultVMConfig
 		if s.store.txtracer != nil {
 			evmCfg.Debug = true
 			evmCfg.Tracer = txtracer.NewTraceStructLogger(s.store.txtracer)
 		}
-		evmProcessor := blockProc.EVMModule.Start(blockCtx, statedb, evmStateReader, func(t *types.Log) {}, es.Rules, es.Rules.EvmChainConfig(upgradeHeights))
+		evmProcessor := blockProc.EVMModule.Start(blockCtx, statedb, evmStateReader, func(t *types.Log) {}, es.Rules, es.Rules.EvmChainConfig(upgradeHeights), prevRandao)
 		txs := s.store.GetBlockTxs(b, block)
 		evmProcessor.Execute(txs)
 		evmProcessor.Finalize()

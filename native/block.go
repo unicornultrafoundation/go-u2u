@@ -15,6 +15,7 @@ type Block struct {
 	SkippedTxs  []uint32      // indexes of skipped txs, starting from first tx of first event, ending with last tx of last event
 	GasUsed     uint64
 	Root        hash.Hash
+	PrevRandao  common.Hash
 }
 
 func (b *Block) EstimateSize() int {

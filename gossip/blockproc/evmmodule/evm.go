@@ -24,7 +24,7 @@ func New() *EVMModule {
 	return &EVMModule{}
 }
 
-func (p *EVMModule) Start(block iblockproc.BlockCtx, statedb *state.StateDB, reader evmcore.DummyChain, onNewLog func(*types.Log), net u2u.Rules, evmCfg *params.ChainConfig) blockproc.EVMProcessor {
+func (p *EVMModule) Start(block iblockproc.BlockCtx, statedb *state.StateDB, reader evmcore.DummyChain, onNewLog func(*types.Log), net u2u.Rules, evmCfg *params.ChainConfig, prevrandao common.Hash) blockproc.EVMProcessor {
 	var prevBlockHash common.Hash
 	if block.Idx != 0 {
 		prevBlockHash = reader.GetHeader(common.Hash{}, uint64(block.Idx-1)).Hash
@@ -38,6 +38,7 @@ func (p *EVMModule) Start(block iblockproc.BlockCtx, statedb *state.StateDB, rea
 		evmCfg:        evmCfg,
 		blockIdx:      utils.U64toBig(uint64(block.Idx)),
 		prevBlockHash: prevBlockHash,
+		prevRandao:    prevrandao,
 	}
 }
 
@@ -57,6 +58,8 @@ type U2UEVMProcessor struct {
 	incomingTxs types.Transactions
 	skippedTxs  []uint32
 	receipts    types.Receipts
+
+	prevRandao common.Hash
 }
 
 func (p *U2UEVMProcessor) evmBlockWith(txs types.Transactions) *evmcore.EvmBlock {
@@ -64,6 +67,7 @@ func (p *U2UEVMProcessor) evmBlockWith(txs types.Transactions) *evmcore.EvmBlock
 	if !p.net.Upgrades.London {
 		baseFee = nil
 	}
+
 	h := &evmcore.EvmHeader{
 		Number:     p.blockIdx,
 		Hash:       common.Hash(p.block.Atropos),
@@ -74,6 +78,7 @@ func (p *U2UEVMProcessor) evmBlockWith(txs types.Transactions) *evmcore.EvmBlock
 		GasLimit:   math.MaxUint64,
 		GasUsed:    p.gasUsed,
 		BaseFee:    baseFee,
+		PrevRandao: p.prevRandao,
 	}
 
 	return evmcore.NewEvmBlock(h, txs)

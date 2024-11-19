@@ -186,6 +186,8 @@ type Block struct {
 	// inter-peer block relay.
 	ReceivedAt   time.Time
 	ReceivedFrom interface{}
+
+	PrevRandao common.Hash
 }
 
 // "external" block encoding. used for eth protocol, etc.
@@ -397,3 +399,21 @@ func (b *Block) Hash() common.Hash {
 }
 
 type Blocks []*Block
+
+// GetPrevRandao returns the PrevRandao for current block.
+func (b *Block) GetPrevRandao() common.Hash {
+	if b.PrevRandao == (common.Hash{}) {
+		b.computePrevRandao()
+	}
+	return b.PrevRandao
+}
+
+// computePrevRandao computes the PrevRandao from transaction hashes.
+func (b *Block) computePrevRandao() {
+	for _, event := range b.Body().Transactions {
+		for i := 0; i < 24; i++ {
+			// first 8 bytes should be ignored as they are not pseudo-random.
+			b.PrevRandao[i+8] = b.PrevRandao[i+8] ^ event.Hash()[i+8]
+		}
+	}
+}

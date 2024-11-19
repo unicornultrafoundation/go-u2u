@@ -44,6 +44,8 @@ type (
 		GasUsed  uint64
 
 		BaseFee *big.Int
+
+		PrevRandao common.Hash
 	}
 
 	EvmBlock struct {
@@ -75,6 +77,7 @@ func ToEvmHeader(block *native.Block, index idx.Block, prevHash hash.Event, rule
 	if !rules.Upgrades.London {
 		baseFee = nil
 	}
+
 	return &EvmHeader{
 		Hash:       common.Hash(block.Atropos),
 		ParentHash: common.Hash(prevHash),
@@ -84,6 +87,7 @@ func ToEvmHeader(block *native.Block, index idx.Block, prevHash hash.Event, rule
 		GasLimit:   math.MaxUint64,
 		GasUsed:    block.GasUsed,
 		BaseFee:    baseFee,
+		PrevRandao: block.PrevRandao,
 	}
 }
 
@@ -101,6 +105,7 @@ func ConvertFromEthHeader(h *types.Header) *EvmHeader {
 		Time:       native.FromUnix(int64(h.Time)),
 		Hash:       common.BytesToHash(h.Extra),
 		BaseFee:    h.BaseFee,
+		PrevRandao: h.MixDigest,
 	}
 }
 
@@ -121,8 +126,8 @@ func (h *EvmHeader) EthHeader() *types.Header {
 		Time:       uint64(h.Time.Unix()),
 		Extra:      h.Hash.Bytes(),
 		BaseFee:    h.BaseFee,
-
 		Difficulty: new(big.Int),
+		MixDigest:  h.PrevRandao,
 	}
 	ethHeader.SetExternalHash(h.Hash)
 	return ethHeader

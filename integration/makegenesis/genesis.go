@@ -146,7 +146,7 @@ func (b *GenesisBuilder) ExecuteGenesisTxs(blockProc BlockProc, genesisTxs types
 			Upgrades: es.Rules.Upgrades,
 			Height:   0,
 		},
-	}))
+	}), common.Hash{})
 
 	// Execute genesis transactions
 	evmProcessor.Execute(genesisTxs)

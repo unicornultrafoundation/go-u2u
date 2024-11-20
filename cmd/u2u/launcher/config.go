@@ -581,7 +581,7 @@ func defaultNodeConfig() node.Config {
 	cfg := NodeDefaultConfig
 	cfg.Name = clientIdentifier
 	cfg.Version = params.VersionWithCommit(gitCommit, gitDate)
-	cfg.HTTPModules = append(cfg.HTTPModules, "eth", "dag", "abft", "web3")
+	cfg.HTTPModules = append(cfg.HTTPModules, "eth", "dag", "abft", "web3", "net")
 	cfg.WSModules = append(cfg.WSModules, "eth", "dag", "abft", "web3")
 	cfg.IPCPath = "u2u.ipc"
 	cfg.DataDir = DefaultDataDir()

@@ -14,7 +14,7 @@ Build dependencies
 cd <path>/go-u2u
 make NET=mainnet u2u-image
 ```
-### Download snapshot and rename file to mainnet.g into <path>/go-u2u if need to fast sync 
+### Download snapshot and rename file to `mainnet.g` into <path>/go-u2u if need to fast sync 
 ```
 https://go-u2u-mainnet-snap.s3.ap-southeast-1.amazonaws.com/6321132-full.g
 ```

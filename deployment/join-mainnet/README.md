@@ -8,7 +8,6 @@ Install docker compose
 
 Build dependencies
 * [Network](https://docs.u2u.xyz/network/build-dependencies)
-* [Create validator wallet](https://docs.u2u.xyz/network/run-validator-node/mainnet-validator-node#create-a-validator-wallet)
 
 ### Buiding image
 ```

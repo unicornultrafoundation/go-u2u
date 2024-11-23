@@ -10,6 +10,11 @@ Build dependencies
 * [Network](https://docs.u2u.xyz/network/build-dependencies)
 * [Create validator wallet](https://docs.u2u.xyz/network/run-validator-node/mainnet-validator-node#create-a-validator-wallet)
 
+### Buiding image
+```
+cd <path>/go-u2u
+make NET=mainnet u2u-image
+```
 
 ### Running node
 ``` 

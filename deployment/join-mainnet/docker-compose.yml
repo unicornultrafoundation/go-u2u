@@ -17,7 +17,7 @@ services:
       options:
         max-size: 300m
     command:
-      --genesis /genesis.g
+      --genesis /mainnet.g
       --http
       --http.addr="0.0.0.0"
       --http.port=8545

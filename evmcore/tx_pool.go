@@ -236,6 +236,7 @@ type TxPool struct {
 	istanbul atomic.Bool // Fork indicator whether we are in the istanbul stage.
 	eip2718  atomic.Bool // Fork indicator whether we are using EIP-2718 type transactions.
 	eip1559  atomic.Bool // Fork indicator whether we are using EIP-1559 type transactions.
+	eip712   atomic.Bool // Fork indicator whether we are using EIP-712 type transactions.
 
 	currentState  *state.StateDB // Current state in the blockchain head
 	pendingNonces *txNoncer      // Pending state tracking virtual nonces
@@ -589,7 +590,8 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		Accept: 0 |
 			1<<types.LegacyTxType |
 			1<<types.AccessListTxType |
-			1<<types.DynamicFeeTxType,
+			1<<types.DynamicFeeTxType |
+			1<<types.EIP712TxType,
 		MaxSize:      txMaxSize,
 		MinTip:       pool.chain.EffectiveMinTip(),
 		MinGasPrice:  pool.chain.MinGasPrice(),
@@ -1311,6 +1313,7 @@ func (pool *TxPool) reset(oldHead, newHead *EvmHeader) {
 	pool.istanbul.Store(pool.chainconfig.IsIstanbul(next))
 	pool.eip2718.Store(pool.chainconfig.IsBerlin(next))
 	pool.eip1559.Store(pool.chainconfig.IsLondon(next))
+	pool.eip712.Store(pool.chainconfig.IsEIP712(next))
 }
 
 // promoteExecutables moves transactions that have become processable from the

@@ -19,28 +19,33 @@ package evmcore
 import (
 	"crypto/ecdsa"
 	"errors"
-	"math"
 	"math/big"
 	"time"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
+	"github.com/unicornultrafoundation/go-u2u/core"
 	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
 	"github.com/unicornultrafoundation/go-u2u/log"
-
 	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/u2u"
 )
 
 var FakeGenesisTime = native.Timestamp(1608600000 * time.Second)
 
 // ApplyFakeGenesis writes or updates the genesis block in db.
-func ApplyFakeGenesis(statedb *state.StateDB, time native.Timestamp, balances map[common.Address]*big.Int) (*EvmBlock, error) {
-	for acc, balance := range balances {
-		statedb.SetBalance(acc, balance)
+func ApplyFakeGenesis(statedb *state.StateDB, time native.Timestamp, genesisAlloc core.GenesisAlloc) (*EvmBlock, error) {
+	if genesisAlloc != nil {
+		for addr, alloc := range genesisAlloc {
+			statedb.SetBalance(addr, alloc.Balance)
+			statedb.SetCode(addr, alloc.Code)
+			if alloc.Storage != nil {
+				statedb.SetStorage(addr, alloc.Storage)
+			}
+		}
 	}
-
 	// initial block
 	root, err := flush(statedb, true)
 	if err != nil {
@@ -74,7 +79,7 @@ func genesisBlock(time native.Timestamp, root common.Hash) *EvmBlock {
 		EvmHeader: EvmHeader{
 			Number:   big.NewInt(0),
 			Time:     time,
-			GasLimit: math.MaxUint64,
+			GasLimit: u2u.FakeNetRules().Blocks.MaxBlockGas,
 			Root:     root,
 			TxHash:   types.EmptyRootHash,
 		},
@@ -84,8 +89,8 @@ func genesisBlock(time native.Timestamp, root common.Hash) *EvmBlock {
 }
 
 // MustApplyFakeGenesis writes the genesis block and state to db, panicking on error.
-func MustApplyFakeGenesis(statedb *state.StateDB, time native.Timestamp, balances map[common.Address]*big.Int) *EvmBlock {
-	block, err := ApplyFakeGenesis(statedb, time, balances)
+func MustApplyFakeGenesis(statedb *state.StateDB, time native.Timestamp, genesisAlloc core.GenesisAlloc) *EvmBlock {
+	block, err := ApplyFakeGenesis(statedb, time, genesisAlloc)
 	if err != nil {
 		log.Crit("ApplyFakeGenesis", "err", err)
 	}

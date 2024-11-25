@@ -2,11 +2,12 @@ package epochcheck
 
 import (
 	"errors"
-
+	"fmt"
+	
 	base "github.com/unicornultrafoundation/go-helios/eventcheck/epochcheck"
 	"github.com/unicornultrafoundation/go-helios/native/idx"
-	"github.com/unicornultrafoundation/go-u2u/core/types"
 
+	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 )
@@ -82,16 +83,19 @@ func (v *Checker) checkGas(e native.EventPayloadI, rules u2u.Rules) error {
 }
 
 func CheckTxs(txs types.Transactions, rules u2u.Rules) error {
-	maxType := uint8(0)
+	var accept uint8 = 0 | 1<<types.LegacyTxType
 	if rules.Upgrades.Berlin {
-		maxType = 1
+		accept = accept | 1<<types.AccessListTxType
 	}
 	if rules.Upgrades.London {
-		maxType = 2
+		accept = accept | 1<<types.DynamicFeeTxType
+	}
+	if rules.Upgrades.EIP712 {
+		accept = accept | 1<<types.EIP712TxType
 	}
 	for _, tx := range txs {
-		if tx.Type() > maxType {
-			return ErrUnsupportedTxType
+		if accept&(1<<tx.Type()) == 0 {
+			return fmt.Errorf("%w: tx type %v not supported by this pool", ErrUnsupportedTxType, tx.Type())
 		}
 		if tx.GasFeeCapIntCmp(rules.Economy.MinGasPrice) < 0 {
 			return ErrUnderpriced

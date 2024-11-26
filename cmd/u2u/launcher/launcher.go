@@ -111,7 +111,6 @@ func initFlags() {
 		utils.MinFreeDiskSpaceFlag,
 		utils.KeyStoreDirFlag,
 		utils.USBFlag,
-		utils.SmartCardDaemonPathFlag,
 		ExitWhenAgeFlag,
 		ExitWhenEpochFlag,
 		utils.LightKDFFlag,

@@ -38,7 +38,6 @@ func (db *Adapter) NewBatch() u2udb.Batch {
 
 func (db *Adapter) GetSnapshot() (u2udb.Snapshot, error) {
 	panic("called GetSnapshot on ethdb")
-	return nil, nil
 }
 
 // NewIterator creates a binary-alphabetical iterator over a subset

@@ -65,8 +65,8 @@ type peer struct {
 	progress PeerProgress
 
 	snapExt  *snapPeer     // Satellite `snap` connection
-	syncDrop *time.Timer   // Connection dropper if `eth` sync progress isn't validated in time
-	snapWait chan struct{} // Notification channel for snap connections
+	//syncDrop *time.Timer   // Connection dropper if `eth` sync progress isn't validated in time
+	//snapWait chan struct{} // Notification channel for snap connections
 
 	useless uint32
 

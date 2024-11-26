@@ -9,6 +9,7 @@ require (
 	github.com/deckarep/golang-set v1.8.0
 	github.com/docker/docker v1.13.1
 	github.com/dvyukov/go-fuzz v0.0.0-20230614170735-95bc4d742dfa
+	github.com/ethereum/go-ethereum v1.10.26
 	github.com/evalphobia/logrus_sentry v0.8.2
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5
 	github.com/golang/mock v1.6.0
@@ -29,7 +30,6 @@ require (
 	github.com/status-im/keycard-go v0.2.0
 	github.com/stretchr/testify v1.8.4
 	github.com/syndtr/goleveldb v1.0.1-0.20220614013038-64ee5596c38a
-	github.com/tyler-smith/go-bip39 v1.1.0
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/uber/jaeger-lib v2.4.1+incompatible
 	github.com/unicornultrafoundation/go-helios v0.0.0-20240117032343-43d91eb58369
@@ -37,6 +37,8 @@ require (
 	golang.org/x/sys v0.7.0
 	gopkg.in/urfave/cli.v1 v1.20.0
 )
+
+replace github.com/unicornultrafoundation/go-u2u/crypto/secp256k1 => github.com/ethereum/go-ethereum/crypto/secp256k1 v1.10.26
 
 require (
 	github.com/Azure/azure-pipeline-go v0.2.3 // indirect
@@ -64,7 +66,6 @@ require (
 	github.com/dop251/goja v0.0.0-20230122112309-96b1610dd4f7
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/fatih/color v1.7.0
-	github.com/gballet/go-libpcsclite v0.0.0-20191108122812-4678299bea08
 	github.com/getsentry/raven-go v0.2.0 // indirect
 	github.com/getsentry/sentry-go v0.18.0 // indirect
 	github.com/go-kit/kit v0.9.0 // indirect
@@ -105,7 +106,7 @@ require (
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 	golang.org/x/net v0.8.0 // indirect
 	golang.org/x/sync v0.1.0
-	golang.org/x/text v0.8.0
+	golang.org/x/text v0.8.0 // indirect
 	golang.org/x/time v0.0.0-20220922220347-f3bd1da661af
 	golang.org/x/tools v0.7.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect

@@ -45,12 +45,12 @@ func (e *GenesisMismatchError) Error() string {
 }
 
 type Configs struct {
-	U2U            gossip.Config
-	U2UStore       gossip.StoreConfig
-	Hashgraph      consensus.Config
-	HashgraphStore consensus.StoreConfig
-	VectorClock    vecmt.IndexConfig
-	DBs            DBsConfig
+	U2U         gossip.Config
+	U2UStore    gossip.StoreConfig
+	Helios      consensus.Config
+	HeliosStore consensus.StoreConfig
+	VectorClock vecmt.IndexConfig
+	DBs         DBsConfig
 }
 
 func panics(name string) func(error) {
@@ -74,7 +74,7 @@ func getStores(producer u2udb.FlushableDBProducer, cfg Configs) (*gossip.Store, 
 	cGetEpochDB := func(epoch idx.Epoch) u2udb.Store {
 		return mustOpenDB(producer, fmt.Sprintf("hashgraph-%d", epoch))
 	}
-	cdb := consensus.NewStore(cMainDb, cGetEpochDB, panics("Hashgraph store"), cfg.HashgraphStore)
+	cdb := consensus.NewStore(cMainDb, cGetEpochDB, panics("Helios store"), cfg.HeliosStore)
 	return gdb, cdb
 }
 
@@ -103,13 +103,13 @@ func rawMakeEngine(gdb *gossip.Store, cdb *consensus.Store, g *genesis.Genesis, 
 			Validators: gdb.GetValidators(),
 		})
 		if err != nil {
-			return nil, nil, blockProc, fmt.Errorf("failed to write Hashgraph genesis state: %v", err)
+			return nil, nil, blockProc, fmt.Errorf("failed to write Helios genesis state: %v", err)
 		}
 	}
 
 	// create consensus
 	vecClock := vecmt.NewIndex(panics("Vector clock"), cfg.VectorClock)
-	engine := consensus.NewConsensus(cdb, &GossipStoreAdapter{gdb}, vecmt2dagidx.Wrap(vecClock), panics("Hashgraph"), cfg.Hashgraph)
+	engine := consensus.NewConsensus(cdb, &GossipStoreAdapter{gdb}, vecmt2dagidx.Wrap(vecClock), panics("Helios"), cfg.Helios)
 	return engine, vecClock, blockProc, nil
 }
 

@@ -12,7 +12,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
-// GetEvent returns Hashgraph event by hash or short ID.
+// GetEvent returns Helios event by hash or short ID.
 func (ec *Client) GetEvent(ctx context.Context, h hash.Event) (e native.EventI, err error) {
 	var raw map[string]interface{}
 	err = ec.c.CallContext(ctx, &raw, "dag_getEvent", h.Hex())
@@ -27,7 +27,7 @@ func (ec *Client) GetEvent(ctx context.Context, h hash.Event) (e native.EventI, 
 	return
 }
 
-// GetEvent returns Hashgraph event by hash or short ID.
+// GetEvent returns Helios event by hash or short ID.
 func (ec *Client) GetEventPayload(ctx context.Context, h hash.Event, inclTx bool) (e native.EventI, txs []common.Hash, err error) {
 	var raw map[string]interface{}
 	err = ec.c.CallContext(ctx, &raw, "dag_getEventPayload", h.Hex(), inclTx)

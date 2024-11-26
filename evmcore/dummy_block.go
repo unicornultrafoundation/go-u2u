@@ -87,7 +87,7 @@ func ToEvmHeader(block *native.Block, index idx.Block, prevHash hash.Event, rule
 	}
 }
 
-// ConvertFromEthHeader converts ETH-formatted header to Hashgraph EVM header
+// ConvertFromEthHeader converts ETH-formatted header to Helios EVM header
 func ConvertFromEthHeader(h *types.Header) *EvmHeader {
 	// NOTE: incomplete conversion
 	return &EvmHeader{

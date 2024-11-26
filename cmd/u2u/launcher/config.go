@@ -175,26 +175,26 @@ var tomlSettings = toml.Config{
 }
 
 type config struct {
-	Node           node.Config
-	U2U            gossip.Config
-	Emitter        emitter.Config
-	TxPool         evmcore.TxPoolConfig
-	U2UStore       gossip.StoreConfig
-	Hashgraph      consensus.Config
-	HashgraphStore consensus.StoreConfig
-	VectorClock    vecmt.IndexConfig
-	DBs            integration.DBsConfig
-	Monitoring     monitoring.Config
+	Node        node.Config
+	U2U         gossip.Config
+	Emitter     emitter.Config
+	TxPool      evmcore.TxPoolConfig
+	U2UStore    gossip.StoreConfig
+	Helios      consensus.Config
+	HeliosStore consensus.StoreConfig
+	VectorClock vecmt.IndexConfig
+	DBs         integration.DBsConfig
+	Monitoring  monitoring.Config
 }
 
 func (c *config) AppConfigs() integration.Configs {
 	return integration.Configs{
-		U2U:            c.U2U,
-		U2UStore:       c.U2UStore,
-		Hashgraph:      c.Hashgraph,
-		HashgraphStore: c.HashgraphStore,
-		VectorClock:    c.VectorClock,
-		DBs:            c.DBs,
+		U2U:         c.U2U,
+		U2UStore:    c.U2UStore,
+		Helios:      c.Helios,
+		HeliosStore: c.HeliosStore,
+		VectorClock: c.VectorClock,
+		DBs:         c.DBs,
 	}
 }
 
@@ -495,14 +495,14 @@ func mayMakeAllConfigs(ctx *cli.Context) (*config, error) {
 	// Defaults (low priority)
 	cacheRatio := cacheScaler(ctx)
 	cfg := config{
-		Node:           defaultNodeConfig(),
-		U2U:            gossip.DefaultConfig(cacheRatio),
-		Emitter:        emitter.DefaultConfig(),
-		TxPool:         evmcore.DefaultTxPoolConfig,
-		U2UStore:       gossip.DefaultStoreConfig(cacheRatio),
-		Hashgraph:      consensus.DefaultConfig(),
-		HashgraphStore: consensus.DefaultStoreConfig(cacheRatio),
-		VectorClock:    vecmt.DefaultConfig(cacheRatio),
+		Node:        defaultNodeConfig(),
+		U2U:         gossip.DefaultConfig(cacheRatio),
+		Emitter:     emitter.DefaultConfig(),
+		TxPool:      evmcore.DefaultTxPoolConfig,
+		U2UStore:    gossip.DefaultStoreConfig(cacheRatio),
+		Helios:      consensus.DefaultConfig(),
+		HeliosStore: consensus.DefaultStoreConfig(cacheRatio),
+		VectorClock: vecmt.DefaultConfig(cacheRatio),
 	}
 
 	if ctx.GlobalIsSet(FakeNetFlag.Name) {

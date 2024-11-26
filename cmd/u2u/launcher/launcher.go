@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/unicornultrafoundation/go-helios/native/idx"
 	"gopkg.in/urfave/cli.v1"
 
+	"github.com/unicornultrafoundation/go-helios/native/idx"
 	"github.com/unicornultrafoundation/go-u2u/accounts"
 	"github.com/unicornultrafoundation/go-u2u/accounts/keystore"
 	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/monitoring"
@@ -386,8 +386,6 @@ func makeConfigNode(ctx *cli.Context, cfg *node.Config) *node.Node {
 // startNode boots up the system node and all registered protocols, after which
 // it unlocks any requested accounts, and starts the RPC/IPC interfaces.
 func startNode(ctx *cli.Context, stack *node.Node) {
-	debug.Memsize.Add("node", stack)
-
 	// Start up the node itself
 	utils.StartNode(ctx, stack)
 

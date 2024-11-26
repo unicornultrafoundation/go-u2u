@@ -62,7 +62,7 @@ func healDirty(ctx *cli.Context) error {
 	cGetEpochDB := func(epoch idx.Epoch) u2udb.Store {
 		return mustOpenDB(multiProducer, fmt.Sprintf("hashgraph-%d", epoch))
 	}
-	cdb := consensus.NewStore(cMainDb, cGetEpochDB, panics("hashgraph store"), cfg.HeliosStore)
+	cdb := consensus.NewStore(cMainDb, cGetEpochDB, panics("helios store"), cfg.HeliosStore)
 	err = cdb.ApplyGenesis(&consensus.Genesis{
 		Epoch:      epochState.Epoch,
 		Validators: epochState.Validators,

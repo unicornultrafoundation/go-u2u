@@ -80,7 +80,7 @@ type EpochsRules struct {
 	MaxEpochDuration native.Timestamp
 }
 
-// DagRules of Hashgraph DAG (directed acyclic graph).
+// DagRules of Helios DAG (directed acyclic graph).
 type DagRules struct {
 	MaxParents     idx.Event
 	MaxFreeParents idx.Event // maximum number of parents with no gas cost

@@ -24,12 +24,12 @@ func BenchmarkFlushDBs(b *testing.B) {
 	genStore := makefakegenesis.FakeGenesisStore(1, utils.ToU2U(1), utils.ToU2U(1))
 	g := genStore.Genesis()
 	_, _, store, s2, _, closeDBs := MakeEngine(dir, &g, Configs{
-		U2U:            gossip.DefaultConfig(cachescale.Identity),
-		U2UStore:       gossip.DefaultStoreConfig(cachescale.Identity),
-		Hashgraph:      consensus.DefaultConfig(),
-		HashgraphStore: consensus.DefaultStoreConfig(cachescale.Identity),
-		VectorClock:    vecmt.DefaultConfig(cachescale.Identity),
-		DBs:            DefaultDBsConfig(cachescale.Identity.U64, 512),
+		U2U:         gossip.DefaultConfig(cachescale.Identity),
+		U2UStore:    gossip.DefaultStoreConfig(cachescale.Identity),
+		Helios:      consensus.DefaultConfig(),
+		HeliosStore: consensus.DefaultStoreConfig(cachescale.Identity),
+		VectorClock: vecmt.DefaultConfig(cachescale.Identity),
+		DBs:         DefaultDBsConfig(cachescale.Identity.U64, 512),
 	})
 	defer closeDBs()
 	defer store.Close()

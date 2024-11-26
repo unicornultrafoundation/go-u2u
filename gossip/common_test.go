@@ -89,7 +89,7 @@ func makeTestEngine(gdb *Store) (*consensus.Consensus, *vecmt.Index) {
 		Validators: gdb.GetValidators(),
 	})
 	vecClock := vecmt.NewIndex(panics("Vector clock"), vecmt.LiteConfig())
-	engine := consensus.NewConsensus(cdb, &testGossipStoreAdapter{gdb}, vecmt2dagidx.Wrap(vecClock), panics("Hashgraph"), consensus.LiteConfig())
+	engine := consensus.NewConsensus(cdb, &testGossipStoreAdapter{gdb}, vecmt2dagidx.Wrap(vecClock), panics("Helios"), consensus.LiteConfig())
 	return engine, vecClock
 }
 

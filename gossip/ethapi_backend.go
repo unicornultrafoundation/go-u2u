@@ -202,7 +202,7 @@ func (b *EthAPIBackend) GetFullEventID(shortEventID string) (hash.Event, error) 
 	return options[0], nil
 }
 
-// GetEventPayload returns Hashgraph event by hash or short ID.
+// GetEventPayload returns Helios event by hash or short ID.
 func (b *EthAPIBackend) GetEventPayload(ctx context.Context, shortEventID string) (*native.EventPayload, error) {
 	id, err := b.GetFullEventID(shortEventID)
 	if err != nil {
@@ -211,7 +211,7 @@ func (b *EthAPIBackend) GetEventPayload(ctx context.Context, shortEventID string
 	return b.svc.store.GetEventPayload(id), nil
 }
 
-// GetEvent returns the Hashgraph event header by hash or short ID.
+// GetEvent returns the Helios event header by hash or short ID.
 func (b *EthAPIBackend) GetEvent(ctx context.Context, shortEventID string) (*native.Event, error) {
 	id, err := b.GetFullEventID(shortEventID)
 	if err != nil {

@@ -22,14 +22,14 @@ func TestConfigFile(t *testing.T) {
 	}
 
 	src := config{
-		Node:           defaultNodeConfig(),
-		U2U:            gossip.DefaultConfig(cacheRatio),
-		Emitter:        emitter.DefaultConfig(),
-		TxPool:         evmcore.DefaultTxPoolConfig,
-		U2UStore:       gossip.DefaultStoreConfig(cacheRatio),
-		Hashgraph:      consensus.DefaultConfig(),
-		HashgraphStore: consensus.DefaultStoreConfig(cacheRatio),
-		VectorClock:    vecmt.DefaultConfig(cacheRatio),
+		Node:        defaultNodeConfig(),
+		U2U:         gossip.DefaultConfig(cacheRatio),
+		Emitter:     emitter.DefaultConfig(),
+		TxPool:      evmcore.DefaultTxPoolConfig,
+		U2UStore:    gossip.DefaultStoreConfig(cacheRatio),
+		Helios:      consensus.DefaultConfig(),
+		HeliosStore: consensus.DefaultStoreConfig(cacheRatio),
+		VectorClock: vecmt.DefaultConfig(cacheRatio),
 	}
 
 	canonical := func(nn []*enode.Node) []*enode.Node {

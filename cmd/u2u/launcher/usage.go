@@ -24,7 +24,6 @@ import (
 
 	cli "gopkg.in/urfave/cli.v1"
 
-	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/debug"
 	"github.com/unicornultrafoundation/go-u2u/flags"
 )
@@ -106,17 +105,11 @@ func init() {
 					categorized[flag.String()] = struct{}{}
 				}
 			}
-			deprecated := make(map[string]struct{})
-			for _, flag := range utils.DeprecatedFlags {
-				deprecated[flag.String()] = struct{}{}
-			}
-			// Only add uncategorized flags if they are not deprecated
+			// Add uncategorized flags
 			var uncategorized []cli.Flag
 			for _, flag := range data.(*cli.App).Flags {
 				if _, ok := categorized[flag.String()]; !ok {
-					if _, ok := deprecated[flag.String()]; !ok {
-						uncategorized = append(uncategorized, flag)
-					}
+					uncategorized = append(uncategorized, flag)
 				}
 			}
 			if len(uncategorized) > 0 {

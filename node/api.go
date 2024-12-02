@@ -24,7 +24,6 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
 	"github.com/unicornultrafoundation/go-u2u/internal/debug"
-	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/p2p"
 	"github.com/unicornultrafoundation/go-u2u/p2p/enode"
 	"github.com/unicornultrafoundation/go-u2u/rpc"
@@ -217,24 +216,10 @@ func (api *privateAdminAPI) StartHTTP(host *string, port *int, cors *string, api
 	return true, nil
 }
 
-// StartRPC starts the HTTP RPC API server.
-// This method is deprecated. Use StartHTTP instead.
-func (api *privateAdminAPI) StartRPC(host *string, port *int, cors *string, apis *string, vhosts *string) (bool, error) {
-	log.Warn("Deprecation warning", "method", "admin.StartRPC", "use-instead", "admin.StartHTTP")
-	return api.StartHTTP(host, port, cors, apis, vhosts)
-}
-
 // StopHTTP shuts down the HTTP server.
 func (api *privateAdminAPI) StopHTTP() (bool, error) {
 	api.node.http.stop()
 	return true, nil
-}
-
-// StopRPC shuts down the HTTP server.
-// This method is deprecated. Use StopHTTP instead.
-func (api *privateAdminAPI) StopRPC() (bool, error) {
-	log.Warn("Deprecation warning", "method", "admin.StopRPC", "use-instead", "admin.StopHTTP")
-	return api.StopHTTP()
 }
 
 // StartWS starts the websocket RPC API server.

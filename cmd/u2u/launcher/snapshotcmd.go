@@ -63,9 +63,6 @@ var (
 					PruneGenesisCommand,
 					DataDirFlag,
 					utils.AncientFlag,
-					utils.RopstenFlag,
-					utils.RinkebyFlag,
-					utils.GoerliFlag,
 					utils.CacheTrieJournalFlag,
 					utils.BloomFilterSizeFlag,
 				},
@@ -93,9 +90,6 @@ the trie clean cache with default directory will be deleted.
 				Flags: []cli.Flag{
 					DataDirFlag,
 					utils.AncientFlag,
-					utils.RopstenFlag,
-					utils.RinkebyFlag,
-					utils.GoerliFlag,
 				},
 				Description: `
 geth snapshot verify-state <state-root>
@@ -113,9 +107,6 @@ In other words, this command does the snapshot to trie conversion.
 				Flags: []cli.Flag{
 					DataDirFlag,
 					utils.AncientFlag,
-					utils.RopstenFlag,
-					utils.RinkebyFlag,
-					utils.GoerliFlag,
 				},
 				Description: `
 geth snapshot traverse-state <state-root>
@@ -135,9 +126,6 @@ It's also usable without snapshot enabled.
 				Flags: []cli.Flag{
 					DataDirFlag,
 					utils.AncientFlag,
-					utils.RopstenFlag,
-					utils.RinkebyFlag,
-					utils.GoerliFlag,
 				},
 				Description: `
 geth snapshot traverse-rawstate <state-root>

@@ -38,6 +38,11 @@ import (
 // exist yet, the code will attempt to create a watcher at most this often.
 const minReloadInterval = 2 * time.Second
 
+// byURL defines the sorting order for accounts.
+func byURL(a, b accounts.Account) int {
+	return a.URL.Cmp(b.URL)
+}
+
 type accountsByURL []accounts.Account
 
 func (s accountsByURL) Len() int           { return len(s) }

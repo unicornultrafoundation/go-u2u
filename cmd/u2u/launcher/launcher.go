@@ -177,7 +177,7 @@ func initFlags() {
 }
 
 // init the CLI app.
-func init() {
+func initApp() {
 	discfilter.Enable()
 	overrideFlags()
 	overrideParams()
@@ -186,6 +186,8 @@ func init() {
 
 	// App.
 
+	app = cli.NewApp()
+	app.Name = "u2u"
 	app.Action = heliosMain
 	app.Version = params.VersionWithCommit(gitCommit, gitDate)
 	app.HideVersion = true // we have a command to print the version
@@ -245,6 +247,8 @@ func init() {
 }
 
 func Launch(args []string) error {
+	initApp()
+	initAppHelp()
 	return app.Run(args)
 }
 

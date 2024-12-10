@@ -30,7 +30,6 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/syndtr/goleveldb/leveldb/opt"
-
 	"github.com/unicornultrafoundation/go-helios/hash"
 	"github.com/unicornultrafoundation/go-helios/native/idx"
 
@@ -1145,7 +1144,7 @@ func executeEstimate(ctx context.Context, b Backend, args TransactionArgs, state
 	args.Gas = (*hexutil.Uint64)(&gasLimit)
 	result, err := doCall(ctx, b, args, state, header, nil, 0, gasCap)
 	if err != nil {
-		if errors.Is(err, core.ErrIntrinsicGas) {
+		if errors.Is(err, evmcore.ErrIntrinsicGas) {
 			return true, nil, nil // Special case, raise gas limit
 		}
 		return true, nil, err // Bail out
@@ -1199,7 +1198,7 @@ func DoEstimateGas(ctx context.Context, b Backend, args TransactionArgs, blockNr
 		available := new(big.Int).Set(balance)
 		if args.Value != nil {
 			if args.Value.ToInt().Cmp(available) >= 0 {
-				return 0, core.ErrInsufficientFundsForTransfer
+				return 0, evmcore.ErrInsufficientFundsForTransfer
 			}
 			available.Sub(available, args.Value.ToInt())
 		}

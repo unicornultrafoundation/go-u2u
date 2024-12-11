@@ -50,11 +50,11 @@ func TestTxTracing(t *testing.T) {
 	cliConsoleOutput = *cliConsole.GetOutDataTillCursor()
 
 	// Call simple contract call to check created trace
-	cliConsole.InputLine("testContract.setA.sendTransaction(24, {from:u2u.accounts[1],gas:\"3000000\"})")
+	cliConsole.InputLine("testContract.setA.sendTransaction(24, {from:u2u.accounts[1]})")
 	cliConsoleOutput = *cliConsole.GetOutDataTillCursor()
 	txHashCall := cliConsoleOutput[strings.Index(cliConsoleOutput, "0x") : len(cliConsoleOutput)-3]
 
-	cliConsole.InputLine("testContract.deploy.sendTransaction({from:u2u.accounts[1],gas:\"3000000\"})")
+	cliConsole.InputLine("testContract.deploy.sendTransaction({from:u2u.accounts[1]})")
 	cliConsoleOutput = *cliConsole.GetOutDataTillCursor()
 	txHashDeploy := cliConsoleOutput[strings.Index(cliConsoleOutput, "0x") : len(cliConsoleOutput)-3]
 	time.Sleep(5000 * time.Millisecond)

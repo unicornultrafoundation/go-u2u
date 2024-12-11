@@ -22,7 +22,9 @@ func PrometheusListener(endpoint string, reg metrics.Registry) {
 		logger.Info("metrics server starts", "endpoint", endpoint)
 		defer logger.Info("metrics server is stopped")
 
-		http.HandleFunc(
+		// http.HandleFunc(promhttp.Handler().ServeHTTP)
+		mux := http.NewServeMux()
+		mux.HandleFunc(
 			"/metrics", promhttp.Handler().ServeHTTP)
 		err := http.ListenAndServe(endpoint, nil)
 		if err != nil {

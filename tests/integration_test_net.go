@@ -4,6 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
+	"math/big"
+	"math/rand/v2"
+	"net"
+	"os"
+	"syscall"
+	"time"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -11,10 +19,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	u2u "github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
-	"math/big"
-	"os"
-	"syscall"
-	"time"
 )
 
 // IntegrationTestNet is a in-process test network for integration tests. When
@@ -42,8 +46,31 @@ import (
 // integration test networks can also be used for automated integration and
 // regression tests for client code.
 type IntegrationTestNet struct {
-	done      <-chan struct{}
-	validator Account
+	done           <-chan struct{}
+	validator      Account
+	httpClientPort int
+}
+
+func isPortFree(host string, port int) bool {
+	address := fmt.Sprintf("%s:%d", host, port)
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		return false
+	}
+	listener.Close()
+	return true
+}
+
+func getFreePort() (int, error) {
+	var port int
+	retries := 10
+	for i := 0; i < retries; i++ {
+		port = 1023 + (rand.Int()%math.MaxUint16 - 1023)
+		if isPortFree("127.0.0.1", port) {
+			return port, nil
+		}
+	}
+	return 0, fmt.Errorf("failed to find a free port after %d retries (last %d)", retries, port)
 }
 
 // StartIntegrationTestNet starts a single-node test network for integration tests.
@@ -51,6 +78,20 @@ type IntegrationTestNet struct {
 // is intended to facilitate debugging of client code in the context of a running
 // node.
 func StartIntegrationTestNet(directory string) (*IntegrationTestNet, error) {
+	// find free ports for the http-client, ws-client, and network interfaces
+	var err error
+	httpClientPort, err := getFreePort()
+	if err != nil {
+		return nil, err
+	}
+	wsPort, err := getFreePort()
+	if err != nil {
+		return nil, err
+	}
+	netPort, err := getFreePort()
+	if err != nil {
+		return nil, err
+	}
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -60,12 +101,24 @@ func StartIntegrationTestNet(directory string) (*IntegrationTestNet, error) {
 		// equivalent to running `u2u ...` but in this local process
 		os.Args = []string{
 			"u2u",
+
+			// data storage options
 			"--datadir", directory,
-			"--fakenet", "1/1",
-			"--http", "--http.addr", "0.0.0.0", "--http.port", "18545",
-			"--http.api", "admin,eth,web3,net,txpool,ftm,trace,debug",
-			"--ws", "--ws.addr", "0.0.0.0", "--ws.port", "18546", "--ws.api", "admin,eth,ftm",
 			"--datadir.minfreedisk", "0",
+
+			// fake network options
+			"--fakenet", "1/1",
+
+			// http-client option
+			"--http", "--http.addr", "0.0.0.0", "--http.port", fmt.Sprint(httpClientPort),
+			"--http.api", "admin,eth,web3,net,txpool,ftm,trace,debug",
+
+			// websocket-client options
+			"--ws", "--ws.addr", "0.0.0.0", "--ws.port", fmt.Sprint(wsPort),
+			"--ws.api", "admin,eth,ftm",
+
+			//  net options
+			"--port", fmt.Sprint(netPort),
 			"--nat", "none",
 			"--nodiscover",
 		}
@@ -75,8 +128,9 @@ func StartIntegrationTestNet(directory string) (*IntegrationTestNet, error) {
 		}
 	}()
 	result := &IntegrationTestNet{
-		done:      done,
-		validator: Account{evmcore.FakeKey(1)},
+		done:           done,
+		validator:      Account{evmcore.FakeKey(1)},
+		httpClientPort: httpClientPort,
 	}
 	// connect to blockchain network
 	client, err := result.GetClient()
@@ -248,7 +302,7 @@ func (n *IntegrationTestNet) GetTransactOptions(account *Account) (*bind.Transac
 // GetClient provides raw access to a fresh connection to the network.
 // The resulting client must be closed after use.
 func (n *IntegrationTestNet) GetClient() (*ethclient.Client, error) {
-	return ethclient.Dial("http://localhost:18545")
+	return ethclient.Dial(fmt.Sprintf("http://localhost:%d", n.httpClientPort))
 }
 
 // DeployContract is a utility function handling the deployment of a contract on the network.

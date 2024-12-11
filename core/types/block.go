@@ -86,6 +86,9 @@ type Header struct {
 	// BaseFee was added by EIP-1559 and is ignored in legacy headers.
 	BaseFee *big.Int `json:"baseFeePerGas" rlp:"optional"`
 
+	// rootHash of dump SFC state trie
+	ConsensusRoot common.Hash `json:"consensusRoot" rlp:"optional"`
+
 	// caches
 	externalHash atomic.Value `rlp:"-"`
 }

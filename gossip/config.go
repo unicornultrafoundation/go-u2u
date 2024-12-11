@@ -27,6 +27,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/epochpacks/epprocessor"
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/epochpacks/epstream/epstreamleecher"
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/epochpacks/epstream/epstreamseeder"
+	"github.com/unicornultrafoundation/go-u2u/gossip/sfcstore"
 )
 
 const nominalSize uint = 1
@@ -127,6 +128,7 @@ type (
 		Cache StoreCacheConfig
 		// EVM is EVM store config
 		EVM                 evmstore.StoreConfig
+		SFC                 sfcstore.StoreConfig
 		MaxNonFlushedSize   int
 		MaxNonFlushedPeriod time.Duration
 		TraceTransactions   bool
@@ -275,6 +277,7 @@ func DefaultStoreConfig(scale cachescale.Func) StoreConfig {
 			LlrEpochVotesIndexes: scale.I(5),
 		},
 		EVM:                 evmstore.DefaultStoreConfig(scale),
+		SFC:                 sfcstore.DefaultStoreConfig(scale),
 		MaxNonFlushedSize:   21*opt.MiB + scale.I(2*opt.MiB),
 		MaxNonFlushedPeriod: 30 * time.Minute,
 	}

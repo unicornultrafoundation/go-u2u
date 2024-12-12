@@ -108,7 +108,7 @@ func TestIntegrationTestNet_CanDeployContracts(t *testing.T) {
 		t.Fatalf("Failed to deploy contract: %v", err)
 	}
 	if receipt.Status != types.ReceiptStatusSuccessful {
-		t.Errorf("Contract deployment failed: %v", receipt)
+		t.Errorf("Contract deployment failed: %+v", receipt)
 	}
 }
 func TestIntegrationTestNet_CanInteractWithContract(t *testing.T) {

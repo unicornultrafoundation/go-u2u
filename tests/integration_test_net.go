@@ -12,12 +12,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethclient"
+	go_u2u "github.com/unicornultrafoundation/go-u2u"
+	"github.com/unicornultrafoundation/go-u2u/accounts/abi/bind"
 	u2u "github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher"
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
+	"github.com/unicornultrafoundation/go-u2u/ethclient"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 )
 
@@ -121,6 +121,7 @@ func StartIntegrationTestNet(directory string) (*IntegrationTestNet, error) {
 			"--port", fmt.Sprint(netPort),
 			"--nat", "none",
 			"--nodiscover",
+			"--cache", "8192",
 		}
 		err := u2u.Run()
 		if err != nil {
@@ -233,7 +234,7 @@ func (n *IntegrationTestNet) GetReceipt(txHash common.Hash) (*types.Receipt, err
 	delay := time.Millisecond
 	for time.Since(now) < 100*time.Second {
 		receipt, err := client.TransactionReceipt(context.Background(), txHash)
-		if errors.Is(err, ethereum.NotFound) {
+		if errors.Is(err, go_u2u.NotFound) {
 			time.Sleep(delay)
 			delay = 2 * delay
 			if delay > maxDelay {

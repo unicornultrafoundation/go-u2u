@@ -2,15 +2,20 @@ package tests
 
 import (
 	"context"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/unicornultrafoundation/go-u2u/tests/contracts/counter"
+	"golang.org/x/net/nettest"
 	"math/big"
 	"testing"
+
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
+	"github.com/unicornultrafoundation/go-u2u/tests/contracts/counter"
 )
 
 func TestIntegrationTestNet_CanStartAndStopIntegrationTestNet(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir, err := nettest.LocalPath()
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 	net, err := StartIntegrationTestNet(dataDir)
 	if err != nil {
 		t.Fatalf("Failed to start the fake network: %v", err)
@@ -19,7 +24,10 @@ func TestIntegrationTestNet_CanStartAndStopIntegrationTestNet(t *testing.T) {
 }
 func TestIntegrationTestNet_CanStartMultipleConsecutiveInstances(t *testing.T) {
 	for i := 0; i < 2; i++ {
-		dataDir := t.TempDir()
+		dataDir, err := nettest.LocalPath()
+		if err != nil {
+			t.Fatalf(err.Error())
+		}
 		net, err := StartIntegrationTestNet(dataDir)
 		if err != nil {
 			t.Fatalf("Failed to start the fake network: %v", err)
@@ -28,7 +36,10 @@ func TestIntegrationTestNet_CanStartMultipleConsecutiveInstances(t *testing.T) {
 	}
 }
 func TestIntegrationTestNet_CanFetchInformationFromTheNetwork(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir, err := nettest.LocalPath()
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 	net, err := StartIntegrationTestNet(dataDir)
 	if err != nil {
 		t.Fatalf("Failed to start the fake network: %v", err)
@@ -48,7 +59,10 @@ func TestIntegrationTestNet_CanFetchInformationFromTheNetwork(t *testing.T) {
 	}
 }
 func TestIntegrationTestNet_CanEndowAccountsWithTokens(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir, err := nettest.LocalPath()
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 	net, err := StartIntegrationTestNet(dataDir)
 	if err != nil {
 		t.Fatalf("Failed to start the fake network: %v", err)
@@ -80,7 +94,10 @@ func TestIntegrationTestNet_CanEndowAccountsWithTokens(t *testing.T) {
 	}
 }
 func TestIntegrationTestNet_CanDeployContracts(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir, err := nettest.LocalPath()
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 	net, err := StartIntegrationTestNet(dataDir)
 	if err != nil {
 		t.Fatalf("Failed to start the fake network: %v", err)
@@ -95,7 +112,10 @@ func TestIntegrationTestNet_CanDeployContracts(t *testing.T) {
 	}
 }
 func TestIntegrationTestNet_CanInteractWithContract(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir, err := nettest.LocalPath()
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 	net, err := StartIntegrationTestNet(dataDir)
 	if err != nil {
 		t.Fatalf("Failed to start the fake network: %v", err)

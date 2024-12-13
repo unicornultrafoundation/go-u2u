@@ -11,5 +11,4 @@ For an example application, see the `counter` directory.
 For compiling Solidity code and generating the Go bindings the following tools
 need to be installed on your system:
 - the `solc` compiler; on Ubuntu you an install it using `sudo snap install solc --edge`
-- the `abigen` tool; this can be installed using `go install github.com/ethereum/go-ethereum/cmd/abigen@latest`
-Background information on those tools can be found [here](https://goethereumbook.org/en/smart-contract-compile/).
+- the `abigen` tool; this can be installed using `go install github.com/unicornultrafoundation/go-u2u/cmd/abigen@latest`

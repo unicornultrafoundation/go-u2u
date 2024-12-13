@@ -37,6 +37,9 @@ type Context struct {
 // allows collecting the tracing result.
 type Tracer interface {
 	vm.Tracer
+	CaptureTxStart(gasLimit uint64)
+	CaptureTxEnd(restGas uint64)
+
 	GetResult() (json.RawMessage, error)
 	// Stop terminates execution of the tracer at the first opportune moment.
 	Stop(err error)

@@ -136,7 +136,7 @@ func StartIntegrationTestNet(directory string) (*IntegrationTestNet, error) {
 	// connect to blockchain network
 	client, err := result.GetClient()
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to the Ethereum client: %w", err)
+		return nil, fmt.Errorf("failed to connect to the U2U client: %w", err)
 	}
 	defer client.Close()
 	const timeout = 300 * time.Second
@@ -210,7 +210,7 @@ func (n *IntegrationTestNet) EndowAccount(
 func (n *IntegrationTestNet) Run(tx *types.Transaction) (*types.Receipt, error) {
 	client, err := n.GetClient()
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to the Ethereum client: %w", err)
+		return nil, fmt.Errorf("failed to connect to the U2U client: %w", err)
 	}
 	defer client.Close()
 	err = client.SendTransaction(context.Background(), tx)
@@ -225,7 +225,7 @@ func (n *IntegrationTestNet) Run(tx *types.Transaction) (*types.Receipt, error) 
 func (n *IntegrationTestNet) GetReceipt(txHash common.Hash) (*types.Receipt, error) {
 	client, err := n.GetClient()
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to the Ethereum client: %w", err)
+		return nil, fmt.Errorf("failed to connect to the U2U client: %w", err)
 	}
 	defer client.Close()
 	// Wait for the response with some exponential backoff.
@@ -274,7 +274,7 @@ func (n *IntegrationTestNet) Apply(
 func (n *IntegrationTestNet) GetTransactOptions(account *Account) (*bind.TransactOpts, error) {
 	client, err := n.GetClient()
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to the Ethereum client: %w", err)
+		return nil, fmt.Errorf("failed to connect to the U2U client: %w", err)
 	}
 	defer client.Close()
 	ctxt := context.Background()
@@ -312,7 +312,7 @@ func (n *IntegrationTestNet) GetClient() (*ethclient.Client, error) {
 func DeployContract[T any](n *IntegrationTestNet, deploy contractDeployer[T]) (*T, *types.Receipt, error) {
 	client, err := n.GetClient()
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to connect to the Ethereum client: %w", err)
+		return nil, nil, fmt.Errorf("failed to connect to the U2U client: %w", err)
 	}
 	defer client.Close()
 	transactOptions, err := n.GetTransactOptions(&n.validator)

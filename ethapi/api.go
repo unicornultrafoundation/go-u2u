@@ -18,6 +18,7 @@ package ethapi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -2092,6 +2093,9 @@ type TraceConfig struct {
 	Tracer  *string
 	Timeout *string
 	Reexec  *uint64
+	// Config specific to given tracer. Note struct logger
+	// config are historically embedded in main object.
+	TracerConfig json.RawMessage
 }
 
 // TraceCallConfig is the config for traceCall API. It holds one more
@@ -2182,10 +2186,11 @@ func (api *PublicDebugAPI) TraceCall(ctx context.Context, args TransactionArgs, 
 	var traceConfig *TraceConfig
 	if config != nil {
 		traceConfig = &TraceConfig{
-			LogConfig: config.LogConfig,
-			Tracer:    config.Tracer,
-			Timeout:   config.Timeout,
-			Reexec:    config.Reexec,
+			LogConfig:    config.LogConfig,
+			Tracer:       config.Tracer,
+			Timeout:      config.Timeout,
+			Reexec:       config.Reexec,
+			TracerConfig: config.TracerConfig,
 		}
 	}
 	return api.traceTx(ctx, msg, new(tracers.Context), vmctx, statedb, traceConfig)
@@ -2213,7 +2218,7 @@ func (api *PublicDebugAPI) traceTx(ctx context.Context, message evmcore.Message,
 				return nil, err
 			}
 		}
-		if t, err := tracers.New(*config.Tracer, txctx); err != nil {
+		if t, err := tracers.New(*config.Tracer, txctx, config.TracerConfig); err != nil {
 			return nil, err
 		} else {
 			deadlineCtx, cancel := context.WithTimeout(ctx, timeout)
@@ -2260,14 +2265,14 @@ func (api *PublicDebugAPI) traceTx(ctx context.Context, message evmcore.Message,
 			StructLogs:  FormatLogs(tracer.StructLogs()),
 		}, nil
 
-	case *tracers.Tracer:
+	case tracers.Tracer:
 		result, err := tracer.GetResult()
 		if err != nil && result == nil {
 			// Only for tracer called callTracer
 			if config.Tracer != nil && strings.Compare(*config.Tracer, "callTracer") == 0 {
 				if strings.Contains(err.Error(), "cannot read property 'toString' of undefined") {
 					log.Debug("error when debug with callTracer", "err", err.Error())
-					callTracer, _ := tracers.New(*config.Tracer, txctx)
+					callTracer, _ := tracers.New(*config.Tracer, txctx, config.TracerConfig)
 					callTracer.CaptureStart(vmenv, message.From(), *message.To(), false, message.Data(), message.Gas(), message.Value())
 					callTracer.CaptureEnd([]byte{}, message.Gas(), time.Duration(0), fmt.Errorf("execution reverted"))
 					result, err = callTracer.GetResult()

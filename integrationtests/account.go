@@ -1,4 +1,4 @@
-package tests
+package integrationtests
 
 import (
 	"crypto/ecdsa"

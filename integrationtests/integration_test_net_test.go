@@ -1,14 +1,15 @@
-package tests
+package integrationtests
 
 import (
 	"context"
-	"golang.org/x/net/nettest"
 	"math/big"
 	"testing"
 
+	"golang.org/x/net/nettest"
+	
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
-	"github.com/unicornultrafoundation/go-u2u/tests/contracts/counter"
+	"github.com/unicornultrafoundation/go-u2u/integrationtests/contracts/counter"
 )
 
 func TestIntegrationTestNet_CanStartAndStopIntegrationTestNet(t *testing.T) {

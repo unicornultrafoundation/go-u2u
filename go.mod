@@ -7,7 +7,7 @@ require (
 	github.com/cespare/cp v1.1.1
 	github.com/davecgh/go-spew v1.1.1
 	github.com/deckarep/golang-set v1.8.0
-	github.com/docker/docker v1.13.1
+	github.com/docker/docker v24.0.9+incompatible
 	github.com/dvyukov/go-fuzz v0.0.0-20230614170735-95bc4d742dfa
 	github.com/ethereum/go-ethereum v1.10.26
 	github.com/evalphobia/logrus_sentry v0.8.2
@@ -37,20 +37,12 @@ require (
 	gopkg.in/urfave/cli.v1 v1.20.0
 )
 
-replace github.com/unicornultrafoundation/go-u2u/crypto/secp256k1 => github.com/ethereum/go-ethereum/crypto/secp256k1 v1.10.26
-
 require (
-	github.com/Azure/azure-pipeline-go v0.2.3 // indirect
-	github.com/Azure/go-autorest/autorest/adal v0.9.23 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
-	github.com/edsrzf/mmap-go v1.0.0 // indirect
-	github.com/gballet/go-libpcsclite v0.0.0-20190607065134-2772fd86a8ff // indirect
-	github.com/mattn/go-ieproxy v0.0.1 // indirect
-	github.com/tyler-smith/go-bip39 v1.0.1-0.20181017060643-dbb3b84ba2ef // indirect
+	gotest.tools/v3 v3.5.1 // indirect
 )
 
 require (
-	github.com/Azure/azure-storage-blob-go v0.7.0
 	github.com/DataDog/zstd v1.5.2 // indirect
 	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
 	github.com/VictoriaMetrics/fastcache v1.6.0
@@ -105,7 +97,7 @@ require (
 	go.uber.org/atomic v1.5.1 // indirect
 	golang.org/x/exp v0.0.0-20230206171751-46f607a40771 // indirect
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
-	golang.org/x/net v0.8.0 // indirect
+	golang.org/x/net v0.8.0
 	golang.org/x/sync v0.1.0
 	golang.org/x/text v0.8.0 // indirect
 	golang.org/x/time v0.0.0-20220922220347-f3bd1da661af

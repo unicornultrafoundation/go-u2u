@@ -90,7 +90,7 @@ func calcAppHelpFlagGroups() []flags.FlagGroup {
 	}
 }
 
-func init() {
+func initAppHelp() {
 	// Override the default app help template
 	cli.AppHelpTemplate = flags.AppHelpTemplate
 

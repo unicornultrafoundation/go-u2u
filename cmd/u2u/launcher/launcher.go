@@ -33,6 +33,9 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/utils/errlock"
 	"github.com/unicornultrafoundation/go-u2u/valkeystore"
 	_ "github.com/unicornultrafoundation/go-u2u/version"
+
+	// Force-load js tracers package, to trigger registration
+	_ "github.com/unicornultrafoundation/go-u2u/eth/tracers/js"
 )
 
 const (

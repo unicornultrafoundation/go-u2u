@@ -30,6 +30,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
 	"github.com/unicornultrafoundation/go-u2u/eth/tracers"
+	"github.com/unicornultrafoundation/go-u2u/eth/tracers/internal"
 	jsassets "github.com/unicornultrafoundation/go-u2u/eth/tracers/js/internal/tracers"
 )
 
@@ -240,6 +241,12 @@ func (t *jsTracer) CaptureStart(env *vm.EVM, from common.Address, to common.Addr
 	rules := env.ChainConfig().Rules(env.Context.BlockNumber)
 	t.activePrecompiles = vm.ActivePrecompiles(rules)
 	t.ctx["intrinsicGas"] = t.vm.ToValue(t.gasLimit - gas)
+	coinbase, err := t.toBuf(t.vm, env.Context.Coinbase.Bytes())
+	if err != nil {
+		t.err = err
+		return
+	}
+	t.ctx["coinbase"] = t.vm.ToValue(coinbase)
 }
 
 // CaptureState implements the Tracer interface to trace a single step of VM execution.
@@ -563,10 +570,11 @@ func (mo *memoryObj) slice(begin, end int64) ([]byte, error) {
 	if end < begin || begin < 0 {
 		return nil, fmt.Errorf("tracer accessed out of bound memory: offset %d, end %d", begin, end)
 	}
-	if mo.memory.Len() < int(end) {
-		return nil, fmt.Errorf("tracer accessed out of bound memory: available %d, offset %d, size %d", mo.memory.Len(), begin, end-begin)
+	slice, err := internal.GetMemoryCopyPadded(mo.memory.Data(), begin, end-begin)
+	if err != nil {
+		return nil, err
 	}
-	return mo.memory.GetCopy(begin, end-begin), nil
+	return slice, nil
 }
 
 func (mo *memoryObj) GetUint(addr int64) goja.Value {

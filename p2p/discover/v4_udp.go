@@ -737,6 +737,7 @@ func (t *UDPv4) handleFindnode(h *packetHandlerV4, from *net.UDPAddr, fromID eno
 	var sent bool
 	for _, n := range closest {
 		// Don't advertise the private nodes
+		n := n
 		if len(t.privateNodes) > 0 && containsEnode(t.privateNodes, &n.Node) {
 			continue
 		}

@@ -484,6 +484,7 @@ func (f *freezer) freeze(db ethdb.KeyValueStore) {
 func (f *freezer) repair() error {
 	min := uint64(math.MaxUint64)
 	for _, table := range f.tables {
+		table := table
 		items := atomic.LoadUint64(&table.items)
 		if min > items {
 			min = items

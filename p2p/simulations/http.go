@@ -112,7 +112,10 @@ func (c *Client) SubscribeNetwork(events chan *Event, opts SubscribeOpts) (event
 	}
 	if res.StatusCode != http.StatusOK {
 		response, _ := ioutil.ReadAll(res.Body)
-		res.Body.Close()
+		err := res.Body.Close()
+		if err != nil {
+			return nil, err
+		}
 		return nil, fmt.Errorf("unexpected HTTP status: %s: %s", res.Status, response)
 	}
 

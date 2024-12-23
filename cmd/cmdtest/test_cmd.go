@@ -19,6 +19,7 @@ package cmdtest
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -122,7 +123,10 @@ func (tt *TestCmd) matchExactOutput(want []byte) error {
 		// Grab any additional buffered output in case of mismatch
 		// because it might help with debugging.
 		buf = append(buf, make([]byte, tt.stdout.Buffered())...)
-		tt.stdout.Read(buf[n:])
+		_, err := tt.stdout.Read(buf[n:])
+		if err != nil {
+			return err
+		}
 		// Find the mismatch position.
 		for i := 0; i < n; i++ {
 			if want[i] != buf[i] {
@@ -193,7 +197,8 @@ func (tt *TestCmd) Interrupt() {
 // It will only return a valid value after the process has finished.
 func (tt *TestCmd) ExitStatus() int {
 	if tt.Err != nil {
-		exitErr := tt.Err.(*exec.ExitError)
+		var exitErr *exec.ExitError
+		errors.As(tt.Err, &exitErr)
 		if exitErr != nil {
 			if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
 				return status.ExitStatus()
@@ -224,7 +229,7 @@ func (tt *TestCmd) GetOutPipeData() *[]byte {
 	}
 }
 
-// GetOutPipeData returns string till '>' cursor character on command stdout pipe
+// GetOutDataTillCursor returns string till '>' cursor character on command stdout pipe
 func (tt *TestCmd) GetOutDataTillCursor() *string {
 	str, _ := tt.stdout.ReadString('>')
 	return &str

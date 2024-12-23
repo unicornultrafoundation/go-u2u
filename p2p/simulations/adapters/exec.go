@@ -333,7 +333,10 @@ func (n *ExecNode) ServeRPC(clientConn *websocket.Conn) error {
 	go wsCopy(&wg, conn, clientConn)
 	go wsCopy(&wg, clientConn, conn)
 	wg.Wait()
-	conn.Close()
+	err = conn.Close()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -466,7 +469,10 @@ func startExecNodeStack() (*node.Node, error) {
 	if nodeTcpConn.IP == nil {
 		nodeTcpConn.IP = net.IPv4(127, 0, 0, 1)
 	}
-	conf.Node.initEnode(nodeTcpConn.IP, nodeTcpConn.Port, nodeTcpConn.Port)
+	err := conf.Node.initEnode(nodeTcpConn.IP, nodeTcpConn.Port, nodeTcpConn.Port)
+	if err != nil {
+		return nil, fmt.Errorf("error initiating enode: %v", err)
+	}
 	conf.Stack.P2P.PrivateKey = conf.Node.PrivateKey
 	conf.Stack.Logger = log.New("node.id", conf.Node.ID.String())
 

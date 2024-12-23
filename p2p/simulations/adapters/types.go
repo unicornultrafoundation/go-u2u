@@ -236,7 +236,10 @@ func assignTCPPort() (uint16, error) {
 	if err != nil {
 		return 0, err
 	}
-	l.Close()
+	err = l.Close()
+	if err != nil {
+		return 0, err
+	}
 	_, port, err := net.SplitHostPort(l.Addr().String())
 	if err != nil {
 		return 0, err

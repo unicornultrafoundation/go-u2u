@@ -124,13 +124,20 @@ func TestDatabaseSuite(t *testing.T, New func() ethdb.KeyValueStore) {
 			if idx != len(tt.order) {
 				t.Errorf("test %d: iteration terminated prematurely: have %d, want %d", i, idx, len(tt.order))
 			}
-			db.Close()
+			if err := db.Close(); err != nil {
+				t.Errorf("test %d: failed to close database: %v", i, err)
+			}
 		}
 	})
 
 	t.Run("IteratorWith", func(t *testing.T) {
 		db := New()
-		defer db.Close()
+		defer func() {
+			err := db.Close()
+			if err != nil {
+				t.Errorf("failed to close database: %v", err)
+			}
+		}()
 
 		keys := []string{"1", "2", "3", "4", "6", "10", "11", "12", "20", "21", "22"}
 		sort.Strings(keys) // 1, 10, 11, etc
@@ -165,7 +172,8 @@ func TestDatabaseSuite(t *testing.T, New func() ethdb.KeyValueStore) {
 
 		{
 			it := db.NewIterator([]byte("5"), nil)
-			got, want := iterateKeys(it), []string{}
+			var want []string
+			got := iterateKeys(it)
 			if err := it.Error(); err != nil {
 				t.Fatal(err)
 			}
@@ -199,7 +207,12 @@ func TestDatabaseSuite(t *testing.T, New func() ethdb.KeyValueStore) {
 
 	t.Run("KeyValueOperations", func(t *testing.T) {
 		db := New()
-		defer db.Close()
+		defer func() {
+			err := db.Close()
+			if err != nil {
+				t.Errorf("failed to close database: %v", err)
+			}
+		}()
 
 		key := []byte("foo")
 
@@ -239,7 +252,12 @@ func TestDatabaseSuite(t *testing.T, New func() ethdb.KeyValueStore) {
 
 	t.Run("Batch", func(t *testing.T) {
 		db := New()
-		defer db.Close()
+		defer func() {
+			err := db.Close()
+			if err != nil {
+				t.Errorf("failed to close database: %v", err)
+			}
+		}()
 
 		b := db.NewBatch()
 		for _, k := range []string{"1", "2", "3", "4"} {
@@ -268,11 +286,26 @@ func TestDatabaseSuite(t *testing.T, New func() ethdb.KeyValueStore) {
 		b.Reset()
 
 		// Mix writes and deletes in batch
-		b.Put([]byte("5"), nil)
-		b.Delete([]byte("1"))
-		b.Put([]byte("6"), nil)
-		b.Delete([]byte("3"))
-		b.Put([]byte("3"), nil)
+		err := b.Put([]byte("5"), nil)
+		if err != nil {
+			return
+		}
+		err = b.Delete([]byte("1"))
+		if err != nil {
+			return
+		}
+		err = b.Put([]byte("6"), nil)
+		if err != nil {
+			return
+		}
+		err = b.Delete([]byte("3"))
+		if err != nil {
+			return
+		}
+		err = b.Put([]byte("3"), nil)
+		if err != nil {
+			return
+		}
 
 		if err := b.Write(); err != nil {
 			t.Fatal(err)
@@ -288,7 +321,12 @@ func TestDatabaseSuite(t *testing.T, New func() ethdb.KeyValueStore) {
 
 	t.Run("BatchReplay", func(t *testing.T) {
 		db := New()
-		defer db.Close()
+		defer func() {
+			err := db.Close()
+			if err != nil {
+				t.Errorf("failed to close database: %v", err)
+			}
+		}()
 
 		want := []string{"1", "2", "3", "4"}
 		b := db.NewBatch()
@@ -316,7 +354,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdb.KeyValueStore) {
 }
 
 func iterateKeys(it ethdb.Iterator) []string {
-	keys := []string{}
+	var keys []string
 	for it.Next() {
 		keys = append(keys, string(it.Key()))
 	}

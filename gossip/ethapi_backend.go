@@ -103,9 +103,12 @@ func (b *EthAPIBackend) TxTraceByHash(ctx context.Context, h common.Hash) (*[]tx
 	}
 	txBytes := b.state.store.txtracer.GetTx(h)
 	traces := make([]txtracer.ActionTrace, 0)
-	json.Unmarshal(txBytes, &traces)
+	err := json.Unmarshal(txBytes, &traces)
+	if err != nil {
+		return nil, err
+	}
 	if len(traces) == 0 {
-		return nil, fmt.Errorf("No trace for tx hash: %s", h.String())
+		return nil, fmt.Errorf("no trace for tx hash: %s", h.String())
 	}
 	return &traces, nil
 }

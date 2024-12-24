@@ -203,6 +203,7 @@ func accountList(ctx *cli.Context) error {
 	var index int
 	for _, wallet := range stack.AccountManager().Wallets() {
 		for _, account := range wallet.Accounts() {
+			account := account
 			fmt.Printf("Account #%d: {%x} %s\n", index, account.Address, &account.URL)
 			index++
 		}
@@ -277,6 +278,7 @@ func ambiguousAddrRecovery(ks *keystore.KeyStore, err *keystore.AmbiguousAddrErr
 	fmt.Println("Testing your passphrase against all of them...")
 	var match *accounts.Account
 	for _, a := range err.Matches {
+		a := a
 		if err := ks.Unlock(a, auth); err == nil {
 			match = &a
 			break

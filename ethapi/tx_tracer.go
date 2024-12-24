@@ -531,6 +531,7 @@ func (s *PublicTxTraceAPI) Filter(ctx context.Context, args FilterArgs) (*[]txtr
 						}
 						if addTrace {
 							if traceCount >= args.After {
+								trace := trace
 								callTrace.AddTrace(&trace)
 								traceAdded++
 							}

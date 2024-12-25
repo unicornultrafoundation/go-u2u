@@ -409,6 +409,7 @@ func (callTrace *CallTrace) AddTrace(blockTrace *ActionTrace) {
 // AddTraces Append traces to call trace list
 func (callTrace *CallTrace) AddTraces(traces *[]ActionTrace, traceIndex *[]hexutil.Uint) {
 	for _, trace := range *traces {
+		trace := trace
 		if traceIndex == nil || equalContent(traceIndex, trace.TraceAddress) {
 			callTrace.AddTrace(&trace)
 		}

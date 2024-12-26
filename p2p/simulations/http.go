@@ -21,9 +21,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"html"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
@@ -31,6 +32,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
+
 	"github.com/unicornultrafoundation/go-u2u/event"
 	"github.com/unicornultrafoundation/go-u2u/p2p"
 	"github.com/unicornultrafoundation/go-u2u/p2p/enode"
@@ -101,7 +103,7 @@ type SubscribeOpts struct {
 // nodes and connections and filtering message events
 func (c *Client) SubscribeNetwork(events chan *Event, opts SubscribeOpts) (event.Subscription, error) {
 	url := fmt.Sprintf("%s/events?current=%t&filter=%s", c.URL, opts.Current, opts.Filter)
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -111,8 +113,11 @@ func (c *Client) SubscribeNetwork(events chan *Event, opts SubscribeOpts) (event
 		return nil, err
 	}
 	if res.StatusCode != http.StatusOK {
-		response, _ := ioutil.ReadAll(res.Body)
-		res.Body.Close()
+		response, _ := io.ReadAll(res.Body)
+		err := res.Body.Close()
+		if err != nil {
+			return nil, err
+		}
 		return nil, fmt.Errorf("unexpected HTTP status: %s: %s", res.Status, response)
 	}
 
@@ -211,24 +216,24 @@ func (c *Client) RPCClient(ctx context.Context, nodeID string) (*rpc.Client, err
 	return rpc.DialWebsocket(ctx, fmt.Sprintf("%s/nodes/%s/rpc", baseURL, nodeID), "")
 }
 
-// Get performs a HTTP GET request decoding the resulting JSON response
+// Get performs an HTTP GET request decoding the resulting JSON response
 // into "out"
 func (c *Client) Get(path string, out interface{}) error {
-	return c.Send("GET", path, nil, out)
+	return c.Send(http.MethodGet, path, nil, out)
 }
 
-// Post performs a HTTP POST request sending "in" as the JSON body and
+// Post performs an HTTP POST request sending "in" as the JSON body and
 // decoding the resulting JSON response into "out"
 func (c *Client) Post(path string, in, out interface{}) error {
-	return c.Send("POST", path, in, out)
+	return c.Send(http.MethodPost, path, in, out)
 }
 
-// Delete performs a HTTP DELETE request
+// Delete performs an HTTP DELETE request
 func (c *Client) Delete(path string) error {
-	return c.Send("DELETE", path, nil, nil)
+	return c.Send(http.MethodDelete, path, nil, nil)
 }
 
-// Send performs a HTTP request, sending "in" as the JSON request body and
+// Send performs an HTTP request, sending "in" as the JSON request body and
 // decoding the JSON response into "out"
 func (c *Client) Send(method, path string, in, out interface{}) error {
 	var body []byte
@@ -251,7 +256,7 @@ func (c *Client) Send(method, path string, in, out interface{}) error {
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusCreated {
-		response, _ := ioutil.ReadAll(res.Body)
+		response, _ := io.ReadAll(res.Body)
 		return fmt.Errorf("unexpected HTTP status: %s: %s", res.Status, response)
 	}
 	if out != nil {
@@ -336,7 +341,7 @@ func (s *Server) StartMocker(w http.ResponseWriter, req *http.Request) {
 	mockerType := req.FormValue("mocker-type")
 	mockerFn := LookupMocker(mockerType)
 	if mockerFn == nil {
-		http.Error(w, fmt.Sprintf("unknown mocker type %q", mockerType), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("unknown mocker type %q", html.EscapeString(mockerType)), http.StatusBadRequest)
 		return
 	}
 	nodeCount, err := strconv.Atoi(req.FormValue("node-count"))
@@ -364,9 +369,8 @@ func (s *Server) StopMocker(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// GetMockerList returns a list of available mockers
+// GetMockers returns a list of available mockers
 func (s *Server) GetMockers(w http.ResponseWriter, req *http.Request) {
-
 	list := GetMockerList()
 	s.JSON(w, http.StatusOK, list)
 }
@@ -434,13 +438,15 @@ func (s *Server) StreamNetworkEvents(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		for _, node := range snap.Nodes {
-			event := NewEvent(&node.Node)
+			n := node.Node
+			event := NewEvent(&n)
 			if err := writeEvent(event); err != nil {
 				writeErr(err)
 				return
 			}
 		}
 		for _, conn := range snap.Conns {
+			conn := conn
 			event := NewEvent(&conn)
 			if err := writeEvent(event); err != nil {
 				writeErr(err)
@@ -478,12 +484,12 @@ func (s *Server) StreamNetworkEvents(w http.ResponseWriter, req *http.Request) {
 func NewMsgFilters(filterParam string) (MsgFilters, error) {
 	filters := make(MsgFilters)
 	for _, filter := range strings.Split(filterParam, "-") {
-		protoCodes := strings.SplitN(filter, ":", 2)
-		if len(protoCodes) != 2 || protoCodes[0] == "" || protoCodes[1] == "" {
+		proto, codes, found := strings.Cut(filter, ":")
+		if !found || proto == "" || codes == "" {
 			return nil, fmt.Errorf("invalid message filter: %s", filter)
 		}
-		proto := protoCodes[0]
-		for _, code := range strings.Split(protoCodes[1], ",") {
+
+		for _, code := range strings.Split(codes, ",") {
 			if code == "*" || code == "-1" {
 				filters[MsgFilter{Proto: proto, Code: -1}] = struct{}{}
 				continue
@@ -559,7 +565,7 @@ func (s *Server) CreateNode(w http.ResponseWriter, req *http.Request) {
 	config := &adapters.NodeConfig{}
 
 	err := json.NewDecoder(req.Body).Decode(config)
-	if err != nil && err != io.EOF {
+	if err != nil && !errors.Is(err, io.EOF) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

@@ -12,17 +12,17 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: [ '1.21.3' ]
+        go-version: [ '1.22.0' ]
     permissions: read-all
     steps:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - name: Setup Go 1.21.3
+      - name: Setup Go 1.22.0
         uses: actions/setup-go@v4
         with:
           # Semantic version range syntax or exact version of Go
-          go-version: '1.21.3'
+          go-version: '1.22.0'
       - name: Test with the Go CLI
         run: go test --timeout 10m -coverprofile=coverage.out ./...
       - uses: sonarsource/sonarqube-scan-action@master

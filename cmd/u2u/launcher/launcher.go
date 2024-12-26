@@ -33,6 +33,9 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/utils/errlock"
 	"github.com/unicornultrafoundation/go-u2u/valkeystore"
 	_ "github.com/unicornultrafoundation/go-u2u/version"
+
+	// Force-load js tracers package, to trigger registration
+	_ "github.com/unicornultrafoundation/go-u2u/eth/tracers/js"
 )
 
 const (
@@ -177,7 +180,7 @@ func initFlags() {
 }
 
 // init the CLI app.
-func init() {
+func initApp() {
 	discfilter.Enable()
 	overrideFlags()
 	overrideParams()
@@ -186,6 +189,8 @@ func init() {
 
 	// App.
 
+	app = cli.NewApp()
+	app.Name = "u2u"
 	app.Action = heliosMain
 	app.Version = params.VersionWithCommit(gitCommit, gitDate)
 	app.HideVersion = true // we have a command to print the version
@@ -245,6 +250,8 @@ func init() {
 }
 
 func Launch(args []string) error {
+	initApp()
+	initAppHelp()
 	return app.Run(args)
 }
 

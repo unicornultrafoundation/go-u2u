@@ -48,7 +48,10 @@ func (t *NoopService) Protocols() []p2p.Protocol {
 					t.c[peer.ID()] = make(chan struct{})
 					close(t.c[peer.ID()])
 				}
-				rw.ReadMsg()
+				_, err := rw.ReadMsg()
+				if err != nil {
+					return err
+				}
 				return nil
 			},
 			NodeInfo: func() interface{} {

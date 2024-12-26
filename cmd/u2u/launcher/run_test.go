@@ -42,6 +42,8 @@ func (tt *testcli) readConfig() {
 func init() {
 	// Run the app if we've been exec'd as "u2u-test" in exec().
 	reexec.Register("u2u-test", func() {
+		initApp()
+		initAppHelp()
 		if err := app.Run(os.Args); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)

@@ -32,9 +32,11 @@ import (
 var (
 	// Ethereum compatible metrics set (see go-ethereum/core)
 
-	headBlockGauge     = metrics.GetOrRegisterGauge("chain/head/block", nil)
-	headHeaderGauge    = metrics.GetOrRegisterGauge("chain/head/header", nil)
-	headFastBlockGauge = metrics.GetOrRegisterGauge("chain/head/receipt", nil)
+	headBlockGauge          = metrics.GetOrRegisterGauge("chain/head/block", nil)
+	headHeaderGauge         = metrics.GetOrRegisterGauge("chain/head/header", nil)
+	headFastBlockGauge      = metrics.GetOrRegisterGauge("chain/head/receipt", nil)
+	headFinalizedBlockGauge = metrics.NewRegisteredGauge("chain/head/finalized", nil)
+	headSafeBlockGauge      = metrics.NewRegisteredGauge("chain/head/safe", nil)
 
 	accountReadTimer   = metrics.GetOrRegisterTimer("chain/account/reads", nil)
 	accountHashTimer   = metrics.GetOrRegisterTimer("chain/account/hashes", nil)
@@ -221,7 +223,7 @@ func consensusCallbackBeginBlockFn(
 				skipBlock = skipBlock || (emptyBlock && blockCtx.Time < bs.LastBlock.Time+es.Rules.Blocks.MaxEmptyBlockSkipPeriod)
 				// Finalize the progress of eventProcessor
 				bs = eventProcessor.Finalize(blockCtx, skipBlock) // TODO: refactor to not mutate the bs, it is unclear
-				{                                                 // sort and merge MPs cheaters
+				{ // sort and merge MPs cheaters
 					mpsCheaters := make(utypes.Cheaters, 0, len(mpsCheatersMap))
 					for vid := range mpsCheatersMap {
 						mpsCheaters = append(mpsCheaters, vid)
@@ -425,6 +427,8 @@ func consensusCallbackBeginBlockFn(
 					headBlockGauge.Update(int64(blockCtx.Idx))
 					headHeaderGauge.Update(int64(blockCtx.Idx))
 					headFastBlockGauge.Update(int64(blockCtx.Idx))
+					headFinalizedBlockGauge.Update(int64(blockCtx.Idx))
+					headSafeBlockGauge.Update(int64(blockCtx.Idx))
 
 					// Notify about new block
 					if feed != nil {

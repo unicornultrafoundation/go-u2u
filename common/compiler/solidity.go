@@ -114,24 +114,6 @@ func CompileSolidityString(solc, source string) (map[string]*Contract, error) {
 	return s.run(cmd, source)
 }
 
-// CompileSolidity compiles all given Solidity source files.
-func CompileSolidity(solc string, sourcefiles ...string) (map[string]*Contract, error) {
-	if len(sourcefiles) == 0 {
-		return nil, errors.New("solc: no source files")
-	}
-	source, err := slurpFiles(sourcefiles)
-	if err != nil {
-		return nil, err
-	}
-	s, err := SolidityVersion(solc)
-	if err != nil {
-		return nil, err
-	}
-	args := append(s.makeArgs(), "--")
-	cmd := exec.Command(s.Path, append(args, sourcefiles...)...)
-	return s.run(cmd, source)
-}
-
 func (s *Solidity) run(cmd *exec.Cmd, source string) (map[string]*Contract, error) {
 	var stderr, stdout bytes.Buffer
 	cmd.Stderr = &stderr

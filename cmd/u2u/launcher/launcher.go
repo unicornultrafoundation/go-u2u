@@ -13,7 +13,6 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/accounts"
 	"github.com/unicornultrafoundation/go-u2u/accounts/keystore"
 	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/monitoring"
-	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/tracing"
 	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/console/prompt"
 	"github.com/unicornultrafoundation/go-u2u/debug"
@@ -167,7 +166,6 @@ func initFlags() {
 		utils.MetricsInfluxDBTokenFlag,
 		utils.MetricsInfluxDBBucketFlag,
 		utils.MetricsInfluxDBOrganizationFlag,
-		tracing.EnableFlag,
 	}
 
 	nodeFlags = []cli.Flag{}
@@ -249,12 +247,6 @@ func initApp() {
 	}
 }
 
-func Launch(args []string) error {
-	initApp()
-	initAppHelp()
-	return app.Run(args)
-}
-
 // u2u is the main entry point into the system if no special subcommand is ran.
 // It creates a default node based on the command line arguments and runs it in
 // blocking mode, waiting for it to be shut down.
@@ -262,13 +254,6 @@ func heliosMain(ctx *cli.Context) error {
 	if args := ctx.Args(); len(args) > 0 {
 		return fmt.Errorf("invalid command: %q", args[0])
 	}
-
-	// TODO: tracing flags
-	//tracingStop, err := tracing.Start(ctx)
-	//if err != nil {
-	//	return err
-	//}
-	//defer tracingStop()
 
 	cfg := makeAllConfigs(ctx)
 	genesisStore := mayGetGenesisStore(ctx)

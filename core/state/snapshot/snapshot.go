@@ -275,7 +275,6 @@ func (t *Tree) Disable() {
 	rawdb.DeleteSnapshotRoot(batch)
 	rawdb.DeleteSnapshotJournal(batch)
 	rawdb.DeleteSnapshotGenerator(batch)
-	rawdb.DeleteSnapshotRecoveryNumber(batch)
 	// Note, we don't delete the sync progress
 
 	if err := batch.Write(); err != nil {
@@ -686,7 +685,6 @@ func (t *Tree) Rebuild(root common.Hash) {
 
 	// Firstly delete any recovery flag in the database. Because now we are
 	// building a brand new snapshot. Also reenable the snapshot feature.
-	rawdb.DeleteSnapshotRecoveryNumber(t.diskdb)
 	rawdb.DeleteSnapshotDisabled(t.diskdb)
 
 	// Iterate over and mark all layers stale

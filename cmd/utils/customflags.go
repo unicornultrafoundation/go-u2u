@@ -18,15 +18,12 @@ package utils
 
 import (
 	"encoding"
-	"errors"
 	"flag"
-	"math/big"
 	"os"
 	"os/user"
 	"path"
 	"strings"
 
-	"github.com/unicornultrafoundation/go-u2u/common/math"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -123,66 +120,6 @@ func (f TextMarshalerFlag) Apply(set *flag.FlagSet) {
 	eachName(f.Name, func(name string) {
 		set.Var(textMarshalerVal{f.Value}, f.Name, f.Usage)
 	})
-}
-
-// GlobalTextMarshaler returns the value of a TextMarshalerFlag from the global flag set.
-func GlobalTextMarshaler(ctx *cli.Context, name string) TextMarshaler {
-	val := ctx.GlobalGeneric(name)
-	if val == nil {
-		return nil
-	}
-	return val.(textMarshalerVal).v
-}
-
-// BigFlag is a command line flag that accepts 256 bit big integers in decimal or
-// hexadecimal syntax.
-type BigFlag struct {
-	Name   string
-	Value  *big.Int
-	Usage  string
-	EnvVar string
-}
-
-// bigValue turns *big.Int into a flag.Value
-type bigValue big.Int
-
-func (b *bigValue) String() string {
-	if b == nil {
-		return ""
-	}
-	return (*big.Int)(b).String()
-}
-
-func (b *bigValue) Set(s string) error {
-	int, ok := math.ParseBig256(s)
-	if !ok {
-		return errors.New("invalid integer syntax")
-	}
-	*b = (bigValue)(*int)
-	return nil
-}
-
-func (f BigFlag) GetName() string {
-	return f.Name
-}
-
-func (f BigFlag) String() string {
-	return cli.FlagStringer(f)
-}
-
-func (f BigFlag) Apply(set *flag.FlagSet) {
-	eachName(f.Name, func(name string) {
-		set.Var((*bigValue)(f.Value), f.Name, f.Usage)
-	})
-}
-
-// GlobalBig returns the value of a BigFlag from the global flag set.
-func GlobalBig(ctx *cli.Context, name string) *big.Int {
-	val := ctx.GlobalGeneric(name)
-	if val == nil {
-		return nil
-	}
-	return (*big.Int)(val.(*bigValue))
 }
 
 // Expands a file path

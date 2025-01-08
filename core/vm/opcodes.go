@@ -541,8 +541,3 @@ var stringToOp = map[string]OpCode{
 	"REVERT":         REVERT,
 	"SELFDESTRUCT":   SELFDESTRUCT,
 }
-
-// StringToOp finds the opcode whose name is stored in `str`.
-func StringToOp(str string) OpCode {
-	return stringToOp[str]
-}

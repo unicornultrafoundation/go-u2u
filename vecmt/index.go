@@ -88,19 +88,6 @@ func NewIndex(crit func(error), config IndexConfig) *Index {
 	return vi
 }
 
-func NewIndexWithBase(crit func(error), config IndexConfig, base *vecfc.Index) *Index {
-	vi := &Index{
-		Index:         base,
-		Base:          base,
-		baseCallbacks: base.GetEngineCallbacks(),
-		cfg:           config,
-		crit:          crit,
-	}
-	vi.initCaches()
-
-	return vi
-}
-
 func (vi *Index) initCaches() {
 	vi.cache.HighestBeforeTime, _ = wlru.New(vi.cfg.Caches.HighestBeforeTimeSize, int(vi.cfg.Caches.HighestBeforeTimeSize))
 }

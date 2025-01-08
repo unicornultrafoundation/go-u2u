@@ -27,9 +27,6 @@ import (
 
 // The fields below define the low level database schema prefixing.
 var (
-	// databaseVersionKey tracks the current database version.
-	databaseVersionKey = []byte("DatabaseVersion")
-
 	// headHeaderKey tracks the latest known header's hash.
 	headHeaderKey = []byte("LastHeader")
 
@@ -38,9 +35,6 @@ var (
 
 	// headFastBlockKey tracks the latest known incomplete block's hash during fast sync.
 	headFastBlockKey = []byte("LastFast")
-
-	// lastPivotKey tracks the last pivot block used by fast sync (to reenable on sethead).
-	lastPivotKey = []byte("LastPivot")
 
 	// fastTrieProgressKey tracks the number of trie entries imported during fast sync.
 	fastTrieProgressKey = []byte("TrieSync")
@@ -65,9 +59,6 @@ var (
 
 	// txIndexTailKey tracks the oldest block whose transactions have been indexed.
 	txIndexTailKey = []byte("TransactionIndexTail")
-
-	// fastTxLookupLimitKey tracks the transaction lookup limit during fast sync.
-	fastTxLookupLimitKey = []byte("FastTransactionLookupLimit")
 
 	// badBlockKey tracks the list of bad blocks seen by local
 	badBlockKey = []byte("InvalidBlock")

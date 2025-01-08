@@ -2,17 +2,9 @@ package version
 
 import (
 	"fmt"
-	"math/big"
 
 	"github.com/unicornultrafoundation/go-u2u/params"
 )
-
-func BigToString(b *big.Int) string {
-	if len(b.Bytes()) > 8 {
-		return "_malformed_version_"
-	}
-	return U64ToString(b.Uint64())
-}
 
 func AsString() string {
 	return ToString(uint16(params.VersionMajor), uint16(params.VersionMinor), uint16(params.VersionPatch))
@@ -20,10 +12,6 @@ func AsString() string {
 
 func AsU64() uint64 {
 	return ToU64(uint16(params.VersionMajor), uint16(params.VersionMinor), uint16(params.VersionPatch))
-}
-
-func AsBigInt() *big.Int {
-	return new(big.Int).SetUint64(AsU64())
 }
 
 func ToU64(vMajor, vMinor, vPatch uint16) uint64 {

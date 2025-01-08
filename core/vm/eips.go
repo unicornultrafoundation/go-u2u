@@ -18,8 +18,6 @@ package vm
 
 import (
 	"fmt"
-	"sort"
-
 	"github.com/holiman/uint256"
 	"github.com/unicornultrafoundation/go-u2u/params"
 )
@@ -43,19 +41,6 @@ func EnableEIP(eipNum int, jt *JumpTable) error {
 	}
 	enablerFn(jt)
 	return nil
-}
-
-func ValidEip(eipNum int) bool {
-	_, ok := activators[eipNum]
-	return ok
-}
-func ActivateableEips() []string {
-	var nums []string
-	for k := range activators {
-		nums = append(nums, fmt.Sprintf("%d", k))
-	}
-	sort.Strings(nums)
-	return nums
 }
 
 // enable1884 applies EIP-1884 to the given jump table:

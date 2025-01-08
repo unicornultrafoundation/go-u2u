@@ -133,13 +133,6 @@ func WriteHeaderNumber(db ethdb.KeyValueWriter, hash common.Hash, number uint64)
 	}
 }
 
-// DeleteHeaderNumber removes hash->number mapping.
-func DeleteHeaderNumber(db ethdb.KeyValueWriter, hash common.Hash) {
-	if err := db.Delete(headerNumberKey(hash)); err != nil {
-		log.Crit("Failed to delete hash to number mapping", "err", err)
-	}
-}
-
 // ReadHeadHeaderHash retrieves the hash of the current canonical head header.
 func ReadHeadHeaderHash(db ethdb.KeyValueReader) common.Hash {
 	data, _ := db.Get(headHeaderKey)
@@ -188,32 +181,6 @@ func WriteHeadFastBlockHash(db ethdb.KeyValueWriter, hash common.Hash) {
 	}
 }
 
-// ReadLastPivotNumber retrieves the number of the last pivot block. If the node
-// full synced, the last pivot will always be nil.
-func ReadLastPivotNumber(db ethdb.KeyValueReader) *uint64 {
-	data, _ := db.Get(lastPivotKey)
-	if len(data) == 0 {
-		return nil
-	}
-	var pivot uint64
-	if err := rlp.DecodeBytes(data, &pivot); err != nil {
-		log.Error("Invalid pivot block number in database", "err", err)
-		return nil
-	}
-	return &pivot
-}
-
-// WriteLastPivotNumber stores the number of the last pivot block.
-func WriteLastPivotNumber(db ethdb.KeyValueWriter, pivot uint64) {
-	enc, err := rlp.EncodeToBytes(pivot)
-	if err != nil {
-		log.Crit("Failed to encode pivot block number", "err", err)
-	}
-	if err := db.Put(lastPivotKey, enc); err != nil {
-		log.Crit("Failed to store pivot block number", "err", err)
-	}
-}
-
 // ReadFastTrieProgress retrieves the number of tries nodes fast synced to allow
 // reporting correct numbers across restarts.
 func ReadFastTrieProgress(db ethdb.KeyValueReader) uint64 {
@@ -252,23 +219,6 @@ func WriteTxIndexTail(db ethdb.KeyValueWriter, number uint64) {
 	}
 }
 
-// ReadFastTxLookupLimit retrieves the tx lookup limit used in fast sync.
-func ReadFastTxLookupLimit(db ethdb.KeyValueReader) *uint64 {
-	data, _ := db.Get(fastTxLookupLimitKey)
-	if len(data) != 8 {
-		return nil
-	}
-	number := binary.BigEndian.Uint64(data)
-	return &number
-}
-
-// WriteFastTxLookupLimit stores the txlookup limit used in fast sync into database.
-func WriteFastTxLookupLimit(db ethdb.KeyValueWriter, number uint64) {
-	if err := db.Put(fastTxLookupLimitKey, encodeBlockNumber(number)); err != nil {
-		log.Crit("Failed to store transaction lookup limit for fast sync", "err", err)
-	}
-}
-
 // ReadHeaderRLP retrieves a block header in its raw RLP database encoding.
 func ReadHeaderRLP(db ethdb.Reader, hash common.Hash, number uint64) rlp.RawValue {
 	// First try to look up the data in ancient database. Extra hash
@@ -292,17 +242,6 @@ func ReadHeaderRLP(db ethdb.Reader, hash common.Hash, number uint64) rlp.RawValu
 		return data
 	}
 	return nil // Can't find the data anywhere.
-}
-
-// HasHeader verifies the existence of a block header corresponding to the hash.
-func HasHeader(db ethdb.Reader, hash common.Hash, number uint64) bool {
-	if has, err := db.Ancient(freezerHashTable, number); err == nil && common.BytesToHash(has) == hash {
-		return true
-	}
-	if has, err := db.Has(headerKey(number, hash)); !has || err != nil {
-		return false
-	}
-	return true
 }
 
 // ReadHeader retrieves the block header corresponding to the hash.
@@ -413,17 +352,6 @@ func WriteBodyRLP(db ethdb.KeyValueWriter, hash common.Hash, number uint64, rlp 
 	}
 }
 
-// HasBody verifies the existence of a block body corresponding to the hash.
-func HasBody(db ethdb.Reader, hash common.Hash, number uint64) bool {
-	if has, err := db.Ancient(freezerHashTable, number); err == nil && common.BytesToHash(has) == hash {
-		return true
-	}
-	if has, err := db.Has(blockBodyKey(number, hash)); !has || err != nil {
-		return false
-	}
-	return true
-}
-
 // ReadBody retrieves the block body corresponding to the hash.
 func ReadBody(db ethdb.Reader, hash common.Hash, number uint64) *types.Body {
 	data := ReadBodyRLP(db, hash, number)
@@ -515,18 +443,6 @@ func DeleteTd(db ethdb.KeyValueWriter, hash common.Hash, number uint64) {
 	if err := db.Delete(headerTDKey(number, hash)); err != nil {
 		log.Crit("Failed to delete block total difficulty", "err", err)
 	}
-}
-
-// HasReceipts verifies the existence of all the transaction receipts belonging
-// to a block.
-func HasReceipts(db ethdb.Reader, hash common.Hash, number uint64) bool {
-	if has, err := db.Ancient(freezerHashTable, number); err == nil && common.BytesToHash(has) == hash {
-		return true
-	}
-	if has, err := db.Has(blockReceiptsKey(number, hash)); !has || err != nil {
-		return false
-	}
-	return true
 }
 
 // ReadReceiptsRLP retrieves all the transaction receipts belonging to a block in RLP encoding.
@@ -797,46 +713,6 @@ func DeleteBadBlocks(db ethdb.KeyValueWriter) {
 	if err := db.Delete(badBlockKey); err != nil {
 		log.Crit("Failed to delete bad blocks", "err", err)
 	}
-}
-
-// FindCommonAncestor returns the last common ancestor of two block headers
-func FindCommonAncestor(db ethdb.Reader, a, b *types.Header) *types.Header {
-	for bn := b.Number.Uint64(); a.Number.Uint64() > bn; {
-		a = ReadHeader(db, a.ParentHash, a.Number.Uint64()-1)
-		if a == nil {
-			return nil
-		}
-	}
-	for an := a.Number.Uint64(); an < b.Number.Uint64(); {
-		b = ReadHeader(db, b.ParentHash, b.Number.Uint64()-1)
-		if b == nil {
-			return nil
-		}
-	}
-	for a.Hash() != b.Hash() {
-		a = ReadHeader(db, a.ParentHash, a.Number.Uint64()-1)
-		if a == nil {
-			return nil
-		}
-		b = ReadHeader(db, b.ParentHash, b.Number.Uint64()-1)
-		if b == nil {
-			return nil
-		}
-	}
-	return a
-}
-
-// ReadHeadHeader returns the current canonical head header.
-func ReadHeadHeader(db ethdb.Reader) *types.Header {
-	headHeaderHash := ReadHeadHeaderHash(db)
-	if headHeaderHash == (common.Hash{}) {
-		return nil
-	}
-	headHeaderNumber := ReadHeaderNumber(db, headHeaderHash)
-	if headHeaderNumber == nil {
-		return nil
-	}
-	return ReadHeader(db, headHeaderHash, *headHeaderNumber)
 }
 
 // ReadHeadBlock returns the current canonical head block.

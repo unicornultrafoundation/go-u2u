@@ -5,13 +5,13 @@ import (
 
 	"github.com/unicornultrafoundation/go-helios/hash"
 	"github.com/unicornultrafoundation/go-helios/native/idx"
+
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
-	"github.com/unicornultrafoundation/go-u2u/params"
-
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip/gasprice"
+	"github.com/unicornultrafoundation/go-u2u/params"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 )
 
@@ -20,12 +20,6 @@ type EvmStateReader struct {
 
 	store *Store
 	gpo   *gasprice.Oracle
-}
-
-func NewEvmStateReader(s *Store) *EvmStateReader {
-	return &EvmStateReader{
-		store: s,
-	}
 }
 
 func (s *Service) GetEvmStateReader() *EvmStateReader {

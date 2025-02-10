@@ -1,9 +1,10 @@
 package launcher
 
 import (
+	"github.com/unicornultrafoundation/go-helios/hash"
+	"github.com/unicornultrafoundation/go-helios/u2udb"
 	"gopkg.in/urfave/cli.v1"
 
-	"github.com/unicornultrafoundation/go-helios/hash"
 	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/state"
@@ -27,15 +28,24 @@ func dumpSfcStorage(ctx *cli.Context) error {
 
 	rawDbs := makeDirectDBsProducer(cfg)
 	gdb := makeGossipStore(rawDbs, cfg)
-	defer gdb.Close()
 
 	evms := gdb.EvmStore()
 	sfcs := gdb.SfcStore()
 
+	defer evms.Close()
+	defer sfcs.Close()
+	defer gdb.Close()
+	defer func(rawDbs u2udb.FullDBProducer) {
+		err := rawDbs.Close()
+		if err != nil {
+			log.Error("Error closing raw dbs", "err", err)
+		}
+	}(rawDbs)
+
 	latestBlockIndex := gdb.GetLatestBlockIndex()
 	stateRoot := sfcs.GetStateRoot(latestBlockIndex)
 	if stateRoot != nil && sfcs.HasStateDB(hash.Hash(*stateRoot)) {
-		log.Info("Already dump SFC contract's storage with this block", "block", latestBlockIndex, "stateRoot", stateRoot)
+		log.Info("Already dump SFC contract's storage at this block", "block", latestBlockIndex, "stateRoot", stateRoot.Hex())
 		return nil
 	}
 
@@ -64,9 +74,9 @@ func dumpSfcStorage(ctx *cli.Context) error {
 		// Save the stateTrieHash for future use (include into the block header)
 		sfcs.SetStateRoot(latestBlockIndex, sfcStateTrieHash)
 
-		log.Info("Dump SFC contract's storage successfully", "stateTrieHash", sfcStateTrieHash)
+		log.Info("Dump SFC contract's storage successfully at", "block", latestBlockIndex, "stateTrieHash", sfcStateTrieHash.Hex())
 	}
-
+	// TODO(trinhdn97): should be done more gracefully for not corrupting the DB after dumping.
 	return nil
 }
 
@@ -96,6 +106,10 @@ func isDumpStorageHashValid(stateDb *state.StateDB, sfcStateDb *state.StateDB) b
 			isValid = false
 			log.Error("Storage hashes are NOT the same", "ContractAddr", sfcAddress)
 		}
+		log.Info("Checking contracts storage root",
+			"addr", sfcAddress.Hex(),
+			"origin", originTrie.Hash().Hex(),
+			"dumped", dumpTrie.Hash().Hex())
 	}
 
 	return isValid

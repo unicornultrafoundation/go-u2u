@@ -83,7 +83,10 @@ func (g *testGossipStoreAdapter) GetEvent(id hash.Event) dag.Event {
 }
 
 func makeTestEngine(gdb *Store) (*consensus.Consensus, *vecmt.Index) {
-	cdb := consensus.NewMemStore()
+	cdb, err := consensus.NewMemStore()
+	if err != nil {
+		log.Error("Error creating memstore", "err", err)
+	}
 	_ = cdb.ApplyGenesis(&consensus.Genesis{
 		Epoch:      gdb.GetEpoch(),
 		Validators: gdb.GetValidators(),

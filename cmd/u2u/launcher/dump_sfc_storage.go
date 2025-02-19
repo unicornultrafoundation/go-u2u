@@ -1,6 +1,8 @@
 package launcher
 
 import (
+	"os"
+
 	"github.com/unicornultrafoundation/go-helios/hash"
 	"github.com/unicornultrafoundation/go-helios/u2udb"
 	"gopkg.in/urfave/cli.v1"
@@ -23,6 +25,10 @@ func dumpSfcStorage(ctx *cli.Context) error {
 	if !ctx.Bool(experimentalFlag.Name) {
 		utils.Fatalf("Add --experimental flag")
 	}
+	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.TerminalFormat(false)))
+	glogger.Verbosity(log.Lvl(ctx.GlobalInt(verbosityFlag.Name)))
+	log.Root().SetHandler(glogger)
+
 	cfg := makeAllConfigs(ctx)
 	cfg.U2UStore.SFC.Enable = true
 
@@ -83,7 +89,7 @@ func dumpSfcStorage(ctx *cli.Context) error {
 func dumpSfcStorageByStateDb(stateDb *state.StateDB, sfcStateDb *state.StateDB) (common.Hash, error) {
 	for _, sfcAddress := range sfcContractAddresses {
 		stateDb.ForEachStorage(sfcAddress, func(key, value common.Hash) bool {
-			log.Debug("Looping on storage trie", "Contract", sfcAddress, "Key", key, "Value", value)
+			log.Debug("Looping on storage trie", "Contract", sfcAddress, "Key", key.Hex(), "Value", value.Hex())
 			sfcStateDb.SetState(sfcAddress, key, value)
 			return true
 		})

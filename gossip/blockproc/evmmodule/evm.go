@@ -24,7 +24,7 @@ func New() *EVMModule {
 	return &EVMModule{}
 }
 
-func (p *EVMModule) Start(block iblockproc.BlockCtx, statedb *state.StateDB, reader evmcore.DummyChain, onNewLog func(*types.Log), net u2u.Rules, evmCfg *params.ChainConfig) blockproc.EVMProcessor {
+func (p *EVMModule) Start(block iblockproc.BlockCtx, statedb *state.StateDB, sfcStateDb *state.StateDB, reader evmcore.DummyChain, onNewLog func(*types.Log), net u2u.Rules, evmCfg *params.ChainConfig) blockproc.EVMProcessor {
 	var prevBlockHash common.Hash
 	if block.Idx != 0 {
 		prevBlockHash = reader.GetHeader(common.Hash{}, uint64(block.Idx-1)).Hash
@@ -33,6 +33,7 @@ func (p *EVMModule) Start(block iblockproc.BlockCtx, statedb *state.StateDB, rea
 		block:         block,
 		reader:        reader,
 		statedb:       statedb,
+		sfcStateDb:    sfcStateDb,
 		onNewLog:      onNewLog,
 		net:           net,
 		evmCfg:        evmCfg,
@@ -42,12 +43,13 @@ func (p *EVMModule) Start(block iblockproc.BlockCtx, statedb *state.StateDB, rea
 }
 
 type U2UEVMProcessor struct {
-	block    iblockproc.BlockCtx
-	reader   evmcore.DummyChain
-	statedb  *state.StateDB
-	onNewLog func(*types.Log)
-	net      u2u.Rules
-	evmCfg   *params.ChainConfig
+	block      iblockproc.BlockCtx
+	reader     evmcore.DummyChain
+	statedb    *state.StateDB
+	sfcStateDb *state.StateDB
+	onNewLog   func(*types.Log)
+	net        u2u.Rules
+	evmCfg     *params.ChainConfig
 
 	blockIdx      *big.Int
 	prevBlockHash common.Hash
@@ -65,15 +67,16 @@ func (p *U2UEVMProcessor) evmBlockWith(txs types.Transactions) *evmcore.EvmBlock
 		baseFee = nil
 	}
 	h := &evmcore.EvmHeader{
-		Number:     p.blockIdx,
-		Hash:       common.Hash(p.block.Atropos),
-		ParentHash: p.prevBlockHash,
-		Root:       common.Hash{},
-		Time:       p.block.Time,
-		Coinbase:   common.Address{},
-		GasLimit:   math.MaxUint64,
-		GasUsed:    p.gasUsed,
-		BaseFee:    baseFee,
+		Number:       p.blockIdx,
+		Hash:         common.Hash(p.block.Atropos),
+		ParentHash:   p.prevBlockHash,
+		Root:         common.Hash{},
+		SfcStateRoot: common.Hash{},
+		Time:         p.block.Time,
+		Coinbase:     common.Address{},
+		GasLimit:     math.MaxUint64,
+		GasUsed:      p.gasUsed,
+		BaseFee:      baseFee,
 	}
 
 	return evmcore.NewEvmBlock(h, txs)
@@ -124,6 +127,12 @@ func (p *U2UEVMProcessor) Finalize() (evmBlock *evmcore.EvmBlock, skippedTxs []u
 		log.Crit("Failed to commit state", "err", err)
 	}
 	evmBlock.Root = newStateHash
-
+	if p.sfcStateDb != nil {
+		newSfcStateHash, err := p.sfcStateDb.Commit(true)
+		if err != nil {
+			log.Crit("Failed to commit sfc state", "err", err)
+		}
+		evmBlock.SfcStateRoot = newSfcStateHash
+	}
 	return
 }

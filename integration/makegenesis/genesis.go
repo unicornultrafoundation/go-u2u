@@ -139,7 +139,7 @@ func (b *GenesisBuilder) ExecuteGenesisTxs(blockProc BlockProc, genesisTxs types
 	sealer := blockProc.SealerModule.Start(blockCtx, bs, es)
 	sealing := true
 	txListener := blockProc.TxListenerModule.Start(blockCtx, bs, es, b.tmpStateDB)
-	evmProcessor := blockProc.EVMModule.Start(blockCtx, b.tmpStateDB, dummyHeaderReturner{}, func(l *types.Log) {
+	evmProcessor := blockProc.EVMModule.Start(blockCtx, b.tmpStateDB, nil, dummyHeaderReturner{}, func(l *types.Log) {
 		txListener.OnNewLog(l)
 	}, es.Rules, es.Rules.EvmChainConfig([]u2u.UpgradeHeight{
 		{
@@ -179,7 +179,7 @@ func (b *GenesisBuilder) ExecuteGenesisTxs(blockProc BlockProc, genesisTxs types
 	}
 	bs = txListener.Finalize()
 	bs.FinalizedStateRoot = hash.Hash(evmBlock.Root)
-
+	bs.SfcStateRoot = hash.Hash(evmBlock.SfcStateRoot)
 	bs.LastBlock = blockCtx
 
 	prettyHash := func(root hash.Hash) hash.Event {

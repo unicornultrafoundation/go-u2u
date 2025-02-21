@@ -49,7 +49,8 @@ func dumpSfcStorage(ctx *cli.Context) error {
 	}(rawDbs)
 
 	latestBlockIndex := gdb.GetLatestBlockIndex()
-	stateRoot := sfcs.GetStateRoot(latestBlockIndex)
+	latestBlockHash := gdb.GetBlock(latestBlockIndex).Atropos
+	stateRoot := sfcs.GetStateRoot(latestBlockIndex, latestBlockHash.Bytes())
 	if stateRoot != nil && sfcs.HasStateDB(hash.Hash(*stateRoot)) {
 		log.Info("Already dump SFC contract's storage at this block", "block", latestBlockIndex, "stateRoot", stateRoot.Hex())
 		return nil
@@ -78,7 +79,7 @@ func dumpSfcStorage(ctx *cli.Context) error {
 		sfcs.Cap()
 
 		// Save the stateTrieHash for future use (include into the block header)
-		sfcs.SetStateRoot(latestBlockIndex, sfcStateTrieHash)
+		sfcs.SetStateRoot(latestBlockIndex, latestBlockHash.Bytes(), sfcStateTrieHash)
 
 		log.Info("Dump SFC contract's storage successfully at", "block", latestBlockIndex, "stateTrieHash", sfcStateTrieHash.Hex())
 	}

@@ -32,13 +32,14 @@ import (
 
 type (
 	EvmHeader struct {
-		Number     *big.Int
-		Hash       common.Hash
-		ParentHash common.Hash
-		Root       common.Hash
-		TxHash     common.Hash
-		Time       native.Timestamp
-		Coinbase   common.Address
+		Number       *big.Int
+		Hash         common.Hash
+		ParentHash   common.Hash
+		SfcStateRoot common.Hash
+		Root         common.Hash
+		TxHash       common.Hash
+		Time         native.Timestamp
+		Coinbase     common.Address
 
 		GasLimit uint64
 		GasUsed  uint64
@@ -76,14 +77,15 @@ func ToEvmHeader(block *native.Block, index idx.Block, prevHash hash.Event, rule
 		baseFee = nil
 	}
 	return &EvmHeader{
-		Hash:       common.Hash(block.Atropos),
-		ParentHash: common.Hash(prevHash),
-		Root:       common.Hash(block.Root),
-		Number:     big.NewInt(int64(index)),
-		Time:       block.Time,
-		GasLimit:   math.MaxUint64,
-		GasUsed:    block.GasUsed,
-		BaseFee:    baseFee,
+		Hash:         common.Hash(block.Atropos),
+		ParentHash:   common.Hash(prevHash),
+		Root:         common.Hash(block.Root),
+		SfcStateRoot: common.Hash(block.SfcStateRoot),
+		Number:       big.NewInt(int64(index)),
+		Time:         block.Time,
+		GasLimit:     math.MaxUint64,
+		GasUsed:      block.GasUsed,
+		BaseFee:      baseFee,
 	}
 }
 
@@ -91,16 +93,17 @@ func ToEvmHeader(block *native.Block, index idx.Block, prevHash hash.Event, rule
 func ConvertFromEthHeader(h *types.Header) *EvmHeader {
 	// NOTE: incomplete conversion
 	return &EvmHeader{
-		Number:     h.Number,
-		Coinbase:   h.Coinbase,
-		GasLimit:   math.MaxUint64,
-		GasUsed:    h.GasUsed,
-		Root:       h.Root,
-		TxHash:     h.TxHash,
-		ParentHash: h.ParentHash,
-		Time:       native.FromUnix(int64(h.Time)),
-		Hash:       common.BytesToHash(h.Extra),
-		BaseFee:    h.BaseFee,
+		Number:       h.Number,
+		Coinbase:     h.Coinbase,
+		GasLimit:     math.MaxUint64,
+		GasUsed:      h.GasUsed,
+		Root:         h.Root,
+		SfcStateRoot: h.ConsensusRoot,
+		TxHash:       h.TxHash,
+		ParentHash:   h.ParentHash,
+		Time:         native.FromUnix(int64(h.Time)),
+		Hash:         common.BytesToHash(h.Extra),
+		BaseFee:      h.BaseFee,
 	}
 }
 

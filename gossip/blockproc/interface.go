@@ -52,5 +52,6 @@ type EVMProcessor interface {
 }
 
 type EVM interface {
-	Start(block iblockproc.BlockCtx, statedb *state.StateDB, reader evmcore.DummyChain, onNewLog func(*types.Log), net u2u.Rules, evmCfg *params.ChainConfig) EVMProcessor
+	Start(block iblockproc.BlockCtx, statedb *state.StateDB, sfcStatedb *state.StateDB, reader evmcore.DummyChain,
+		onNewLog func(*types.Log), net u2u.Rules, evmCfg *params.ChainConfig) EVMProcessor
 }

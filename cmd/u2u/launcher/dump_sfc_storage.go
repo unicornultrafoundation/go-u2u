@@ -30,16 +30,14 @@ func dumpSfcStorage(ctx *cli.Context) error {
 	log.Root().SetHandler(glogger)
 
 	cfg := makeAllConfigs(ctx)
-	cfg.U2UStore.SFC.Enable = true
+	cfg.U2UStore.EVM.SfcEnabled = true
 
 	rawDbs := makeDirectDBsProducer(cfg)
 	gdb := makeGossipStore(rawDbs, cfg)
 
 	evms := gdb.EvmStore()
-	sfcs := gdb.SfcStore()
 
 	defer evms.Close()
-	defer sfcs.Close()
 	defer gdb.Close()
 	defer func(rawDbs u2udb.FullDBProducer) {
 		err := rawDbs.Close()
@@ -50,8 +48,8 @@ func dumpSfcStorage(ctx *cli.Context) error {
 
 	latestBlockIndex := gdb.GetLatestBlockIndex()
 	latestBlockHash := gdb.GetBlock(latestBlockIndex).Atropos
-	stateRoot := sfcs.GetStateRoot(latestBlockIndex, latestBlockHash.Bytes())
-	if stateRoot != nil && sfcs.HasStateDB(hash.Hash(*stateRoot)) {
+	stateRoot := evms.GetSfcStateRoot(latestBlockIndex, latestBlockHash.Bytes())
+	if stateRoot != nil && evms.HasSfcStateDB(hash.Hash(*stateRoot)) {
 		log.Info("Already dump SFC contract's storage at this block", "block", latestBlockIndex, "stateRoot", stateRoot.Hex())
 		return nil
 	}
@@ -61,7 +59,7 @@ func dumpSfcStorage(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	sfcStateDb, err := sfcs.StateDB(hash.Zero)
+	sfcStateDb, err := evms.SfcStateDB(hash.Zero)
 	if err != nil {
 		return err
 	}
@@ -75,11 +73,11 @@ func dumpSfcStorage(ctx *cli.Context) error {
 
 	if isDumpStorageHashValid(stateDb, sfcStateDb) {
 		// Save dump SFC contract's storage to disk
-		sfcs.Commit(latestBlockIndex, hash.Hash(sfcStateTrieHash), false)
-		sfcs.Cap()
+		evms.CommitSfcState(latestBlockIndex, hash.Hash(sfcStateTrieHash), false)
+		evms.CapSfcState()
 
 		// Save the stateTrieHash for future use (include into the block header)
-		sfcs.SetStateRoot(latestBlockIndex, latestBlockHash.Bytes(), sfcStateTrieHash)
+		evms.SetSfcStateRoot(latestBlockIndex, latestBlockHash.Bytes(), sfcStateTrieHash)
 
 		log.Info("Dump SFC contract's storage successfully at", "block", latestBlockIndex, "stateTrieHash", sfcStateTrieHash.Hex())
 	}

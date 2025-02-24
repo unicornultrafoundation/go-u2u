@@ -33,7 +33,8 @@ type (
 	}
 	// StoreConfig is a config for store db.
 	StoreConfig struct {
-		Cache StoreCacheConfig
+		SfcEnabled bool
+		Cache      StoreCacheConfig
 		// Enables tracking of SHA3 preimages in the VM
 		EnablePreimageRecording bool
 	}

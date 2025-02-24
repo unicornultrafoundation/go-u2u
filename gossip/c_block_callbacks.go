@@ -15,7 +15,6 @@ import (
 	"github.com/unicornultrafoundation/go-helios/utils/workers"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/evmcore/txtracer"
@@ -123,14 +122,6 @@ func consensusCallbackBeginBlockFn(
 		if err != nil {
 			log.Crit("Failed to open StateDB", "err", err)
 		}
-		// Get sfcStateDB
-		var sfcStateDb *state.StateDB
-		if bs.SfcStateRoot != hash.Zero {
-			sfcStateDb, err = store.sfc.StateDB(bs.SfcStateRoot)
-			if err != nil {
-				log.Crit("Failed to open SFC StateDB", "err", err)
-			}
-		}
 
 		evmStateReader := &EvmStateReader{
 			ServiceFeed: feed,
@@ -233,7 +224,7 @@ func consensusCallbackBeginBlockFn(
 				skipBlock = skipBlock || (emptyBlock && blockCtx.Time < bs.LastBlock.Time+es.Rules.Blocks.MaxEmptyBlockSkipPeriod)
 				// Finalize the progress of eventProcessor
 				bs = eventProcessor.Finalize(blockCtx, skipBlock) // TODO: refactor to not mutate the bs, it is unclear
-				{ // sort and merge MPs cheaters
+				{                                                 // sort and merge MPs cheaters
 					mpsCheaters := make(utypes.Cheaters, 0, len(mpsCheatersMap))
 					for vid := range mpsCheatersMap {
 						mpsCheaters = append(mpsCheaters, vid)
@@ -282,7 +273,7 @@ func consensusCallbackBeginBlockFn(
 					evmCfg.Tracer = txtracer.NewTraceStructLogger(store.txtracer)
 				}
 
-				evmProcessor := blockProc.EVMModule.Start(blockCtx, statedb, sfcStateDb, evmStateReader, onNewLogAll, es.Rules, es.Rules.EvmChainConfig(store.GetUpgradeHeights()))
+				evmProcessor := blockProc.EVMModule.Start(blockCtx, statedb, evmStateReader, onNewLogAll, es.Rules, es.Rules.EvmChainConfig(store.GetUpgradeHeights()))
 				executionStart := time.Now()
 
 				// Execute pre-internal transactions
@@ -384,7 +375,6 @@ func consensusCallbackBeginBlockFn(
 					}
 					bs = txListener.Finalize() // TODO: refactor to not mutate the bs
 					bs.FinalizedStateRoot = block.Root
-					bs.SfcStateRoot = block.SfcStateRoot
 					// At this point, block state is finalized
 
 					// Build index for not skipped txs
@@ -507,11 +497,6 @@ func (s *Service) ReexecuteBlocks(from, to idx.Block) {
 		if err != nil {
 			log.Crit("Failue to re-execute blocks", "err", err)
 		}
-		// Get sfcStateDB
-		sfcStateDb, err := s.store.sfc.StateDB(prev.SfcStateRoot)
-		if err != nil {
-			log.Crit("Failed to open SFC StateDB", "err", err)
-		}
 		es := s.store.GetHistoryEpochState(s.store.FindBlockEpoch(b))
 		// Providing default config
 		// In case of trace transaction node, this config is changed
@@ -520,7 +505,7 @@ func (s *Service) ReexecuteBlocks(from, to idx.Block) {
 			evmCfg.Debug = true
 			evmCfg.Tracer = txtracer.NewTraceStructLogger(s.store.txtracer)
 		}
-		evmProcessor := blockProc.EVMModule.Start(blockCtx, statedb, sfcStateDb, evmStateReader, func(t *types.Log) {}, es.Rules, es.Rules.EvmChainConfig(upgradeHeights))
+		evmProcessor := blockProc.EVMModule.Start(blockCtx, statedb, evmStateReader, func(t *types.Log) {}, es.Rules, es.Rules.EvmChainConfig(upgradeHeights))
 		txs := s.store.GetBlockTxs(b, block)
 		evmProcessor.Execute(txs)
 		evmProcessor.Finalize()

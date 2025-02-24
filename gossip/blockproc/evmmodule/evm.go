@@ -24,7 +24,7 @@ func New() *EVMModule {
 	return &EVMModule{}
 }
 
-func (p *EVMModule) Start(block iblockproc.BlockCtx, statedb *state.StateDB, sfcStateDb *state.StateDB, reader evmcore.DummyChain, onNewLog func(*types.Log), net u2u.Rules, evmCfg *params.ChainConfig) blockproc.EVMProcessor {
+func (p *EVMModule) Start(block iblockproc.BlockCtx, statedb *state.StateDB, reader evmcore.DummyChain, onNewLog func(*types.Log), net u2u.Rules, evmCfg *params.ChainConfig) blockproc.EVMProcessor {
 	var prevBlockHash common.Hash
 	if block.Idx != 0 {
 		prevBlockHash = reader.GetHeader(common.Hash{}, uint64(block.Idx-1)).Hash
@@ -33,7 +33,6 @@ func (p *EVMModule) Start(block iblockproc.BlockCtx, statedb *state.StateDB, sfc
 		block:         block,
 		reader:        reader,
 		statedb:       statedb,
-		sfcStateDb:    sfcStateDb,
 		onNewLog:      onNewLog,
 		net:           net,
 		evmCfg:        evmCfg,

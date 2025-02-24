@@ -585,28 +585,3 @@ func (b *EthAPIBackend) StateAtBlock(ctx context.Context, block *evmcore.EvmBloc
 func (b *EthAPIBackend) StateAtTransaction(ctx context.Context, block *evmcore.EvmBlock, txIndex int, reexec uint64) (evmcore.Message, vm.BlockContext, *state.StateDB, error) {
 	return b.svc.stateAtTransaction(block, txIndex, reexec)
 }
-
-func (b *EthAPIBackend) SfcStateAndHeaderByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*state.StateDB, *evmcore.EvmHeader, error) {
-	var header *evmcore.EvmHeader
-	if number, ok := blockNrOrHash.Number(); ok && isLatestBlockNumber(number) {
-		header = &b.state.CurrentBlock().EvmHeader
-	} else if number, ok := blockNrOrHash.Number(); ok {
-		header = b.state.GetHeader(common.Hash{}, uint64(number))
-	} else if h, ok := blockNrOrHash.Hash(); ok {
-		index := b.svc.store.GetBlockIndex(hash.Event(h))
-		if index == nil {
-			return nil, nil, errors.New("header not found")
-		}
-		header = b.state.GetHeader(common.Hash{}, uint64(*index))
-	} else {
-		return nil, nil, errors.New("unknown header selector")
-	}
-	if header == nil {
-		return nil, nil, errors.New("header not found")
-	}
-	stateDb, err := b.svc.store.sfc.StateDB(hash.Hash(header.SfcStateRoot))
-	if err != nil {
-		return nil, nil, err
-	}
-	return stateDb, header, nil
-}

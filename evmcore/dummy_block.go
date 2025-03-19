@@ -98,7 +98,7 @@ func ConvertFromEthHeader(h *types.Header) *EvmHeader {
 		GasLimit:     math.MaxUint64,
 		GasUsed:      h.GasUsed,
 		Root:         h.Root,
-		SfcStateRoot: h.ConsensusRoot,
+		SfcStateRoot: h.SfcStateRoot,
 		TxHash:       h.TxHash,
 		ParentHash:   h.ParentHash,
 		Time:         native.FromUnix(int64(h.Time)),
@@ -114,16 +114,17 @@ func (h *EvmHeader) EthHeader() *types.Header {
 	}
 	// NOTE: incomplete conversion
 	ethHeader := &types.Header{
-		Number:     h.Number,
-		Coinbase:   h.Coinbase,
-		GasLimit:   0xffffffffffff, // don't use h.GasLimit (too much bits) here to avoid parsing issues
-		GasUsed:    h.GasUsed,
-		Root:       h.Root,
-		TxHash:     h.TxHash,
-		ParentHash: h.ParentHash,
-		Time:       uint64(h.Time.Unix()),
-		Extra:      h.Hash.Bytes(),
-		BaseFee:    h.BaseFee,
+		Number:       h.Number,
+		Coinbase:     h.Coinbase,
+		GasLimit:     0xffffffffffff, // don't use h.GasLimit (too much bits) here to avoid parsing issues
+		GasUsed:      h.GasUsed,
+		Root:         h.Root,
+		SfcStateRoot: h.SfcStateRoot,
+		TxHash:       h.TxHash,
+		ParentHash:   h.ParentHash,
+		Time:         uint64(h.Time.Unix()),
+		Extra:        h.Hash.Bytes(),
+		BaseFee:      h.BaseFee,
 
 		Difficulty: new(big.Int),
 	}

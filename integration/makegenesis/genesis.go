@@ -179,6 +179,7 @@ func (b *GenesisBuilder) ExecuteGenesisTxs(blockProc BlockProc, genesisTxs types
 	}
 	bs = txListener.Finalize()
 	bs.FinalizedStateRoot = hash.Hash(evmBlock.Root)
+	bs.SfcStateRoot = hash.Hash(evmBlock.SfcStateRoot)
 	bs.LastBlock = blockCtx
 
 	prettyHash := func(root hash.Hash) hash.Event {
@@ -198,12 +199,13 @@ func (b *GenesisBuilder) ExecuteGenesisTxs(blockProc BlockProc, genesisTxs types
 	// add block
 	b.blocks = append(b.blocks, ibr.LlrIdxFullBlockRecord{
 		LlrFullBlockRecord: ibr.LlrFullBlockRecord{
-			Atropos:  prettyHash(bs.FinalizedStateRoot),
-			Root:     bs.FinalizedStateRoot,
-			Txs:      evmBlock.Transactions,
-			Receipts: receiptsStorage,
-			Time:     blockCtx.Time,
-			GasUsed:  evmBlock.GasUsed,
+			Atropos:      prettyHash(bs.FinalizedStateRoot),
+			Root:         bs.FinalizedStateRoot,
+			SfcStateRoot: bs.SfcStateRoot,
+			Txs:          evmBlock.Transactions,
+			Receipts:     receiptsStorage,
+			Time:         blockCtx.Time,
+			GasUsed:      evmBlock.GasUsed,
 		},
 		Idx: blockCtx.Idx,
 	})

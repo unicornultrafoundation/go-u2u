@@ -44,6 +44,7 @@ type BlockCtx struct {
 type BlockState struct {
 	LastBlock          BlockCtx
 	FinalizedStateRoot hash.Hash
+	SfcStateRoot       hash.Hash
 
 	EpochGas        uint64
 	EpochCheaters   types.Cheaters

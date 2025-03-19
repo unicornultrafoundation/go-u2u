@@ -19,7 +19,7 @@ type Block struct {
 }
 
 func (b *Block) EstimateSize() int {
-	return (len(b.Events)+len(b.InternalTxs)+len(b.Txs)+1+1)*32 + len(b.SkippedTxs)*4 + 8 + 8
+	return (len(b.Events)+len(b.InternalTxs)+len(b.Txs)+1+1)*32 + len(b.SkippedTxs)*4 + 8 + 8 + 8
 }
 
 func FilterSkippedTxs(txs types.Transactions, skippedTxs []uint32) types.Transactions {

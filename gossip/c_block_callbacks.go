@@ -337,6 +337,7 @@ func consensusCallbackBeginBlockFn(
 					evmBlock, skippedTxs, allReceipts := evmProcessor.Finalize()
 					block.SkippedTxs = skippedTxs
 					block.Root = hash.Hash(evmBlock.Root)
+					block.SfcStateRoot = hash.Hash(evmBlock.SfcStateRoot)
 					block.GasUsed = evmBlock.GasUsed
 
 					// memorize event position of each tx
@@ -375,6 +376,7 @@ func consensusCallbackBeginBlockFn(
 					}
 					bs = txListener.Finalize() // TODO: refactor to not mutate the bs
 					bs.FinalizedStateRoot = block.Root
+					bs.SfcStateRoot = block.SfcStateRoot
 					// At this point, block state is finalized
 
 					// Build index for not skipped txs

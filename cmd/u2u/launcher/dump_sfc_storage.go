@@ -17,7 +17,12 @@ import (
 )
 
 var (
-	sfcContractAddresses = []common.Address{sfc.ContractAddress, driverauth.ContractAddress, driver.ContractAddress}
+	sfcContractAddresses = []common.Address{
+		sfc.ContractAddress,
+		driverauth.ContractAddress,
+		driver.ContractAddress,
+		common.HexToAddress("0x6CA548f6DF5B540E72262E935b6Fe3e72cDd68C9"), // ConstantManager
+	}
 )
 
 // dumpSfcStorage is the 'db dump-sfc' command.

@@ -86,8 +86,8 @@ type Header struct {
 	// BaseFee was added by EIP-1559 and is ignored in legacy headers.
 	BaseFee *big.Int `json:"baseFeePerGas" rlp:"optional"`
 
-	// rootHash of dump SFC state trie
-	ConsensusRoot common.Hash `json:"consensusRoot" rlp:"optional"`
+	// SfcStateRoot is the root hash of dump SFC state trie
+	SfcStateRoot common.Hash `json:"sfcStateRoot" rlp:"optional"`
 
 	// caches
 	externalHash atomic.Value `rlp:"-"`
@@ -323,7 +323,7 @@ func (b *Block) TxHash() common.Hash       { return b.header.TxHash }
 func (b *Block) ReceiptHash() common.Hash  { return b.header.ReceiptHash }
 func (b *Block) UncleHash() common.Hash    { return b.header.UncleHash }
 func (b *Block) Extra() []byte             { return common.CopyBytes(b.header.Extra) }
-func (b *Block) SfcStateRoot() common.Hash { return b.header.ConsensusRoot }
+func (b *Block) SfcStateRoot() common.Hash { return b.header.SfcStateRoot }
 
 func (b *Block) BaseFee() *big.Int {
 	if b.header.BaseFee == nil {

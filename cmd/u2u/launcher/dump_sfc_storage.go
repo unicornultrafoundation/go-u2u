@@ -17,7 +17,12 @@ import (
 )
 
 var (
-	sfcContractAddresses = []common.Address{sfc.ContractAddress, driverauth.ContractAddress, driver.ContractAddress}
+	sfcContractAddresses = []common.Address{
+		sfc.ContractAddress,
+		driverauth.ContractAddress,
+		driver.ContractAddress,
+		common.HexToAddress("0x6CA548f6DF5B540E72262E935b6Fe3e72cDd68C9"), // ConstantManager
+	}
 )
 
 // dumpSfcStorage is the 'db dump-sfc' command.
@@ -30,16 +35,14 @@ func dumpSfcStorage(ctx *cli.Context) error {
 	log.Root().SetHandler(glogger)
 
 	cfg := makeAllConfigs(ctx)
-	cfg.U2UStore.SFC.Enable = true
+	cfg.U2UStore.EVM.SfcEnabled = true
 
 	rawDbs := makeDirectDBsProducer(cfg)
 	gdb := makeGossipStore(rawDbs, cfg)
 
 	evms := gdb.EvmStore()
-	sfcs := gdb.SfcStore()
 
 	defer evms.Close()
-	defer sfcs.Close()
 	defer gdb.Close()
 	defer func(rawDbs u2udb.FullDBProducer) {
 		err := rawDbs.Close()
@@ -49,8 +52,9 @@ func dumpSfcStorage(ctx *cli.Context) error {
 	}(rawDbs)
 
 	latestBlockIndex := gdb.GetLatestBlockIndex()
-	stateRoot := sfcs.GetStateRoot(latestBlockIndex)
-	if stateRoot != nil && sfcs.HasStateDB(hash.Hash(*stateRoot)) {
+	latestBlockHash := gdb.GetBlock(latestBlockIndex).Atropos
+	stateRoot := evms.GetSfcStateRoot(latestBlockIndex, latestBlockHash.Bytes())
+	if stateRoot != nil && evms.HasSfcStateDB(hash.Hash(*stateRoot)) {
 		log.Info("Already dump SFC contract's storage at this block", "block", latestBlockIndex, "stateRoot", stateRoot.Hex())
 		return nil
 	}
@@ -60,7 +64,7 @@ func dumpSfcStorage(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	sfcStateDb, err := sfcs.StateDB(hash.Zero)
+	sfcStateDb, err := evms.SfcStateDB(hash.Zero)
 	if err != nil {
 		return err
 	}
@@ -74,11 +78,11 @@ func dumpSfcStorage(ctx *cli.Context) error {
 
 	if isDumpStorageHashValid(stateDb, sfcStateDb) {
 		// Save dump SFC contract's storage to disk
-		sfcs.Commit(latestBlockIndex, hash.Hash(sfcStateTrieHash), false)
-		sfcs.Cap()
+		evms.CommitSfcState(latestBlockIndex, hash.Hash(sfcStateTrieHash), false)
+		evms.CapSfcState()
 
 		// Save the stateTrieHash for future use (include into the block header)
-		sfcs.SetStateRoot(latestBlockIndex, sfcStateTrieHash)
+		evms.SetSfcStateRoot(latestBlockIndex, latestBlockHash.Bytes(), sfcStateTrieHash)
 
 		log.Info("Dump SFC contract's storage successfully at", "block", latestBlockIndex, "stateTrieHash", sfcStateTrieHash.Hex())
 	}

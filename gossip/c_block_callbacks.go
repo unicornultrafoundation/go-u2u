@@ -122,6 +122,7 @@ func consensusCallbackBeginBlockFn(
 		if err != nil {
 			log.Crit("Failed to open StateDB", "err", err)
 		}
+
 		evmStateReader := &EvmStateReader{
 			ServiceFeed: feed,
 			store:       store,
@@ -223,7 +224,7 @@ func consensusCallbackBeginBlockFn(
 				skipBlock = skipBlock || (emptyBlock && blockCtx.Time < bs.LastBlock.Time+es.Rules.Blocks.MaxEmptyBlockSkipPeriod)
 				// Finalize the progress of eventProcessor
 				bs = eventProcessor.Finalize(blockCtx, skipBlock) // TODO: refactor to not mutate the bs, it is unclear
-				{ // sort and merge MPs cheaters
+				{                                                 // sort and merge MPs cheaters
 					mpsCheaters := make(utypes.Cheaters, 0, len(mpsCheatersMap))
 					for vid := range mpsCheatersMap {
 						mpsCheaters = append(mpsCheaters, vid)
@@ -336,6 +337,7 @@ func consensusCallbackBeginBlockFn(
 					evmBlock, skippedTxs, allReceipts := evmProcessor.Finalize()
 					block.SkippedTxs = skippedTxs
 					block.Root = hash.Hash(evmBlock.Root)
+					block.SfcStateRoot = hash.Hash(evmBlock.SfcStateRoot)
 					block.GasUsed = evmBlock.GasUsed
 
 					// memorize event position of each tx
@@ -374,6 +376,7 @@ func consensusCallbackBeginBlockFn(
 					}
 					bs = txListener.Finalize() // TODO: refactor to not mutate the bs
 					bs.FinalizedStateRoot = block.Root
+					bs.SfcStateRoot = block.SfcStateRoot
 					// At this point, block state is finalized
 
 					// Build index for not skipped txs

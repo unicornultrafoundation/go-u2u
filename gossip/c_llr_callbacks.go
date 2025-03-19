@@ -126,14 +126,15 @@ func (s *Store) WriteFullBlockRecord(br ibr.LlrIdxFullBlockRecord) {
 		})
 	}
 	s.SetBlock(br.Idx, &native.Block{
-		Time:        br.Time,
-		Atropos:     br.Atropos,
-		Events:      hash.Events{},
-		Txs:         txHashes,
-		InternalTxs: []common.Hash{},
-		SkippedTxs:  []uint32{},
-		GasUsed:     br.GasUsed,
-		Root:        br.Root,
+		Time:         br.Time,
+		Atropos:      br.Atropos,
+		Events:       hash.Events{},
+		Txs:          txHashes,
+		InternalTxs:  []common.Hash{},
+		SkippedTxs:   []uint32{},
+		GasUsed:      br.GasUsed,
+		Root:         br.Root,
+		SfcStateRoot: br.SfcStateRoot,
 	})
 	s.SetBlockIndex(br.Atropos, br.Idx)
 }

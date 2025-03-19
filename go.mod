@@ -1,6 +1,6 @@
 module github.com/unicornultrafoundation/go-u2u
 
-go 1.23
+go 1.23.0
 
 toolchain go1.23.4
 
@@ -31,7 +31,7 @@ require (
 	github.com/status-im/keycard-go v0.2.0
 	github.com/stretchr/testify v1.9.0
 	github.com/syndtr/goleveldb v1.0.1-0.20220614013038-64ee5596c38a
-	github.com/unicornultrafoundation/go-helios v1.0.0
+	github.com/unicornultrafoundation/go-helios v1.0.1
 	golang.org/x/crypto v0.32.0
 	golang.org/x/sys v0.29.0
 	gopkg.in/urfave/cli.v1 v1.20.0
@@ -107,7 +107,7 @@ require (
 )
 
 retract (
-    v1.2.0
-    v1.2.1
-    v1.2.2
+	v1.2.2
+	v1.2.1
+	v1.2.0
 )

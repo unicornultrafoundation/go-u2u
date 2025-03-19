@@ -97,6 +97,7 @@ func FakeGenesisStoreWithRulesAndStart(num idx.Validator, balance, stake *big.In
 					Atropos: hash.Event{},
 				},
 				FinalizedStateRoot:    hash.Hash{},
+				SfcStateRoot:          hash.Hash{},
 				EpochGas:              0,
 				EpochCheaters:         utypes.Cheaters{},
 				CheatersWritten:       0,

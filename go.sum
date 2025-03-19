@@ -419,8 +419,8 @@ github.com/tklauser/go-sysconf v0.3.12 h1:0QaGUFOdQaIVdPgfITYzaTegZvdCjmYO52cSFA
 github.com/tklauser/go-sysconf v0.3.12/go.mod h1:Ho14jnntGE1fpdOqQEEaiKRpvIavV0hSfmBq8nJbHYI=
 github.com/tklauser/numcpus v0.6.1 h1:ng9scYS7az0Bk4OZLvrNXNSAO2Pxr1XXRAPyjhIx+Fk=
 github.com/tklauser/numcpus v0.6.1/go.mod h1:1XfjsgE2zo8GVw7POkMbHENHzVg3GzmoZ9fESEdAacY=
-github.com/unicornultrafoundation/go-helios v1.0.0 h1:4DgFBXFAowH0iK7Ubpcll7Ae1mDJQZFwAKPdmnnLKN0=
-github.com/unicornultrafoundation/go-helios v1.0.0/go.mod h1:54jnbvrjiTY0oiheVO0UQKvmB2ys8iISL+Wwi1VKYP8=
+github.com/unicornultrafoundation/go-helios v1.0.1 h1:Y8UEAg1q+iOYzNMw9tL3Y6MrIFHQksKC8i7xWTJT4ho=
+github.com/unicornultrafoundation/go-helios v1.0.1/go.mod h1:54jnbvrjiTY0oiheVO0UQKvmB2ys8iISL+Wwi1VKYP8=
 github.com/valyala/bytebufferpool v1.0.0/go.mod h1:6bBcMArwyJ5K/AmCkWv1jt77kVWyCJ6HpOuEn7z0Csc=
 github.com/valyala/fasttemplate v1.0.1/go.mod h1:UQGH1tvbgY+Nz5t2n7tXsz52dQxojPUpymEIMZ47gx8=
 github.com/valyala/fasttemplate v1.2.1/go.mod h1:KHLXt3tVN2HBp8eijSv/kGJopbvo7S+qRAEEKiv+SiQ=

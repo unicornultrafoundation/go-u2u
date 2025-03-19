@@ -8,13 +8,13 @@ import (
 	"github.com/unicornultrafoundation/go-helios/u2udb"
 	"github.com/unicornultrafoundation/go-helios/u2udb/cachedproducer"
 	"github.com/unicornultrafoundation/go-helios/u2udb/multidb"
-	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
-	"github.com/unicornultrafoundation/go-u2u/ethdb"
-	"github.com/unicornultrafoundation/go-u2u/log"
 	"gopkg.in/urfave/cli.v1"
 
+	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
+	"github.com/unicornultrafoundation/go-u2u/ethdb"
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/integration"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/compactdb"
 )
 
@@ -22,6 +22,11 @@ var (
 	experimentalFlag = cli.BoolFlag{
 		Name:  "experimental",
 		Usage: "Allow experimental DB fixing",
+	}
+	verbosityFlag = cli.IntFlag{
+		Name:  "verbosity",
+		Usage: "Logging verbosity: 0=silent, 1=error, 2=warn, 3=info, 4=debug, 5=detail",
+		Value: 3,
 	}
 	dbCommand = cli.Command{
 		Name:        "db",
@@ -66,10 +71,28 @@ will migrate tables layout according to the configuration.
 				Flags: []cli.Flag{
 					utils.DataDirFlag,
 					experimentalFlag,
+					verbosityFlag,
 				},
 				Description: `
 u2u db heal --experimental
 Experimental - try to heal dirty DB.
+`,
+			},
+			{
+				Name:      "dump-sfc",
+				Usage:     "Experimental - try to dump the storage of SFC contract to KVDB",
+				ArgsUsage: "",
+				Action:    utils.MigrateFlags(dumpSfcStorage),
+				Category:  "DB COMMANDS",
+				Flags: []cli.Flag{
+					utils.DataDirFlag,
+					experimentalFlag,
+					verbosityFlag,
+				},
+				Description: `
+u2u db dump-sfc --experimental
+Experimental - try to dump the storage of SFC contract to a separated KVDB.
+Need to heal the dirty DB after dumping to continue syncing.
 `,
 			},
 		},

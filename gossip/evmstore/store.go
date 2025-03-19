@@ -34,6 +34,9 @@ type Store struct {
 
 	table struct {
 		Evm u2udb.Store `table:"M"`
+		// SFC-only tables
+		SfcEvm     u2udb.Store `table:"A"`
+		StateRoots u2udb.Store `table:"C"`
 		// API-only tables
 		Receipts    u2udb.Store `table:"r"`
 		TxPositions u2udb.Store `table:"x"`
@@ -42,6 +45,7 @@ type Store struct {
 
 	EvmDb    ethdb.Database
 	EvmState state.Database
+	SfcState state.Database
 	EvmLogs  topicsdb.Index
 	Snaps    *snapshot.Tree
 
@@ -112,6 +116,14 @@ func (s *Store) initEVMDB() {
 		Preimages: s.cfg.EnablePreimageRecording,
 		GreedyGC:  s.cfg.Cache.GreedyGC,
 	})
+	if s.cfg.SfcEnabled {
+		s.SfcState = state.NewDatabaseWithConfig(s.EvmDb, &trie.Config{
+			Cache:     s.cfg.Cache.EvmDatabase / opt.MiB,
+			Journal:   s.cfg.Cache.TrieCleanJournal,
+			Preimages: s.cfg.EnablePreimageRecording,
+			GreedyGC:  s.cfg.Cache.GreedyGC,
+		})
+	}
 }
 
 func (s *Store) ResetWithEVMDB(evmStore u2udb.Store) *Store {
@@ -220,6 +232,43 @@ func (s *Store) Commit(block idx.Block, root hash.Hash, flush bool) error {
 	}
 }
 
+// CommitSfcState changes.
+func (s *Store) CommitSfcState(block idx.Block, root hash.Hash, flush bool) error {
+	triedb := s.SfcState.TrieDB()
+	stateRoot := common.Hash(root)
+	// If we're applying genesis or running an archive node, always flush
+	if flush || s.cfg.Cache.TrieDirtyDisabled {
+		err := triedb.Commit(stateRoot, false, nil)
+		if err != nil {
+			s.Log.Error("Failed to flush trie DB into main DB", "err", err)
+		}
+		return err
+	} else {
+		// Full but not archive node, do proper garbage collection
+		triedb.Reference(stateRoot, common.Hash{}) // metadata reference to keep trie alive
+		s.triegc.Push(stateRoot, -int64(block))
+
+		if current := uint64(block); current > TriesInMemory {
+			// If we exceeded our memory allowance, flush matured singleton nodes to disk
+			s.Cap()
+
+			// Find the next state trie we need to commit
+			chosen := current - TriesInMemory
+
+			// Garbage collect all below the chosen block
+			for !s.triegc.Empty() {
+				root, number := s.triegc.Pop()
+				if uint64(-number) > chosen {
+					s.triegc.Push(root, number)
+					break
+				}
+				triedb.Dereference(root.(common.Hash))
+			}
+		}
+		return nil
+	}
+}
+
 func (s *Store) Flush(block iblockproc.BlockState) {
 	// Ensure that the entirety of the state snapshot is journalled to disk.
 	var snapBase common.Hash
@@ -267,6 +316,19 @@ func (s *Store) Cap() {
 	}
 }
 
+// CapSfcState flush matured singleton nodes of SFC trie to disk
+func (s *Store) CapSfcState() {
+	triedb := s.SfcState.TrieDB()
+	var (
+		nodes, imgs = triedb.Size()
+		limit       = common.StorageSize(s.cfg.Cache.TrieDirtyLimit)
+	)
+	// If we exceeded our memory allowance, flush matured singleton nodes to disk
+	if nodes > limit+ethdb.IdealBatchSize || imgs > 4*1024*1024 {
+		triedb.Cap(limit)
+	}
+}
+
 // StateDB returns state database.
 func (s *Store) StateDB(from hash.Hash) (*state.StateDB, error) {
 	return state.NewWithSnapLayers(common.Hash(from), s.EvmState, s.Snaps, 0)
@@ -274,6 +336,17 @@ func (s *Store) StateDB(from hash.Hash) (*state.StateDB, error) {
 
 // HasStateDB returns if state database exists
 func (s *Store) HasStateDB(from hash.Hash) bool {
+	_, err := s.StateDB(from)
+	return err == nil
+}
+
+// SfcStateDB returns SFC state database.
+func (s *Store) SfcStateDB(from hash.Hash) (*state.StateDB, error) {
+	return state.NewWithSnapLayers(common.Hash(from), s.SfcState, s.Snaps, 0)
+}
+
+// HasSfcStateDB returns if SFC state database exists
+func (s *Store) HasSfcStateDB(from hash.Hash) bool {
 	_, err := s.StateDB(from)
 	return err == nil
 }

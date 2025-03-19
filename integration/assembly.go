@@ -74,7 +74,10 @@ func getStores(producer u2udb.FlushableDBProducer, cfg Configs) (*gossip.Store, 
 	cGetEpochDB := func(epoch idx.Epoch) u2udb.Store {
 		return mustOpenDB(producer, fmt.Sprintf("hashgraph-%d", epoch))
 	}
-	cdb := consensus.NewStore(cMainDb, cGetEpochDB, panics("Helios store"), cfg.HeliosStore)
+	cdb, err := consensus.NewStore(cMainDb, cGetEpochDB, panics("Helios store"), cfg.HeliosStore)
+	if err != nil {
+		log.Crit("Failed to create consensus store", "err", err)
+	}
 	return gdb, cdb
 }
 

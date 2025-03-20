@@ -11,18 +11,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/log"
-	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/driver"
-	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/driverauth"
-	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/sfc"
-)
-
-var (
-	sfcContractAddresses = []common.Address{
-		sfc.ContractAddress,
-		driverauth.ContractAddress,
-		driver.ContractAddress,
-		common.HexToAddress("0x6CA548f6DF5B540E72262E935b6Fe3e72cDd68C9"), // ConstantManager
-	}
+	"github.com/unicornultrafoundation/go-u2u/u2u"
 )
 
 // dumpSfcStorage is the 'db dump-sfc' command.
@@ -91,7 +80,7 @@ func dumpSfcStorage(ctx *cli.Context) error {
 }
 
 func dumpSfcStorageByStateDb(stateDb *state.StateDB, sfcStateDb *state.StateDB) (common.Hash, error) {
-	for _, sfcAddress := range sfcContractAddresses {
+	for sfcAddress := range u2u.DefaultVMConfig.SfcPrecompiles {
 		stateDb.ForEachStorage(sfcAddress, func(key, value common.Hash) bool {
 			log.Debug("Looping on storage trie", "Contract", sfcAddress, "Key", key.Hex(), "Value", value.Hex())
 			sfcStateDb.SetState(sfcAddress, key, value)
@@ -107,11 +96,9 @@ func dumpSfcStorageByStateDb(stateDb *state.StateDB, sfcStateDb *state.StateDB) 
 // Verify if storageHash of each SFC contract address between originDb & dumpDb are the same
 func isDumpStorageHashValid(stateDb *state.StateDB, sfcStateDb *state.StateDB) bool {
 	isValid := true
-
-	for _, sfcAddress := range sfcContractAddresses {
+	for sfcAddress := range u2u.DefaultVMConfig.SfcPrecompiles {
 		originTrie := stateDb.StorageTrie(sfcAddress)
 		dumpTrie := sfcStateDb.StorageTrie(sfcAddress)
-
 		if originTrie.Hash() != dumpTrie.Hash() {
 			isValid = false
 			log.Error("Storage hashes are NOT the same", "ContractAddr", sfcAddress)
@@ -121,6 +108,5 @@ func isDumpStorageHashValid(stateDb *state.StateDB, sfcStateDb *state.StateDB) b
 			"origin", originTrie.Hash().Hex(),
 			"dumped", dumpTrie.Hash().Hex())
 	}
-
 	return isValid
 }

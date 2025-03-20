@@ -66,6 +66,14 @@ func (evm *EVM) statePrecompile(addr common.Address) (PrecompiledStateContract, 
 	return p, ok
 }
 
+func (evm *EVM) sfcPrecompile(addr common.Address) (PrecompiledStateContract, bool) {
+	if evm.Config.SfcPrecompiles == nil {
+		return nil, false
+	}
+	p, ok := evm.Config.SfcPrecompiles[addr]
+	return p, ok
+}
+
 // BlockContext provides the EVM with auxiliary information. Once provided
 // it shouldn't be modified.
 type BlockContext struct {

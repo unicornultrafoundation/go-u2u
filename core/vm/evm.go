@@ -299,7 +299,7 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
 		if sp, isSfcPrecompile := evm.sfcPrecompile(addr); isSfcPrecompile {
-			ret, gas, err = sp.Run(evm.StateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+			ret, _, err = sp.Run(evm.StateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
 		}
 		addrCopy := addr
 		// Initialise a new contract and set the code that is to be used by the EVM.
@@ -348,7 +348,7 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
 		if sp, isSfcPrecompile := evm.sfcPrecompile(addr); isSfcPrecompile {
-			ret, gas, err = sp.Run(evm.StateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+			ret, _, err = sp.Run(evm.StateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
 		}
 		addrCopy := addr
 		// Initialise a new contract and make initialise the delegate values
@@ -403,7 +403,7 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
 		if sp, isSfcPrecompile := evm.sfcPrecompile(addr); isSfcPrecompile {
-			ret, gas, err = sp.Run(evm.StateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+			ret, _, err = sp.Run(evm.StateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
 		}
 		// At this point, we use a copy of the address.
 		// If we don't, the go compiler will

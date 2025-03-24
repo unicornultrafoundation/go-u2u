@@ -9,6 +9,6 @@ import (
 type SfcPrecompile struct{}
 
 // Run runs the precompiled contract
-func (p *SfcPrecompile) Run(stateDB vm.StateDB, _ vm.BlockContext, txCtx vm.TxContext, caller common.Address, input []byte, suppliedGas uint64) ([]byte, uint64, error) {
+func (p *SfcPrecompile) Run(stateDB vm.StateDB, blockCtx vm.BlockContext, txCtx vm.TxContext, caller common.Address, input []byte, suppliedGas uint64) ([]byte, uint64, error) {
 	return nil, 0, nil
 }

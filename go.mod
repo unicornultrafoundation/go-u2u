@@ -33,7 +33,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20220614013038-64ee5596c38a
 	github.com/unicornultrafoundation/go-helios v1.0.1
 	golang.org/x/crypto v0.32.0
-	golang.org/x/sys v0.29.0
+	golang.org/x/sys v0.31.0
 	gopkg.in/urfave/cli.v1 v1.20.0
 )
 
@@ -89,7 +89,7 @@ require (
 	github.com/prometheus/common v0.39.0 // indirect
 	github.com/prometheus/procfs v0.9.0 // indirect
 	github.com/prometheus/tsdb v0.10.0
-	github.com/rjeczalik/notify v0.9.2
+	github.com/rjeczalik/notify v0.9.3
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/rs/cors v1.7.0
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible

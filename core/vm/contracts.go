@@ -42,7 +42,8 @@ type PrecompiledContract interface {
 }
 
 type PrecompiledStateContract interface {
-	Run(stateDB StateDB, blockCtx BlockContext, txCtx TxContext, caller common.Address, input []byte, suppliedGas uint64) ([]byte, uint64, error) // Run runs the precompiled contract
+	Run(stateDB StateDB, blockCtx BlockContext, txCtx TxContext, caller common.Address, input []byte,
+		suppliedGas uint64) ([]byte, uint64, error) // Run runs the precompiled contract
 }
 
 // PrecompiledContractsHomestead contains the default set of pre-compiled Ethereum

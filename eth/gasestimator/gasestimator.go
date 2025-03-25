@@ -38,10 +38,11 @@ import (
 // these together, it would be excessively hard to test. Splitting the parts out
 // allows testing without needing a proper live chain.
 type Options struct {
-	Config *params.ChainConfig // Chain configuration for hard fork selection
-	Chain  evmcore.DummyChain  // Chain context to access past block hashes
-	Header *evmcore.EvmHeader  // Header defining the block context to execute in
-	State  *state.StateDB      // Pre-state on top of which to estimate the gas
+	Config   *params.ChainConfig // Chain configuration for hard fork selection
+	Chain    evmcore.DummyChain  // Chain context to access past block hashes
+	Header   *evmcore.EvmHeader  // Header defining the block context to execute in
+	State    *state.StateDB      // Pre-state on top of which to estimate the gas
+	SfcState *state.StateDB      // Pre-SFC-state on top of which to estimate the gas
 
 	ErrorRatio float64 // Allowed an overestimation ratio for faster estimation termination
 }
@@ -210,14 +211,18 @@ func run(ctx context.Context, call *types.Message, opts *Options) (*evmcore.Exec
 		msgContext = evmcore.NewEVMTxContext(call)
 		evmContext = evmcore.NewEVMBlockContext(opts.Header, opts.Chain, nil)
 
-		dirtyState = opts.State.Copy()
+		dirtyState    = opts.State.Copy()
+		dirtySfcState *state.StateDB
 	)
+	if opts.SfcState != nil {
+		dirtySfcState = opts.SfcState.Copy()
+	}
 	// Lower the base fee to 0 to avoid breaking EVM
 	// invariants (basefee < feecap).
 	if msgContext.GasPrice.Sign() == 0 {
 		evmContext.BaseFee = new(big.Int)
 	}
-	evm := vm.NewEVM(evmContext, msgContext, dirtyState, nil, opts.Config, vm.Config{NoBaseFee: true})
+	evm := vm.NewEVM(evmContext, msgContext, dirtyState, dirtySfcState, opts.Config, vm.Config{NoBaseFee: true})
 	// Monitor the outer context and interrupt the EVM upon cancellation. To avoid
 	// a dangling goroutine until the outer estimation finishes, create an internal
 	// context for the lifetime of this method call.

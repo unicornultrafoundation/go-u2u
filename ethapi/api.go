@@ -1038,12 +1038,13 @@ func DoCall(ctx context.Context, b Backend, args TransactionArgs, blockNrOrHash 
 	if state == nil || err != nil {
 		return nil, err
 	}
+	sfcState, _, _ := b.SfcStateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
 
-	return doCall(ctx, b, args, state, header, overrides, timeout, globalGasCap)
+	return doCall(ctx, b, args, state, sfcState, header, overrides, timeout, globalGasCap)
 }
 
-func doCall(ctx context.Context, b Backend, args TransactionArgs, state *state.StateDB, header *evmcore.EvmHeader,
-	overrides *StateOverride, timeout time.Duration, globalGasCap uint64) (*evmcore.ExecutionResult, error) {
+func doCall(ctx context.Context, b Backend, args TransactionArgs, state *state.StateDB, sfcState *state.StateDB,
+	header *evmcore.EvmHeader, overrides *StateOverride, timeout time.Duration, globalGasCap uint64) (*evmcore.ExecutionResult, error) {
 	if err := overrides.Apply(state); err != nil {
 		return nil, err
 	}
@@ -1066,7 +1067,7 @@ func doCall(ctx context.Context, b Backend, args TransactionArgs, state *state.S
 	}
 	vmConfig := u2u.DefaultVMConfig
 	vmConfig.NoBaseFee = true
-	evm, vmError, err := b.GetEVM(ctx, msg, state, header, &vmConfig)
+	evm, vmError, err := b.GetEVM(ctx, msg, state, sfcState, header, &vmConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -1504,6 +1505,7 @@ func AccessList(ctx context.Context, b Backend, blockNrOrHash rpc.BlockNumberOrH
 	if db == nil || err != nil {
 		return nil, 0, nil, err
 	}
+	sfcDb, _, _ := b.SfcStateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
 	// If the gas amount is not set, extract this as it will depend on access
 	// lists and we'll need to reestimate every time
 	nogas := args.Gas == nil
@@ -1555,7 +1557,7 @@ func AccessList(ctx context.Context, b Backend, blockNrOrHash rpc.BlockNumberOrH
 		config.Tracer = tracer
 		config.Debug = true
 		config.NoBaseFee = true
-		vmenv, _, err := b.GetEVM(ctx, msg, statedb, header, &config)
+		vmenv, _, err := b.GetEVM(ctx, msg, statedb, sfcDb, header, &config)
 		if err != nil {
 			return nil, 0, nil, err
 		}

@@ -106,7 +106,7 @@ func initFlags() {
 		utils.TxPoolLifetimeFlag,
 	}
 	u2uFlags = []cli.Flag{
-		utils.ConsensusFlag,
+		utils.SFCFlag,
 		GenesisFlag,
 		ExperimentalGenesisFlag,
 		utils.IdentityFlag,

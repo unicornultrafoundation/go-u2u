@@ -505,7 +505,7 @@ func mayMakeAllConfigs(ctx *cli.Context) (*config, error) {
 		VectorClock: vecmt.DefaultConfig(cacheRatio),
 	}
 
-	cfg.U2UStore.EVM.SfcEnabled = ctx.GlobalBool(utils.ConsensusFlag.Name)
+	cfg.U2UStore.EVM.SfcEnabled = ctx.GlobalBool(utils.SFCFlag.Name)
 
 	if ctx.GlobalIsSet(FakeNetFlag.Name) {
 		_, num, _ := parseFakeGen(ctx.GlobalString(FakeNetFlag.Name))

@@ -111,6 +111,9 @@ type Backend interface {
 	GetDowntime(ctx context.Context, vid idx.ValidatorID) (idx.Block, native.Timestamp, error)
 	GetUptime(ctx context.Context, vid idx.ValidatorID) (*big.Int, error)
 	GetOriginatedFee(ctx context.Context, vid idx.ValidatorID) (*big.Int, error)
+
+	// SFC state API
+	SfcStateAndHeaderByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*state.StateDB, *evmcore.EvmHeader, error)
 }
 
 func GetAPIs(apiBackend Backend) []rpc.API {

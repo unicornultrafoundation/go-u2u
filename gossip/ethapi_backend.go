@@ -172,6 +172,32 @@ func (b *EthAPIBackend) StateAndHeaderByNumberOrHash(ctx context.Context, blockN
 	return stateDb, header, nil
 }
 
+// SfcStateAndHeaderByNumberOrHash returns evm state and block header by block number or block hash, err if not exists.
+func (b *EthAPIBackend) SfcStateAndHeaderByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*state.StateDB, *evmcore.EvmHeader, error) {
+	var header *evmcore.EvmHeader
+	if number, ok := blockNrOrHash.Number(); ok && isLatestBlockNumber(number) {
+		header = &b.state.CurrentBlock().EvmHeader
+	} else if number, ok := blockNrOrHash.Number(); ok {
+		header = b.state.GetHeader(common.Hash{}, uint64(number))
+	} else if h, ok := blockNrOrHash.Hash(); ok {
+		index := b.svc.store.GetBlockIndex(hash.Event(h))
+		if index == nil {
+			return nil, nil, errors.New("header not found")
+		}
+		header = b.state.GetHeader(common.Hash{}, uint64(*index))
+	} else {
+		return nil, nil, errors.New("unknown header selector")
+	}
+	if header == nil {
+		return nil, nil, errors.New("header not found")
+	}
+	sfcStateDb, err := b.svc.store.evm.SfcStateDB(hash.Hash(header.SfcStateRoot))
+	if err != nil {
+		return nil, nil, err
+	}
+	return sfcStateDb, header, nil
+}
+
 // decodeShortEventID decodes ShortID
 // example of a ShortID: "5:26:a2395846", where 5 is epoch, 26 is lamport, a2395846 are first bytes of the hash
 // s is a string splitted by ":" separator

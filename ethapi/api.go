@@ -1159,12 +1159,14 @@ func DoEstimateGas(ctx context.Context, b Backend, args TransactionArgs, blockNr
 	if err := overrides.Apply(state); err != nil {
 		return 0, err
 	}
+	sfcState, _, _ := b.SfcStateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
 	// Construct the gas estimator option from the user input
 	opts := &gasestimator.Options{
 		Config:     b.ChainConfig(),
 		Chain:      NewChainContext(ctx, b),
 		Header:     header,
 		State:      state,
+		SfcState:   sfcState,
 		ErrorRatio: estimateGasErrorRatio,
 	}
 	// Set any required transaction default, but make sure the gas cap itself is not messed with

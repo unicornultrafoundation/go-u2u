@@ -240,7 +240,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	} else if isStatePrecompile {
 		ret, gas, err = sp.Run(evm.StateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
 	} else {
-		if sp, isSfcPrecompile := evm.sfcPrecompile(addr); isSfcPrecompile {
+		if sp, isSfcPrecompile := evm.sfcPrecompile(addr); isSfcPrecompile && evm.SfcStateDB != nil {
 			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
 			// TODO(trinhdn97): compared sfc state precompiled gas used/output/error with the correct execution from smc
 			// as well for call code, delegate and static calls.
@@ -311,7 +311,7 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 	if p, isPrecompile := evm.precompile(addr); isPrecompile {
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
-		if sp, isSfcPrecompile := evm.sfcPrecompile(addr); isSfcPrecompile {
+		if sp, isSfcPrecompile := evm.sfcPrecompile(addr); isSfcPrecompile && evm.SfcStateDB != nil {
 			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
 		}
 		addrCopy := addr
@@ -358,7 +358,7 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 	if p, isPrecompile := evm.precompile(addr); isPrecompile {
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
-		if sp, isSfcPrecompile := evm.sfcPrecompile(addr); isSfcPrecompile {
+		if sp, isSfcPrecompile := evm.sfcPrecompile(addr); isSfcPrecompile && evm.SfcStateDB != nil {
 			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
 		}
 		addrCopy := addr
@@ -413,7 +413,7 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 	if p, isPrecompile := evm.precompile(addr); isPrecompile {
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
-		if sp, isSfcPrecompile := evm.sfcPrecompile(addr); isSfcPrecompile {
+		if sp, isSfcPrecompile := evm.sfcPrecompile(addr); isSfcPrecompile && evm.SfcStateDB != nil {
 			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
 		}
 		// At this point, we use a copy of the address.

@@ -342,12 +342,15 @@ func (s *Store) HasStateDB(from hash.Hash) bool {
 
 // SfcStateDB returns SFC state database.
 func (s *Store) SfcStateDB(from hash.Hash) (*state.StateDB, error) {
+	if !s.cfg.SfcEnabled {
+		return nil, errors.New("SFC state is not available because of EVM config")
+	}
 	return state.NewWithSnapLayers(common.Hash(from), s.SfcState, s.Snaps, 0)
 }
 
 // HasSfcStateDB returns if SFC state database exists
 func (s *Store) HasSfcStateDB(from hash.Hash) bool {
-	_, err := s.StateDB(from)
+	_, err := s.SfcStateDB(from)
 	return err == nil
 }
 

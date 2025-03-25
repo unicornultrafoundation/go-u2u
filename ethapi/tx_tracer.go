@@ -87,7 +87,7 @@ func (s *PublicTxTraceAPI) traceTx(
 	txTracer.SetGasUsed(tx.Gas())
 
 	var txContext = evmcore.NewEVMTxContext(msg)
-	vmenv := vm.NewEVM(blockCtx, txContext, state, chainConfig, cfg)
+	vmenv := vm.NewEVM(blockCtx, txContext, state, nil, chainConfig, cfg)
 
 	// Wait for the context to be done and cancel the evm. Even if the
 	// EVM has finished, cancelling may be done (repeatedly)
@@ -257,7 +257,7 @@ func (s *PublicTxTraceAPI) traceBlock(ctx context.Context, block *evmcore.EvmBlo
 				vmConfig.NoBaseFee = true
 				vmConfig.Debug = false
 				vmConfig.Tracer = nil
-				vmenv := vm.NewEVM(blockCtx, evmcore.NewEVMTxContext(msg), state, s.b.ChainConfig(), vmConfig)
+				vmenv := vm.NewEVM(blockCtx, evmcore.NewEVMTxContext(msg), state, nil, s.b.ChainConfig(), vmConfig)
 				res, err := evmcore.ApplyMessage(vmenv, msg, new(evmcore.GasPool).AddGas(msg.Gas()))
 				failed := false
 				if err != nil {

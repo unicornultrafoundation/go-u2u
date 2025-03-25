@@ -2225,7 +2225,7 @@ func (api *PublicDebugAPI) traceTx(ctx context.Context, message evmcore.Message,
 	evmconfig.Tracer = tracer
 	evmconfig.Debug = true
 	evmconfig.NoBaseFee = true
-	vmenv := vm.NewEVM(vmctx, txContext, statedb, api.b.ChainConfig(), evmconfig)
+	vmenv := vm.NewEVM(vmctx, txContext, statedb, nil, api.b.ChainConfig(), evmconfig)
 
 	// Call Prepare to clear out the statedb access list
 	statedb.Prepare(txctx.TxHash, txctx.TxIndex)
@@ -2396,7 +2396,7 @@ func (api *PublicDebugAPI) traceBlock(ctx context.Context, block *evmcore.EvmBlo
 		// Generate the next state snapshot fast without tracing
 		msg, _ := tx.AsMessage(signer, block.BaseFee)
 		statedb.Prepare(tx.Hash(), i)
-		vmenv := vm.NewEVM(blockCtx, evmcore.NewEVMTxContext(msg), statedb, api.b.ChainConfig(), u2u.DefaultVMConfig)
+		vmenv := vm.NewEVM(blockCtx, evmcore.NewEVMTxContext(msg), statedb, nil, api.b.ChainConfig(), u2u.DefaultVMConfig)
 		if _, err := evmcore.ApplyMessage(vmenv, msg, new(evmcore.GasPool).AddGas(msg.Gas())); err != nil {
 			failed = err
 			break
@@ -2440,7 +2440,7 @@ func (api *PublicDebugAPI) stateAtTransaction(ctx context.Context, block *evmcor
 			return msg, context, statedb, nil
 		}
 		// Not yet the searched for transaction, execute on top of the current state
-		vmenv := vm.NewEVM(context, txContext, statedb, api.b.ChainConfig(), u2u.DefaultVMConfig)
+		vmenv := vm.NewEVM(context, txContext, statedb, nil, api.b.ChainConfig(), u2u.DefaultVMConfig)
 		statedb.Prepare(tx.Hash(), idx)
 		if _, err := evmcore.ApplyMessage(vmenv, msg, new(evmcore.GasPool).AddGas(tx.Gas())); err != nil {
 			return nil, vm.BlockContext{}, nil, fmt.Errorf("transaction %#x failed: %v", tx.Hash(), err)

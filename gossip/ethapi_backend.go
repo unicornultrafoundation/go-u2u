@@ -357,7 +357,7 @@ func (b *EthAPIBackend) GetEVM(ctx context.Context, msg evmcore.Message, state *
 	txContext := evmcore.NewEVMTxContext(msg)
 	context := evmcore.NewEVMBlockContext(header, b.state, nil)
 	config := b.ChainConfig()
-	return vm.NewEVM(context, txContext, state, config, *vmConfig), vmError, nil
+	return vm.NewEVM(context, txContext, state, nil, config, *vmConfig), vmError, nil
 }
 
 func (b *EthAPIBackend) GetBlockContext(header *evmcore.EvmHeader) vm.BlockContext {

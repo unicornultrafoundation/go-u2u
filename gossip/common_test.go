@@ -457,7 +457,7 @@ func (env *testEnv) callContract(
 	// about the transaction and calling mechanisms.
 	txContext := evmcore.NewEVMTxContext(msg)
 	context := evmcore.NewEVMBlockContext(block.Header(), env.GetEvmStateReader(), nil)
-	vmenv := vm.NewEVM(context, txContext, state, env.store.GetEvmChainConfig(), u2u.DefaultVMConfig)
+	vmenv := vm.NewEVM(context, txContext, state, nil, env.store.GetEvmChainConfig(), u2u.DefaultVMConfig)
 	gaspool := new(evmcore.GasPool).AddGas(math.MaxUint64)
 	res, err := evmcore.NewStateTransition(vmenv, msg, gaspool).TransitionDb()
 

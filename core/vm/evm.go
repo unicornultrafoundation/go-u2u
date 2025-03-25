@@ -118,6 +118,8 @@ type EVM struct {
 	TxContext
 	// StateDB gives access to the underlying state
 	StateDB StateDB
+	// SfcStateDB gives access to the underlying SFC state
+	SfcStateDB StateDB
 	// Depth is the current call stack
 	depth int
 
@@ -142,7 +144,7 @@ type EVM struct {
 
 // NewEVM returns a new EVM. The returned EVM is not thread safe and should
 // only ever be used *once*.
-func NewEVM(blockCtx BlockContext, txCtx TxContext, statedb StateDB, chainConfig *params.ChainConfig, config Config) *EVM {
+func NewEVM(blockCtx BlockContext, txCtx TxContext, statedb StateDB, sfcStatedb StateDB, chainConfig *params.ChainConfig, config Config) *EVM {
 	evm := &EVM{
 		Context:     blockCtx,
 		TxContext:   txCtx,
@@ -151,15 +153,21 @@ func NewEVM(blockCtx BlockContext, txCtx TxContext, statedb StateDB, chainConfig
 		chainConfig: chainConfig,
 		chainRules:  chainConfig.Rules(blockCtx.BlockNumber),
 	}
+	if sfcStatedb != nil {
+		evm.SfcStateDB = sfcStatedb
+	}
 	evm.interpreter = NewEVMInterpreter(evm, config)
 	return evm
 }
 
 // Reset resets the EVM with a new transaction context.Reset
 // This is not threadsafe and should only be done very cautiously.
-func (evm *EVM) Reset(txCtx TxContext, statedb StateDB) {
+func (evm *EVM) Reset(txCtx TxContext, statedb StateDB, sfcStatedb StateDB) {
 	evm.TxContext = txCtx
 	evm.StateDB = statedb
+	if sfcStatedb != nil {
+		evm.SfcStateDB = sfcStatedb
+	}
 }
 
 // Cancel cancels any running EVM operation. This may be called concurrently and
@@ -232,6 +240,11 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	} else if isStatePrecompile {
 		ret, gas, err = sp.Run(evm.StateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
 	} else {
+		if sp, isSfcPrecompile := evm.sfcPrecompile(addr); isSfcPrecompile {
+			ret, _, err = sp.Run(evm.StateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+			// TODO(trinhdn97): compared sfc state precompiled gas used/output/error with the correct execution from smc
+			// as well for call code, delegate and static calls.
+		}
 		// Initialise a new contract and set the code that is to be used by the EVM.
 		// The contract is a scoped environment for this execution context only.
 		code := evm.StateDB.GetCode(addr)
@@ -306,8 +319,6 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 		// The contract is a scoped environment for this execution context only.
 		contract := NewContract(caller, AccountRef(caller.Address()), value, gas)
 		contract.SetCallCode(&addrCopy, evm.StateDB.GetCodeHash(addrCopy), evm.StateDB.GetCode(addrCopy))
-		// TODO(trinhdn97): compared sfc state precompiled gas used/output/error with the correct execution from smc
-		// as well for delegate and static calls.
 		ret, err = evm.interpreter.Run(contract, input, false)
 		gas = contract.Gas
 	}

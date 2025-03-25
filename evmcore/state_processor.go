@@ -67,7 +67,7 @@ func (p *StateProcessor) Process(
 		skip         bool
 		header       = block.Header()
 		blockContext = NewEVMBlockContext(header, p.bc, nil)
-		vmenv        = vm.NewEVM(blockContext, vm.TxContext{}, statedb, p.config, cfg)
+		vmenv        = vm.NewEVM(blockContext, vm.TxContext{}, statedb, nil, p.config, cfg)
 		blockHash    = block.Hash
 		blockNumber  = block.Number
 		signer       = gsignercache.Wrap(types.MakeSigner(p.config, header.Number))
@@ -115,7 +115,7 @@ func ApplyTransaction(
 ) {
 	// Create a new context to be used in the EVM environment.
 	txContext := NewEVMTxContext(msg)
-	evm.Reset(txContext, statedb)
+	evm.Reset(txContext, statedb, nil)
 
 	// Test if type of tracer is transaction tracing
 	// logger, in that case, set a info for it

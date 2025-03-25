@@ -23,7 +23,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/karalabe/usb"
+	"github.com/karalabe/hid"
 
 	"github.com/unicornultrafoundation/go-u2u/accounts"
 	"github.com/unicornultrafoundation/go-u2u/event"
@@ -100,7 +100,7 @@ func NewTrezorHubWithWebUSB() (*Hub, error) {
 
 // newHub creates a new hardware wallet manager for generic USB devices.
 func newHub(scheme string, vendorID uint16, productIDs []uint16, usageID uint16, endpointID int, makeDriver func(log.Logger) driver) (*Hub, error) {
-	if !usb.Supported() {
+	if !hid.Supported() {
 		return nil, errors.New("unsupported platform")
 	}
 	hub := &Hub{
@@ -146,7 +146,7 @@ func (hub *Hub) refreshWallets() {
 		return
 	}
 	// Retrieve the current list of USB wallet devices
-	var devices []usb.DeviceInfo
+	var devices []hid.DeviceInfo
 
 	if runtime.GOOS == "linux" {
 		// hidapi on Linux opens the device during enumeration to retrieve some infos,
@@ -161,7 +161,7 @@ func (hub *Hub) refreshWallets() {
 			return
 		}
 	}
-	infos, err := usb.Enumerate(hub.vendorID, 0)
+	infos, err := hid.Enumerate(hub.vendorID, 0)
 	if err != nil {
 		failcount := atomic.AddUint32(&hub.enumFails, 1)
 		if runtime.GOOS == "linux" {

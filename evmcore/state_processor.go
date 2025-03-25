@@ -56,7 +56,7 @@ func NewStateProcessor(config *params.ChainConfig, bc DummyChain) *StateProcesso
 // returns the amount of gas that was used in the process. If any of the
 // transactions failed to execute due to insufficient gas it will return an error.
 func (p *StateProcessor) Process(
-	block *EvmBlock, statedb *state.StateDB, cfg vm.Config, usedGas *uint64, onNewLog func(*types.Log, *state.StateDB),
+	block *EvmBlock, statedb *state.StateDB, sfcStatedb *state.StateDB, cfg vm.Config, usedGas *uint64, onNewLog func(*types.Log, *state.StateDB),
 ) (
 	receipts types.Receipts, allLogs []*types.Log, skipped []uint32, err error,
 ) {
@@ -67,7 +67,7 @@ func (p *StateProcessor) Process(
 		skip         bool
 		header       = block.Header()
 		blockContext = NewEVMBlockContext(header, p.bc, nil)
-		vmenv        = vm.NewEVM(blockContext, vm.TxContext{}, statedb, nil, p.config, cfg)
+		vmenv        = vm.NewEVM(blockContext, vm.TxContext{}, statedb, sfcStatedb, p.config, cfg)
 		blockHash    = block.Hash
 		blockNumber  = block.Number
 		signer       = gsignercache.Wrap(types.MakeSigner(p.config, header.Number))

@@ -38,10 +38,11 @@ import (
 func (eth *Service) stateAtBlock(evmblock *evmcore.EvmBlock, reexec uint64, base *state.StateDB, checkLive bool) (statedb *state.StateDB, err error) {
 	block := evmblock.EthBlock()
 	var (
-		current  *evmcore.EvmBlock
-		database state.Database
-		report   = true
-		origin   = block.NumberU64()
+		current    *evmcore.EvmBlock
+		database   state.Database
+		report     = true
+		origin     = block.NumberU64()
+		sfcStatedb *state.StateDB
 	)
 	// Check the live database first if we have the state fully available, use that.
 	if checkLive {
@@ -49,6 +50,8 @@ func (eth *Service) stateAtBlock(evmblock *evmcore.EvmBlock, reexec uint64, base
 		if err == nil {
 			return statedb, nil
 		}
+		sfcStatedb, err = eth.EthAPI.state.SfcStateAt(block.SfcStateRoot())
+		// TODO(trinhdn97): implement diff layer for SFC state and re-execute SFC state at block as well
 	}
 	if base != nil {
 		// The optional base statedb is given, mark the start point as parent block
@@ -115,7 +118,7 @@ func (eth *Service) stateAtBlock(evmblock *evmcore.EvmBlock, reexec uint64, base
 		}
 		evmProcessor := evmcore.NewStateProcessor(eth.EthAPI.ChainConfig(), eth.EthAPI.state)
 		var gasUsed uint64 = 0
-		_, _, _, err := evmProcessor.Process(current, statedb, vm.Config{}, &gasUsed, func(l *types.Log, _ *state.StateDB) {})
+		_, _, _, err := evmProcessor.Process(current, statedb, sfcStatedb, vm.Config{}, &gasUsed, func(l *types.Log, _ *state.StateDB) {})
 		if err != nil {
 			return nil, fmt.Errorf("processing block %d failed: %v", current.NumberU64(), err)
 		}
@@ -138,6 +141,7 @@ func (eth *Service) stateAtBlock(evmblock *evmcore.EvmBlock, reexec uint64, base
 		nodes, imgs := database.TrieDB().Size()
 		log.Info("Historical state regenerated", "block", current.NumberU64(), "elapsed", time.Since(start), "nodes", nodes, "preimages", imgs)
 	}
+	// TODO(trinhdn97): return the SFC state at this block as well
 	return statedb, nil
 }
 

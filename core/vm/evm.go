@@ -241,7 +241,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		ret, gas, err = sp.Run(evm.StateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
 	} else {
 		if sp, isSfcPrecompile := evm.sfcPrecompile(addr); isSfcPrecompile {
-			ret, _, err = sp.Run(evm.StateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
 			// TODO(trinhdn97): compared sfc state precompiled gas used/output/error with the correct execution from smc
 			// as well for call code, delegate and static calls.
 		}
@@ -307,12 +307,12 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 		}(gas)
 	}
 
-	// It is allowed to call precompiles, even via delegatecall
+	// It is allowed to call precompiles, even via delegate calls
 	if p, isPrecompile := evm.precompile(addr); isPrecompile {
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
 		if sp, isSfcPrecompile := evm.sfcPrecompile(addr); isSfcPrecompile {
-			ret, _, err = sp.Run(evm.StateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
 		}
 		addrCopy := addr
 		// Initialise a new contract and set the code that is to be used by the EVM.
@@ -359,7 +359,7 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
 		if sp, isSfcPrecompile := evm.sfcPrecompile(addr); isSfcPrecompile {
-			ret, _, err = sp.Run(evm.StateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
 		}
 		addrCopy := addr
 		// Initialise a new contract and make initialise the delegate values
@@ -414,7 +414,7 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
 		if sp, isSfcPrecompile := evm.sfcPrecompile(addr); isSfcPrecompile {
-			ret, _, err = sp.Run(evm.StateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
 		}
 		// At this point, we use a copy of the address.
 		// If we don't, the go compiler will

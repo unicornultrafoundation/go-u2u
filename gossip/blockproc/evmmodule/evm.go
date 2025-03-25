@@ -87,7 +87,7 @@ func (p *U2UEVMProcessor) Execute(txs types.Transactions) types.Receipts {
 
 	// Process txs
 	evmBlock := p.evmBlockWith(txs)
-	receipts, _, skipped, err := evmProcessor.Process(evmBlock, p.statedb, u2u.DefaultVMConfig, &p.gasUsed, func(l *types.Log, _ *state.StateDB) {
+	receipts, _, skipped, err := evmProcessor.Process(evmBlock, p.statedb, p.sfcStateDb, u2u.DefaultVMConfig, &p.gasUsed, func(l *types.Log, _ *state.StateDB) {
 		// Note: l.Index is properly set before
 		l.TxIndex += txsOffset
 		p.onNewLog(l)

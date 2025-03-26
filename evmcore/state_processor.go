@@ -31,13 +31,13 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/utils/signers/internaltx"
 )
 
-// StateProcessor is a basic Processor, which takes care of transitioning
-// state from one point to another.
+// StateProcessor is a basic Processor, which takes care of
+// the state transitioning from one point to another.
 //
 // StateProcessor implements Processor.
 type StateProcessor struct {
 	config *params.ChainConfig // Chain configuration options
-	bc     DummyChain          // Canonical block chain
+	bc     DummyChain          // Canonical blockchain
 }
 
 // NewStateProcessor initialises a new StateProcessor.
@@ -49,14 +49,15 @@ func NewStateProcessor(config *params.ChainConfig, bc DummyChain) *StateProcesso
 }
 
 // Process processes the state changes according to the Ethereum rules by running
-// the transaction messages using the statedb and applying any rewards to both
+// the transaction messages using the state db and applying any rewards to both
 // the processor (coinbase) and any included uncles.
 //
 // Process returns the receipts and logs accumulated during the process and
 // returns the amount of gas that was used in the process. If any of the
-// transactions failed to execute due to insufficient gas it will return an error.
+// transactions failed to execute due to insufficient gas, it will return an error.
 func (p *StateProcessor) Process(
-	block *EvmBlock, statedb *state.StateDB, cfg vm.Config, usedGas *uint64, onNewLog func(*types.Log, *state.StateDB),
+	block *EvmBlock, statedb *state.StateDB, sfcStatedb *state.StateDB, cfg vm.Config,
+	usedGas *uint64, onNewLog func(*types.Log, *state.StateDB),
 ) (
 	receipts types.Receipts, allLogs []*types.Log, skipped []uint32, err error,
 ) {
@@ -67,7 +68,7 @@ func (p *StateProcessor) Process(
 		skip         bool
 		header       = block.Header()
 		blockContext = NewEVMBlockContext(header, p.bc, nil)
-		vmenv        = vm.NewEVM(blockContext, vm.TxContext{}, statedb, p.config, cfg)
+		vmenv        = vm.NewEVM(blockContext, vm.TxContext{}, statedb, sfcStatedb, p.config, cfg)
 		blockHash    = block.Hash
 		blockNumber  = block.Number
 		signer       = gsignercache.Wrap(types.MakeSigner(p.config, header.Number))
@@ -115,7 +116,7 @@ func ApplyTransaction(
 ) {
 	// Create a new context to be used in the EVM environment.
 	txContext := NewEVMTxContext(msg)
-	evm.Reset(txContext, statedb)
+	evm.Reset(txContext, statedb, nil)
 
 	// Test if type of tracer is transaction tracing
 	// logger, in that case, set a info for it

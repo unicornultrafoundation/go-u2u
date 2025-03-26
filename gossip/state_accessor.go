@@ -35,7 +35,8 @@ import (
 // are attempted to be reexecuted to generate the desired state. The optional
 // base layer statedb can be passed then it's regarded as the statedb of the
 // parent block.
-func (eth *Service) stateAtBlock(evmblock *evmcore.EvmBlock, reexec uint64, base *state.StateDB, checkLive bool) (statedb *state.StateDB, err error) {
+func (eth *Service) stateAtBlock(evmblock *evmcore.EvmBlock, reexec uint64, base *state.StateDB,
+	checkLive bool) (statedb *state.StateDB, sfcStatedb *state.StateDB, err error) {
 	block := evmblock.EthBlock()
 	var (
 		current  *evmcore.EvmBlock
@@ -47,8 +48,12 @@ func (eth *Service) stateAtBlock(evmblock *evmcore.EvmBlock, reexec uint64, base
 	if checkLive {
 		statedb, err = eth.EthAPI.state.StateAt(block.Root())
 		if err == nil {
-			return statedb, nil
+			if sfcStatedb, err = eth.EthAPI.state.SfcStateAt(block.SfcStateRoot()); err != nil {
+				log.Warn("Failed to get SFC state", "sfcStateRoot", block.SfcStateRoot())
+			}
+			return statedb, sfcStatedb, nil
 		}
+		// TODO(trinhdn97): implement diff layer for SFC state and re-execute SFC state at block as well
 	}
 	if base != nil {
 		// The optional base statedb is given, mark the start point as parent block
@@ -68,17 +73,17 @@ func (eth *Service) stateAtBlock(evmblock *evmcore.EvmBlock, reexec uint64, base
 		if !checkLive {
 			statedb, err = state.New(current.Root, database, nil)
 			if err == nil {
-				return statedb, nil
+				return statedb, nil, nil
 			}
 		}
 		// Database does not have the state for the given block, try to regenerate
 		for i := uint64(0); i < reexec; i++ {
 			if current.NumberU64() == 0 {
-				return nil, errors.New("genesis state is missing")
+				return nil, nil, errors.New("genesis state is missing")
 			}
 			parent := eth.EthAPI.state.GetBlock(current.ParentHash, current.NumberU64()-1)
 			if parent == nil {
-				return nil, fmt.Errorf("missing block %v %d", current.ParentHash, current.NumberU64()-1)
+				return nil, nil, fmt.Errorf("missing block %v %d", current.ParentHash, current.NumberU64()-1)
 			}
 			current = parent
 
@@ -90,9 +95,9 @@ func (eth *Service) stateAtBlock(evmblock *evmcore.EvmBlock, reexec uint64, base
 		if err != nil {
 			switch err.(type) {
 			case *trie.MissingNodeError:
-				return nil, fmt.Errorf("required historical state unavailable (reexec=%d)", reexec)
+				return nil, nil, fmt.Errorf("required historical state unavailable (reexec=%d)", reexec)
 			default:
-				return nil, err
+				return nil, nil, err
 			}
 		}
 	}
@@ -111,22 +116,22 @@ func (eth *Service) stateAtBlock(evmblock *evmcore.EvmBlock, reexec uint64, base
 		// Retrieve the next block to regenerate and process it
 		next := current.NumberU64() + 1
 		if current = eth.EthAPI.state.GetBlock(common.Hash{}, next); current == nil {
-			return nil, fmt.Errorf("block #%d not found", next)
+			return nil, nil, fmt.Errorf("block #%d not found", next)
 		}
 		evmProcessor := evmcore.NewStateProcessor(eth.EthAPI.ChainConfig(), eth.EthAPI.state)
 		var gasUsed uint64 = 0
-		_, _, _, err := evmProcessor.Process(current, statedb, vm.Config{}, &gasUsed, func(l *types.Log, _ *state.StateDB) {})
+		_, _, _, err := evmProcessor.Process(current, statedb, sfcStatedb, vm.Config{}, &gasUsed, func(l *types.Log, _ *state.StateDB) {})
 		if err != nil {
-			return nil, fmt.Errorf("processing block %d failed: %v", current.NumberU64(), err)
+			return nil, nil, fmt.Errorf("processing block %d failed: %v", current.NumberU64(), err)
 		}
 		// Finalize the state so any modifications are written to the trie
 		root, err := statedb.Commit(eth.EthAPI.ChainConfig().IsEIP158(current.Number))
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		statedb, err = state.New(root, database, nil)
 		if err != nil {
-			return nil, fmt.Errorf("state reset after block %d failed: %v", current.NumberU64(), err)
+			return nil, nil, fmt.Errorf("state reset after block %d failed: %v", current.NumberU64(), err)
 		}
 		database.TrieDB().Reference(root, common.Hash{})
 		if parent != (common.Hash{}) {
@@ -138,13 +143,14 @@ func (eth *Service) stateAtBlock(evmblock *evmcore.EvmBlock, reexec uint64, base
 		nodes, imgs := database.TrieDB().Size()
 		log.Info("Historical state regenerated", "block", current.NumberU64(), "elapsed", time.Since(start), "nodes", nodes, "preimages", imgs)
 	}
-	return statedb, nil
+	// TODO(trinhdn97): return the SFC state at this block as well
+	return statedb, sfcStatedb, nil
 }
 
 // stateAtTransaction returns the execution environment of a certain transaction.
 func (eth *Service) stateAtTransaction(evmblock *evmcore.EvmBlock, txIndex int, reexec uint64) (evmcore.Message, vm.BlockContext, *state.StateDB, error) {
 	block := evmblock.EthBlock()
-	// Short circuit if it's genesis block.
+	// Short circuit if it's the genesis block.
 	if block.NumberU64() == 0 {
 		return nil, vm.BlockContext{}, nil, errors.New("no transaction in genesis")
 	}
@@ -155,7 +161,7 @@ func (eth *Service) stateAtTransaction(evmblock *evmcore.EvmBlock, txIndex int, 
 	}
 	// Lookup the statedb of parent block from the live database,
 	// otherwise regenerate it on the flight.
-	statedb, err := eth.stateAtBlock(parent, reexec, nil, true)
+	statedb, sfcStatedb, err := eth.stateAtBlock(parent, reexec, nil, true)
 	if err != nil {
 		return nil, vm.BlockContext{}, nil, err
 	}
@@ -173,7 +179,7 @@ func (eth *Service) stateAtTransaction(evmblock *evmcore.EvmBlock, txIndex int, 
 			return msg, context, statedb, nil
 		}
 		// Not yet the searched for transaction, execute on top of the current state
-		vmenv := vm.NewEVM(context, txContext, statedb, eth.EthAPI.ChainConfig(), vm.Config{})
+		vmenv := vm.NewEVM(context, txContext, statedb, sfcStatedb, eth.EthAPI.ChainConfig(), vm.Config{})
 		statedb.Prepare(tx.Hash(), idx)
 		if _, err := evmcore.ApplyMessage(vmenv, msg, new(evmcore.GasPool).AddGas(tx.Gas())); err != nil {
 			return nil, vm.BlockContext{}, nil, fmt.Errorf("transaction %#x failed: %v", tx.Hash(), err)

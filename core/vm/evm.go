@@ -17,6 +17,7 @@
 package vm
 
 import (
+	"errors"
 	"math/big"
 	"sync/atomic"
 	"time"
@@ -66,6 +67,14 @@ func (evm *EVM) statePrecompile(addr common.Address) (PrecompiledStateContract, 
 	return p, ok
 }
 
+func (evm *EVM) sfcPrecompile(addr common.Address) (PrecompiledStateContract, bool) {
+	if evm.Config.SfcPrecompiles == nil {
+		return nil, false
+	}
+	p, ok := evm.Config.SfcPrecompiles[addr]
+	return p, ok
+}
+
 // BlockContext provides the EVM with auxiliary information. Once provided
 // it shouldn't be modified.
 type BlockContext struct {
@@ -109,6 +118,8 @@ type EVM struct {
 	TxContext
 	// StateDB gives access to the underlying state
 	StateDB StateDB
+	// SfcStateDB gives access to the underlying SFC state
+	SfcStateDB StateDB
 	// Depth is the current call stack
 	depth int
 
@@ -133,7 +144,7 @@ type EVM struct {
 
 // NewEVM returns a new EVM. The returned EVM is not thread safe and should
 // only ever be used *once*.
-func NewEVM(blockCtx BlockContext, txCtx TxContext, statedb StateDB, chainConfig *params.ChainConfig, config Config) *EVM {
+func NewEVM(blockCtx BlockContext, txCtx TxContext, statedb StateDB, sfcStatedb StateDB, chainConfig *params.ChainConfig, config Config) *EVM {
 	evm := &EVM{
 		Context:     blockCtx,
 		TxContext:   txCtx,
@@ -142,15 +153,21 @@ func NewEVM(blockCtx BlockContext, txCtx TxContext, statedb StateDB, chainConfig
 		chainConfig: chainConfig,
 		chainRules:  chainConfig.Rules(blockCtx.BlockNumber),
 	}
+	if sfcStatedb != nil {
+		evm.SfcStateDB = sfcStatedb
+	}
 	evm.interpreter = NewEVMInterpreter(evm, config)
 	return evm
 }
 
 // Reset resets the EVM with a new transaction context.Reset
 // This is not threadsafe and should only be done very cautiously.
-func (evm *EVM) Reset(txCtx TxContext, statedb StateDB) {
+func (evm *EVM) Reset(txCtx TxContext, statedb StateDB, sfcStatedb StateDB) {
 	evm.TxContext = txCtx
 	evm.StateDB = statedb
+	if sfcStatedb != nil {
+		evm.SfcStateDB = sfcStatedb
+	}
 }
 
 // Cancel cancels any running EVM operation. This may be called concurrently and
@@ -223,6 +240,11 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	} else if isStatePrecompile {
 		ret, gas, err = sp.Run(evm.StateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
 	} else {
+		if sp, isSfcPrecompile := evm.sfcPrecompile(addr); isSfcPrecompile && evm.SfcStateDB != nil {
+			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+			// TODO(trinhdn97): compared sfc state precompiled gas used/output/error with the correct execution from smc
+			// as well for call code, delegate and static calls.
+		}
 		// Initialise a new contract and set the code that is to be used by the EVM.
 		// The contract is a scoped environment for this execution context only.
 		code := evm.StateDB.GetCode(addr)
@@ -243,7 +265,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	// when we're in homestead this also counts for code storage gas errors.
 	if err != nil {
 		evm.StateDB.RevertToSnapshot(snapshot)
-		if err != ErrExecutionReverted {
+		if !errors.Is(err, ErrExecutionReverted) {
 			gas = 0
 		}
 		// TODO: consider clearing up unused snapshots:
@@ -285,10 +307,13 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 		}(gas)
 	}
 
-	// It is allowed to call precompiles, even via delegatecall
+	// It is allowed to call precompiles, even via delegate calls
 	if p, isPrecompile := evm.precompile(addr); isPrecompile {
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
+		if sp, isSfcPrecompile := evm.sfcPrecompile(addr); isSfcPrecompile && evm.SfcStateDB != nil {
+			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+		}
 		addrCopy := addr
 		// Initialise a new contract and set the code that is to be used by the EVM.
 		// The contract is a scoped environment for this execution context only.
@@ -299,7 +324,7 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 	}
 	if err != nil {
 		evm.StateDB.RevertToSnapshot(snapshot)
-		if err != ErrExecutionReverted {
+		if !errors.Is(err, ErrExecutionReverted) {
 			gas = 0
 		}
 	}
@@ -333,6 +358,9 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 	if p, isPrecompile := evm.precompile(addr); isPrecompile {
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
+		if sp, isSfcPrecompile := evm.sfcPrecompile(addr); isSfcPrecompile && evm.SfcStateDB != nil {
+			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+		}
 		addrCopy := addr
 		// Initialise a new contract and make initialise the delegate values
 		contract := NewContract(caller, AccountRef(caller.Address()), nil, gas).AsDelegate()
@@ -342,7 +370,7 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 	}
 	if err != nil {
 		evm.StateDB.RevertToSnapshot(snapshot)
-		if err != ErrExecutionReverted {
+		if !errors.Is(err, ErrExecutionReverted) {
 			gas = 0
 		}
 	}
@@ -385,7 +413,11 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 	if p, isPrecompile := evm.precompile(addr); isPrecompile {
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
-		// At this point, we use a copy of address. If we don't, the go compiler will
+		if sp, isSfcPrecompile := evm.sfcPrecompile(addr); isSfcPrecompile && evm.SfcStateDB != nil {
+			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+		}
+		// At this point, we use a copy of the address.
+		// If we don't, the go compiler will
 		// leak the 'contract' to the outer scope, and make allocation for 'contract'
 		// even if the actual execution ends on RunPrecompiled above.
 		addrCopy := addr
@@ -394,14 +426,14 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 		contract := NewContract(caller, AccountRef(addrCopy), new(big.Int), gas)
 		contract.SetCallCode(&addrCopy, evm.StateDB.GetCodeHash(addrCopy), evm.StateDB.GetCode(addrCopy))
 		// When an error was returned by the EVM or when setting the creation code
-		// above we revert to the snapshot and consume any gas remaining. Additionally
-		// when we're in Homestead this also counts for code storage gas errors.
+		// above, we revert to the snapshot and consume any gas remaining.
+		// Additionally, when we're in Homestead this also counts for code storage gas errors.
 		ret, err = evm.interpreter.Run(contract, input, true)
 		gas = contract.Gas
 	}
 	if err != nil {
 		evm.StateDB.RevertToSnapshot(snapshot)
-		if err != ErrExecutionReverted {
+		if !errors.Is(err, ErrExecutionReverted) {
 			gas = 0
 		}
 	}
@@ -495,11 +527,11 @@ func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64,
 	}
 
 	// When an error was returned by the EVM or when setting the creation code
-	// above we revert to the snapshot and consume any gas remaining. Additionally
-	// when we're in homestead this also counts for code storage gas errors.
-	if err != nil && (evm.chainRules.IsHomestead || err != ErrCodeStoreOutOfGas) {
+	// above, we revert to the snapshot and consume any gas remaining.
+	// Additionally, when we're in Homestead this also counts for code storage gas errors.
+	if err != nil && (evm.chainRules.IsHomestead || !errors.Is(err, ErrCodeStoreOutOfGas)) {
 		evm.StateDB.RevertToSnapshot(snapshot)
-		if err != ErrExecutionReverted {
+		if !errors.Is(err, ErrExecutionReverted) {
 			contract.UseGas(contract.Gas)
 		}
 	}

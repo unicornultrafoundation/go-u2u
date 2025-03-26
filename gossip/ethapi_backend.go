@@ -172,6 +172,32 @@ func (b *EthAPIBackend) StateAndHeaderByNumberOrHash(ctx context.Context, blockN
 	return stateDb, header, nil
 }
 
+// SfcStateAndHeaderByNumberOrHash returns evm state and block header by block number or block hash, err if not exists.
+func (b *EthAPIBackend) SfcStateAndHeaderByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*state.StateDB, *evmcore.EvmHeader, error) {
+	var header *evmcore.EvmHeader
+	if number, ok := blockNrOrHash.Number(); ok && isLatestBlockNumber(number) {
+		header = &b.state.CurrentBlock().EvmHeader
+	} else if number, ok := blockNrOrHash.Number(); ok {
+		header = b.state.GetHeader(common.Hash{}, uint64(number))
+	} else if h, ok := blockNrOrHash.Hash(); ok {
+		index := b.svc.store.GetBlockIndex(hash.Event(h))
+		if index == nil {
+			return nil, nil, errors.New("header not found")
+		}
+		header = b.state.GetHeader(common.Hash{}, uint64(*index))
+	} else {
+		return nil, nil, errors.New("unknown header selector")
+	}
+	if header == nil {
+		return nil, nil, errors.New("header not found")
+	}
+	sfcStateDb, err := b.svc.store.evm.SfcStateDB(hash.Hash(header.SfcStateRoot))
+	if err != nil {
+		return nil, nil, err
+	}
+	return sfcStateDb, header, nil
+}
+
 // decodeShortEventID decodes ShortID
 // example of a ShortID: "5:26:a2395846", where 5 is epoch, 26 is lamport, a2395846 are first bytes of the hash
 // s is a string splitted by ":" separator
@@ -348,7 +374,8 @@ func (b *EthAPIBackend) GetTd(_ common.Hash) *big.Int {
 	return big.NewInt(0)
 }
 
-func (b *EthAPIBackend) GetEVM(ctx context.Context, msg evmcore.Message, state *state.StateDB, header *evmcore.EvmHeader, vmConfig *vm.Config) (*vm.EVM, func() error, error) {
+func (b *EthAPIBackend) GetEVM(ctx context.Context, msg evmcore.Message, state *state.StateDB, sfcState *state.StateDB,
+	header *evmcore.EvmHeader, vmConfig *vm.Config) (*vm.EVM, func() error, error) {
 	vmError := func() error { return nil }
 
 	if vmConfig == nil {
@@ -357,7 +384,7 @@ func (b *EthAPIBackend) GetEVM(ctx context.Context, msg evmcore.Message, state *
 	txContext := evmcore.NewEVMTxContext(msg)
 	context := evmcore.NewEVMBlockContext(header, b.state, nil)
 	config := b.ChainConfig()
-	return vm.NewEVM(context, txContext, state, config, *vmConfig), vmError, nil
+	return vm.NewEVM(context, txContext, state, sfcState, config, *vmConfig), vmError, nil
 }
 
 func (b *EthAPIBackend) GetBlockContext(header *evmcore.EvmHeader) vm.BlockContext {
@@ -578,7 +605,7 @@ func (b *EthAPIBackend) SealedEpochTiming(ctx context.Context) (start native.Tim
 	return es.PrevEpochStart, es.EpochStart
 }
 
-func (b *EthAPIBackend) StateAtBlock(ctx context.Context, block *evmcore.EvmBlock, reexec uint64, base *state.StateDB, checkLive bool) (*state.StateDB, error) {
+func (b *EthAPIBackend) StateAtBlock(ctx context.Context, block *evmcore.EvmBlock, reexec uint64, base *state.StateDB, checkLive bool) (*state.StateDB, *state.StateDB, error) {
 	return b.svc.stateAtBlock(block, reexec, base, checkLive)
 }
 

@@ -65,7 +65,7 @@ type Backend interface {
 	RPCTimeout() time.Duration
 	UnprotectedAllowed() bool // allows only for EIP155 transactions.
 	CalcBlockExtApi() bool
-	StateAtBlock(ctx context.Context, block *evmcore.EvmBlock, reexec uint64, base *state.StateDB, checkLive bool) (*state.StateDB, error)
+	StateAtBlock(ctx context.Context, block *evmcore.EvmBlock, reexec uint64, base *state.StateDB, checkLive bool) (*state.StateDB, *state.StateDB, error)
 	StateAtTransaction(ctx context.Context, block *evmcore.EvmBlock, txIndex int, reexec uint64) (evmcore.Message, vm.BlockContext, *state.StateDB, error)
 	// Blockchain API
 	HeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*evmcore.EvmHeader, error)
@@ -76,7 +76,7 @@ type Backend interface {
 	BlockByHash(ctx context.Context, hash common.Hash) (*evmcore.EvmBlock, error)
 	GetReceiptsByNumber(ctx context.Context, number rpc.BlockNumber) (types.Receipts, error)
 	GetTd(hash common.Hash) *big.Int
-	GetEVM(ctx context.Context, msg evmcore.Message, state *state.StateDB, header *evmcore.EvmHeader, vmConfig *vm.Config) (*vm.EVM, func() error, error)
+	GetEVM(ctx context.Context, msg evmcore.Message, state *state.StateDB, sfcState *state.StateDB, header *evmcore.EvmHeader, vmConfig *vm.Config) (*vm.EVM, func() error, error)
 	GetBlockContext(header *evmcore.EvmHeader) vm.BlockContext
 	MinGasPrice() *big.Int
 	MaxGasLimit() uint64
@@ -111,6 +111,9 @@ type Backend interface {
 	GetDowntime(ctx context.Context, vid idx.ValidatorID) (idx.Block, native.Timestamp, error)
 	GetUptime(ctx context.Context, vid idx.ValidatorID) (*big.Int, error)
 	GetOriginatedFee(ctx context.Context, vid idx.ValidatorID) (*big.Int, error)
+
+	// SFC state API
+	SfcStateAndHeaderByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*state.StateDB, *evmcore.EvmHeader, error)
 }
 
 func GetAPIs(apiBackend Backend) []rpc.API {

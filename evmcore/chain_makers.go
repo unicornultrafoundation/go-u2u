@@ -35,11 +35,12 @@ import (
 // BlockGen creates blocks for testing.
 // See GenerateChain for a detailed explanation.
 type BlockGen struct {
-	i       int
-	parent  *EvmBlock
-	chain   []*EvmBlock
-	header  *EvmHeader
-	statedb *state.StateDB
+	i          int
+	parent     *EvmBlock
+	chain      []*EvmBlock
+	header     *EvmHeader
+	statedb    *state.StateDB
+	sfcStatedb *state.StateDB
 
 	gasPool  *GasPool
 	txs      []*types.Transaction
@@ -99,7 +100,7 @@ func (b *BlockGen) AddTxWithChain(bc DummyChain, tx *types.Transaction) {
 	}
 	b.statedb.Prepare(tx.Hash(), len(b.txs))
 	blockContext := NewEVMBlockContext(b.header, bc, nil)
-	vmenv := vm.NewEVM(blockContext, vm.TxContext{}, b.statedb, b.config, u2u.DefaultVMConfig)
+	vmenv := vm.NewEVM(blockContext, vm.TxContext{}, b.statedb, b.sfcStatedb, b.config, u2u.DefaultVMConfig)
 	receipt, _, _, err := ApplyTransaction(msg, b.config, b.gasPool, b.statedb, b.header.Number, b.header.Hash, tx, &b.header.GasUsed, vmenv, u2u.DefaultVMConfig, func(log *types.Log, db *state.StateDB) {})
 	if err != nil {
 		panic(err)
@@ -195,8 +196,8 @@ func GenerateChain(config *params.ChainConfig, parent *EvmBlock, db ethdb.Databa
 	}
 
 	blocks, receipts := make([]*EvmBlock, n), make([]types.Receipts, n)
-	genblock := func(i int, parent *EvmBlock, statedb *state.StateDB) (*EvmBlock, types.Receipts) {
-		b := &BlockGen{i: i, chain: blocks, parent: parent, statedb: statedb, config: config}
+	genblock := func(i int, parent *EvmBlock, statedb *state.StateDB, sfcStatedb *state.StateDB) (*EvmBlock, types.Receipts) {
+		b := &BlockGen{i: i, chain: blocks, parent: parent, statedb: statedb, sfcStatedb: sfcStatedb, config: config}
 		b.header = makeHeader(parent, statedb)
 
 		// Execute any user modifications to the block
@@ -224,7 +225,11 @@ func GenerateChain(config *params.ChainConfig, parent *EvmBlock, db ethdb.Databa
 		if err != nil {
 			panic(err)
 		}
-		block, receipt := genblock(i, parent, statedb)
+		sfcStatedb, err := state.New(parent.SfcStateRoot, state.NewDatabase(db), nil)
+		if err != nil {
+			panic(err)
+		}
+		block, receipt := genblock(i, parent, statedb, sfcStatedb)
 		blocks[i] = block
 		receipts[i] = receipt
 		parent = block

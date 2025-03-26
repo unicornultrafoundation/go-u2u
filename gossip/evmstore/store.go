@@ -10,6 +10,7 @@ import (
 	"github.com/unicornultrafoundation/go-helios/u2udb/nokeyiserr"
 	"github.com/unicornultrafoundation/go-helios/u2udb/table"
 	"github.com/unicornultrafoundation/go-helios/utils/wlru"
+
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/common/prque"
 	"github.com/unicornultrafoundation/go-u2u/core/rawdb"
@@ -17,11 +18,10 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/core/state/snapshot"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/ethdb"
-	"github.com/unicornultrafoundation/go-u2u/trie"
-
 	"github.com/unicornultrafoundation/go-u2u/logger"
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 	"github.com/unicornultrafoundation/go-u2u/topicsdb"
+	"github.com/unicornultrafoundation/go-u2u/trie"
 	"github.com/unicornultrafoundation/go-u2u/utils/adapters/udb2ethdb"
 	"github.com/unicornultrafoundation/go-u2u/utils/rlpstore"
 )
@@ -44,6 +44,7 @@ type Store struct {
 	}
 
 	EvmDb    ethdb.Database
+	SfcDb    ethdb.Database
 	EvmState state.Database
 	SfcState state.Database
 	EvmLogs  topicsdb.Index
@@ -117,7 +118,11 @@ func (s *Store) initEVMDB() {
 		GreedyGC:  s.cfg.Cache.GreedyGC,
 	})
 	if s.cfg.SfcEnabled {
-		s.SfcState = state.NewDatabaseWithConfig(s.EvmDb, &trie.Config{
+		s.SfcDb = rawdb.NewDatabase(
+			udb2ethdb.Wrap(
+				nokeyiserr.Wrap(
+					s.table.SfcEvm)))
+		s.SfcState = state.NewDatabaseWithConfig(s.SfcDb, &trie.Config{
 			Cache:     s.cfg.Cache.EvmDatabase / opt.MiB,
 			Journal:   s.cfg.Cache.TrieCleanJournal,
 			Preimages: s.cfg.EnablePreimageRecording,
@@ -342,12 +347,15 @@ func (s *Store) HasStateDB(from hash.Hash) bool {
 
 // SfcStateDB returns SFC state database.
 func (s *Store) SfcStateDB(from hash.Hash) (*state.StateDB, error) {
+	if !s.cfg.SfcEnabled {
+		return nil, errors.New("SFC state is not available because of EVM config")
+	}
 	return state.NewWithSnapLayers(common.Hash(from), s.SfcState, s.Snaps, 0)
 }
 
 // HasSfcStateDB returns if SFC state database exists
 func (s *Store) HasSfcStateDB(from hash.Hash) bool {
-	_, err := s.StateDB(from)
+	_, err := s.SfcStateDB(from)
 	return err == nil
 }
 

@@ -605,7 +605,7 @@ func (b *EthAPIBackend) SealedEpochTiming(ctx context.Context) (start native.Tim
 	return es.PrevEpochStart, es.EpochStart
 }
 
-func (b *EthAPIBackend) StateAtBlock(ctx context.Context, block *evmcore.EvmBlock, reexec uint64, base *state.StateDB, checkLive bool) (*state.StateDB, error) {
+func (b *EthAPIBackend) StateAtBlock(ctx context.Context, block *evmcore.EvmBlock, reexec uint64, base *state.StateDB, checkLive bool) (*state.StateDB, *state.StateDB, error) {
 	return b.svc.stateAtBlock(block, reexec, base, checkLive)
 }
 

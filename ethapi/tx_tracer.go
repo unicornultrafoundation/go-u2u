@@ -53,8 +53,8 @@ func NewPublicTxTraceAPI(b Backend) *PublicTxTraceAPI {
 
 // Trace transaction and return processed result
 func (s *PublicTxTraceAPI) traceTx(
-	ctx context.Context, blockCtx vm.BlockContext, msg types.Message,
-	state *state.StateDB, block *evmcore.EvmBlock, tx *types.Transaction, index uint64,
+	ctx context.Context, blockCtx vm.BlockContext, msg types.Message, state *state.StateDB,
+	sfcState *state.StateDB, block *evmcore.EvmBlock, tx *types.Transaction, index uint64,
 	status uint64, chainConfig *params.ChainConfig) (*[]txtracer.ActionTrace, error) {
 
 	// Providing default config
@@ -87,7 +87,7 @@ func (s *PublicTxTraceAPI) traceTx(
 	txTracer.SetGasUsed(tx.Gas())
 
 	var txContext = evmcore.NewEVMTxContext(msg)
-	vmenv := vm.NewEVM(blockCtx, txContext, state, nil, chainConfig, cfg)
+	vmenv := vm.NewEVM(blockCtx, txContext, state, sfcState, chainConfig, cfg)
 
 	// Wait for the context to be done and cancel the evm. Even if the
 	// EVM has finished, cancelling may be done (repeatedly)
@@ -195,6 +195,10 @@ func (s *PublicTxTraceAPI) traceBlock(ctx context.Context, block *evmcore.EvmBlo
 		if err != nil {
 			return nil, fmt.Errorf("cannot get state for block %v, error: %v", block.NumberU64(), err.Error())
 		}
+		sfcState, _, err := s.b.SfcStateAndHeaderByNumberOrHash(ctx, rpc.BlockNumberOrHash{BlockNumber: &parentBlockNr})
+		if err != nil {
+			log.Warn("Failed to get SFC state", "height", block.NumberU64(), "hash", block.Hash.Hex(), "err", err)
+		}
 		receipts, err := s.b.GetReceiptsByNumber(ctx, rpc.BlockNumber(blockNumber))
 		if err != nil {
 			log.Debug("Cannot get receipts for block", "block", blockNumber, "err", err.Error())
@@ -230,7 +234,7 @@ func (s *PublicTxTraceAPI) traceBlock(ctx context.Context, block *evmcore.EvmBlo
 					jsonTraceBytes, _ := json.Marshal(&at)
 					s.b.TxTraceSave(ctx, tx.Hash(), jsonTraceBytes)
 				} else {
-					txTraces, err := s.traceTx(ctx, blockCtx, msg, state, block, tx, index, receipts[i].Status, s.b.ChainConfig())
+					txTraces, err := s.traceTx(ctx, blockCtx, msg, state, sfcState, block, tx, index, receipts[i].Status, s.b.ChainConfig())
 					if err != nil {
 						log.Debug("Cannot get transaction trace for transaction", "txHash", tx.Hash().String(), "err", err.Error())
 						callTrace.AddTrace(txtracer.GetErrorTraceFromMsg(&msg, block.Hash, *block.Number, tx.Hash(), index, err))
@@ -257,7 +261,7 @@ func (s *PublicTxTraceAPI) traceBlock(ctx context.Context, block *evmcore.EvmBlo
 				vmConfig.NoBaseFee = true
 				vmConfig.Debug = false
 				vmConfig.Tracer = nil
-				vmenv := vm.NewEVM(blockCtx, evmcore.NewEVMTxContext(msg), state, nil, s.b.ChainConfig(), vmConfig)
+				vmenv := vm.NewEVM(blockCtx, evmcore.NewEVMTxContext(msg), state, sfcState, s.b.ChainConfig(), vmConfig)
 				res, err := evmcore.ApplyMessage(vmenv, msg, new(evmcore.GasPool).AddGas(msg.Gas()))
 				failed := false
 				if err != nil {

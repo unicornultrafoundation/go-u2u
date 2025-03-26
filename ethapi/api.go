@@ -2116,7 +2116,7 @@ func (api *PublicDebugAPI) TraceTransaction(ctx context.Context, hash common.Has
 		return nil, errors.New("cannot get block from db")
 	}
 
-	msg, vmctx, statedb, err := api.stateAtTransaction(ctx, block, int(index))
+	msg, vmctx, statedb, sfcStatedb, err := api.stateAtTransaction(ctx, block, int(index))
 	if err != nil {
 		return nil, err
 	}
@@ -2127,7 +2127,7 @@ func (api *PublicDebugAPI) TraceTransaction(ctx context.Context, hash common.Has
 		TxHash:    hash,
 	}
 
-	return api.traceTx(ctx, msg, txctx, vmctx, statedb, config)
+	return api.traceTx(ctx, msg, txctx, vmctx, statedb, sfcStatedb, config)
 }
 
 // TraceCall lets you trace a given eth_call. It collects the structured logs
@@ -2155,7 +2155,7 @@ func (api *PublicDebugAPI) TraceCall(ctx context.Context, args TransactionArgs, 
 	if config != nil && config.Reexec != nil {
 		reexec = *config.Reexec
 	}
-	statedb, err := api.b.StateAtBlock(ctx, block, reexec, nil, true)
+	statedb, sfcStatedb, err := api.b.StateAtBlock(ctx, block, reexec, nil, true)
 	if err != nil {
 		return nil, err
 	}
@@ -2182,13 +2182,14 @@ func (api *PublicDebugAPI) TraceCall(ctx context.Context, args TransactionArgs, 
 			TracerConfig: config.TracerConfig,
 		}
 	}
-	return api.traceTx(ctx, msg, new(tracers.Context), vmctx, statedb, traceConfig)
+	return api.traceTx(ctx, msg, new(tracers.Context), vmctx, statedb, sfcStatedb, traceConfig)
 }
 
 // traceTx configures a new tracer according to the provided configuration, and
 // executes the given message in the provided environment. The return value will
 // be tracer dependent.
-func (api *PublicDebugAPI) traceTx(ctx context.Context, message evmcore.Message, txctx *tracers.Context, vmctx vm.BlockContext, statedb *state.StateDB, config *TraceConfig) (interface{}, error) {
+func (api *PublicDebugAPI) traceTx(ctx context.Context, message evmcore.Message, txctx *tracers.Context,
+	vmctx vm.BlockContext, statedb *state.StateDB, sfcStatedb *state.StateDB, config *TraceConfig) (interface{}, error) {
 	// Assemble the structured logger or the JavaScript tracer
 	var (
 		tracer    vm.Tracer
@@ -2229,7 +2230,7 @@ func (api *PublicDebugAPI) traceTx(ctx context.Context, message evmcore.Message,
 	evmconfig.Tracer = tracer
 	evmconfig.Debug = true
 	evmconfig.NoBaseFee = true
-	vmenv := vm.NewEVM(vmctx, txContext, statedb, nil, api.b.ChainConfig(), evmconfig)
+	vmenv := vm.NewEVM(vmctx, txContext, statedb, sfcStatedb, api.b.ChainConfig(), evmconfig)
 
 	// Call Prepare to clear out the statedb access list
 	statedb.Prepare(txctx.TxHash, txctx.TxIndex)
@@ -2284,8 +2285,9 @@ type txTraceResult struct {
 // txTraceTask represents a single transaction trace task when an entire block
 // is being traced.
 type txTraceTask struct {
-	statedb *state.StateDB // Intermediate state prepped for tracing
-	index   int            // Transaction offset in the block
+	statedb    *state.StateDB // Intermediate state prepped for tracing
+	sfcStatedb *state.StateDB // // Intermediate SFC state prepped for tracing
+	index      int            // Transaction offset in the block
 }
 
 // TraceBlockByNumber returns the structured logs created during the execution of
@@ -2351,6 +2353,10 @@ func (api *PublicDebugAPI) traceBlock(ctx context.Context, block *evmcore.EvmBlo
 	if err != nil {
 		return nil, err
 	}
+	sfcStatedb, _, err := api.b.SfcStateAndHeaderByNumberOrHash(ctx, rpc.BlockNumberOrHashWithHash(block.ParentHash, false))
+	if err != nil {
+		log.Warn("Failed to get SFC state", "height", block.NumberU64(), "hash", block.Hash.Hex(), "err", err)
+	}
 	// Execute all the transaction contained within the block concurrently
 	var (
 		signer  = types.MakeSigner(api.b.ChainConfig(), block.Number)
@@ -2381,7 +2387,7 @@ func (api *PublicDebugAPI) traceBlock(ctx context.Context, block *evmcore.EvmBlo
 					TxIndex:   task.index,
 					TxHash:    txs[task.index].Hash(),
 				}
-				res, err := api.traceTx(ctx, msg, txctx, blockCtx, task.statedb, config)
+				res, err := api.traceTx(ctx, msg, txctx, blockCtx, task.statedb, task.sfcStatedb, config)
 				if err != nil {
 					results[task.index] = &txTraceResult{Error: err.Error()}
 					continue
@@ -2395,12 +2401,19 @@ func (api *PublicDebugAPI) traceBlock(ctx context.Context, block *evmcore.EvmBlo
 	var failed error
 	for i, tx := range txs {
 		// Send the trace task over for execution
-		jobs <- &txTraceTask{statedb: statedb.Copy(), index: i}
+		task := &txTraceTask{
+			statedb: statedb.Copy(),
+			index:   i,
+		}
+		if sfcStatedb != nil {
+			task.sfcStatedb = sfcStatedb.Copy()
+		}
+		jobs <- task
 
 		// Generate the next state snapshot fast without tracing
 		msg, _ := tx.AsMessage(signer, block.BaseFee)
 		statedb.Prepare(tx.Hash(), i)
-		vmenv := vm.NewEVM(blockCtx, evmcore.NewEVMTxContext(msg), statedb, nil, api.b.ChainConfig(), u2u.DefaultVMConfig)
+		vmenv := vm.NewEVM(blockCtx, evmcore.NewEVMTxContext(msg), statedb, sfcStatedb, api.b.ChainConfig(), u2u.DefaultVMConfig)
 		if _, err := evmcore.ApplyMessage(vmenv, msg, new(evmcore.GasPool).AddGas(msg.Gas())); err != nil {
 			failed = err
 			break
@@ -2419,19 +2432,23 @@ func (api *PublicDebugAPI) traceBlock(ctx context.Context, block *evmcore.EvmBlo
 }
 
 // stateAtTransaction returns the execution environment of a certain transaction.
-func (api *PublicDebugAPI) stateAtTransaction(ctx context.Context, block *evmcore.EvmBlock, txIndex int) (evmcore.Message, vm.BlockContext, *state.StateDB, error) {
+func (api *PublicDebugAPI) stateAtTransaction(ctx context.Context, block *evmcore.EvmBlock, txIndex int) (evmcore.Message, vm.BlockContext, *state.StateDB, *state.StateDB, error) {
 	// Short circuit if it's genesis block.
 	if block.NumberU64() == 0 {
-		return nil, vm.BlockContext{}, nil, errors.New("no transaction in genesis")
+		return nil, vm.BlockContext{}, nil, nil, errors.New("no transaction in genesis")
 	}
 	// Lookup the statedb of parent block from the live database,
 	// otherwise regenerate it on the flight.
 	statedb, _, err := api.b.StateAndHeaderByNumberOrHash(ctx, rpc.BlockNumberOrHashWithHash(block.ParentHash, false))
 	if err != nil {
-		return nil, vm.BlockContext{}, nil, err
+		return nil, vm.BlockContext{}, nil, nil, err
+	}
+	sfcStatedb, _, err := api.b.SfcStateAndHeaderByNumberOrHash(ctx, rpc.BlockNumberOrHashWithHash(block.ParentHash, false))
+	if err != nil {
+		log.Warn("Failed to get SFC state", "height", block.NumberU64(), "hash", block.Hash.Hex(), "err", err)
 	}
 	if txIndex == 0 && len(block.Transactions) == 0 {
-		return nil, vm.BlockContext{}, statedb, nil
+		return nil, vm.BlockContext{}, statedb, sfcStatedb, nil
 	}
 	// Recompute transactions up to the target index.
 	signer := gsignercache.Wrap(types.MakeSigner(api.b.ChainConfig(), block.Number))
@@ -2441,18 +2458,18 @@ func (api *PublicDebugAPI) stateAtTransaction(ctx context.Context, block *evmcor
 		txContext := evmcore.NewEVMTxContext(msg)
 		context := api.b.GetBlockContext(block.Header())
 		if idx == txIndex {
-			return msg, context, statedb, nil
+			return msg, context, statedb, sfcStatedb, nil
 		}
 		// Not yet the searched for transaction, execute on top of the current state
-		vmenv := vm.NewEVM(context, txContext, statedb, nil, api.b.ChainConfig(), u2u.DefaultVMConfig)
+		vmenv := vm.NewEVM(context, txContext, statedb, sfcStatedb, api.b.ChainConfig(), u2u.DefaultVMConfig)
 		statedb.Prepare(tx.Hash(), idx)
 		if _, err := evmcore.ApplyMessage(vmenv, msg, new(evmcore.GasPool).AddGas(tx.Gas())); err != nil {
-			return nil, vm.BlockContext{}, nil, fmt.Errorf("transaction %#x failed: %v", tx.Hash(), err)
+			return nil, vm.BlockContext{}, nil, nil, fmt.Errorf("transaction %#x failed: %v", tx.Hash(), err)
 		}
 		// Ensure any modifications are committed to the state
 		statedb.Finalise(vmenv.ChainConfig().IsByzantium(block.Number) || vmenv.ChainConfig().IsEIP158(block.Number))
 	}
-	return nil, vm.BlockContext{}, nil, fmt.Errorf("transaction index %d out of range for block %#x", txIndex, block.Hash)
+	return nil, vm.BlockContext{}, nil, nil, fmt.Errorf("transaction index %d out of range for block %#x", txIndex, block.Hash)
 }
 
 // PrivateDebugAPI is the collection of Ethereum APIs exposed over the private

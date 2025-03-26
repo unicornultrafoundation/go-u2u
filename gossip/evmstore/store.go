@@ -44,6 +44,7 @@ type Store struct {
 	}
 
 	EvmDb    ethdb.Database
+	SfcDb    ethdb.Database
 	EvmState state.Database
 	SfcState state.Database
 	EvmLogs  topicsdb.Index
@@ -117,7 +118,11 @@ func (s *Store) initEVMDB() {
 		GreedyGC:  s.cfg.Cache.GreedyGC,
 	})
 	if s.cfg.SfcEnabled {
-		s.SfcState = state.NewDatabaseWithConfig(s.EvmDb, &trie.Config{
+		s.SfcDb = rawdb.NewDatabase(
+			udb2ethdb.Wrap(
+				nokeyiserr.Wrap(
+					s.table.SfcEvm)))
+		s.SfcState = state.NewDatabaseWithConfig(s.SfcDb, &trie.Config{
 			Cache:     s.cfg.Cache.EvmDatabase / opt.MiB,
 			Journal:   s.cfg.Cache.TrieCleanJournal,
 			Preimages: s.cfg.EnablePreimageRecording,

@@ -21,11 +21,11 @@ type LlrBlockVote struct {
 type LlrFullBlockRecord struct {
 	Atropos      hash.Event
 	Root         hash.Hash
-	SfcStateRoot hash.Hash
 	Txs          types.Transactions
 	Receipts     []*types.ReceiptForStorage
 	Time         native.Timestamp
 	GasUsed      uint64
+	SfcStateRoot hash.Hash `rlp:"optional"`
 }
 
 type LlrIdxFullBlockRecord struct {

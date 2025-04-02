@@ -122,6 +122,11 @@ func consensusCallbackBeginBlockFn(
 		if err != nil {
 			log.Crit("Failed to open StateDB", "err", err)
 		}
+		sfcStatedb, err := store.evm.SfcStateDB(bs.SfcStateRoot)
+		if err != nil {
+			log.Warn("Failed to get SFC state", "height", bs.LastBlock.Idx,
+				"event hash", bs.LastBlock.Atropos.Hex(), "err", err)
+		}
 
 		evmStateReader := &EvmStateReader{
 			ServiceFeed: feed,
@@ -224,7 +229,7 @@ func consensusCallbackBeginBlockFn(
 				skipBlock = skipBlock || (emptyBlock && blockCtx.Time < bs.LastBlock.Time+es.Rules.Blocks.MaxEmptyBlockSkipPeriod)
 				// Finalize the progress of eventProcessor
 				bs = eventProcessor.Finalize(blockCtx, skipBlock) // TODO: refactor to not mutate the bs, it is unclear
-				{                                                 // sort and merge MPs cheaters
+				{ // sort and merge MPs cheaters
 					mpsCheaters := make(utypes.Cheaters, 0, len(mpsCheatersMap))
 					for vid := range mpsCheatersMap {
 						mpsCheaters = append(mpsCheaters, vid)
@@ -273,7 +278,8 @@ func consensusCallbackBeginBlockFn(
 					evmCfg.Tracer = txtracer.NewTraceStructLogger(store.txtracer)
 				}
 
-				evmProcessor := blockProc.EVMModule.Start(blockCtx, statedb, evmStateReader, onNewLogAll, es.Rules, es.Rules.EvmChainConfig(store.GetUpgradeHeights()))
+				evmProcessor := blockProc.EVMModule.Start(blockCtx, statedb, sfcStatedb, evmStateReader, onNewLogAll,
+					es.Rules, es.Rules.EvmChainConfig(store.GetUpgradeHeights()))
 				executionStart := time.Now()
 
 				// Execute pre-internal transactions
@@ -499,6 +505,10 @@ func (s *Service) ReexecuteBlocks(from, to idx.Block) {
 		if err != nil {
 			log.Crit("Failue to re-execute blocks", "err", err)
 		}
+		sfcStatedb, err := s.store.evm.SfcStateDB(prev.SfcStateRoot)
+		if err != nil {
+			log.Warn("Failed to get SFC state", "event hash", prev.Atropos.Hex(), "err", err)
+		}
 		es := s.store.GetHistoryEpochState(s.store.FindBlockEpoch(b))
 		// Providing default config
 		// In case of trace transaction node, this config is changed
@@ -507,7 +517,8 @@ func (s *Service) ReexecuteBlocks(from, to idx.Block) {
 			evmCfg.Debug = true
 			evmCfg.Tracer = txtracer.NewTraceStructLogger(s.store.txtracer)
 		}
-		evmProcessor := blockProc.EVMModule.Start(blockCtx, statedb, evmStateReader, func(t *types.Log) {}, es.Rules, es.Rules.EvmChainConfig(upgradeHeights))
+		evmProcessor := blockProc.EVMModule.Start(blockCtx, statedb, sfcStatedb, evmStateReader, func(t *types.Log) {},
+			es.Rules, es.Rules.EvmChainConfig(upgradeHeights))
 		txs := s.store.GetBlockTxs(b, block)
 		evmProcessor.Execute(txs)
 		evmProcessor.Finalize()

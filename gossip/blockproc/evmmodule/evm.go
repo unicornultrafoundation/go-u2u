@@ -3,6 +3,7 @@ package evmmodule
 import (
 	"math"
 	"math/big"
+	"reflect"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/state"
@@ -24,12 +25,13 @@ func New() *EVMModule {
 	return &EVMModule{}
 }
 
-func (p *EVMModule) Start(block iblockproc.BlockCtx, statedb *state.StateDB, reader evmcore.DummyChain, onNewLog func(*types.Log), net u2u.Rules, evmCfg *params.ChainConfig) blockproc.EVMProcessor {
+func (p *EVMModule) Start(block iblockproc.BlockCtx, statedb *state.StateDB, sfcStatedb *state.StateDB, reader evmcore.DummyChain,
+	onNewLog func(*types.Log), net u2u.Rules, evmCfg *params.ChainConfig) blockproc.EVMProcessor {
 	var prevBlockHash common.Hash
 	if block.Idx != 0 {
 		prevBlockHash = reader.GetHeader(common.Hash{}, uint64(block.Idx-1)).Hash
 	}
-	return &U2UEVMProcessor{
+	processor := &U2UEVMProcessor{
 		block:         block,
 		reader:        reader,
 		statedb:       statedb,
@@ -39,6 +41,10 @@ func (p *EVMModule) Start(block iblockproc.BlockCtx, statedb *state.StateDB, rea
 		blockIdx:      utils.U64toBig(uint64(block.Idx)),
 		prevBlockHash: prevBlockHash,
 	}
+	if !isNilInterface(sfcStatedb) {
+		processor.sfcStateDb = sfcStatedb
+	}
+	return processor
 }
 
 type U2UEVMProcessor struct {
@@ -134,4 +140,13 @@ func (p *U2UEVMProcessor) Finalize() (evmBlock *evmcore.EvmBlock, skippedTxs []u
 		evmBlock.SfcStateRoot = newSfcStateHash
 	}
 	return
+}
+
+func isNilInterface(i interface{}) bool {
+	if i == nil {
+		return true
+	}
+	// Check if the concrete value stored in the interface is nil
+	v := reflect.ValueOf(i)
+	return (v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface) && v.IsNil()
 }

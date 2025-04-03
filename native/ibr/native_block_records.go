@@ -16,6 +16,7 @@ type LlrBlockVote struct {
 	ReceiptsHash hash.Hash
 	Time         native.Timestamp
 	GasUsed      uint64
+	SfcStateRoot hash.Hash `rlp:"optional"`
 }
 
 type LlrFullBlockRecord struct {
@@ -45,5 +46,6 @@ func (br LlrFullBlockRecord) Hash() hash.Hash {
 		ReceiptsHash: native.CalcReceiptsHash(br.Receipts),
 		Time:         br.Time,
 		GasUsed:      br.GasUsed,
+		SfcStateRoot: br.SfcStateRoot,
 	}.Hash()
 }

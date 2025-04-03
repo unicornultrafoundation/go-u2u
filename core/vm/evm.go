@@ -27,6 +27,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
@@ -298,8 +299,10 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		//} else {
 		//	evm.StateDB.DiscardSnapshot(snapshot)
 	}
-	// TODO(trinhdn97): double check the execution result and storage trie hash of each way.
 	if sfcExecutionElapsed > 0 && evmExecutionElapsed > 0 {
+		if evm.IsSfcCorrupted() {
+			log.Warn("SFC corrupted after applying tx", "height", evm.Context.BlockNumber)
+		}
 		sfcDiffCallTimer.Update(evmExecutionElapsed - sfcExecutionElapsed)
 	}
 	return ret, gas, err
@@ -373,6 +376,9 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 		}
 	}
 	if sfcExecutionElapsed > 0 && evmExecutionElapsed > 0 {
+		if evm.IsSfcCorrupted() {
+			log.Warn("SFC corrupted after applying tx", "height", evm.Context.BlockNumber)
+		}
 		sfcDiffCallCodeTimer.Update(evmExecutionElapsed - sfcExecutionElapsed)
 	}
 	return ret, gas, err
@@ -436,6 +442,9 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 		}
 	}
 	if sfcExecutionElapsed > 0 && evmExecutionElapsed > 0 {
+		if evm.IsSfcCorrupted() {
+			log.Warn("SFC corrupted after applying tx", "height", evm.Context.BlockNumber)
+		}
 		sfcDiffDelegateCallTimer.Update(evmExecutionElapsed - sfcExecutionElapsed)
 	}
 	return ret, gas, err
@@ -517,6 +526,9 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 		}
 	}
 	if sfcExecutionElapsed > 0 && evmExecutionElapsed > 0 {
+		if evm.IsSfcCorrupted() {
+			log.Warn("SFC corrupted after applying tx", "height", evm.Context.BlockNumber)
+		}
 		sfcDiffStaticCallTimer.Update(evmExecutionElapsed - sfcExecutionElapsed)
 	}
 	return ret, gas, err
@@ -646,6 +658,17 @@ func (evm *EVM) Create2(caller ContractRef, code []byte, gas uint64, endowment *
 
 // ChainConfig returns the environment's chain configuration
 func (evm *EVM) ChainConfig() *params.ChainConfig { return evm.chainConfig }
+
+func (evm *EVM) IsSfcCorrupted() bool {
+	var corrupted = false
+	for addr := range evm.Config.SfcPrecompiles {
+		if evm.StateDB.GetStorageRoot(addr).Cmp(evm.SfcStateDB.GetStorageRoot(addr)) != 0 {
+			corrupted = true
+			break
+		}
+	}
+	return corrupted
+}
 
 func isNilInterface(i interface{}) bool {
 	if i == nil {

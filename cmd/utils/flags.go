@@ -649,11 +649,6 @@ var (
 		Usage: "Prometheus API endpoint to report metrics to",
 		Value: metrics.DefaultConfig.PrometheusEndpointPort,
 	}
-
-	CatalystFlag = cli.BoolFlag{
-		Name:  "catalyst",
-		Usage: "Catalyst mode (eth2 integration testing)",
-	}
 )
 
 // MakeDataDir retrieves the currently requested data directory, terminating
@@ -992,15 +987,6 @@ func SetP2PConfig(ctx *cli.Context, cfg *p2p.Config) {
 		if err != nil {
 			Fatalf("Option %q: %v", PrivateNodeFlag.Name, err)
 		}
-	}
-
-	if ctx.GlobalBool(DeveloperFlag.Name) || ctx.GlobalBool(CatalystFlag.Name) {
-		// --dev mode can't use p2p networking.
-		cfg.MaxPeers = 0
-		cfg.ListenAddr = ""
-		cfg.NoDial = true
-		cfg.NoDiscovery = true
-		cfg.DiscoveryV5 = false
 	}
 }
 

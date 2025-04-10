@@ -62,7 +62,7 @@ type ChainConfig struct {
 	BerlinBlock         *big.Int `json:"berlinBlock,omitempty"`         // Berlin switch block (nil = no fork, 0 = already on berlin)
 	LondonBlock         *big.Int `json:"londonBlock,omitempty"`         // London switch block (nil = no fork, 0 = already on london)
 
-	CatalystBlock *big.Int `json:"catalystBlock,omitempty"` // Catalyst switch block (nil = no fork, 0 = already on catalyst)
+	cancunBlock *big.Int `json:"cancunBlock,omitempty"` // Cancun switch block (nil = no fork, 0 = already on cancun)
 }
 
 // String implements the fmt.Stringer interface.
@@ -147,9 +147,9 @@ func (c *ChainConfig) IsLondon(num *big.Int) bool {
 	return isForked(c.LondonBlock, num)
 }
 
-// IsCatalyst returns whether num is either equal to the Merge fork block or greater.
-func (c *ChainConfig) IsCatalyst(num *big.Int) bool {
-	return isForked(c.CatalystBlock, num)
+// IsCancun returns whether num is either equal to the Merge fork block or greater.
+func (c *ChainConfig) IsCancun(num *big.Int) bool {
+	return isForked(c.cancunBlock, num)
 }
 
 // CheckCompatible checks whether scheduled fork transitions have been imported
@@ -328,7 +328,7 @@ type Rules struct {
 	ChainID                                                 *big.Int
 	IsHomestead, IsEIP150, IsEIP155, IsEIP158               bool
 	IsByzantium, IsConstantinople, IsPetersburg, IsIstanbul bool
-	IsBerlin, IsLondon, IsCatalyst                          bool
+	IsBerlin, IsLondon, IsCancun                            bool
 }
 
 // Rules ensures c's ChainID is not nil.
@@ -349,6 +349,6 @@ func (c *ChainConfig) Rules(num *big.Int) Rules {
 		IsIstanbul:       c.IsIstanbul(num),
 		IsBerlin:         c.IsBerlin(num),
 		IsLondon:         c.IsLondon(num),
-		IsCatalyst:       c.IsCatalyst(num),
+		IsCancun:         c.IsCancun(num),
 	}
 }

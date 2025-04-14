@@ -3,7 +3,6 @@ package launcher
 import (
 	"crypto/rand"
 	"math/big"
-	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -55,50 +54,40 @@ To exit, press ctrl-d
 
 // Tests that a console can be attached to a running node via various means.
 func TestIPCAttachWelcome(t *testing.T) {
-	// Configure the instance for IPC attachement
-	var ipc string
+	var (
+		ipc      string
+		httpPort string
+		wsPort   string
+	)
+	// Configure the instance for IPC attachment
 	if runtime.GOOS == "windows" {
-		ipc = `\\.\pipe\helios.ipc`
+		ipc = `\\.\pipe\u2u.ipc` + strconv.Itoa(trulyRandInt(100000, 999999))
 	} else {
-		ws := tmpdir(t)
-		defer os.RemoveAll(ws)
-		ipc = filepath.Join(ws, "u2u.ipc")
+		ipc = filepath.Join(t.TempDir(), "u2u.ipc")
 	}
+	// And HTTP + WS attachment
+	p := trulyRandInt(1024, 65533) // Yeah, sometimes this will fail, sorry :P
+	httpPort = strconv.Itoa(p)
+	wsPort = strconv.Itoa(p + 1)
 	cli := exec(t,
 		"--fakenet", "0/1", "--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
-		"--ipcpath", ipc, "--cache", "7923", "--datadir.minfreedisk", "1")
+		"--ipcpath", ipc, "--http", "--http.port", httpPort, "--ws", "--ws.port", wsPort, "--cache", "7923",
+		"--datadir.minfreedisk", "1")
 
-	waitForEndpoint(t, ipc, 60*time.Second)
-	testAttachWelcome(t, cli, "ipc:"+ipc, ipcAPIs)
-
-	cli.Kill()
-	cli.WaitExit()
-}
-
-func TestHTTPAttachWelcome(t *testing.T) {
-	port := strconv.Itoa(trulyRandInt(1024, 65536)) // Yeah, sometimes this will fail, sorry :P
-	cli := exec(t,
-		"--fakenet", "0/1", "--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
-		"--http", "--http.port", port, "--cache", "7923", "--datadir.minfreedisk", "1")
-
-	endpoint := "http://127.0.0.1:" + port
-	waitForEndpoint(t, endpoint, 60*time.Second)
-	testAttachWelcome(t, cli, "http://localhost:"+port, httpAPIs)
-
-	cli.Kill()
-	cli.WaitExit()
-}
-
-func TestWSAttachWelcome(t *testing.T) {
-	port := strconv.Itoa(trulyRandInt(1024, 65536)) // Yeah, sometimes this will fail, sorry :P
-
-	cli := exec(t,
-		"--fakenet", "0/1", "--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
-		"--ws", "--ws.port", port, "--cache", "7923", "--datadir.minfreedisk", "1")
-
-	endpoint := "ws://127.0.0.1:" + port
-	waitForEndpoint(t, endpoint, 60*time.Second)
-	testAttachWelcome(t, cli, "ws://localhost:"+port, httpAPIs)
+	t.Run("ipc", func(t *testing.T) {
+		waitForEndpoint(t, ipc, 4*time.Second)
+		testAttachWelcome(t, cli, "ipc:"+ipc, ipcAPIs)
+	})
+	t.Run("http", func(t *testing.T) {
+		endpoint := "http://127.0.0.1:" + httpPort
+		waitForEndpoint(t, endpoint, 4*time.Second)
+		testAttachWelcome(t, cli, endpoint, httpAPIs)
+	})
+	t.Run("ws", func(t *testing.T) {
+		endpoint := "ws://127.0.0.1:" + wsPort
+		waitForEndpoint(t, endpoint, 4*time.Second)
+		testAttachWelcome(t, cli, endpoint, httpAPIs)
+	})
 
 	cli.Kill()
 	cli.WaitExit()

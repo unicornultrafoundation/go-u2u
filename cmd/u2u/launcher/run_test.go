@@ -3,7 +3,6 @@ package launcher
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -15,14 +14,6 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/rpc"
 )
-
-func tmpdir(t *testing.T) string {
-	dir, err := ioutil.TempDir("", "u2u-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	return dir
-}
 
 type testcli struct {
 	*cmdtest.TestCmd
@@ -77,7 +68,7 @@ func exec(t *testing.T, args ...string) *testcli {
 			}
 		}
 		if tt.Datadir == "" {
-			tt.Datadir = tmpdir(t)
+			tt.Datadir = t.TempDir()
 			args = append([]string{"-datadir", tt.Datadir}, args...)
 		}
 

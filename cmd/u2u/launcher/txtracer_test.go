@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -17,28 +19,34 @@ import (
 )
 
 func TestTxTracing(t *testing.T) {
-
 	// Start test node on random ports and keep it running for another requests
+	datadir := t.TempDir()
 	port := strconv.Itoa(trulyRandInt(10000, 65536))
 	wsport := strconv.Itoa(trulyRandInt(10000, 65536))
+	// Configure the instance for IPC attachment
+	var ipc string
+	if runtime.GOOS == "windows" {
+		ipc = `\\.\pipe\u2u` + strconv.Itoa(trulyRandInt(100000, 999999))
+	} else {
+		ipc = filepath.Join(datadir, "u2u.ipc")
+	}
 	cliNode := exec(t,
 		"--fakenet", "1/1", "--enabletxtracer", "--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
 		"--ws", "--ws.port", wsport, "--http", "--http.api", "eth,web3,net,txpool,trace", "--http.port",
-		port, "--allow-insecure-unlock", "--cache", "8192")
+		port, "--ipcpath", ipc, "--allow-insecure-unlock", "--cache", "8192")
 
 	// Wait for node to start
 	endpoint := "ws://127.0.0.1:" + wsport
-	waitForEndpoint(t, endpoint, 60*time.Second)
-
+	waitForEndpoint(t, endpoint, 4*time.Second)
 	// Deploy a smart contract from the testdata javascript file
-	cliConsoleDeploy := exec(t, "attach", "--datadir", cliNode.Datadir, "--exec", "loadScript('testdata/txtracer_test.js')")
+	cliConsoleDeploy := exec(t, "attach", "ipc:"+ipc, "--datadir", cliNode.Datadir, "--exec", "loadScript('testdata/txtracer_test.js')")
 	contractAddress := string(*cliConsoleDeploy.GetOutPipeData())
 	contractAddress = contractAddress[strings.Index(contractAddress, "0x") : len(contractAddress)-1]
 	cliConsoleDeploy.WaitExit()
 
 	abi := `[{"inputs":[],"name":"deploy","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"getA","outputs":[{"name":"","type":"uint8"}],"payable":false,"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_a","type":"uint256"}],"name":"setA","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_a","type":"uint256"}],"name":"setInA","outputs":[],"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"tst","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"}]`
 
-	cliConsole := exec(t, "attach", "--datadir", cliNode.Datadir)
+	cliConsole := exec(t, "attach", "ipc:"+ipc, "--datadir", cliNode.Datadir)
 	cliConsoleOutput := *cliConsole.GetOutDataTillCursor()
 
 	// Initialize test contract for interaction

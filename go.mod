@@ -11,7 +11,6 @@ require (
 	github.com/deckarep/golang-set v1.8.0
 	github.com/docker/docker v27.4.1+incompatible
 	github.com/dvyukov/go-fuzz v0.0.0-20230614170735-95bc4d742dfa
-	github.com/ethereum/go-ethereum v1.13.15
 	github.com/evalphobia/logrus_sentry v0.8.2
 	github.com/golang/mock v1.6.0
 	github.com/google/gofuzz v1.2.0

@@ -174,6 +174,12 @@ func GetAPIs(apiBackend Backend) []rpc.API {
 			Service:   NewPublicTxTraceAPI(apiBackend),
 			Public:    true,
 		},
+		{
+			Namespace: "sfc",
+			Version:   "1.0",
+			Service:   NewPublicSfcAPI(apiBackend),
+			Public:    true,
+		},
 	}
 
 	return append(orig)

@@ -4,7 +4,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/nettest"
+
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/sfc"
 )
 
 var (
@@ -49,4 +53,12 @@ func TestSFCStore_CanDumpSFCStorageAndThenSyncAgain(t *testing.T) {
 		t.Fatalf("Failed to start the fake network: %v", err)
 	}
 	defer testnet.Stop()
+	owner, err := testnet.SfcGetStorageAt(
+		sfc.ContractAddress,
+		common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000033"),
+		nil)
+	if err != nil {
+		t.Fatalf("Failed to get owner of SFC contract: %v", err)
+	}
+	assert.Equal(t, common.BytesToAddress(owner).Hex(), testnet.validator.Address().Hex())
 }

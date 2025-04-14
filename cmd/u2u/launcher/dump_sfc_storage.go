@@ -11,6 +11,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/native/ibr"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 )
 
@@ -45,7 +46,6 @@ func dumpSfcStorage(ctx *cli.Context) error {
 	stateRoot := evms.GetSfcStateRoot(latestBlockIndex, latestBlockHash.Bytes())
 	if stateRoot != nil && evms.HasSfcStateDB(hash.Hash(*stateRoot)) {
 		log.Info("Already dump SFC contract's storage at this block", "block", latestBlockIndex, "stateRoot", stateRoot.Hex())
-		return nil
 	}
 
 	currentBlock := gdb.GetBlock(latestBlockIndex)
@@ -66,12 +66,31 @@ func dumpSfcStorage(ctx *cli.Context) error {
 	}
 
 	if isDumpStorageHashValid(stateDb, sfcStateDb) {
-		// Save dump SFC contract's storage to disk
+		// Save dumped SFC contract's storage to disk
 		evms.CommitSfcState(latestBlockIndex, hash.Hash(sfcStateTrieHash), false)
 		evms.CapSfcState()
 
-		// Save the stateTrieHash for future use (include into the block header)
+		// Save the sfcStateTrieHash for future use (include into the native block header)
 		evms.SetSfcStateRoot(latestBlockIndex, latestBlockHash.Bytes(), sfcStateTrieHash)
+		evms.SetLatestSfcStateRoot(sfcStateTrieHash)
+
+		latestBlock := gdb.GetBlock(latestBlockIndex)
+		latestBlock.SfcStateRoot = hash.Hash(sfcStateTrieHash)
+		gdb.SetBlock(latestBlockIndex, latestBlock)
+		bs, es := gdb.GetBlockEpochState()
+		bs.SfcStateRoot = hash.Hash(sfcStateTrieHash)
+		gdb.SetBlockEpochState(bs, es)
+		gdb.FlushBlockEpochState()
+		br := gdb.GetFullBlockRecord(latestBlockIndex)
+		br.SfcStateRoot = hash.Hash(sfcStateTrieHash)
+		gdb.WriteFullBlockRecord(ibr.LlrIdxFullBlockRecord{
+			LlrFullBlockRecord: *br,
+			Idx:                latestBlockIndex,
+		})
+
+		//previousBlock := gdb.GetBlock(latestBlockIndex - 1)
+		//previousBlock.SfcStateRoot = hash.Hash(sfcStateTrieHash)
+		//gdb.SetBlock(latestBlockIndex-1, previousBlock)
 
 		log.Info("Dump SFC contract's storage successfully at", "block", latestBlockIndex, "stateTrieHash", sfcStateTrieHash.Hex())
 	}

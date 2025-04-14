@@ -12,49 +12,47 @@ import (
 )
 
 var (
-	SfcAbi             *abi.ABI
+	SfcAbi             abi.ABI
 	sfcContractAddress = ContractAddress
 )
 
 const (
-	owner                        int64 = 33
-	offset                       int64 = 66          // Base offset for storage slots of SFC contract when implement SFCBase contract
-	nodeDriverAuthSlot           int64 = 0 + offset  // NodeDriverAuth internal node
-	currentSealedEpochSlot       int64 = 1 + offset  // uint256 public currentSealedEpoch
-	validatorSlot                int64 = 2 + offset  // mapping(uint256 => Validator) public getValidator
-	validatorIDSlot              int64 = 3 + offset  // mapping(address => uint256) public getValidatorID
-	validatorPubkeySlot          int64 = 4 + offset  // mapping(uint256 => bytes) public getValidatorPubkey
-	lastValidatorIDSlot          int64 = 5 + offset  // uint256 public lastValidatorID
-	totalStakeSlot               int64 = 6 + offset  // uint256 public totalStake
-	totalActiveStakeSlot         int64 = 7 + offset  // uint256 public totalActiveStake
-	totalSlashedStakeSlot        int64 = 8 + offset  // uint256 public totalSlashedStake
-	rewardsStashSlot             int64 = 9 + offset  // mapping(address => mapping(uint256 => Rewards)) internal _rewardsStash
-	stashedRewardsUntilEpochSlot int64 = 10 + offset // mapping(address => mapping(uint256 => uint256)) public stashedRewardsUntilEpoch
-	withdrawalRequestSlot        int64 = 11 + offset // mapping(address => mapping(uint256 => mapping(uint256 => WithdrawalRequest))) public getWithdrawalRequest
-	stakeSlot                    int64 = 12 + offset // mapping(address => mapping(uint256 => uint256)) public getStake
-	lockupInfoSlot               int64 = 13 + offset // mapping(address => mapping(uint256 => LockedDelegation)) public getLockupInfo
-	stashedLockupRewardsSlot     int64 = 14 + offset // mapping(address => mapping(uint256 => Rewards)) public getStashedLockupRewards
+	isInitialized                int64 = 0x0
+	owner                        int64 = 0x33
+	offset                       int64 = 0x66        // Base offset for storage slots of SFC contract when implement SFCBase contract
+	nodeDriverAuthSlot                 = 0 + offset  // NodeDriverAuth internal node
+	currentSealedEpochSlot             = 1 + offset  // uint256 public currentSealedEpoch
+	validatorSlot                      = 2 + offset  // mapping(uint256 => Validator) public getValidator
+	validatorIDSlot                    = 3 + offset  // mapping(address => uint256) public getValidatorID
+	validatorPubkeySlot                = 4 + offset  // mapping(uint256 => bytes) public getValidatorPubkey
+	lastValidatorIDSlot                = 5 + offset  // uint256 public lastValidatorID
+	totalStakeSlot                     = 6 + offset  // uint256 public totalStake
+	totalActiveStakeSlot               = 7 + offset  // uint256 public totalActiveStake
+	totalSlashedStakeSlot              = 8 + offset  // uint256 public totalSlashedStake
+	rewardsStashSlot                   = 9 + offset  // mapping(address => mapping(uint256 => Rewards)) internal _rewardsStash
+	stashedRewardsUntilEpochSlot       = 10 + offset // mapping(address => mapping(uint256 => uint256)) public stashedRewardsUntilEpoch
+	withdrawalRequestSlot              = 11 + offset // mapping(address => mapping(uint256 => mapping(uint256 => WithdrawalRequest))) public getWithdrawalRequest
+	stakeSlot                          = 12 + offset // mapping(address => mapping(uint256 => uint256)) public getStake
+	lockupInfoSlot                     = 13 + offset // mapping(address => mapping(uint256 => LockedDelegation)) public getLockupInfo
+	stashedLockupRewardsSlot           = 14 + offset // mapping(address => mapping(uint256 => Rewards)) public getStashedLockupRewards
 	// uint256 private erased0                      - slot 15
-	totalSupplySlot   int64 = 16 + offset // uint256 public totalSupply
-	epochSnapshotSlot int64 = 17 + offset // mapping(uint256 => EpochSnapshot) public getEpochSnapshot
+	totalSupplySlot   = 16 + offset // uint256 public totalSupply
+	epochSnapshotSlot = 17 + offset // mapping(uint256 => EpochSnapshot) public getEpochSnapshot
 	// uint256 private erased1                      - slot 18
 	// uint256 private erased2                      - slot 19
-	slashingRefundRatioSlot   int64 = 20 + offset // mapping(uint256 => uint256) public slashingRefundRatio
-	stakeTokenizerAddressSlot int64 = 21 + offset // address public stakeTokenizerAddress
+	slashingRefundRatioSlot   = 20 + offset // mapping(uint256 => uint256) public slashingRefundRatio
+	stakeTokenizerAddressSlot = 21 + offset // address public stakeTokenizerAddress
 	// uint256 private erased3                      - slot 22
 	// uint256 private erased4                      - slot 23
-	minGasPriceSlot      int64 = 24 + offset // uint256 public minGasPrice
-	treasuryAddressSlot  int64 = 25 + offset // address public treasuryAddress
-	libAddressSlot       int64 = 26 + offset // address internal libAddress
-	constantsManagerSlot int64 = 27 + offset // ConstantsManager internal c
-	voteBookAddressSlot  int64 = 28 + offset // address public voteBookAddress
+	minGasPriceSlot      = 24 + offset // uint256 public minGasPrice
+	treasuryAddressSlot  = 25 + offset // address public treasuryAddress
+	libAddressSlot       = 26 + offset // address internal libAddress
+	constantsManagerSlot = 27 + offset // ConstantsManager internal c
+	voteBookAddressSlot  = 28 + offset // address public voteBookAddress
 )
 
 func init() {
-	parsedABI, err := abi.JSON(strings.NewReader(sfc100.ContractMetaData.ABI))
-	if err == nil {
-		SfcAbi = &parsedABI
-	}
+	SfcAbi, _ = abi.JSON(strings.NewReader(sfc100.ContractMetaData.ABI))
 }
 
 // SfcPrecompile implements PrecompiledStateContract interface
@@ -63,7 +61,8 @@ type SfcPrecompile struct{}
 // Run runs the precompiled contract
 func (p *SfcPrecompile) Run(stateDB vm.StateDB, blockCtx vm.BlockContext, txCtx vm.TxContext, caller common.Address,
 	input []byte, suppliedGas uint64) ([]byte, uint64, error) {
-
+	// TODO(trinhdn97): dynamic gas needed for each calls with different methods
+	var gasUsed = uint64(3000) // Example fixed gas cost
 	// Need at least 4 bytes for function signature
 	if len(input) < 4 {
 		return nil, 0, vm.ErrExecutionReverted
@@ -87,6 +86,7 @@ func (p *SfcPrecompile) Run(stateDB vm.StateDB, blockCtx vm.BlockContext, txCtx 
 	case "owner":
 		val := stateDB.GetState(sfcContractAddress, common.BigToHash(big.NewInt(owner)))
 		result, err = SfcAbi.Methods["owner"].Outputs.Pack(common.BytesToAddress(val.Bytes()))
+		// TODO(trinhdn97): calculate gas used after each method
 
 	case "currentSealedEpoch":
 		val := stateDB.GetState(sfcContractAddress, common.BigToHash(big.NewInt(currentSealedEpochSlot)))
@@ -291,16 +291,11 @@ func (p *SfcPrecompile) Run(stateDB vm.StateDB, blockCtx vm.BlockContext, txCtx 
 	default:
 		return nil, 0, vm.ErrExecutionReverted
 	}
-
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}
-
-	// Calculate gas used - we can charge a fixed amount per call
-	gasUsed := uint64(3000) // Example fixed gas cost
 	if suppliedGas < gasUsed {
 		return nil, 0, vm.ErrOutOfGas
 	}
-
 	return result, gasUsed, nil
 }

@@ -291,6 +291,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 				log.Warn("SFC corrupted after applying tx", "action", "call", "height", evm.Context.BlockNumber, "addr", addr)
 			}
 			sfcDiffCallMeter.Mark(int64(evmExecutionElapsed - sfcExecutionElapsed))
+			sfcCallGauge.Inc(1)
 		}
 	}
 	// When an error was returned by the EVM or when setting the creation code
@@ -375,6 +376,7 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 				log.Warn("SFC corrupted after applying tx", "action", "call code", "height", evm.Context.BlockNumber, "addr", addr)
 			}
 			sfcDiffCallCodeMeter.Mark(int64(evmExecutionElapsed - sfcExecutionElapsed))
+			sfcCallCodeGauge.Inc(1)
 		}
 	}
 	if err != nil {
@@ -443,6 +445,7 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 				log.Warn("SFC corrupted after applying tx", "action", "delegate call", "height", evm.Context.BlockNumber, "addr", addr)
 			}
 			sfcDiffDelegateCallMeter.Mark(int64(evmExecutionElapsed - sfcExecutionElapsed))
+			sfcDelegateCallGauge.Inc(1)
 		}
 	}
 	if err != nil {
@@ -529,6 +532,7 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 				log.Warn("SFC corrupted after applying tx", "action", "static call", "height", evm.Context.BlockNumber, "addr", addr)
 			}
 			sfcDiffStaticCallMeter.Mark(int64(evmExecutionElapsed - sfcExecutionElapsed))
+			sfcStaticCallGauge.Inc(1)
 		}
 	}
 	if err != nil {

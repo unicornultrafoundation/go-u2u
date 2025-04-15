@@ -9,11 +9,19 @@ import (
 	"time"
 
 	"github.com/docker/docker/pkg/reexec"
-
+	
 	"github.com/unicornultrafoundation/go-u2u/cmd/cmdtest"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/rpc"
 )
+
+func tmpdir(t *testing.T) string {
+	dir, err := os.MkdirTemp("", "u2u-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
 
 type testcli struct {
 	*cmdtest.TestCmd
@@ -68,7 +76,7 @@ func exec(t *testing.T, args ...string) *testcli {
 			}
 		}
 		if tt.Datadir == "" {
-			tt.Datadir = t.TempDir()
+			tt.Datadir = tmpdir(t)
 			args = append([]string{"-datadir", tt.Datadir}, args...)
 		}
 

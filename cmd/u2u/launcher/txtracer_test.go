@@ -20,7 +20,7 @@ import (
 
 func TestTxTracing(t *testing.T) {
 	// Start test node on random ports and keep it running for another requests
-	datadir := t.TempDir()
+	datadir := tmpdir(t)
 	port := strconv.Itoa(trulyRandInt(10000, 65536))
 	wsport := strconv.Itoa(trulyRandInt(10000, 65536))
 	// Configure the instance for IPC attachment

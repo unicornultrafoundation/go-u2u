@@ -10,9 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/params"
-
 	"github.com/unicornultrafoundation/go-u2u/integration/makefakegenesis"
+	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
 const (
@@ -53,7 +52,7 @@ To exit, press ctrl-d
 }
 
 // Tests that a console can be attached to a running node via various means.
-func TestIPCAttachWelcome(t *testing.T) {
+func TestAttachWelcome(t *testing.T) {
 	var (
 		ipc      string
 		httpPort string
@@ -63,7 +62,8 @@ func TestIPCAttachWelcome(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		ipc = `\\.\pipe\u2u.ipc` + strconv.Itoa(trulyRandInt(100000, 999999))
 	} else {
-		ipc = filepath.Join(t.TempDir(), "u2u.ipc")
+		dir := tmpdir(t)
+		ipc = filepath.Join(dir, "u2u.ipc")
 	}
 	// And HTTP + WS attachment
 	p := trulyRandInt(1024, 65533) // Yeah, sometimes this will fail, sorry :P

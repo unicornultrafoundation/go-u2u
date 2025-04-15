@@ -17,7 +17,7 @@ import (
 // are copied into a temporary keystore directory.
 
 func tmpDatadirWithKeystore(t *testing.T) string {
-	datadir := t.TempDir()
+	datadir := tmpdir(t)
 	keystore := filepath.Join(datadir, "keystore")
 	source := filepath.Join("testdata", "keystore")
 	if err := cp.CopyAll(keystore, source); err != nil {

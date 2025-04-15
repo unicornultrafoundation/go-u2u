@@ -34,8 +34,8 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/syndtr/goleveldb v1.0.1-0.20220614013038-64ee5596c38a
 	github.com/unicornultrafoundation/go-helios v1.0.1
-	golang.org/x/crypto v0.36.0
-	golang.org/x/sys v0.31.0
+	golang.org/x/crypto v0.37.0
+	golang.org/x/sys v0.32.0
 	gopkg.in/urfave/cli.v1 v1.20.0
 )
 
@@ -99,8 +99,8 @@ require (
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
 	golang.org/x/net v0.37.0
-	golang.org/x/sync v0.12.0
-	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/sync v0.13.0
+	golang.org/x/text v0.24.0 // indirect
 	golang.org/x/time v0.3.0
 	google.golang.org/protobuf v1.36.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

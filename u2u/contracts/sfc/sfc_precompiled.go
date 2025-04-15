@@ -46,9 +46,6 @@ func parseABIInput(input []byte) (*abi.Method, []interface{}, error) {
 // Run runs the precompiled contract
 func (p *SfcPrecompile) Run(stateDB vm.StateDB, blockCtx vm.BlockContext, txCtx vm.TxContext, caller common.Address,
 	input []byte, suppliedGas uint64) ([]byte, uint64, error) {
-	// TODO(trinhdn97): dynamic gas needed for each calls with different methods
-	var gasUsed = uint64(3000) // Example fixed gas cost
-
 	// Parse the input to get method and arguments
 	method, args, err := parseABIInput(input)
 	if err != nil {
@@ -56,99 +53,70 @@ func (p *SfcPrecompile) Run(stateDB vm.StateDB, blockCtx vm.BlockContext, txCtx 
 	}
 
 	var result []byte
+	var gasUsed uint64
 	switch method.Name {
 	case "owner":
-		result, err = handleOwner(stateDB)
+		result, gasUsed, err = handleOwner(stateDB)
 
 	case "currentSealedEpoch":
-		result, err = handleCurrentSealedEpoch(stateDB)
+		result, gasUsed, err = handleCurrentSealedEpoch(stateDB)
 
 	case "lastValidatorID":
-		result, err = handleLastValidatorID(stateDB)
+		result, gasUsed, err = handleLastValidatorID(stateDB)
 
 	case "totalStake":
-		result, err = handleTotalStake(stateDB)
+		result, gasUsed, err = handleTotalStake(stateDB)
 
 	case "totalActiveStake":
-		result, err = handleTotalActiveStake(stateDB)
+		result, gasUsed, err = handleTotalActiveStake(stateDB)
 
 	case "totalSlashedStake":
-		result, err = handleTotalSlashedStake(stateDB)
+		result, gasUsed, err = handleTotalSlashedStake(stateDB)
 
 	case "totalSupply":
-		result, err = handleTotalSupply(stateDB)
+		result, gasUsed, err = handleTotalSupply(stateDB)
 
 	case "stakeTokenizerAddress":
-		result, err = handleStakeTokenizerAddress(stateDB)
+		result, gasUsed, err = handleStakeTokenizerAddress(stateDB)
 
 	case "minGasPrice":
-		result, err = handleMinGasPrice(stateDB)
+		result, gasUsed, err = handleMinGasPrice(stateDB)
 
 	case "treasuryAddress":
-		result, err = handleTreasuryAddress(stateDB)
+		result, gasUsed, err = handleTreasuryAddress(stateDB)
 
 	case "voteBookAddress":
-		result, err = handleVoteBookAddress(stateDB)
+		result, gasUsed, err = handleVoteBookAddress(stateDB)
 
 	case "getValidator":
-		result, err = handleGetValidator(stateDB, args)
-		if err != nil {
-			return nil, 0, err
-		}
+		result, gasUsed, err = handleGetValidator(stateDB, args)
 
 	case "getValidatorID":
-		result, err = handleGetValidatorID(stateDB, args)
-		if err != nil {
-			return nil, 0, err
-		}
+		result, gasUsed, err = handleGetValidatorID(stateDB, args)
 
 	case "getValidatorPubkey":
-		result, err = handleGetValidatorPubkey(stateDB, args)
-		if err != nil {
-			return nil, 0, err
-		}
+		result, gasUsed, err = handleGetValidatorPubkey(stateDB, args)
 
 	case "stashedRewardsUntilEpoch":
-		result, err = handleStashedRewardsUntilEpoch(stateDB, args)
-		if err != nil {
-			return nil, 0, err
-		}
+		result, gasUsed, err = handleStashedRewardsUntilEpoch(stateDB, args)
 
 	case "getWithdrawalRequest":
-		result, err = handleGetWithdrawalRequest(stateDB, args)
-		if err != nil {
-			return nil, 0, err
-		}
+		result, gasUsed, err = handleGetWithdrawalRequest(stateDB, args)
 
 	case "getStake":
-		result, err = handleGetStake(stateDB, args)
-		if err != nil {
-			return nil, 0, err
-		}
+		result, gasUsed, err = handleGetStake(stateDB, args)
 
 	case "getLockupInfo":
-		result, err = handleGetLockupInfo(stateDB, args)
-		if err != nil {
-			return nil, 0, err
-		}
+		result, gasUsed, err = handleGetLockupInfo(stateDB, args)
 
 	case "getStashedLockupRewards":
-		result, err = handleGetStashedLockupRewards(stateDB, args)
-		if err != nil {
-			return nil, 0, err
-		}
+		result, gasUsed, err = handleGetStashedLockupRewards(stateDB, args)
 
 	case "slashingRefundRatio":
-		result, err = handleSlashingRefundRatio(stateDB, args)
-		if err != nil {
-			return nil, 0, err
-		}
+		result, gasUsed, err = handleSlashingRefundRatio(stateDB, args)
 
 	case "getEpochSnapshot":
-		result, err = handleGetEpochSnapshot(stateDB, args)
-		if err != nil {
-			return nil, 0, err
-		}
+		result, gasUsed, err = handleGetEpochSnapshot(stateDB, args)
 
 	default:
 		return nil, 0, vm.ErrSfcFunctionNotImplemented
@@ -156,6 +124,7 @@ func (p *SfcPrecompile) Run(stateDB vm.StateDB, blockCtx vm.BlockContext, txCtx 
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}
+
 	if suppliedGas < gasUsed {
 		return nil, 0, vm.ErrOutOfGas
 	}

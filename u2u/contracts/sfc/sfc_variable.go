@@ -8,99 +8,114 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/crypto"
 )
 
-// Handler functions for each method
+// Handler functions for SFC contract variables
+// This file contains handlers for variable getters (as opposed to function methods)
 
-func handleOwner(stateDB vm.StateDB) ([]byte, error) {
+func handleOwner(stateDB vm.StateDB) ([]byte, uint64, error) {
 	val := stateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(owner)))
-	return SfcAbi.Methods["owner"].Outputs.Pack(common.BytesToAddress(val.Bytes()))
+	result, err := SfcAbi.Methods["owner"].Outputs.Pack(common.BytesToAddress(val.Bytes()))
+	return result, 0, err
 }
 
-func handleCurrentSealedEpoch(stateDB vm.StateDB) ([]byte, error) {
+func handleCurrentSealedEpoch(stateDB vm.StateDB) ([]byte, uint64, error) {
 	val := stateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(currentSealedEpochSlot)))
-	return SfcAbi.Methods["currentSealedEpoch"].Outputs.Pack(val.Big())
+	result, err := SfcAbi.Methods["currentSealedEpoch"].Outputs.Pack(val.Big())
+	return result, 0, err
 }
 
-func handleLastValidatorID(stateDB vm.StateDB) ([]byte, error) {
+func handleLastValidatorID(stateDB vm.StateDB) ([]byte, uint64, error) {
 	val := stateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(lastValidatorIDSlot)))
-	return SfcAbi.Methods["lastValidatorID"].Outputs.Pack(val.Big())
+	result, err := SfcAbi.Methods["lastValidatorID"].Outputs.Pack(val.Big())
+	return result, 0, err
 }
 
-func handleTotalStake(stateDB vm.StateDB) ([]byte, error) {
+func handleTotalStake(stateDB vm.StateDB) ([]byte, uint64, error) {
 	val := stateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalStakeSlot)))
-	return SfcAbi.Methods["totalStake"].Outputs.Pack(val.Big())
+	result, err := SfcAbi.Methods["totalStake"].Outputs.Pack(val.Big())
+	return result, 0, err
 }
 
-func handleTotalActiveStake(stateDB vm.StateDB) ([]byte, error) {
+func handleTotalActiveStake(stateDB vm.StateDB) ([]byte, uint64, error) {
 	val := stateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalActiveStakeSlot)))
-	return SfcAbi.Methods["totalActiveStake"].Outputs.Pack(val.Big())
+	result, err := SfcAbi.Methods["totalActiveStake"].Outputs.Pack(val.Big())
+	return result, 0, err
 }
 
-func handleTotalSlashedStake(stateDB vm.StateDB) ([]byte, error) {
+func handleTotalSlashedStake(stateDB vm.StateDB) ([]byte, uint64, error) {
 	val := stateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalSlashedStakeSlot)))
-	return SfcAbi.Methods["totalSlashedStake"].Outputs.Pack(val.Big())
+	result, err := SfcAbi.Methods["totalSlashedStake"].Outputs.Pack(val.Big())
+	return result, 0, err
 }
 
-func handleTotalSupply(stateDB vm.StateDB) ([]byte, error) {
+func handleTotalSupply(stateDB vm.StateDB) ([]byte, uint64, error) {
 	val := stateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalSupplySlot)))
-	return SfcAbi.Methods["totalSupply"].Outputs.Pack(val.Big())
+	result, err := SfcAbi.Methods["totalSupply"].Outputs.Pack(val.Big())
+	return result, 0, err
 }
 
-func handleStakeTokenizerAddress(stateDB vm.StateDB) ([]byte, error) {
+func handleStakeTokenizerAddress(stateDB vm.StateDB) ([]byte, uint64, error) {
 	val := stateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(stakeTokenizerAddressSlot)))
-	return SfcAbi.Methods["stakeTokenizerAddress"].Outputs.Pack(common.BytesToAddress(val.Bytes()))
+	result, err := SfcAbi.Methods["stakeTokenizerAddress"].Outputs.Pack(common.BytesToAddress(val.Bytes()))
+	return result, 0, err
 }
 
-func handleMinGasPrice(stateDB vm.StateDB) ([]byte, error) {
+func handleMinGasPrice(stateDB vm.StateDB) ([]byte, uint64, error) {
 	val := stateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(minGasPriceSlot)))
-	return SfcAbi.Methods["minGasPrice"].Outputs.Pack(val.Big())
+	result, err := SfcAbi.Methods["minGasPrice"].Outputs.Pack(val.Big())
+	return result, 0, err
 }
 
-func handleTreasuryAddress(stateDB vm.StateDB) ([]byte, error) {
+func handleTreasuryAddress(stateDB vm.StateDB) ([]byte, uint64, error) {
 	val := stateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(treasuryAddressSlot)))
-	return SfcAbi.Methods["treasuryAddress"].Outputs.Pack(common.BytesToAddress(val.Bytes()))
+	result, err := SfcAbi.Methods["treasuryAddress"].Outputs.Pack(common.BytesToAddress(val.Bytes()))
+	return result, 0, err
 }
 
-func handleVoteBookAddress(stateDB vm.StateDB) ([]byte, error) {
+func handleVoteBookAddress(stateDB vm.StateDB) ([]byte, uint64, error) {
 	val := stateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(voteBookAddressSlot)))
-	return SfcAbi.Methods["voteBookAddress"].Outputs.Pack(common.BytesToAddress(val.Bytes()))
+	result, err := SfcAbi.Methods["voteBookAddress"].Outputs.Pack(common.BytesToAddress(val.Bytes()))
+	return result, 0, err
 }
 
-func handleGetValidator(stateDB vm.StateDB, args []interface{}) ([]byte, error) {
+func handleGetValidator(stateDB vm.StateDB, args []interface{}) ([]byte, uint64, error) {
 	if len(args) != 1 {
-		return nil, vm.ErrExecutionReverted
+		return nil, 0, vm.ErrExecutionReverted
 	}
 	validatorID := args[0].(*big.Int)
 	key := common.BigToHash(validatorID)
 	slot := crypto.Keccak256Hash(key.Bytes(), common.BigToHash(big.NewInt(validatorSlot)).Bytes())
 	val := stateDB.GetState(ContractAddress, slot)
-	return SfcAbi.Methods["getValidator"].Outputs.Pack(val.Big())
+	result, err := SfcAbi.Methods["getValidator"].Outputs.Pack(val.Big())
+	return result, 0, err
 }
 
-func handleGetValidatorID(stateDB vm.StateDB, args []interface{}) ([]byte, error) {
+func handleGetValidatorID(stateDB vm.StateDB, args []interface{}) ([]byte, uint64, error) {
 	if len(args) != 1 {
-		return nil, vm.ErrExecutionReverted
+		return nil, 0, vm.ErrExecutionReverted
 	}
 	addr := args[0].(common.Address)
 	key := addr.Hash()
 	slot := crypto.Keccak256Hash(key.Bytes(), common.BigToHash(big.NewInt(validatorIDSlot)).Bytes())
 	val := stateDB.GetState(ContractAddress, slot)
-	return SfcAbi.Methods["getValidatorID"].Outputs.Pack(val.Big())
+	result, err := SfcAbi.Methods["getValidatorID"].Outputs.Pack(val.Big())
+	return result, 0, err
 }
 
-func handleGetValidatorPubkey(stateDB vm.StateDB, args []interface{}) ([]byte, error) {
+func handleGetValidatorPubkey(stateDB vm.StateDB, args []interface{}) ([]byte, uint64, error) {
 	if len(args) != 1 {
-		return nil, vm.ErrExecutionReverted
+		return nil, 0, vm.ErrExecutionReverted
 	}
 	validatorID := args[0].(*big.Int)
 	key := common.BigToHash(validatorID)
 	slot := crypto.Keccak256Hash(key.Bytes(), common.BigToHash(big.NewInt(validatorPubkeySlot)).Bytes())
 	val := stateDB.GetState(ContractAddress, slot)
-	return SfcAbi.Methods["getValidatorPubkey"].Outputs.Pack(val.Bytes())
+	result, err := SfcAbi.Methods["getValidatorPubkey"].Outputs.Pack(val.Bytes())
+	return result, 0, err
 }
 
-func handleStashedRewardsUntilEpoch(stateDB vm.StateDB, args []interface{}) ([]byte, error) {
+func handleStashedRewardsUntilEpoch(stateDB vm.StateDB, args []interface{}) ([]byte, uint64, error) {
 	if len(args) != 2 {
-		return nil, vm.ErrExecutionReverted
+		return nil, 0, vm.ErrExecutionReverted
 	}
 	addr := args[0].(common.Address)
 	validatorID := args[1].(*big.Int)
@@ -109,12 +124,13 @@ func handleStashedRewardsUntilEpoch(stateDB vm.StateDB, args []interface{}) ([]b
 	key2 := common.BigToHash(validatorID)
 	slot := crypto.Keccak256Hash(key2.Bytes(), slot1.Bytes())
 	val := stateDB.GetState(ContractAddress, slot)
-	return SfcAbi.Methods["stashedRewardsUntilEpoch"].Outputs.Pack(val.Big())
+	result, err := SfcAbi.Methods["stashedRewardsUntilEpoch"].Outputs.Pack(val.Big())
+	return result, 0, err
 }
 
-func handleGetWithdrawalRequest(stateDB vm.StateDB, args []interface{}) ([]byte, error) {
+func handleGetWithdrawalRequest(stateDB vm.StateDB, args []interface{}) ([]byte, uint64, error) {
 	if len(args) != 3 {
-		return nil, vm.ErrExecutionReverted
+		return nil, 0, vm.ErrExecutionReverted
 	}
 	addr := args[0].(common.Address)
 	validatorID := args[1].(*big.Int)
@@ -130,16 +146,17 @@ func handleGetWithdrawalRequest(stateDB vm.StateDB, args []interface{}) ([]byte,
 	time := stateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(1).Add(slot.Big(), big.NewInt(1))))
 	amount := stateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(1).Add(slot.Big(), big.NewInt(2))))
 
-	return SfcAbi.Methods["getWithdrawalRequest"].Outputs.Pack(
+	result, err := SfcAbi.Methods["getWithdrawalRequest"].Outputs.Pack(
 		epoch.Big(),
 		time.Big(),
 		amount.Big(),
 	)
+	return result, 0, err
 }
 
-func handleGetStake(stateDB vm.StateDB, args []interface{}) ([]byte, error) {
+func handleGetStake(stateDB vm.StateDB, args []interface{}) ([]byte, uint64, error) {
 	if len(args) != 2 {
-		return nil, vm.ErrExecutionReverted
+		return nil, 0, vm.ErrExecutionReverted
 	}
 	addr := args[0].(common.Address)
 	validatorID := args[1].(*big.Int)
@@ -148,12 +165,13 @@ func handleGetStake(stateDB vm.StateDB, args []interface{}) ([]byte, error) {
 	key2 := common.BigToHash(validatorID)
 	slot := crypto.Keccak256Hash(key2.Bytes(), slot1.Bytes())
 	val := stateDB.GetState(ContractAddress, slot)
-	return SfcAbi.Methods["getStake"].Outputs.Pack(val.Big())
+	result, err := SfcAbi.Methods["getStake"].Outputs.Pack(val.Big())
+	return result, 0, err
 }
 
-func handleGetLockupInfo(stateDB vm.StateDB, args []interface{}) ([]byte, error) {
+func handleGetLockupInfo(stateDB vm.StateDB, args []interface{}) ([]byte, uint64, error) {
 	if len(args) != 2 {
-		return nil, vm.ErrExecutionReverted
+		return nil, 0, vm.ErrExecutionReverted
 	}
 	addr := args[0].(common.Address)
 	validatorID := args[1].(*big.Int)
@@ -167,17 +185,18 @@ func handleGetLockupInfo(stateDB vm.StateDB, args []interface{}) ([]byte, error)
 	endTime := stateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(1).Add(slot.Big(), big.NewInt(2))))
 	duration := stateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(1).Add(slot.Big(), big.NewInt(3))))
 
-	return SfcAbi.Methods["getLockupInfo"].Outputs.Pack(
+	result, err := SfcAbi.Methods["getLockupInfo"].Outputs.Pack(
 		lockedStake.Big(),
 		fromEpoch.Big(),
 		endTime.Big(),
 		duration.Big(),
 	)
+	return result, 0, err
 }
 
-func handleGetStashedLockupRewards(stateDB vm.StateDB, args []interface{}) ([]byte, error) {
+func handleGetStashedLockupRewards(stateDB vm.StateDB, args []interface{}) ([]byte, uint64, error) {
 	if len(args) != 2 {
-		return nil, vm.ErrExecutionReverted
+		return nil, 0, vm.ErrExecutionReverted
 	}
 	addr := args[0].(common.Address)
 	validatorID := args[1].(*big.Int)
@@ -190,27 +209,29 @@ func handleGetStashedLockupRewards(stateDB vm.StateDB, args []interface{}) ([]by
 	lockupExtraReward := stateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(1).Add(slot.Big(), big.NewInt(1))))
 	unlockedReward := stateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(1).Add(slot.Big(), big.NewInt(2))))
 
-	return SfcAbi.Methods["getStashedLockupRewards"].Outputs.Pack(
+	result, err := SfcAbi.Methods["getStashedLockupRewards"].Outputs.Pack(
 		lockupBaseReward.Big(),
 		lockupExtraReward.Big(),
 		unlockedReward.Big(),
 	)
+	return result, 0, err
 }
 
-func handleSlashingRefundRatio(stateDB vm.StateDB, args []interface{}) ([]byte, error) {
+func handleSlashingRefundRatio(stateDB vm.StateDB, args []interface{}) ([]byte, uint64, error) {
 	if len(args) != 1 {
-		return nil, vm.ErrExecutionReverted
+		return nil, 0, vm.ErrExecutionReverted
 	}
 	validatorID := args[0].(*big.Int)
 	key := common.BigToHash(validatorID)
 	slot := crypto.Keccak256Hash(key.Bytes(), common.BigToHash(big.NewInt(slashingRefundRatioSlot)).Bytes())
 	val := stateDB.GetState(ContractAddress, slot)
-	return SfcAbi.Methods["slashingRefundRatio"].Outputs.Pack(val.Big())
+	result, err := SfcAbi.Methods["slashingRefundRatio"].Outputs.Pack(val.Big())
+	return result, 0, err
 }
 
-func handleGetEpochSnapshot(stateDB vm.StateDB, args []interface{}) ([]byte, error) {
+func handleGetEpochSnapshot(stateDB vm.StateDB, args []interface{}) ([]byte, uint64, error) {
 	if len(args) != 1 {
-		return nil, vm.ErrExecutionReverted
+		return nil, 0, vm.ErrExecutionReverted
 	}
 	epoch := args[0].(*big.Int)
 	key := common.BigToHash(epoch)
@@ -224,7 +245,7 @@ func handleGetEpochSnapshot(stateDB vm.StateDB, args []interface{}) ([]byte, err
 	totalStake := stateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(1).Add(slot.Big(), big.NewInt(5))))
 	totalSupply := stateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(1).Add(slot.Big(), big.NewInt(6))))
 
-	return SfcAbi.Methods["getEpochSnapshot"].Outputs.Pack(
+	result, err := SfcAbi.Methods["getEpochSnapshot"].Outputs.Pack(
 		endTime.Big(),
 		epochFee.Big(),
 		totalBaseRewardWeight.Big(),
@@ -233,4 +254,5 @@ func handleGetEpochSnapshot(stateDB vm.StateDB, args []interface{}) ([]byte, err
 		totalStake.Big(),
 		totalSupply.Big(),
 	)
+	return result, 0, err
 }

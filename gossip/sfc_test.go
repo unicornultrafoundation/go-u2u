@@ -73,16 +73,15 @@ func TestSFC(t *testing.T) {
 	admin := idx.ValidatorID(1)
 	adminAddr := env.Address(admin)
 
-	_ = true &&
-		t.Run("Genesis SFC", func(t *testing.T) {
-			require := require.New(t)
+	_ = t.Run("Genesis SFC", func(t *testing.T) {
+		require := require.New(t)
 
-			exp := sfc.GetContractBin()
-			got, err := env.CodeAt(nil, sfc.ContractAddress, nil)
-			require.NoError(err)
-			require.Equal(exp, got, "genesis SFC contract")
-			require.Equal(exp, hexutil.MustDecode(sfc100.ContractBinRuntime), "genesis SFC contract version")
-		}) &&
+		exp := sfc.GetContractBin()
+		got, err := env.CodeAt(nil, sfc.ContractAddress, nil)
+		require.NoError(err)
+		require.Equal(exp, got, "genesis SFC contract")
+		require.Equal(exp, hexutil.MustDecode(sfc100.ContractBinRuntime), "genesis SFC contract version")
+	}) &&
 		t.Run("Genesis Driver", func(t *testing.T) {
 			require := require.New(t)
 
@@ -137,7 +136,7 @@ func TestSFC(t *testing.T) {
 
 			// create new
 			rr, err := env.ApplyTxs(nextEpoch,
-				env.Contract(admin, utils.ToU2U(0), sfc100.ContractBin),
+				env.Contract(admin, utils.ToU2U(0), sfc100.ContractMetaData.Bin),
 			)
 			require.NoError(err)
 			require.Equal(1, rr.Len())

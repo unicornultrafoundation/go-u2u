@@ -3,21 +3,20 @@ package launcher
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/docker/docker/pkg/reexec"
-
+	
 	"github.com/unicornultrafoundation/go-u2u/cmd/cmdtest"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/rpc"
 )
 
 func tmpdir(t *testing.T) string {
-	dir, err := ioutil.TempDir("", "u2u-test")
+	dir, err := os.MkdirTemp("", "u2u-test")
 	if err != nil {
 		t.Fatal(err)
 	}

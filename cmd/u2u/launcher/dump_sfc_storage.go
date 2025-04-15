@@ -46,6 +46,8 @@ func dumpSfcStorage(ctx *cli.Context) error {
 	stateRoot := evms.GetSfcStateRoot(latestBlockIndex, latestBlockHash.Bytes())
 	if stateRoot != nil && evms.HasSfcStateDB(hash.Hash(*stateRoot)) {
 		log.Info("Already dump SFC contract's storage at this block", "block", latestBlockIndex, "stateRoot", stateRoot.Hex())
+		// TODO(trinhdn97): must prevent re-dumping the SFC contracts' storage after completely removed the EVM version
+		// return nil
 	}
 
 	currentBlock := gdb.GetBlock(latestBlockIndex)

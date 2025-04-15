@@ -19,7 +19,6 @@ package vm
 import (
 	"errors"
 	"math/big"
-	"reflect"
 	"sync/atomic"
 	"time"
 
@@ -155,7 +154,7 @@ func NewEVM(blockCtx BlockContext, txCtx TxContext, statedb StateDB, sfcStatedb 
 		chainConfig: chainConfig,
 		chainRules:  chainConfig.Rules(blockCtx.BlockNumber),
 	}
-	if !isNilInterface(sfcStatedb) {
+	if !common.IsNilInterface(sfcStatedb) {
 		evm.SfcStateDB = sfcStatedb
 	}
 	evm.interpreter = NewEVMInterpreter(evm, config)
@@ -167,7 +166,7 @@ func NewEVM(blockCtx BlockContext, txCtx TxContext, statedb StateDB, sfcStatedb 
 func (evm *EVM) Reset(txCtx TxContext, statedb StateDB, sfcStatedb StateDB) {
 	evm.TxContext = txCtx
 	evm.StateDB = statedb
-	if !isNilInterface(sfcStatedb) {
+	if !common.IsNilInterface(sfcStatedb) {
 		evm.SfcStateDB = sfcStatedb
 	}
 }
@@ -675,13 +674,4 @@ func (evm *EVM) IsSfcCorrupted() (corrupted bool, sfcAddr common.Address) {
 		}
 	}
 	return corrupted, sfcAddr
-}
-
-func isNilInterface(i interface{}) bool {
-	if i == nil {
-		return true
-	}
-	// Check if the concrete value stored in the interface is nil
-	v := reflect.ValueOf(i)
-	return (v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface) && v.IsNil()
 }

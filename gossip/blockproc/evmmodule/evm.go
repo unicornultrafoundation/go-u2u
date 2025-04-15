@@ -1,15 +1,13 @@
 package evmmodule
 
 import (
-	"math"
-	"math/big"
-	"reflect"
-
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/params"
+	"math"
+	"math/big"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip/blockproc"
@@ -41,7 +39,7 @@ func (p *EVMModule) Start(block iblockproc.BlockCtx, statedb *state.StateDB, sfc
 		blockIdx:      utils.U64toBig(uint64(block.Idx)),
 		prevBlockHash: prevBlockHash,
 	}
-	if !isNilInterface(sfcStatedb) {
+	if !common.IsNilInterface(sfcStatedb) {
 		processor.sfcStateDb = sfcStatedb
 	}
 	return processor
@@ -140,13 +138,4 @@ func (p *U2UEVMProcessor) Finalize() (evmBlock *evmcore.EvmBlock, skippedTxs []u
 		evmBlock.SfcStateRoot = newSfcStateHash
 	}
 	return
-}
-
-func isNilInterface(i interface{}) bool {
-	if i == nil {
-		return true
-	}
-	// Check if the concrete value stored in the interface is nil
-	v := reflect.ValueOf(i)
-	return (v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface) && v.IsNil()
 }

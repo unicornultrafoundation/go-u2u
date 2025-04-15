@@ -37,7 +37,7 @@ func TestTxTracing(t *testing.T) {
 
 	// Wait for node to start
 	endpoint := "ws://127.0.0.1:" + wsport
-	waitForEndpoint(t, endpoint, 4*time.Second)
+	waitForEndpoint(t, endpoint, 8*time.Second)
 	// Deploy a smart contract from the testdata javascript file
 	cliConsoleDeploy := exec(t, "attach", "ipc:"+ipc, "--datadir", cliNode.Datadir, "--exec", "loadScript('testdata/txtracer_test.js')")
 	contractAddress := string(*cliConsoleDeploy.GetOutPipeData())

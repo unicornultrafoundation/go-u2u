@@ -17,8 +17,9 @@ func handleFallback(evm *vm.EVM, caller common.Address, args []interface{}, inpu
 // handleSetGenesisValidator sets a genesis validator
 func handleSetGenesisValidator(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	// Check if caller is address(0) (onlyNode modifier)
-	if caller.Cmp(common.Address{}) != 0 {
-		return nil, 0, vm.ErrExecutionReverted
+	revertData, err := checkOnlyNode(evm, caller, "setGenesisValidator")
+	if err != nil {
+		return revertData, 0, err
 	}
 
 	// Get the arguments
@@ -79,8 +80,9 @@ func handleSetGenesisValidator(evm *vm.EVM, caller common.Address, args []interf
 // handleSetGenesisDelegation sets a genesis delegation
 func handleSetGenesisDelegation(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	// Check if caller is address(0) (onlyNode modifier)
-	if caller.Cmp(common.Address{}) != 0 {
-		return nil, 0, vm.ErrExecutionReverted
+	revertData, err := checkOnlyNode(evm, caller, "setGenesisDelegation")
+	if err != nil {
+		return revertData, 0, err
 	}
 
 	// Get the arguments
@@ -145,8 +147,9 @@ func handleSetGenesisDelegation(evm *vm.EVM, caller common.Address, args []inter
 // handleDeactivateValidator deactivates a validator
 func handleDeactivateValidator(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	// Check if caller is address(0) (onlyNode modifier)
-	if caller.Cmp(common.Address{}) != 0 {
-		return nil, 0, vm.ErrExecutionReverted
+	revertData, err := checkOnlyNode(evm, caller, "deactivateValidator")
+	if err != nil {
+		return revertData, 0, err
 	}
 
 	// Get the arguments
@@ -183,8 +186,9 @@ func handleDeactivateValidator(evm *vm.EVM, caller common.Address, args []interf
 // handleSealEpochValidators seals the epoch validators
 func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	// Check if caller is address(0) (onlyNode modifier)
-	if caller.Cmp(common.Address{}) != 0 {
-		return nil, 0, vm.ErrExecutionReverted
+	revertData, err := checkOnlyNode(evm, caller, "sealEpochValidators")
+	if err != nil {
+		return revertData, 0, err
 	}
 
 	// Get the arguments
@@ -217,8 +221,9 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 // handleSealEpoch seals the epoch
 func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	// Check if caller is address(0) (onlyNode modifier)
-	if caller.Cmp(common.Address{}) != 0 {
-		return nil, 0, vm.ErrExecutionReverted
+	revertData, err := checkOnlyNode(evm, caller, "sealEpoch")
+	if err != nil {
+		return revertData, 0, err
 	}
 
 	// Get the arguments
@@ -263,8 +268,9 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 // handleSealEpochV1 seals the epoch with a custom gas value
 func handleSealEpochV1(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	// Check if caller is address(0) (onlyNode modifier)
-	if caller.Cmp(common.Address{}) != 0 {
-		return nil, 0, vm.ErrExecutionReverted
+	revertData, err := checkOnlyNode(evm, caller, "sealEpochV1")
+	if err != nil {
+		return revertData, 0, err
 	}
 
 	// Get the arguments

@@ -13,9 +13,9 @@ import (
 // handleSetBackend sets the backend address
 func handleSetBackend(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	// Check if caller is the backend
-	backend := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(backendSlot)))
-	if caller != common.BytesToAddress(backend.Bytes()) {
-		return nil, 0, vm.ErrExecutionReverted
+	revertData, err := checkOnlyBackend(evm, caller, "setBackend")
+	if err != nil {
+		return revertData, 0, err
 	}
 
 	// Get the new backend address from args
@@ -24,6 +24,12 @@ func handleSetBackend(evm *vm.EVM, caller common.Address, args []interface{}) ([
 	}
 	newBackend, ok := args[0].(common.Address)
 	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Check that the new backend is not the zero address
+	emptyAddr := common.Address{}
+	if newBackend.Cmp(emptyAddr) == 0 {
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
@@ -67,6 +73,12 @@ func handleInitialize(evm *vm.EVM, caller common.Address, args []interface{}) ([
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
+	// Check that the new backend and evmWriter are not the zero address
+	emptyAddr := common.Address{}
+	if newBackend.Cmp(emptyAddr) == 0 || newEvmWriter.Cmp(emptyAddr) == 0 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
 	// Set the backend and evmWriter addresses
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(backendSlot)), newBackend.Hash())
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(evmWriterSlot)), newEvmWriter.Hash())
@@ -89,9 +101,9 @@ func handleInitialize(evm *vm.EVM, caller common.Address, args []interface{}) ([
 // handleSetBalance sets the balance of an account
 func handleSetBalance(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	// Check if caller is the backend
-	backend := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(backendSlot)))
-	if caller != common.BytesToAddress(backend.Bytes()) {
-		return nil, 0, vm.ErrExecutionReverted
+	revertData, err := checkOnlyBackend(evm, caller, "setBalance")
+	if err != nil {
+		return revertData, 0, err
 	}
 
 	// Get the account and value from args
@@ -128,9 +140,9 @@ func handleSetBalance(evm *vm.EVM, caller common.Address, args []interface{}) ([
 // handleCopyCode copies code from one account to another
 func handleCopyCode(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	// Check if caller is the backend
-	backend := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(backendSlot)))
-	if caller != common.BytesToAddress(backend.Bytes()) {
-		return nil, 0, vm.ErrExecutionReverted
+	revertData, err := checkOnlyBackend(evm, caller, "copyCode")
+	if err != nil {
+		return revertData, 0, err
 	}
 
 	// Get the accounts from args
@@ -167,9 +179,9 @@ func handleCopyCode(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 // handleSwapCode swaps code between two accounts
 func handleSwapCode(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	// Check if caller is the backend
-	backend := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(backendSlot)))
-	if caller != common.BytesToAddress(backend.Bytes()) {
-		return nil, 0, vm.ErrExecutionReverted
+	revertData, err := checkOnlyBackend(evm, caller, "swapCode")
+	if err != nil {
+		return revertData, 0, err
 	}
 
 	// Get the accounts from args
@@ -206,9 +218,9 @@ func handleSwapCode(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 // handleSetStorage sets the storage of an account
 func handleSetStorage(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	// Check if caller is the backend
-	backend := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(backendSlot)))
-	if caller != common.BytesToAddress(backend.Bytes()) {
-		return nil, 0, vm.ErrExecutionReverted
+	revertData, err := checkOnlyBackend(evm, caller, "setStorage")
+	if err != nil {
+		return revertData, 0, err
 	}
 
 	// Get the account, key, and value from args
@@ -249,9 +261,9 @@ func handleSetStorage(evm *vm.EVM, caller common.Address, args []interface{}) ([
 // handleIncNonce increments the nonce of an account
 func handleIncNonce(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	// Check if caller is the backend
-	backend := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(backendSlot)))
-	if caller != common.BytesToAddress(backend.Bytes()) {
-		return nil, 0, vm.ErrExecutionReverted
+	revertData, err := checkOnlyBackend(evm, caller, "incNonce")
+	if err != nil {
+		return revertData, 0, err
 	}
 
 	// Get the account and diff from args
@@ -288,9 +300,9 @@ func handleIncNonce(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 // handleUpdateNetworkRules updates the network rules
 func handleUpdateNetworkRules(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	// Check if caller is the backend
-	backend := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(backendSlot)))
-	if caller != common.BytesToAddress(backend.Bytes()) {
-		return nil, 0, vm.ErrExecutionReverted
+	revertData, err := checkOnlyBackend(evm, caller, "updateNetworkRules")
+	if err != nil {
+		return revertData, 0, err
 	}
 
 	// Get the diff from args
@@ -325,9 +337,9 @@ func handleUpdateNetworkRules(evm *vm.EVM, caller common.Address, args []interfa
 // handleUpdateNetworkVersion updates the network version
 func handleUpdateNetworkVersion(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	// Check if caller is the backend
-	backend := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(backendSlot)))
-	if caller != common.BytesToAddress(backend.Bytes()) {
-		return nil, 0, vm.ErrExecutionReverted
+	revertData, err := checkOnlyBackend(evm, caller, "updateNetworkVersion")
+	if err != nil {
+		return revertData, 0, err
 	}
 
 	// Get the version from args
@@ -362,9 +374,9 @@ func handleUpdateNetworkVersion(evm *vm.EVM, caller common.Address, args []inter
 // handleAdvanceEpochs advances the epochs
 func handleAdvanceEpochs(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	// Check if caller is the backend
-	backend := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(backendSlot)))
-	if caller != common.BytesToAddress(backend.Bytes()) {
-		return nil, 0, vm.ErrExecutionReverted
+	revertData, err := checkOnlyBackend(evm, caller, "advanceEpochs")
+	if err != nil {
+		return revertData, 0, err
 	}
 
 	// Get the num from args
@@ -399,9 +411,9 @@ func handleAdvanceEpochs(evm *vm.EVM, caller common.Address, args []interface{})
 // handleUpdateValidatorWeight updates the validator weight
 func handleUpdateValidatorWeight(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	// Check if caller is the backend
-	backend := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(backendSlot)))
-	if caller != common.BytesToAddress(backend.Bytes()) {
-		return nil, 0, vm.ErrExecutionReverted
+	revertData, err := checkOnlyBackend(evm, caller, "updateValidatorWeight")
+	if err != nil {
+		return revertData, 0, err
 	}
 
 	// Get the validatorID and value from args
@@ -441,9 +453,9 @@ func handleUpdateValidatorWeight(evm *vm.EVM, caller common.Address, args []inte
 // handleUpdateValidatorPubkey updates the validator pubkey
 func handleUpdateValidatorPubkey(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	// Check if caller is the backend
-	backend := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(backendSlot)))
-	if caller != common.BytesToAddress(backend.Bytes()) {
-		return nil, 0, vm.ErrExecutionReverted
+	revertData, err := checkOnlyBackend(evm, caller, "updateValidatorPubkey")
+	if err != nil {
+		return revertData, 0, err
 	}
 
 	// Get the validatorID and pubkey from args

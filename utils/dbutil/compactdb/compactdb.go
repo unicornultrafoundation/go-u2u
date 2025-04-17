@@ -5,8 +5,8 @@ import (
 	"math/big"
 	"strconv"
 
-	"github.com/unicornultrafoundation/go-helios/u2udb"
-	"github.com/unicornultrafoundation/go-helios/u2udb/table"
+	"github.com/unicornultrafoundation/go-u2u/helios/u2udb"
+	"github.com/unicornultrafoundation/go-u2u/helios/u2udb/table"
 
 	"github.com/unicornultrafoundation/go-u2u/utils"
 )

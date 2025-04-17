@@ -1,7 +1,7 @@
 package rlpstore
 
 import (
-	"github.com/unicornultrafoundation/go-helios/u2udb"
+	"github.com/unicornultrafoundation/go-u2u/helios/u2udb"
 	"github.com/unicornultrafoundation/go-u2u/logger"
 	"github.com/unicornultrafoundation/go-u2u/rlp"
 )

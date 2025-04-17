@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/suite"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 
-	lbasiccheck "github.com/unicornultrafoundation/go-helios/eventcheck/basiccheck"
-	"github.com/unicornultrafoundation/go-helios/hash"
-	"github.com/unicornultrafoundation/go-helios/native/idx"
+	lbasiccheck "github.com/unicornultrafoundation/go-u2u/helios/eventcheck/basiccheck"
+	"github.com/unicornultrafoundation/go-u2u/helios/hash"
+	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/basiccheck"
 	"github.com/unicornultrafoundation/go-u2u/native"

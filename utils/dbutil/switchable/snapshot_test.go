@@ -9,9 +9,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/unicornultrafoundation/go-helios/common/bigendian"
-	"github.com/unicornultrafoundation/go-helios/u2udb"
-	"github.com/unicornultrafoundation/go-helios/u2udb/memorydb"
+	"github.com/unicornultrafoundation/go-u2u/helios/common/bigendian"
+	"github.com/unicornultrafoundation/go-u2u/helios/u2udb"
+	"github.com/unicornultrafoundation/go-u2u/helios/u2udb/memorydb"
 
 	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/dbcounter"
 )

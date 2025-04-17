@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/syndtr/goleveldb/leveldb/opt"
-	"github.com/unicornultrafoundation/go-helios/gossip/dagprocessor"
-	"github.com/unicornultrafoundation/go-helios/gossip/itemsfetcher"
-	"github.com/unicornultrafoundation/go-helios/native/dag"
-	"github.com/unicornultrafoundation/go-helios/native/idx"
-	"github.com/unicornultrafoundation/go-helios/utils/cachescale"
+	"github.com/unicornultrafoundation/go-u2u/helios/gossip/dagprocessor"
+	"github.com/unicornultrafoundation/go-u2u/helios/gossip/itemsfetcher"
+	"github.com/unicornultrafoundation/go-u2u/helios/native/dag"
+	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/helios/utils/cachescale"
 
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/heavycheck"
 	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"

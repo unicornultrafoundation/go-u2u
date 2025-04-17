@@ -3,10 +3,10 @@ package integration
 import (
 	"fmt"
 
-	"github.com/unicornultrafoundation/go-helios/u2udb"
-	"github.com/unicornultrafoundation/go-helios/u2udb/cachedproducer"
-	"github.com/unicornultrafoundation/go-helios/u2udb/multidb"
-	"github.com/unicornultrafoundation/go-helios/u2udb/skipkeys"
+	"github.com/unicornultrafoundation/go-u2u/helios/u2udb"
+	"github.com/unicornultrafoundation/go-u2u/helios/u2udb/cachedproducer"
+	"github.com/unicornultrafoundation/go-u2u/helios/u2udb/multidb"
+	"github.com/unicornultrafoundation/go-u2u/helios/u2udb/skipkeys"
 
 	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/threads"
 )

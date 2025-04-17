@@ -3,7 +3,7 @@ package itergc
 import (
 	"sync"
 
-	"github.com/unicornultrafoundation/go-helios/u2udb"
+	"github.com/unicornultrafoundation/go-u2u/helios/u2udb"
 )
 
 type Snapshot struct {

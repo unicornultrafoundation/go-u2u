@@ -3,7 +3,7 @@ package drivertype
 import (
 	"math/big"
 
-	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"
 )

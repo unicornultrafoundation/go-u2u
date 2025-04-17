@@ -1,9 +1,9 @@
 package emitter
 
 import (
-	"github.com/unicornultrafoundation/go-helios/emitter/ancestor"
-	"github.com/unicornultrafoundation/go-helios/native/idx"
-	"github.com/unicornultrafoundation/go-helios/utils/piecefunc"
+	"github.com/unicornultrafoundation/go-u2u/helios/emitter/ancestor"
+	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/helios/utils/piecefunc"
 )
 
 var (

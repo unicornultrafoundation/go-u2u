@@ -3,10 +3,10 @@ package brstream
 import (
 	"fmt"
 
-	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
 	"github.com/unicornultrafoundation/go-u2u/rlp"
 
-	"github.com/unicornultrafoundation/go-helios/gossip/basestream"
+	"github.com/unicornultrafoundation/go-u2u/helios/gossip/basestream"
 )
 
 type Request struct {

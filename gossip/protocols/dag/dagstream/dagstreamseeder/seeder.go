@@ -5,9 +5,9 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/rlp"
 
-	"github.com/unicornultrafoundation/go-helios/gossip/basestream"
-	"github.com/unicornultrafoundation/go-helios/gossip/basestream/basestreamseeder"
-	"github.com/unicornultrafoundation/go-helios/hash"
+	"github.com/unicornultrafoundation/go-u2u/helios/gossip/basestream"
+	"github.com/unicornultrafoundation/go-u2u/helios/gossip/basestream/basestreamseeder"
+	"github.com/unicornultrafoundation/go-u2u/helios/hash"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/dag/dagstream"
 )

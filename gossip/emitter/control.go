@@ -3,10 +3,10 @@ package emitter
 import (
 	"time"
 
-	"github.com/unicornultrafoundation/go-helios/emitter/ancestor"
-	"github.com/unicornultrafoundation/go-helios/native/idx"
-	"github.com/unicornultrafoundation/go-helios/native/pos"
-	"github.com/unicornultrafoundation/go-helios/utils/piecefunc"
+	"github.com/unicornultrafoundation/go-u2u/helios/emitter/ancestor"
+	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/helios/native/pos"
+	"github.com/unicornultrafoundation/go-u2u/helios/utils/piecefunc"
 	"github.com/unicornultrafoundation/go-u2u/native"
 )
 

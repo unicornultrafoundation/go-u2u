@@ -3,8 +3,8 @@ package epochcheck
 import (
 	"errors"
 
-	base "github.com/unicornultrafoundation/go-helios/eventcheck/epochcheck"
-	"github.com/unicornultrafoundation/go-helios/native/idx"
+	base "github.com/unicornultrafoundation/go-u2u/helios/eventcheck/epochcheck"
+	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 
 	"github.com/unicornultrafoundation/go-u2u/native"

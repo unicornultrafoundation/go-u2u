@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/unicornultrafoundation/go-helios/u2udb/memorydb"
+	"github.com/unicornultrafoundation/go-u2u/helios/u2udb/memorydb"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/rawdb"
 	"github.com/unicornultrafoundation/go-u2u/core/state"

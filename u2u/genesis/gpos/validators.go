@@ -4,7 +4,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/native"
 
-	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
 	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"
 )
 

@@ -4,9 +4,9 @@ import (
 	"errors"
 	"io"
 
-	"github.com/unicornultrafoundation/go-helios/hash"
-	"github.com/unicornultrafoundation/go-helios/native/dag"
-	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/helios/hash"
+	"github.com/unicornultrafoundation/go-u2u/helios/native/dag"
+	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
 	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/rlp"

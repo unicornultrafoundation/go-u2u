@@ -4,10 +4,10 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/unicornultrafoundation/go-helios/gossip/basestream/basestreamleecher"
-	"github.com/unicornultrafoundation/go-helios/gossip/basestream/basestreamleecher/basepeerleecher"
-	"github.com/unicornultrafoundation/go-helios/hash"
-	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/helios/gossip/basestream/basestreamleecher"
+	"github.com/unicornultrafoundation/go-u2u/helios/gossip/basestream/basestreamleecher/basepeerleecher"
+	"github.com/unicornultrafoundation/go-u2u/helios/hash"
+	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/blockvotes/bvstream"
 )

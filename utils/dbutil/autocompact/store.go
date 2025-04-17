@@ -7,7 +7,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/log"
 
-	"github.com/unicornultrafoundation/go-helios/u2udb"
+	"github.com/unicornultrafoundation/go-u2u/helios/u2udb"
 )
 
 // Store implements automatic compacting of recently inserted/erased data according to provided strategy

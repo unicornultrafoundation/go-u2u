@@ -1,7 +1,7 @@
 package verwatcher
 
 import (
-	"github.com/unicornultrafoundation/go-helios/common/bigendian"
+	"github.com/unicornultrafoundation/go-u2u/helios/common/bigendian"
 )
 
 const (

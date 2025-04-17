@@ -1,7 +1,7 @@
 package gossip
 
 import (
-	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
 	"github.com/unicornultrafoundation/go-u2u/log"
 )
 

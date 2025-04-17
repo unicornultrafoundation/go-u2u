@@ -1,6 +1,8 @@
 package sfc
 
 import (
+	"math/big"
+
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 )
@@ -145,4 +147,221 @@ func handle_now(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 func handleGetSlashingPenalty(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	// TODO: Implement getSlashingPenalty handler
 	return nil, 0, vm.ErrSfcFunctionNotImplemented
+}
+
+// handleIsNode checks if the caller is the node (address(0))
+func handleIsNode(evm *vm.EVM, caller common.Address) (bool, error) {
+	// Check if caller is address(0)
+	emptyAddr := common.Address{}
+	return caller.Cmp(emptyAddr) == 0, nil
+}
+
+// handleGetUnlockedStake returns the unlocked stake of a delegator
+func handleGetUnlockedStake(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) (*big.Int, error) {
+	// Get the delegation stake
+	stakeSlot := getStakeSlot(delegator, toValidatorID)
+	stake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(stakeSlot)))
+	stakeBigInt := new(big.Int).SetBytes(stake.Bytes())
+
+	// Get the delegation locked stake
+	lockedStakeSlot := getLockedStakeSlot(delegator, toValidatorID)
+	lockedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(lockedStakeSlot)))
+	lockedStakeBigInt := new(big.Int).SetBytes(lockedStake.Bytes())
+
+	// Calculate the unlocked stake
+	unlockedStake := new(big.Int).Sub(stakeBigInt, lockedStakeBigInt)
+	if unlockedStake.Cmp(big.NewInt(0)) < 0 {
+		unlockedStake = big.NewInt(0)
+	}
+
+	return unlockedStake, nil
+}
+
+// handleCheckAllowedToWithdraw checks if a delegator is allowed to withdraw
+func handleCheckAllowedToWithdraw(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) (bool, error) {
+	// Get the validator status
+	validatorStatusSlot := getValidatorStatusSlot(toValidatorID)
+	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorStatusSlot)))
+	validatorStatusBigInt := new(big.Int).SetBytes(validatorStatus.Bytes())
+
+	// Check if the validator is deactivated
+	isDeactivated := (validatorStatusBigInt.Bit(0) == 1) // WITHDRAWN_BIT
+
+	// Get the validator auth
+	validatorAuthSlot := getValidatorAuthSlot(toValidatorID)
+	validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorAuthSlot)))
+	validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
+
+	// Check if the delegator is the validator auth
+	isAuth := (delegator.Cmp(validatorAuthAddr) == 0)
+
+	// A delegator is allowed to withdraw if the validator is deactivated or if the delegator is the validator auth
+	return isDeactivated || isAuth, nil
+}
+
+// handleCheckDelegatedStakeLimit checks if a validator's delegated stake is within the limit
+func handleCheckDelegatedStakeLimit(evm *vm.EVM, validatorID *big.Int) (bool, error) {
+	// Get the self-stake
+	selfStake, err := handleGetSelfStake(evm, validatorID)
+	if err != nil {
+		return false, err
+	}
+
+	// Get the validator's received stake
+	validatorReceivedStakeSlot := getValidatorReceivedStakeSlot(validatorID)
+	receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorReceivedStakeSlot)))
+	receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
+
+	// Get the max delegated ratio
+	constantsManager := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(constantsManagerSlot)))
+	constantsManagerAddr := common.BytesToAddress(constantsManager.Bytes())
+	maxDelegatedRatio := evm.SfcStateDB.GetState(constantsManagerAddr, common.BigToHash(big.NewInt(maxDelegatedRatioSlot)))
+	maxDelegatedRatioBigInt := new(big.Int).SetBytes(maxDelegatedRatio.Bytes())
+
+	// Calculate the delegated stake
+	delegatedStake := new(big.Int).Sub(receivedStakeBigInt, selfStake)
+	if delegatedStake.Cmp(big.NewInt(0)) < 0 {
+		delegatedStake = big.NewInt(0)
+	}
+
+	// Calculate the maximum allowed delegated stake
+	maxDelegatedStake := new(big.Int).Mul(selfStake, maxDelegatedRatioBigInt)
+	maxDelegatedStake = new(big.Int).Div(maxDelegatedStake, big.NewInt(1e18)) // Divide by Decimal.unit()
+
+	// Check if the delegated stake is within the limit
+	return delegatedStake.Cmp(maxDelegatedStake) <= 0, nil
+}
+
+// handleGetSelfStake returns the self-stake of a validator
+func handleGetSelfStake(evm *vm.EVM, validatorID *big.Int) (*big.Int, error) {
+	// Get the validator auth
+	validatorAuthSlot := getValidatorAuthSlot(validatorID)
+	validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorAuthSlot)))
+	validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
+
+	// Get the self-stake
+	stakeSlot := getStakeSlot(validatorAuthAddr, validatorID)
+	stake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(stakeSlot)))
+	stakeBigInt := new(big.Int).SetBytes(stake.Bytes())
+
+	return stakeBigInt, nil
+}
+
+// handleStashRewards stashes the rewards for a delegator
+func handleStashRewards(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) error {
+	// Get the current epoch
+	currentEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(currentEpochSlot)))
+	currentEpochBigInt := new(big.Int).SetBytes(currentEpoch.Bytes())
+
+	// Get the stashed rewards until epoch
+	stashedRewardsUntilEpochSlot := getStashedRewardsUntilEpochSlot(delegator, toValidatorID)
+	stashedRewardsUntilEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(stashedRewardsUntilEpochSlot)))
+	stashedRewardsUntilEpochBigInt := new(big.Int).SetBytes(stashedRewardsUntilEpoch.Bytes())
+
+	// Check if rewards are already stashed for the current epoch
+	if stashedRewardsUntilEpochBigInt.Cmp(currentEpochBigInt) >= 0 {
+		return nil
+	}
+
+	// Calculate the rewards
+	// TODO: Implement reward calculation
+	rewards := big.NewInt(0) // Placeholder
+
+	// Get the current stashed rewards
+	rewardsStashSlot := getRewardsStashSlot(delegator, toValidatorID)
+	rewardsStash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(rewardsStashSlot)))
+	rewardsStashBigInt := new(big.Int).SetBytes(rewardsStash.Bytes())
+
+	// Add the rewards to the stash
+	newRewardsStash := new(big.Int).Add(rewardsStashBigInt, rewards)
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(rewardsStashSlot)), common.BigToHash(newRewardsStash))
+
+	// Update the stashed rewards until epoch
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(stashedRewardsUntilEpochSlot)), currentEpoch)
+
+	return nil
+}
+
+// handleSyncValidator synchronizes a validator's state
+func handleSyncValidator(evm *vm.EVM, validatorID *big.Int) error {
+	// Get the validator status
+	validatorStatusSlot := getValidatorStatusSlot(validatorID)
+	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorStatusSlot)))
+	validatorStatusBigInt := new(big.Int).SetBytes(validatorStatus.Bytes())
+
+	// Check if the validator is active
+	isActive := (validatorStatusBigInt.Cmp(big.NewInt(0)) == 0) // OK_STATUS
+
+	// Get the self-stake
+	selfStake, err := handleGetSelfStake(evm, validatorID)
+	if err != nil {
+		return err
+	}
+
+	// Get the minimum self-stake
+	constantsManager := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(constantsManagerSlot)))
+	constantsManagerAddr := common.BytesToAddress(constantsManager.Bytes())
+	minSelfStake := evm.SfcStateDB.GetState(constantsManagerAddr, common.BigToHash(big.NewInt(minSelfStakeSlot)))
+	minSelfStakeBigInt := new(big.Int).SetBytes(minSelfStake.Bytes())
+
+	// Check if the self-stake is at least the minimum self-stake
+	hasSelfStake := selfStake.Cmp(big.NewInt(0)) > 0
+	hasEnoughSelfStake := selfStake.Cmp(minSelfStakeBigInt) >= 0
+
+	// Check if the delegated stake is within the limit
+	withinDelegatedLimit, err := handleCheckDelegatedStakeLimit(evm, validatorID)
+	if err != nil {
+		return err
+	}
+
+	// Update the validator status if necessary
+	if isActive && (!hasSelfStake || !hasEnoughSelfStake || !withinDelegatedLimit) {
+		// Set the validator as deactivated
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorStatusSlot)), common.BigToHash(big.NewInt(1))) // WITHDRAWN_BIT
+
+		// Set the validator deactivated epoch
+		validatorDeactivatedEpochSlot := getValidatorDeactivatedEpochSlot(validatorID)
+		currentEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(currentEpochSlot)))
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorDeactivatedEpochSlot)), currentEpoch)
+
+		// Set the validator deactivated time
+		validatorDeactivatedTimeSlot := getValidatorDeactivatedTimeSlot(validatorID)
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorDeactivatedTimeSlot)), common.BigToHash(evm.Context.Time))
+
+		// Update the total active stake
+		validatorReceivedStakeSlot := getValidatorReceivedStakeSlot(validatorID)
+		receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorReceivedStakeSlot)))
+		receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
+
+		totalActiveStakeState := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalActiveStakeSlot)))
+		totalActiveStakeBigInt := new(big.Int).SetBytes(totalActiveStakeState.Bytes())
+		newTotalActiveStake := new(big.Int).Sub(totalActiveStakeBigInt, receivedStakeBigInt)
+		if newTotalActiveStake.Cmp(big.NewInt(0)) < 0 {
+			newTotalActiveStake = big.NewInt(0)
+		}
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalActiveStakeSlot)), common.BigToHash(newTotalActiveStake))
+	} else if !isActive && hasSelfStake && hasEnoughSelfStake && withinDelegatedLimit {
+		// Set the validator as active
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorStatusSlot)), common.BigToHash(big.NewInt(0))) // OK_STATUS
+
+		// Clear the validator deactivated epoch
+		validatorDeactivatedEpochSlot := getValidatorDeactivatedEpochSlot(validatorID)
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorDeactivatedEpochSlot)), common.BigToHash(big.NewInt(0)))
+
+		// Clear the validator deactivated time
+		validatorDeactivatedTimeSlot := getValidatorDeactivatedTimeSlot(validatorID)
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorDeactivatedTimeSlot)), common.BigToHash(big.NewInt(0)))
+
+		// Update the total active stake
+		validatorReceivedStakeSlot := getValidatorReceivedStakeSlot(validatorID)
+		receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorReceivedStakeSlot)))
+		receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
+
+		totalActiveStakeState := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalActiveStakeSlot)))
+		totalActiveStakeBigInt := new(big.Int).SetBytes(totalActiveStakeState.Bytes())
+		newTotalActiveStake := new(big.Int).Add(totalActiveStakeBigInt, receivedStakeBigInt)
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalActiveStakeSlot)), common.BigToHash(newTotalActiveStake))
+	}
+
+	return nil
 }

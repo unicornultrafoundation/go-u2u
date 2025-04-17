@@ -3,7 +3,7 @@ package sfc
 // Storage layout of the SFC contract, declared as constants
 const (
 	isInitialized                int64 = 0x0
-	owner                        int64 = 0x33
+	ownerSlot                    int64 = 0x33
 	offset                       int64 = 0x66        // Base offset for storage slots of SFC contract when implement SFCBase contract
 	nodeDriverAuthSlot                 = 0 + offset  // NodeDriverAuth internal node
 	currentSealedEpochSlot             = 1 + offset  // uint256 public currentSealedEpoch

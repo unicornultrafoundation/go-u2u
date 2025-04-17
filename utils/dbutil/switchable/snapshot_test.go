@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/unicornultrafoundation/go-u2u/consensus/common/bigendian"
+	"github.com/unicornultrafoundation/go-u2u/common/bigendian"
 	"github.com/unicornultrafoundation/go-u2u/consensus/u2udb"
 	"github.com/unicornultrafoundation/go-u2u/consensus/u2udb/memorydb"
 

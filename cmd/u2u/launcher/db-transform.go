@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/syndtr/goleveldb/leveldb/opt"
-	"github.com/unicornultrafoundation/go-u2u/consensus/common/bigendian"
+	"github.com/unicornultrafoundation/go-u2u/common/bigendian"
 	"github.com/unicornultrafoundation/go-u2u/consensus/u2udb"
 	"github.com/unicornultrafoundation/go-u2u/consensus/u2udb/batched"
 	"github.com/unicornultrafoundation/go-u2u/consensus/u2udb/multidb"

@@ -1,7 +1,7 @@
 package gossip
 
 import (
-	"github.com/unicornultrafoundation/go-u2u/consensus/common/bigendian"
+	"github.com/unicornultrafoundation/go-u2u/common/bigendian"
 	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
 	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
 	"github.com/unicornultrafoundation/go-u2u/consensus/native/pos"

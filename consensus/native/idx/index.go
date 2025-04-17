@@ -1,6 +1,6 @@
 package idx
 
-import "github.com/unicornultrafoundation/go-u2u/consensus/common/bigendian"
+import "github.com/unicornultrafoundation/go-u2u/common/bigendian"
 
 type (
 	// Epoch numeration.

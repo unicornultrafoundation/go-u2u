@@ -11,7 +11,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 
-	"github.com/unicornultrafoundation/go-u2u/consensus/common/bigendian"
+	"github.com/unicornultrafoundation/go-u2u/common/bigendian"
 	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
 )
 

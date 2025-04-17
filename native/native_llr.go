@@ -3,7 +3,7 @@ package native
 import (
 	"crypto/sha256"
 
-	"github.com/unicornultrafoundation/go-u2u/consensus/common/bigendian"
+	"github.com/unicornultrafoundation/go-u2u/common/bigendian"
 	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
 	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
 )

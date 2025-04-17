@@ -11,7 +11,7 @@ import (
 
 	"github.com/status-im/keycard-go/hexutils"
 	"github.com/syndtr/goleveldb/leveldb/opt"
-	"github.com/unicornultrafoundation/go-u2u/consensus/common/bigendian"
+	"github.com/unicornultrafoundation/go-u2u/common/bigendian"
 	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
 	"github.com/unicornultrafoundation/go-u2u/rlp"
 

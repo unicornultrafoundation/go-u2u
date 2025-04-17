@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/unicornultrafoundation/go-u2u/consensus/common/littleendian"
+	"github.com/unicornultrafoundation/go-u2u/common/littleendian"
 	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
 	"github.com/unicornultrafoundation/go-u2u/consensus/native/pos"
 )

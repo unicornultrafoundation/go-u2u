@@ -32,7 +32,7 @@ var DefaultVMConfig = vm.Config{
 	StatePrecompiles: map[common.Address]vm.PrecompiledStateContract{
 		evmwriter.ContractAddress: &evmwriter.PreCompiledContract{},
 	},
-	SfcPrecompiles: map[common.Address]vm.PrecompiledStateContract{
+	SfcPrecompiles: map[common.Address]vm.PrecompiledSfcContract{
 		common.HexToAddress("0xFC00FACE00000000000000000000000000000000"): &sfc.SfcPrecompile{},
 		common.HexToAddress("0xD100ae0000000000000000000000000000000000"): &driverauth.DriverAuthPrecompile{},
 		common.HexToAddress("0xd100A01E00000000000000000000000000000000"): &driver.DriverPrecompile{},

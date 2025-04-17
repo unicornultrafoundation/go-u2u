@@ -68,7 +68,7 @@ func (evm *EVM) statePrecompile(addr common.Address) (PrecompiledStateContract, 
 	return p, ok
 }
 
-func (evm *EVM) sfcPrecompile(addr common.Address) (PrecompiledStateContract, bool) {
+func (evm *EVM) sfcPrecompile(addr common.Address) (PrecompiledSfcContract, bool) {
 	if evm.Config.SfcPrecompiles == nil {
 		return nil, false
 	}
@@ -255,7 +255,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			evm.Context.Transfer(evm.SfcStateDB, caller.Address(), addr, value)
 			// Run SFC precompiled
 			start := time.Now()
-			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+			ret, _, err = sp.Run(evm, caller.Address(), input, gas)
 			// TODO(trinhdn97): compared sfc state precompiled gas used/output/error with the correct execution from smc
 			// as well for call code, delegate and static calls.
 			sfcExecutionElapsed = time.Since(start)
@@ -353,7 +353,7 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 		if isSfcPrecompile && evm.SfcStateDB != nil {
 			snapshot := evm.SfcStateDB.Snapshot()
 			start := time.Now()
-			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+			ret, _, err = sp.Run(evm, caller.Address(), input, gas)
 			sfcExecutionElapsed = time.Since(start)
 			if err != nil {
 				evm.SfcStateDB.RevertToSnapshot(snapshot)
@@ -423,7 +423,7 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 		if isSfcPrecompile && evm.SfcStateDB != nil {
 			snapshot := evm.SfcStateDB.Snapshot()
 			start := time.Now()
-			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+			ret, _, err = sp.Run(evm, caller.Address(), input, gas)
 			sfcExecutionElapsed = time.Since(start)
 			if err != nil {
 				evm.SfcStateDB.RevertToSnapshot(snapshot)
@@ -502,7 +502,7 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 			snapshot := evm.SfcStateDB.Snapshot()
 			evm.SfcStateDB.AddBalance(addr, big0)
 			start := time.Now()
-			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+			ret, _, err = sp.Run(evm, caller.Address(), input, gas)
 			sfcExecutionElapsed = time.Since(start)
 			if err != nil {
 				evm.SfcStateDB.RevertToSnapshot(snapshot)

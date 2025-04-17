@@ -17,7 +17,7 @@ func init() {
 	SfcAbi, _ = abi.JSON(strings.NewReader(sfc100.ContractMetaData.ABI))
 }
 
-// SfcPrecompile implements PrecompiledStateContract interface
+// SfcPrecompile implements PrecompiledSfcContract interface
 type SfcPrecompile struct{}
 
 // parseABIInput parses the input data and returns the method and unpacked parameters
@@ -54,8 +54,9 @@ func parseABIInput(input []byte) (*abi.Method, []interface{}, error) {
 }
 
 // Run runs the precompiled contract
-func (p *SfcPrecompile) Run(stateDB vm.StateDB, blockCtx vm.BlockContext, txCtx vm.TxContext, caller common.Address,
-	input []byte, suppliedGas uint64) ([]byte, uint64, error) {
+func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, suppliedGas uint64) ([]byte, uint64, error) {
+	// Extract stateDB from the EVM
+	stateDB := evm.SfcStateDB
 	// Parse the input to get method and arguments
 	method, args, err := parseABIInput(input)
 	if err != nil {

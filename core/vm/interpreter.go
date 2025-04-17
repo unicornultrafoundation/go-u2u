@@ -38,7 +38,7 @@ type Config struct {
 	ExtraEips []int // Additional EIPS that are to be enabled
 
 	StatePrecompiles map[common.Address]PrecompiledStateContract
-	SfcPrecompiles   map[common.Address]PrecompiledStateContract
+	SfcPrecompiles   map[common.Address]PrecompiledSfcContract
 }
 
 // ScopeContext contains the things that are per-call, such as stack and memory,

@@ -46,6 +46,11 @@ type PrecompiledStateContract interface {
 		suppliedGas uint64) ([]byte, uint64, error) // Run runs the precompiled contract
 }
 
+// PrecompiledSfcContract is an interface for SFC precompiled contracts that need access to the EVM instance
+type PrecompiledSfcContract interface {
+	Run(evm *EVM, caller common.Address, input []byte, suppliedGas uint64) ([]byte, uint64, error) // Run runs the precompiled contract with EVM access
+}
+
 // PrecompiledContractsHomestead contains the default set of pre-compiled Ethereum
 // contracts used in the Frontier and Homestead releases.
 var PrecompiledContractsHomestead = map[common.Address]PrecompiledContract{

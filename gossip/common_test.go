@@ -10,11 +10,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/consensus"
-	"github.com/unicornultrafoundation/go-u2u/helios/hash"
-	"github.com/unicornultrafoundation/go-u2u/helios/native/dag"
-	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
-	"github.com/unicornultrafoundation/go-u2u/helios/utils/cachescale"
+	"github.com/unicornultrafoundation/go-u2u/consensus/consensus"
+	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/dag"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/consensus/utils/cachescale"
 	go_u2u "github.com/unicornultrafoundation/go-u2u"
 	"github.com/unicornultrafoundation/go-u2u/accounts/abi/bind"
 	"github.com/unicornultrafoundation/go-u2u/common"
@@ -92,7 +92,7 @@ func makeTestEngine(gdb *Store) (*consensus.Consensus, *vecmt.Index) {
 		Validators: gdb.GetValidators(),
 	})
 	vecClock := vecmt.NewIndex(panics("Vector clock"), vecmt.LiteConfig())
-	engine := consensus.NewConsensus(cdb, &testGossipStoreAdapter{gdb}, vecmt2dagidx.Wrap(vecClock), panics("Helios"), consensus.LiteConfig())
+	engine := consensus.NewConsensus(cdb, &testGossipStoreAdapter{gdb}, vecmt2dagidx.Wrap(vecClock), panics("Consensus"), consensus.LiteConfig())
 	return engine, vecClock
 }
 

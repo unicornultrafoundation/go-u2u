@@ -6,8 +6,8 @@ import (
 	hasher "hash"
 	"io"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/common/bigendian"
-	"github.com/unicornultrafoundation/go-u2u/helios/hash"
+	"github.com/unicornultrafoundation/go-u2u/consensus/common/bigendian"
+	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
 
 	"github.com/unicornultrafoundation/go-u2u/utils/ioread"
 )

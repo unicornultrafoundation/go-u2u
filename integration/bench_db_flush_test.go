@@ -5,10 +5,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/consensus"
-	"github.com/unicornultrafoundation/go-u2u/helios/hash"
-	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
-	"github.com/unicornultrafoundation/go-u2u/helios/utils/cachescale"
+	"github.com/unicornultrafoundation/go-u2u/consensus/consensus"
+	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/consensus/utils/cachescale"
 	"github.com/unicornultrafoundation/go-u2u/common"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip"
@@ -26,8 +26,8 @@ func BenchmarkFlushDBs(b *testing.B) {
 	_, _, store, s2, _, closeDBs := MakeEngine(dir, &g, Configs{
 		U2U:         gossip.DefaultConfig(cachescale.Identity),
 		U2UStore:    gossip.DefaultStoreConfig(cachescale.Identity),
-		Helios:      consensus.DefaultConfig(),
-		HeliosStore: consensus.DefaultStoreConfig(cachescale.Identity),
+		Consensus:      consensus.DefaultConfig(),
+		ConsensusStore: consensus.DefaultStoreConfig(cachescale.Identity),
 		VectorClock: vecmt.DefaultConfig(cachescale.Identity),
 		DBs:         DefaultDBsConfig(cachescale.Identity.U64, 512),
 	})

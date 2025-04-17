@@ -3,8 +3,8 @@ package gossip
 import (
 	"errors"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/hash"
-	"github.com/unicornultrafoundation/go-u2u/helios/u2udb/batched"
+	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
+	"github.com/unicornultrafoundation/go-u2u/consensus/u2udb/batched"
 
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 	"github.com/unicornultrafoundation/go-u2u/native/ibr"

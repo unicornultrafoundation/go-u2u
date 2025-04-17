@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/unicornultrafoundation/go-u2u/helios/hash"
-	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/accounts"
 	"github.com/unicornultrafoundation/go-u2u/common"
@@ -239,7 +239,7 @@ func (b *EthAPIBackend) GetFullEventID(shortEventID string) (hash.Event, error) 
 	return options[0], nil
 }
 
-// GetEventPayload returns Helios event by hash or short ID.
+// GetEventPayload returns Consensus event by hash or short ID.
 func (b *EthAPIBackend) GetEventPayload(ctx context.Context, shortEventID string) (*native.EventPayload, error) {
 	id, err := b.GetFullEventID(shortEventID)
 	if err != nil {
@@ -248,7 +248,7 @@ func (b *EthAPIBackend) GetEventPayload(ctx context.Context, shortEventID string
 	return b.svc.store.GetEventPayload(id), nil
 }
 
-// GetEvent returns the Helios event header by hash or short ID.
+// GetEvent returns the Consensus event header by hash or short ID.
 func (b *EthAPIBackend) GetEvent(ctx context.Context, shortEventID string) (*native.Event, error) {
 	id, err := b.GetFullEventID(shortEventID)
 	if err != nil {

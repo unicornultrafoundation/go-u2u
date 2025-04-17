@@ -8,11 +8,11 @@ import (
 
 	"github.com/status-im/keycard-go/hexutils"
 	"github.com/syndtr/goleveldb/leveldb/opt"
-	"github.com/unicornultrafoundation/go-u2u/helios/consensus"
-	"github.com/unicornultrafoundation/go-u2u/helios/hash"
-	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
-	"github.com/unicornultrafoundation/go-u2u/helios/u2udb"
-	"github.com/unicornultrafoundation/go-u2u/helios/u2udb/multidb"
+	"github.com/unicornultrafoundation/go-u2u/consensus/consensus"
+	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/consensus/u2udb"
+	"github.com/unicornultrafoundation/go-u2u/consensus/u2udb/multidb"
 	"github.com/unicornultrafoundation/go-u2u/accounts"
 	"github.com/unicornultrafoundation/go-u2u/accounts/keystore"
 	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
@@ -47,8 +47,8 @@ func (e *GenesisMismatchError) Error() string {
 type Configs struct {
 	U2U         gossip.Config
 	U2UStore    gossip.StoreConfig
-	Helios      consensus.Config
-	HeliosStore consensus.StoreConfig
+	Consensus      consensus.Config
+	ConsensusStore consensus.StoreConfig
 	VectorClock vecmt.IndexConfig
 	DBs         DBsConfig
 }
@@ -74,7 +74,7 @@ func getStores(producer u2udb.FlushableDBProducer, cfg Configs) (*gossip.Store, 
 	cGetEpochDB := func(epoch idx.Epoch) u2udb.Store {
 		return mustOpenDB(producer, fmt.Sprintf("hashgraph-%d", epoch))
 	}
-	cdb, err := consensus.NewStore(cMainDb, cGetEpochDB, panics("Helios store"), cfg.HeliosStore)
+	cdb, err := consensus.NewStore(cMainDb, cGetEpochDB, panics("Consensus store"), cfg.ConsensusStore)
 	if err != nil {
 		log.Crit("Failed to create consensus store", "err", err)
 	}
@@ -106,13 +106,13 @@ func rawMakeEngine(gdb *gossip.Store, cdb *consensus.Store, g *genesis.Genesis, 
 			Validators: gdb.GetValidators(),
 		})
 		if err != nil {
-			return nil, nil, blockProc, fmt.Errorf("failed to write Helios genesis state: %v", err)
+			return nil, nil, blockProc, fmt.Errorf("failed to write Consensus genesis state: %v", err)
 		}
 	}
 
 	// create consensus
 	vecClock := vecmt.NewIndex(panics("Vector clock"), cfg.VectorClock)
-	engine := consensus.NewConsensus(cdb, &GossipStoreAdapter{gdb}, vecmt2dagidx.Wrap(vecClock), panics("Helios"), cfg.Helios)
+	engine := consensus.NewConsensus(cdb, &GossipStoreAdapter{gdb}, vecmt2dagidx.Wrap(vecClock), panics("Consensus"), cfg.Consensus)
 	return engine, vecClock, blockProc, nil
 }
 

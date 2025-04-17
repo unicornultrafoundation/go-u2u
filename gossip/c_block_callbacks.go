@@ -7,12 +7,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/hash"
-	"github.com/unicornultrafoundation/go-u2u/helios/native/dag"
-	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
-	"github.com/unicornultrafoundation/go-u2u/helios/native/pos"
-	utypes "github.com/unicornultrafoundation/go-u2u/helios/types"
-	"github.com/unicornultrafoundation/go-u2u/helios/utils/workers"
+	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/dag"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/pos"
+	utypes "github.com/unicornultrafoundation/go-u2u/consensus/types"
+	"github.com/unicornultrafoundation/go-u2u/consensus/utils/workers"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"

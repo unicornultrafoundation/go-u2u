@@ -5,7 +5,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/params"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"

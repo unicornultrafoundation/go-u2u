@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
-	"github.com/unicornultrafoundation/go-u2u/helios/u2udb"
-	"github.com/unicornultrafoundation/go-u2u/helios/u2udb/skiperrors"
-	"github.com/unicornultrafoundation/go-u2u/helios/u2udb/table"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/consensus/u2udb"
+	"github.com/unicornultrafoundation/go-u2u/consensus/u2udb/skiperrors"
+	"github.com/unicornultrafoundation/go-u2u/consensus/u2udb/table"
 
 	"github.com/unicornultrafoundation/go-u2u/logger"
 )

@@ -20,7 +20,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/hash"
+	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/eth/protocols/snap"
 	"github.com/unicornultrafoundation/go-u2u/p2p"

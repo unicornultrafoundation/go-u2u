@@ -3,9 +3,9 @@ package sealmodule
 import (
 	"math/big"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
-	"github.com/unicornultrafoundation/go-u2u/helios/native/pos"
-	"github.com/unicornultrafoundation/go-u2u/helios/types"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/pos"
+	"github.com/unicornultrafoundation/go-u2u/consensus/types"
 	"github.com/unicornultrafoundation/go-u2u/gossip/blockproc"
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 )

@@ -3,7 +3,7 @@ package bvstreamleecher
 import (
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/gossip/basestream/basestreamleecher/basepeerleecher"
+	"github.com/unicornultrafoundation/go-u2u/consensus/gossip/basestream/basestreamleecher/basepeerleecher"
 )
 
 type Config struct {

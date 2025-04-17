@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
 	"github.com/unicornultrafoundation/go-u2u/params"
 
 	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"

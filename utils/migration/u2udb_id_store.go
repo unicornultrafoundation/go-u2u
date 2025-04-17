@@ -1,7 +1,7 @@
 package migration
 
 import (
-	"github.com/unicornultrafoundation/go-u2u/helios/u2udb"
+	"github.com/unicornultrafoundation/go-u2u/consensus/u2udb"
 	"github.com/unicornultrafoundation/go-u2u/log"
 )
 

@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/rlp"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/gossip/basestream"
+	"github.com/unicornultrafoundation/go-u2u/consensus/gossip/basestream"
 )
 
 type Request struct {

@@ -6,8 +6,8 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/u2udb"
-	"github.com/unicornultrafoundation/go-u2u/helios/u2udb/table"
+	"github.com/unicornultrafoundation/go-u2u/consensus/u2udb"
+	"github.com/unicornultrafoundation/go-u2u/consensus/u2udb/table"
 )
 
 func isEmptyDB(db u2udb.Iteratee) bool {

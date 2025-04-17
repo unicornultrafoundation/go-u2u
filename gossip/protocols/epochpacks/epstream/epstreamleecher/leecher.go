@@ -4,9 +4,9 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/gossip/basestream/basestreamleecher"
-	"github.com/unicornultrafoundation/go-u2u/helios/gossip/basestream/basestreamleecher/basepeerleecher"
-	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/consensus/gossip/basestream/basestreamleecher"
+	"github.com/unicornultrafoundation/go-u2u/consensus/gossip/basestream/basestreamleecher/basepeerleecher"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/epochpacks/epstream"
 )

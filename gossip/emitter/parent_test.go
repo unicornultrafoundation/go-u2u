@@ -7,11 +7,11 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/emitter/ancestor"
-	"github.com/unicornultrafoundation/go-u2u/helios/hash"
-	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
-	"github.com/unicornultrafoundation/go-u2u/helios/native/pos"
-	"github.com/unicornultrafoundation/go-u2u/helios/u2udb/memorydb"
+	"github.com/unicornultrafoundation/go-u2u/consensus/emitter/ancestor"
+	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/pos"
+	"github.com/unicornultrafoundation/go-u2u/consensus/u2udb/memorydb"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter/mock"
 	"github.com/unicornultrafoundation/go-u2u/integration/makefakegenesis"

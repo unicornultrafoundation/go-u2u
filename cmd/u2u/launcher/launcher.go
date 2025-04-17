@@ -9,7 +9,7 @@ import (
 
 	"gopkg.in/urfave/cli.v1"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
 	"github.com/unicornultrafoundation/go-u2u/accounts"
 	"github.com/unicornultrafoundation/go-u2u/accounts/keystore"
 	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher/monitoring"
@@ -190,7 +190,7 @@ func initApp() {
 
 	app = cli.NewApp()
 	app.Name = "u2u"
-	app.Action = heliosMain
+	app.Action = consensusMain
 	app.Version = params.VersionWithCommit(gitCommit, gitDate)
 	app.HideVersion = true // we have a command to print the version
 	app.Commands = []cli.Command{
@@ -251,7 +251,7 @@ func initApp() {
 // u2u is the main entry point into the system if no special subcommand is ran.
 // It creates a default node based on the command line arguments and runs it in
 // blocking mode, waiting for it to be shut down.
-func heliosMain(ctx *cli.Context) error {
+func consensusMain(ctx *cli.Context) error {
 	if args := ctx.Args(); len(args) > 0 {
 		return fmt.Errorf("invalid command: %q", args[0])
 	}

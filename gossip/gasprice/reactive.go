@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/utils/piecefunc"
+	"github.com/unicornultrafoundation/go-u2u/consensus/utils/piecefunc"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 )
 

@@ -2,7 +2,7 @@ package evmstore
 
 import (
 	"github.com/syndtr/goleveldb/leveldb/opt"
-	"github.com/unicornultrafoundation/go-u2u/helios/utils/cachescale"
+	"github.com/unicornultrafoundation/go-u2u/consensus/utils/cachescale"
 )
 
 type (

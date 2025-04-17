@@ -22,8 +22,8 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/hash"
-	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/accounts"
 	"github.com/unicornultrafoundation/go-u2u/common"
@@ -99,14 +99,14 @@ type Backend interface {
 	ChainConfig() *params.ChainConfig
 	CurrentBlock() *evmcore.EvmBlock
 
-	// Helios DAG API
+	// Consensus DAG API
 	GetEventPayload(ctx context.Context, shortEventID string) (*native.EventPayload, error)
 	GetEvent(ctx context.Context, shortEventID string) (*native.Event, error)
 	GetHeads(ctx context.Context, epoch rpc.BlockNumber) (hash.Events, error)
 	CurrentEpoch(ctx context.Context) idx.Epoch
 	SealedEpochTiming(ctx context.Context) (start native.Timestamp, end native.Timestamp)
 
-	// Helios aBFT API
+	// Consensus aBFT API
 	GetEpochBlockState(ctx context.Context, epoch rpc.BlockNumber) (*iblockproc.BlockState, *iblockproc.EpochState, error)
 	GetDowntime(ctx context.Context, vid idx.ValidatorID) (idx.Block, native.Timestamp, error)
 	GetUptime(ctx context.Context, vid idx.ValidatorID) (*big.Int, error)

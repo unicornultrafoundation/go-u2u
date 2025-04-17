@@ -3,7 +3,7 @@ package fileshash
 import (
 	"io"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/hash"
+	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
 )
 
 func Wrap(backend func(string) (io.Reader, error), maxMemoryUsage uint64, roots map[string]hash.Hash) func(string) (io.Reader, error) {

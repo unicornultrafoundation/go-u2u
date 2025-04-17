@@ -2,17 +2,17 @@ package vecmt
 
 import (
 	"github.com/syndtr/goleveldb/leveldb/opt"
-	"github.com/unicornultrafoundation/go-u2u/helios/hash"
-	"github.com/unicornultrafoundation/go-u2u/helios/native/dag"
-	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
-	"github.com/unicornultrafoundation/go-u2u/helios/native/pos"
-	"github.com/unicornultrafoundation/go-u2u/helios/u2udb"
-	"github.com/unicornultrafoundation/go-u2u/helios/u2udb/table"
-	"github.com/unicornultrafoundation/go-u2u/helios/utils/cachescale"
-	"github.com/unicornultrafoundation/go-u2u/helios/utils/wlru"
-	"github.com/unicornultrafoundation/go-u2u/helios/vecengine"
-	"github.com/unicornultrafoundation/go-u2u/helios/vecengine/vecflushable"
-	"github.com/unicornultrafoundation/go-u2u/helios/vecfc"
+	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/dag"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/pos"
+	"github.com/unicornultrafoundation/go-u2u/consensus/u2udb"
+	"github.com/unicornultrafoundation/go-u2u/consensus/u2udb/table"
+	"github.com/unicornultrafoundation/go-u2u/consensus/utils/cachescale"
+	"github.com/unicornultrafoundation/go-u2u/consensus/utils/wlru"
+	"github.com/unicornultrafoundation/go-u2u/consensus/vecengine"
+	"github.com/unicornultrafoundation/go-u2u/consensus/vecengine/vecflushable"
+	"github.com/unicornultrafoundation/go-u2u/consensus/vecfc"
 )
 
 // IndexCacheConfig - config for cache sizes of Engine

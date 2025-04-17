@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/unicornultrafoundation/go-u2u/helios/hash"
+	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
 
 	"github.com/unicornultrafoundation/go-u2u/utils/ioread"
 )

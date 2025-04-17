@@ -9,9 +9,9 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	hash "github.com/unicornultrafoundation/go-u2u/helios/hash"
-	idx "github.com/unicornultrafoundation/go-u2u/helios/native/idx"
-	pos "github.com/unicornultrafoundation/go-u2u/helios/native/pos"
+	hash "github.com/unicornultrafoundation/go-u2u/consensus/hash"
+	idx "github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
+	pos "github.com/unicornultrafoundation/go-u2u/consensus/native/pos"
 	common "github.com/unicornultrafoundation/go-u2u/common"
 	state "github.com/unicornultrafoundation/go-u2u/core/state"
 	types "github.com/unicornultrafoundation/go-u2u/core/types"

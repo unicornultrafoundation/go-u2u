@@ -1,7 +1,7 @@
 package parentlesscheck
 
 import (
-	"github.com/unicornultrafoundation/go-u2u/helios/native/dag"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/dag"
 )
 
 type Checker struct {

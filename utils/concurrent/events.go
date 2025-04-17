@@ -3,7 +3,7 @@ package concurrent
 import (
 	"sync"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/hash"
+	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
 )
 
 type EventsSet struct {

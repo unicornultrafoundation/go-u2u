@@ -37,7 +37,7 @@ func TestConsoleWelcome(t *testing.T) {
 
 	// Verify the actual welcome message to the required template
 	cli.Expect(`
-Welcome to the Helios JavaScript console!
+Welcome to the Consensus JavaScript console!
 
 instance: go-u2u/v{{version}}/{{goos}}-{{goarch}}/{{gover}}
 coinbase: {{.Coinbase}}
@@ -110,7 +110,7 @@ func testAttachWelcome(t *testing.T, cli *testcli, endpoint, apis string) {
 
 	// Verify the actual welcome message to the required template
 	attach.Expect(`
-Welcome to the Helios JavaScript console!
+Welcome to the Consensus JavaScript console!
 
 instance: go-u2u/v{{version}}/{{goos}}-{{goarch}}/{{gover}}
 coinbase: {{coinbase}}

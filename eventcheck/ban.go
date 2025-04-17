@@ -3,7 +3,7 @@ package eventcheck
 import (
 	"errors"
 
-	base "github.com/unicornultrafoundation/go-u2u/helios/eventcheck"
+	base "github.com/unicornultrafoundation/go-u2u/consensus/eventcheck"
 
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/epochcheck"
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/heavycheck"

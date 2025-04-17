@@ -5,9 +5,9 @@ import (
 	"path"
 
 	"github.com/syndtr/goleveldb/leveldb/opt"
-	"github.com/unicornultrafoundation/go-u2u/helios/u2udb"
-	"github.com/unicornultrafoundation/go-u2u/helios/u2udb/cachedproducer"
-	"github.com/unicornultrafoundation/go-u2u/helios/u2udb/multidb"
+	"github.com/unicornultrafoundation/go-u2u/consensus/u2udb"
+	"github.com/unicornultrafoundation/go-u2u/consensus/u2udb/cachedproducer"
+	"github.com/unicornultrafoundation/go-u2u/consensus/u2udb/multidb"
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/cmd/utils"

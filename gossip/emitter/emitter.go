@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/emitter/ancestor"
-	"github.com/unicornultrafoundation/go-u2u/helios/hash"
-	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
-	"github.com/unicornultrafoundation/go-u2u/helios/native/pos"
-	"github.com/unicornultrafoundation/go-u2u/helios/utils/piecefunc"
+	"github.com/unicornultrafoundation/go-u2u/consensus/emitter/ancestor"
+	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/pos"
+	"github.com/unicornultrafoundation/go-u2u/consensus/utils/piecefunc"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter/originatedtxs"

@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
@@ -90,7 +90,7 @@ type EpochsRules struct {
 	MaxEpochDuration native.Timestamp
 }
 
-// DagRules of Helios DAG (directed acyclic graph).
+// DagRules of Consensus DAG (directed acyclic graph).
 type DagRules struct {
 	MaxParents     idx.Event
 	MaxFreeParents idx.Event // maximum number of parents with no gas cost

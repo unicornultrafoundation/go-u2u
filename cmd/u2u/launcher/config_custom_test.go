@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/unicornultrafoundation/go-u2u/helios/consensus"
-	"github.com/unicornultrafoundation/go-u2u/helios/utils/cachescale"
+	"github.com/unicornultrafoundation/go-u2u/consensus/consensus"
+	"github.com/unicornultrafoundation/go-u2u/consensus/utils/cachescale"
 	"github.com/unicornultrafoundation/go-u2u/p2p/enode"
 
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
@@ -27,8 +27,8 @@ func TestConfigFile(t *testing.T) {
 		Emitter:     emitter.DefaultConfig(),
 		TxPool:      evmcore.DefaultTxPoolConfig,
 		U2UStore:    gossip.DefaultStoreConfig(cacheRatio),
-		Helios:      consensus.DefaultConfig(),
-		HeliosStore: consensus.DefaultStoreConfig(cacheRatio),
+		Consensus:      consensus.DefaultConfig(),
+		ConsensusStore: consensus.DefaultStoreConfig(cacheRatio),
 		VectorClock: vecmt.DefaultConfig(cacheRatio),
 	}
 

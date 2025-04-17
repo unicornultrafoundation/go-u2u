@@ -20,8 +20,8 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/hash"
-	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/trie"
@@ -89,7 +89,7 @@ func ToEvmHeader(block *native.Block, index idx.Block, prevHash hash.Event, rule
 	}
 }
 
-// ConvertFromEthHeader converts ETH-formatted header to Helios EVM header
+// ConvertFromEthHeader converts ETH-formatted header to Consensus EVM header
 func ConvertFromEthHeader(h *types.Header) *EvmHeader {
 	// NOTE: incomplete conversion
 	return &EvmHeader{

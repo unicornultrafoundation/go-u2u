@@ -298,7 +298,7 @@ func (c *Console) AutoCompleteInput(line string, pos int) (string, []string, str
 // Welcome shows summary of current u2u instance and some metadata about the
 // console's available modules.
 func (c *Console) Welcome() {
-	message := "Welcome to the Helios JavaScript console!\n\n"
+	message := "Welcome to the Consensus JavaScript console!\n\n"
 
 	// Print some generic u2u metadata
 	res, err := c.jsre.Run(`

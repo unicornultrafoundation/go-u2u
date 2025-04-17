@@ -3,7 +3,7 @@ package concurrent
 import (
 	"sync"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
 )
 
 type ValidatorEpochsSet struct {

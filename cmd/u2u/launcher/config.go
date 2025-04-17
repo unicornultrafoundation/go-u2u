@@ -13,8 +13,8 @@ import (
 
 	"github.com/naoina/toml"
 	"github.com/syndtr/goleveldb/leveldb/opt"
-	"github.com/unicornultrafoundation/go-u2u/helios/consensus"
-	"github.com/unicornultrafoundation/go-u2u/helios/utils/cachescale"
+	"github.com/unicornultrafoundation/go-u2u/consensus/consensus"
+	"github.com/unicornultrafoundation/go-u2u/consensus/utils/cachescale"
 	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/log"
@@ -180,8 +180,8 @@ type config struct {
 	Emitter     emitter.Config
 	TxPool      evmcore.TxPoolConfig
 	U2UStore    gossip.StoreConfig
-	Helios      consensus.Config
-	HeliosStore consensus.StoreConfig
+	Consensus      consensus.Config
+	ConsensusStore consensus.StoreConfig
 	VectorClock vecmt.IndexConfig
 	DBs         integration.DBsConfig
 	Monitoring  monitoring.Config
@@ -191,8 +191,8 @@ func (c *config) AppConfigs() integration.Configs {
 	return integration.Configs{
 		U2U:         c.U2U,
 		U2UStore:    c.U2UStore,
-		Helios:      c.Helios,
-		HeliosStore: c.HeliosStore,
+		Consensus:      c.Consensus,
+		ConsensusStore: c.ConsensusStore,
 		VectorClock: c.VectorClock,
 		DBs:         c.DBs,
 	}
@@ -500,8 +500,8 @@ func mayMakeAllConfigs(ctx *cli.Context) (*config, error) {
 		Emitter:     emitter.DefaultConfig(),
 		TxPool:      evmcore.DefaultTxPoolConfig,
 		U2UStore:    gossip.DefaultStoreConfig(cacheRatio),
-		Helios:      consensus.DefaultConfig(),
-		HeliosStore: consensus.DefaultStoreConfig(cacheRatio),
+		Consensus:      consensus.DefaultConfig(),
+		ConsensusStore: consensus.DefaultStoreConfig(cacheRatio),
 		VectorClock: vecmt.DefaultConfig(cacheRatio),
 	}
 

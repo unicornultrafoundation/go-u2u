@@ -3,7 +3,7 @@ package vecmt
 import (
 	"errors"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/hash"
+	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
 )
 
 // NoCheaters excludes events which are observed by selfParents as cheaters.

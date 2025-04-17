@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"sort"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/utils/concurrent"
 )

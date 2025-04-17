@@ -4,7 +4,7 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/hash"
+	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
 	go_u2u "github.com/unicornultrafoundation/go-u2u"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
@@ -12,7 +12,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
-// GetEvent returns Helios event by hash or short ID.
+// GetEvent returns Consensus event by hash or short ID.
 func (ec *Client) GetEvent(ctx context.Context, h hash.Event) (e native.EventI, err error) {
 	var raw map[string]interface{}
 	err = ec.c.CallContext(ctx, &raw, "dag_getEvent", h.Hex())
@@ -27,7 +27,7 @@ func (ec *Client) GetEvent(ctx context.Context, h hash.Event) (e native.EventI, 
 	return
 }
 
-// GetEvent returns Helios event by hash or short ID.
+// GetEvent returns Consensus event by hash or short ID.
 func (ec *Client) GetEventPayload(ctx context.Context, h hash.Event, inclTx bool) (e native.EventI, txs []common.Hash, err error) {
 	var raw map[string]interface{}
 	err = ec.c.CallContext(ctx, &raw, "dag_getEventPayload", h.Hex(), inclTx)

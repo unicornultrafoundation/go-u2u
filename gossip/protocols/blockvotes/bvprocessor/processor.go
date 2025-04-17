@@ -4,10 +4,10 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/native/dag"
-	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
-	"github.com/unicornultrafoundation/go-u2u/helios/utils/datasemaphore"
-	"github.com/unicornultrafoundation/go-u2u/helios/utils/workers"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/dag"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/consensus/utils/datasemaphore"
+	"github.com/unicornultrafoundation/go-u2u/consensus/utils/workers"
 
 	"github.com/unicornultrafoundation/go-u2u/native"
 )

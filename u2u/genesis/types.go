@@ -1,7 +1,7 @@
 package genesis
 
 import (
-	"github.com/unicornultrafoundation/go-u2u/helios/hash"
+	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
 
 	"github.com/unicornultrafoundation/go-u2u/native/ibr"
 	"github.com/unicornultrafoundation/go-u2u/native/ier"

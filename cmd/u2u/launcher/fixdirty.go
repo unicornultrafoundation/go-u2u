@@ -10,13 +10,13 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/rlp"
 
-	"github.com/unicornultrafoundation/go-u2u/helios/common/bigendian"
-	"github.com/unicornultrafoundation/go-u2u/helios/consensus"
-	"github.com/unicornultrafoundation/go-u2u/helios/hash"
-	"github.com/unicornultrafoundation/go-u2u/helios/native/idx"
-	"github.com/unicornultrafoundation/go-u2u/helios/u2udb"
-	"github.com/unicornultrafoundation/go-u2u/helios/u2udb/batched"
-	"github.com/unicornultrafoundation/go-u2u/helios/u2udb/flushable"
+	"github.com/unicornultrafoundation/go-u2u/consensus/common/bigendian"
+	"github.com/unicornultrafoundation/go-u2u/consensus/consensus"
+	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
+	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/consensus/u2udb"
+	"github.com/unicornultrafoundation/go-u2u/consensus/u2udb/batched"
+	"github.com/unicornultrafoundation/go-u2u/consensus/u2udb/flushable"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/integration"
@@ -57,12 +57,12 @@ func healDirty(ctx *cli.Context) error {
 	}
 
 	// prepare consensus database from epochState
-	log.Info("Recreating helios DB")
+	log.Info("Recreating consensus DB")
 	cMainDb := mustOpenDB(multiProducer, "hashgraph")
 	cGetEpochDB := func(epoch idx.Epoch) u2udb.Store {
 		return mustOpenDB(multiProducer, fmt.Sprintf("hashgraph-%d", epoch))
 	}
-	cdb, err := consensus.NewStore(cMainDb, cGetEpochDB, panics("helios store"), cfg.HeliosStore)
+	cdb, err := consensus.NewStore(cMainDb, cGetEpochDB, panics("consensus store"), cfg.ConsensusStore)
 	if err != nil {
 		return err
 	}

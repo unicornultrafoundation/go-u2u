@@ -9,7 +9,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/rlp"
 
-	"github.com/unicornultrafoundation/go-u2u/consensus/gossip/basestream"
+	"github.com/unicornultrafoundation/go-u2u/gossip/basestream"
 )
 
 type Request struct {

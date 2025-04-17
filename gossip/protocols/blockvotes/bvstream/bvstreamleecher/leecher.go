@@ -4,8 +4,8 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/consensus/gossip/basestream/basestreamleecher"
-	"github.com/unicornultrafoundation/go-u2u/consensus/gossip/basestream/basestreamleecher/basepeerleecher"
+	"github.com/unicornultrafoundation/go-u2u/gossip/basestream/basestreamleecher"
+	"github.com/unicornultrafoundation/go-u2u/gossip/basestream/basestreamleecher/basepeerleecher"
 	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
 	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"
 

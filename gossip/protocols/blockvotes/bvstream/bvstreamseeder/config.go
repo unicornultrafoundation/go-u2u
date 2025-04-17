@@ -1,7 +1,7 @@
 package bvstreamseeder
 
 import (
-	"github.com/unicornultrafoundation/go-u2u/consensus/gossip/basestream/basestreamseeder"
+	"github.com/unicornultrafoundation/go-u2u/gossip/basestream/basestreamseeder"
 	"github.com/unicornultrafoundation/go-u2u/consensus/utils/cachescale"
 )
 

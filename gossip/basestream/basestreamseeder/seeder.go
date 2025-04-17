@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/consensus/gossip/basestream"
+	"github.com/unicornultrafoundation/go-u2u/gossip/basestream"
 	"github.com/unicornultrafoundation/go-u2u/consensus/utils/workers"
 )
 

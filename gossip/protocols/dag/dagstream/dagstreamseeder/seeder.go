@@ -5,8 +5,8 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/rlp"
 
-	"github.com/unicornultrafoundation/go-u2u/consensus/gossip/basestream"
-	"github.com/unicornultrafoundation/go-u2u/consensus/gossip/basestream/basestreamseeder"
+	"github.com/unicornultrafoundation/go-u2u/gossip/basestream"
+	"github.com/unicornultrafoundation/go-u2u/gossip/basestream/basestreamseeder"
 	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/dag/dagstream"

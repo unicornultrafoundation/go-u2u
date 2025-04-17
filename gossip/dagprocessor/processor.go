@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/unicornultrafoundation/go-u2u/consensus/eventcheck"
-	"github.com/unicornultrafoundation/go-u2u/consensus/gossip/dagordering"
+	"github.com/unicornultrafoundation/go-u2u/gossip/dagordering"
 	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
 	"github.com/unicornultrafoundation/go-u2u/consensus/native/dag"
 	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"

@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"sync/atomic"
 
-	"github.com/unicornultrafoundation/go-u2u/consensus/gossip/dagprocessor"
+	"github.com/unicornultrafoundation/go-u2u/gossip/dagprocessor"
 	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
 	"github.com/unicornultrafoundation/go-u2u/consensus/native/dag"
 	"github.com/unicornultrafoundation/go-u2u/consensus/native/idx"

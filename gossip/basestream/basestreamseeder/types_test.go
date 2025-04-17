@@ -6,7 +6,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 
-	"github.com/unicornultrafoundation/go-u2u/consensus/gossip/basestream"
+	"github.com/unicornultrafoundation/go-u2u/gossip/basestream"
 	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
 	"github.com/unicornultrafoundation/go-u2u/consensus/native/dag"
 )

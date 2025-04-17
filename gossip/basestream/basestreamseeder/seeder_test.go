@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/unicornultrafoundation/go-u2u/consensus/gossip/basestream"
+	"github.com/unicornultrafoundation/go-u2u/gossip/basestream"
 	"github.com/unicornultrafoundation/go-u2u/consensus/hash"
 	"github.com/unicornultrafoundation/go-u2u/consensus/native/dag"
 	"github.com/unicornultrafoundation/go-u2u/consensus/native/dag/tdag"

@@ -3,7 +3,7 @@ package constant_manager
 // Storage slots for ConstantManager contract variables
 const (
 	isInitialized                        int64 = 0x0
-	owner                                int64 = 0x33
+	ownerSlot                            int64 = 0x33
 	offset                               int64 = 0x66 // Base offset for storage slots of ConstantsManager contract when implement Ownable contract
 	minSelfStakeSlot                           = offset + 0
 	maxDelegatedRatioSlot                      = offset + 1

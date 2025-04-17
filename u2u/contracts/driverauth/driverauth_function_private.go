@@ -1,4 +1,4 @@
-package driver
+package driverauth
 
 import (
 	"math/big"
@@ -9,15 +9,16 @@ import (
 
 // handleFallback handles the fallback function (when no method is specified)
 func handleFallback(evm *vm.EVM, caller common.Address, args []interface{}, input []byte) ([]byte, uint64, error) {
-	// The NodeDriver contract doesn't have a fallback function that does anything
+	// The NodeDriverAuth contract doesn't have a fallback function that does anything
 	// Just return empty result with no error
 	return nil, 0, nil
 }
 
 // handleSetGenesisValidator sets a genesis validator
 func handleSetGenesisValidator(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
-	// Check if caller is address(0) (onlyNode modifier)
-	if caller.Cmp(common.Address{}) != 0 {
+	// Check if caller is the driver contract
+	driverAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(driverSlot))).Bytes())
+	if caller != driverAddr {
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
@@ -58,17 +59,17 @@ func handleSetGenesisValidator(evm *vm.EVM, caller common.Address, args []interf
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
-	// Call the backend contract to set the genesis validator
-	backendAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(backendSlot))).Bytes())
+	// Call the SFC contract to set the genesis validator
+	sfcAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(sfcSlot))).Bytes())
 
 	// Pack the function call data
-	data, err := DriverAbi.Pack("setGenesisValidator", auth, validatorID, pubkey, status, createdEpoch, createdTime, deactivatedEpoch, deactivatedTime)
+	data, err := DriverAuthAbi.Pack("setGenesisValidator", auth, validatorID, pubkey, status, createdEpoch, createdTime, deactivatedEpoch, deactivatedTime)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
-	// Call the backend contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), backendAddr, data, 50000, big.NewInt(0))
+	// Call the SFC contract
+	_, _, err = evm.Call(vm.AccountRef(ContractAddress), sfcAddr, data, 50000, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -78,8 +79,9 @@ func handleSetGenesisValidator(evm *vm.EVM, caller common.Address, args []interf
 
 // handleSetGenesisDelegation sets a genesis delegation
 func handleSetGenesisDelegation(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
-	// Check if caller is address(0) (onlyNode modifier)
-	if caller.Cmp(common.Address{}) != 0 {
+	// Check if caller is the driver contract
+	driverAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(driverSlot))).Bytes())
+	if caller != driverAddr {
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
@@ -124,17 +126,17 @@ func handleSetGenesisDelegation(evm *vm.EVM, caller common.Address, args []inter
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
-	// Call the backend contract to set the genesis delegation
-	backendAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(backendSlot))).Bytes())
+	// Call the SFC contract to set the genesis delegation
+	sfcAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(sfcSlot))).Bytes())
 
 	// Pack the function call data
-	data, err := DriverAbi.Pack("setGenesisDelegation", delegator, toValidatorID, stake, lockedStake, lockupFromEpoch, lockupEndTime, lockupDuration, earlyUnlockPenalty, rewards)
+	data, err := DriverAuthAbi.Pack("setGenesisDelegation", delegator, toValidatorID, stake, lockedStake, lockupFromEpoch, lockupEndTime, lockupDuration, earlyUnlockPenalty, rewards)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
-	// Call the backend contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), backendAddr, data, 50000, big.NewInt(0))
+	// Call the SFC contract
+	_, _, err = evm.Call(vm.AccountRef(ContractAddress), sfcAddr, data, 50000, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -144,8 +146,9 @@ func handleSetGenesisDelegation(evm *vm.EVM, caller common.Address, args []inter
 
 // handleDeactivateValidator deactivates a validator
 func handleDeactivateValidator(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
-	// Check if caller is address(0) (onlyNode modifier)
-	if caller.Cmp(common.Address{}) != 0 {
+	// Check if caller is the driver contract
+	driverAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(driverSlot))).Bytes())
+	if caller != driverAddr {
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
@@ -162,17 +165,17 @@ func handleDeactivateValidator(evm *vm.EVM, caller common.Address, args []interf
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
-	// Call the backend contract to deactivate the validator
-	backendAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(backendSlot))).Bytes())
+	// Call the SFC contract to deactivate the validator
+	sfcAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(sfcSlot))).Bytes())
 
 	// Pack the function call data
-	data, err := DriverAbi.Pack("deactivateValidator", validatorID, status)
+	data, err := DriverAuthAbi.Pack("deactivateValidator", validatorID, status)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
-	// Call the backend contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), backendAddr, data, 50000, big.NewInt(0))
+	// Call the SFC contract
+	_, _, err = evm.Call(vm.AccountRef(ContractAddress), sfcAddr, data, 50000, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -182,8 +185,9 @@ func handleDeactivateValidator(evm *vm.EVM, caller common.Address, args []interf
 
 // handleSealEpochValidators seals the epoch validators
 func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
-	// Check if caller is address(0) (onlyNode modifier)
-	if caller.Cmp(common.Address{}) != 0 {
+	// Check if caller is the driver contract
+	driverAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(driverSlot))).Bytes())
+	if caller != driverAddr {
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
@@ -196,17 +200,17 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
-	// Call the backend contract to seal the epoch validators
-	backendAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(backendSlot))).Bytes())
+	// Call the SFC contract to seal the epoch validators
+	sfcAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(sfcSlot))).Bytes())
 
 	// Pack the function call data
-	data, err := DriverAbi.Pack("sealEpochValidators", nextValidatorIDs)
+	data, err := DriverAuthAbi.Pack("sealEpochValidators", nextValidatorIDs)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
-	// Call the backend contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), backendAddr, data, 50000, big.NewInt(0))
+	// Call the SFC contract
+	_, _, err = evm.Call(vm.AccountRef(ContractAddress), sfcAddr, data, 50000, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -216,54 +220,9 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 
 // handleSealEpoch seals the epoch
 func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
-	// Check if caller is address(0) (onlyNode modifier)
-	if caller.Cmp(common.Address{}) != 0 {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	// Get the arguments
-	if len(args) != 4 {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-	offlineTimes, ok := args[0].([]*big.Int)
-	if !ok {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-	offlineBlocks, ok := args[1].([]*big.Int)
-	if !ok {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-	uptimes, ok := args[2].([]*big.Int)
-	if !ok {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-	originatedTxsFee, ok := args[3].([]*big.Int)
-	if !ok {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	// Call the backend contract to seal the epoch with a fixed gas value (841669690)
-	backendAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(backendSlot))).Bytes())
-
-	// Pack the function call data
-	data, err := DriverAbi.Pack("sealEpoch", offlineTimes, offlineBlocks, uptimes, originatedTxsFee, big.NewInt(841669690))
-	if err != nil {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	// Call the backend contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), backendAddr, data, 50000, big.NewInt(0))
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return nil, 0, nil
-}
-
-// handleSealEpochV1 seals the epoch with a custom gas value
-func handleSealEpochV1(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
-	// Check if caller is address(0) (onlyNode modifier)
-	if caller.Cmp(common.Address{}) != 0 {
+	// Check if caller is the driver contract
+	driverAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(driverSlot))).Bytes())
+	if caller != driverAddr {
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
@@ -292,17 +251,17 @@ func handleSealEpochV1(evm *vm.EVM, caller common.Address, args []interface{}) (
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
-	// Call the backend contract to seal the epoch with the provided gas value
-	backendAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(backendSlot))).Bytes())
+	// Call the SFC contract to seal the epoch
+	sfcAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(sfcSlot))).Bytes())
 
 	// Pack the function call data
-	data, err := DriverAbi.Pack("sealEpoch", offlineTimes, offlineBlocks, uptimes, originatedTxsFee, usedGas)
+	data, err := DriverAuthAbi.Pack("sealEpoch", offlineTimes, offlineBlocks, uptimes, originatedTxsFee, usedGas)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
-	// Call the backend contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), backendAddr, data, 50000, big.NewInt(0))
+	// Call the SFC contract
+	_, _, err = evm.Call(vm.AccountRef(ContractAddress), sfcAddr, data, 50000, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}

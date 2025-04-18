@@ -13,6 +13,7 @@ import (
 var (
 	DriverAuthAbi abi.ABI
 	SfcAbi        abi.ABI
+	DriverAbi     abi.ABI
 )
 
 func init() {
@@ -22,6 +23,7 @@ func init() {
 		panic(err)
 	}
 	SfcAbi, _ = abi.JSON(strings.NewReader(SfcAbiStr))
+	DriverAbi, _ = abi.JSON(strings.NewReader(DriverAbiStr))
 }
 
 // parseABIInput parses the input data and returns the method and unpacked parameters

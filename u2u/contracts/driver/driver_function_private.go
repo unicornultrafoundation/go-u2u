@@ -190,30 +190,40 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 	// Check if caller is address(0) (onlyNode modifier)
 	revertData, err := checkOnlyNode(evm, caller, "sealEpochValidators")
 	if err != nil {
+		reason, _ := abi.UnpackRevert(revertData)
+		log.Error("Driver SealEpochValidators: Error checking onlyNode modifier", "error", err, "reason", reason)
 		return revertData, 0, err
 	}
 
 	// Get the arguments
 	if len(args) != 1 {
+		log.Error("Driver SealEpochValidators: Error getting arguments")
 		return nil, 0, vm.ErrExecutionReverted
 	}
 	nextValidatorIDs, ok := args[0].([]*big.Int)
 	if !ok {
+		log.Error("Driver SealEpochValidators: Error getting nextValidatorIDs")
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
 	// Call the backend contract to seal the epoch validators
-	backendAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(backendSlot))).Bytes())
+	backend := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(backendSlot)))
+	backendAddr := common.BytesToAddress(backend.Bytes())
 
 	// Pack the function call data
-	data, err := DriverAbi.Pack("sealEpochValidators", nextValidatorIDs)
+	data, err := DriverAuthAbi.Pack("sealEpochValidators", nextValidatorIDs)
 	if err != nil {
+		log.Error("Driver SealEpochValidators: Error packing function call data", "error", err)
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
 	// Call the backend contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), backendAddr, data, defaultGasLimit, big.NewInt(0))
+	log.Info("Driver SealEpochValidators: calling DriverAuth sealEpochValidators", "to", backendAddr.Hex(),
+		"raw slot", backend.Hex())
+	result, _, err := evm.Call(vm.AccountRef(ContractAddress), backendAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
+		reason, _ := abi.UnpackRevert(result)
+		log.Error("Driver SealEpochValidators: Error calling DriverAuth", "error", err, "reason", reason)
 		return nil, 0, err
 	}
 

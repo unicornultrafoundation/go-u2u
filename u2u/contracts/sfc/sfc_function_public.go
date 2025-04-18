@@ -1791,6 +1791,7 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 	}
 
 	// Call the node driver
+	log.Info("SFC: Calling NodeDriverAuth updateMinGasPrice", "minGasPrice", minGasPriceBigInt)
 	result, _, err := evm.Call(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, 50000, big.NewInt(0))
 	if err != nil {
 		reason, _ := abi.UnpackRevert(result)

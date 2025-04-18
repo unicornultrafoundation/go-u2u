@@ -189,6 +189,29 @@ func (s *Store) CleanCommit(block iblockproc.BlockState) error {
 	if err != nil {
 		s.Log.Error("Failed to flush trie DB into main DB", "err", err)
 	}
+
+	if s.cfg.SfcEnabled && !common.IsNilInterface(s.SfcState) {
+		sfcTriedb := s.SfcState.TrieDB()
+		sfcStateRoot := common.Hash(block.SfcStateRoot)
+		if current := uint64(block.LastBlock.Idx); current > TriesInMemory {
+			// Find the next state trie we need to commit
+			chosen := current - TriesInMemory
+			// Garbage collect all below the chosen block
+			for !s.triegc.Empty() {
+				root, number := s.triegc.Pop()
+				if uint64(-number) > chosen {
+					s.triegc.Push(root, number)
+					break
+				}
+				sfcTriedb.Dereference(root.(common.Hash))
+			}
+		}
+		// commit the state trie after clean up
+		err := sfcTriedb.Commit(sfcStateRoot, false, nil)
+		if err != nil {
+			s.Log.Error("Failed to flush SFC trie DB into main SFC DB", "err", err)
+		}
+	}
 	return err
 }
 
@@ -293,6 +316,18 @@ func (s *Store) Flush(block iblockproc.BlockState) {
 				s.Log.Error("Failed to commit recent state trie", "err", err)
 			}
 		}
+
+		if s.cfg.SfcEnabled && !common.IsNilInterface(s.SfcState) {
+			sfcTrieDb := s.SfcState.TrieDB()
+
+			if number := uint64(block.LastBlock.Idx); number > 0 {
+				s.Log.Info("Writing cached SFC state to disk", "block", number, "root", block.SfcStateRoot)
+				if err := sfcTrieDb.Commit(common.Hash(block.SfcStateRoot), true, nil); err != nil {
+					s.Log.Error("Failed to commit recent SFC state trie", "err", err)
+				}
+			}
+		}
+
 		if snapBase != (common.Hash{}) {
 			s.Log.Info("Writing snapshot state to disk", "root", snapBase)
 			if err := triedb.Commit(snapBase, true, nil); err != nil {
@@ -305,6 +340,10 @@ func (s *Store) Flush(block iblockproc.BlockState) {
 	if s.cfg.Cache.TrieCleanJournal != "" {
 		triedb := s.EvmState.TrieDB()
 		triedb.SaveCache(s.cfg.Cache.TrieCleanJournal)
+		if s.cfg.SfcEnabled && !common.IsNilInterface(s.SfcState) {
+			sfcTrieDb := s.SfcState.TrieDB()
+			sfcTrieDb.SaveCache(s.cfg.Cache.TrieCleanJournal)
+		}
 	}
 }
 
@@ -318,6 +357,19 @@ func (s *Store) Cap() {
 	// If we exceeded our memory allowance, flush matured singleton nodes to disk
 	if nodes > limit+ethdb.IdealBatchSize || imgs > 4*1024*1024 {
 		triedb.Cap(limit)
+	}
+
+	// Cap SfcState
+	if s.cfg.SfcEnabled && !common.IsNilInterface(s.SfcState) {
+		sfcTrieDb := s.SfcState.TrieDB()
+		var (
+			nodes, imgs = sfcTrieDb.Size()
+			limit       = common.StorageSize(s.cfg.Cache.TrieDirtyLimit)
+		)
+		// If we exceeded our memory allowance, flush matured singleton nodes to disk
+		if nodes > limit+ethdb.IdealBatchSize || imgs > 4*1024*1024 {
+			sfcTrieDb.Cap(limit)
+		}
 	}
 }
 

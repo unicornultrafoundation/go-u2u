@@ -6,6 +6,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // Handler functions for NodeDriver contract public functions
@@ -322,6 +323,7 @@ func handleUpdateNetworkRules(evm *vm.EVM, caller common.Address, args []interfa
 	// Pack the event data
 	data, err := DriverAbi.Events["UpdateNetworkRules"].Inputs.NonIndexed().Pack(diff)
 	if err != nil {
+		log.Error("Driver: Error packing UpdateNetworkRules event data")
 		return nil, 0, vm.ErrExecutionReverted
 	}
 

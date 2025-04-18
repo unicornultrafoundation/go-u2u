@@ -255,7 +255,15 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			evm.Context.Transfer(evm.SfcStateDB, caller.Address(), addr, value)
 			// Run SFC precompiled
 			start := time.Now()
+			log.Info("SFC precompiled calling", "action", "call", "height", evm.Context.BlockNumber,
+				"caller", caller.Address().Hex(),
+				"to", addr.Hex())
 			ret, _, err = sp.Run(evm, caller.Address(), input, gas)
+
+			driver := evm.SfcStateDB.GetState(common.HexToAddress("0xd100ae0000000000000000000000000000000000"), common.BigToHash(big.NewInt(int64(0x67))))
+			driverAddr := common.BytesToAddress(driver.Bytes())
+			log.Info("Current driver address", "action", "call", "addr", driverAddr.Hex())
+
 			// TODO(trinhdn97): compared sfc state precompiled gas used/output/error with the correct execution from smc
 			// as well for call code, delegate and static calls.
 			sfcExecutionElapsed = time.Since(start)
@@ -353,6 +361,7 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 		if isSfcPrecompile && evm.SfcStateDB != nil {
 			snapshot := evm.SfcStateDB.Snapshot()
 			start := time.Now()
+			log.Info("SFC precompiled calling", "action", "callcode", "height", evm.Context.BlockNumber, "caller", caller.Address().Hex())
 			ret, _, err = sp.Run(evm, caller.Address(), input, gas)
 			sfcExecutionElapsed = time.Since(start)
 			if err != nil {
@@ -423,6 +432,7 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 		if isSfcPrecompile && evm.SfcStateDB != nil {
 			snapshot := evm.SfcStateDB.Snapshot()
 			start := time.Now()
+			log.Info("SFC precompiled calling", "action", "delegatecall", "height", evm.Context.BlockNumber, "caller", caller.Address().Hex())
 			ret, _, err = sp.Run(evm, caller.Address(), input, gas)
 			sfcExecutionElapsed = time.Since(start)
 			if err != nil {
@@ -502,9 +512,17 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 			snapshot := evm.SfcStateDB.Snapshot()
 			evm.SfcStateDB.AddBalance(addr, big0)
 			start := time.Now()
+			log.Info("SFC precompiled calling", "action", "staticcall", "height", evm.Context.BlockNumber,
+				"caller", caller.Address().Hex(),
+				"to", addr.Hex())
 			ret, _, err = sp.Run(evm, caller.Address(), input, gas)
+
+			driver := evm.SfcStateDB.GetState(common.HexToAddress("0xd100ae0000000000000000000000000000000000"), common.BigToHash(big.NewInt(int64(0x67))))
+			driverAddr := common.BytesToAddress(driver.Bytes())
+			log.Info("Current driver address", "action", "staticcall", "addr", driverAddr.Hex())
 			sfcExecutionElapsed = time.Since(start)
 			if err != nil {
+				log.Warn("SFC precompiled error: Reverting to snapshot", "err", err)
 				evm.SfcStateDB.RevertToSnapshot(snapshot)
 				if !errors.Is(err, ErrExecutionReverted) {
 				}

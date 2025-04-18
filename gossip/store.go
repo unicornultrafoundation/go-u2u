@@ -202,14 +202,13 @@ func (s *Store) commitEVM(flush bool) {
 	if err != nil {
 		s.Log.Crit("Failed to commit EVM storage", "err", err)
 	}
-	s.evm.Cap()
 	if s.cfg.EVM.SfcEnabled && !common.IsNilInterface(s.evm.SfcState) {
 		err = s.evm.CommitSfcState(bs.LastBlock.Idx, bs.SfcStateRoot, flush)
 		if err != nil {
 			s.Log.Crit("Failed to commit SFC storage", "err", err)
 		}
-		s.evm.CapSfcState()
 	}
+	s.evm.Cap()
 }
 
 func (s *Store) cleanCommitEVM() {

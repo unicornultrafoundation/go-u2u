@@ -10,8 +10,7 @@ import (
 // handleBackend returns the backend address
 func handleBackend(evm *vm.EVM) ([]byte, uint64, error) {
 	val := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(backendSlot)))
-	result, err := DriverAbi.Methods["backend"].Outputs.Pack(common.BytesToAddress(val.Bytes()))
-	return result, 0, err
+	return val.Bytes(), 0, nil
 }
 
 // handleEvmWriter returns the EVMWriter address

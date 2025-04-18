@@ -8,10 +8,12 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // handleInitialize initializes the NodeDriverAuth contract
 func handleInitialize(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
+	log.Info("handleInitialize", "caller", caller.Hex(), "args", args)
 	// Check if contract is already initialized
 	sfc := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(sfcSlot)))
 	driver := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(driverSlot)))
@@ -396,7 +398,7 @@ func handleUpdateNetworkRules(evm *vm.EVM, caller common.Address, args []interfa
 	driverAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(driverSlot))).Bytes())
 
 	// Pack the function call data
-	data, err := DriverAuthAbi.Pack("updateNetworkRules", diff)
+	data, err := DriverAbi.Pack("updateNetworkRules", diff)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}

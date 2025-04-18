@@ -138,7 +138,7 @@ func (p *U2UEVMProcessor) Finalize() (evmBlock *evmcore.EvmBlock, skippedTxs []u
 		if newSfcStateHash.Cmp(types.EmptyRootHash) == 0 {
 			log.Error("SFC state is empty now", "block", p.block.Idx)
 		} else {
-			log.Debug("SFC state is healthy", "block", p.block.Idx, "root", newSfcStateHash.Hex())
+			log.Info("SFC state is healthy", "block", p.block.Idx, "root", newSfcStateHash.Hex())
 		}
 		evmBlock.SfcStateRoot = newSfcStateHash
 	}

@@ -187,18 +187,22 @@ func handleDeactivateValidator(evm *vm.EVM, caller common.Address, args []interf
 
 // handleSealEpochValidators seals the epoch validators
 func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
-	// Check if caller is the driver contract
-	driverAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(driverSlot))).Bytes())
-	if caller != driverAddr {
-		return nil, 0, vm.ErrExecutionReverted
+	// Check if caller is the driver contract using the helper function
+	revertData, err := checkOnlyDriver(evm, caller, "sealEpochValidators")
+	if err != nil {
+		reason, _ := abi.UnpackRevert(revertData)
+		log.Error("DriverAuth SealEpochValidators: Error packing function call data", "reason", reason, "error", err)
+		return revertData, 0, err
 	}
 
 	// Get the arguments
 	if len(args) != 1 {
+		log.Error("DriverAuth SealEpochValidators: Error getting arguments")
 		return nil, 0, vm.ErrExecutionReverted
 	}
 	nextValidatorIDs, ok := args[0].([]*big.Int)
 	if !ok {
+		log.Error("DriverAuth SealEpochValidators: Error getting nextValidatorIDs")
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
@@ -206,14 +210,18 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 	sfcAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(sfcSlot))).Bytes())
 
 	// Pack the function call data
-	data, err := DriverAuthAbi.Pack("sealEpochValidators", nextValidatorIDs)
+	data, err := SfcAbi.Pack("sealEpochValidators", nextValidatorIDs)
 	if err != nil {
+		log.Error("DriverAuth SealEpochValidators: Error packing function call data")
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
 	// Call the SFC contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), sfcAddr, data, defaultGasLimit, big.NewInt(0))
+	log.Info("DriverAuth SealEpochValidators: calling SFC sealEpochValidators")
+	result, _, err := evm.Call(vm.AccountRef(ContractAddress), sfcAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
+		reason, _ := abi.UnpackRevert(result)
+		log.Error("DriverAuth SealEpochValidators: Error calling sealEpochValidators", "error", err, "reason", reason)
 		return nil, 0, err
 	}
 

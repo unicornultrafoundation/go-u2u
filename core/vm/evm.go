@@ -291,9 +291,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		}
 
 		if isSfcPrecompile && evm.SfcStateDB != nil {
-			if ok, addr := evm.IsSfcCorrupted(); ok {
-				log.Warn("SFC corrupted after applying tx", "action", "call", "height", evm.Context.BlockNumber, "addr", addr)
-			}
+			evm.IsSfcCorrupted("call")
 			sfcDiffCallMeter.Mark(int64(evmExecutionElapsed - sfcExecutionElapsed))
 			sfcCallGauge.Inc(1)
 		}
@@ -378,9 +376,7 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 		gas = contract.Gas
 
 		if isSfcPrecompile && evm.SfcStateDB != nil {
-			if ok, addr := evm.IsSfcCorrupted(); ok {
-				log.Warn("SFC corrupted after applying tx", "action", "call code", "height", evm.Context.BlockNumber, "addr", addr)
-			}
+			evm.IsSfcCorrupted("callcode")
 			sfcDiffCallCodeMeter.Mark(int64(evmExecutionElapsed - sfcExecutionElapsed))
 			sfcCallCodeGauge.Inc(1)
 		}
@@ -449,9 +445,7 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 		gas = contract.Gas
 
 		if isSfcPrecompile && evm.SfcStateDB != nil {
-			if ok, addr := evm.IsSfcCorrupted(); ok {
-				log.Warn("SFC corrupted after applying tx", "action", "delegate call", "height", evm.Context.BlockNumber, "addr", addr)
-			}
+			evm.IsSfcCorrupted("delegatecall")
 			sfcDiffDelegateCallMeter.Mark(int64(evmExecutionElapsed - sfcExecutionElapsed))
 			sfcDelegateCallGauge.Inc(1)
 		}
@@ -539,9 +533,7 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 		gas = contract.Gas
 
 		if isSfcPrecompile && evm.SfcStateDB != nil {
-			if ok, addr := evm.IsSfcCorrupted(); ok {
-				log.Warn("SFC corrupted after applying tx", "action", "static call", "height", evm.Context.BlockNumber, "addr", addr)
-			}
+			evm.IsSfcCorrupted("staticcall")
 			sfcDiffStaticCallMeter.Mark(int64(evmExecutionElapsed - sfcExecutionElapsed))
 			sfcStaticCallGauge.Inc(1)
 		}
@@ -680,13 +672,10 @@ func (evm *EVM) Create2(caller ContractRef, code []byte, gas uint64, endowment *
 // ChainConfig returns the environment's chain configuration
 func (evm *EVM) ChainConfig() *params.ChainConfig { return evm.chainConfig }
 
-func (evm *EVM) IsSfcCorrupted() (corrupted bool, sfcAddr common.Address) {
+func (evm *EVM) IsSfcCorrupted(action string) {
 	for addr := range evm.Config.SfcPrecompiles {
 		if evm.StateDB.GetStorageRoot(addr).Cmp(evm.SfcStateDB.GetStorageRoot(addr)) != 0 {
-			corrupted = true
-			sfcAddr = addr
-			break
+			log.Warn("SFC corrupted after applying tx", "action", action, "addr", addr)
 		}
 	}
-	return corrupted, sfcAddr
 }

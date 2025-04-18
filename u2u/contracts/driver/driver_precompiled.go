@@ -11,8 +11,9 @@ import (
 )
 
 var (
-	DriverAbi abi.ABI
-	SfcAbi    abi.ABI
+	DriverAbi     abi.ABI
+	SfcAbi        abi.ABI
+	DriverAuthAbi abi.ABI
 )
 
 func init() {
@@ -22,6 +23,7 @@ func init() {
 		panic(err)
 	}
 	SfcAbi, _ = abi.JSON(strings.NewReader(SfcAbiStr))
+	DriverAuthAbi, _ = abi.JSON(strings.NewReader(DriverAuthAbiStr))
 }
 
 // parseABIInput parses the input data and returns the method and unpacked parameters
@@ -130,7 +132,7 @@ func (p *DriverPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte,
 	}
 	if err != nil {
 		reason, _ := abi.UnpackRevert(result)
-		log.Error("Driver Precompiled: Revert", "function", method.Name, "reason", reason)
+		log.Error("Driver Precompiled: Revert", "function", method.Name, "err", err, "reason", reason)
 		return nil, 0, vm.ErrExecutionReverted
 	}
 

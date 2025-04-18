@@ -8,7 +8,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
-	"github.com/unicornultrafoundation/go-u2u/rlp"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // Gas costs for storage operations
@@ -912,13 +912,16 @@ func callConstantManagerMethod(evm *vm.EVM, methodName string, args ...interface
 	// Pack the function call data
 	data, err := CMAbi.Pack(methodName, args...)
 	if err != nil {
+		log.Error("SFC: Error packing ConstantsManager method", "method", methodName, "err", err)
 		return nil, gasUsed, vm.ErrExecutionReverted
 	}
 
 	// Make the call to the ConstantsManager contract
 	result, leftOverGas, err := evm.Call(vm.AccountRef(ContractAddress), constantsManagerAddr, data, 50000, big.NewInt(0))
 	if err != nil {
-		return nil, gasUsed + (50000 - leftOverGas), err
+		reason, _ := abi.UnpackRevert(result)
+		log.Error("SFC: Error calling ConstantsManager method", "method", methodName, "err", err, "reason", reason)
+		return []interface{}{result}, gasUsed + (50000 - leftOverGas), err
 	}
 
 	// Add the gas used by the call
@@ -927,7 +930,8 @@ func callConstantManagerMethod(evm *vm.EVM, methodName string, args ...interface
 	// Unpack the result
 	values, err := CMAbi.Methods[methodName].Outputs.Unpack(result)
 	if err != nil {
-		return nil, gasUsed, vm.ErrExecutionReverted
+		log.Error("SFC: Error unpacking ConstantsManager method", "method", methodName, "err", err)
+		return values, gasUsed, vm.ErrExecutionReverted
 	}
 
 	return values, gasUsed, nil
@@ -1010,12 +1014,38 @@ func decodeValidatorIDs(data []byte) ([]*big.Int, error) {
 		return []*big.Int{}, nil
 	}
 
-	// Decode the validator IDs
-	// The data is expected to be an RLP-encoded array of big.Int
-	var validatorIDs []*big.Int
-	err := rlp.DecodeBytes(data, &validatorIDs)
+	// Decode the validator IDs using ABI decoding
+	// The data is expected to be an ABI-encoded array of uint256
+	validatorIDs := []*big.Int{}
+
+	// Create a temporary ABI definition for an array of uint256
+	arrayType, err := abi.NewType("uint256[]", "uint256[]", nil)
 	if err != nil {
+		log.Error("SFC: Error creating array type", "err", err)
 		return nil, err
+	}
+
+	// Create arguments for the array
+	args := abi.Arguments{{
+		Type: arrayType,
+	}}
+
+	// Unpack the data
+	values, err := args.Unpack(data)
+	if err != nil {
+		log.Error("SFC: Error unpacking validatorIDs", "err", err)
+		return nil, err
+	}
+
+	// Extract the validator IDs
+	if len(values) > 0 {
+		if ids, ok := values[0].([]interface{}); ok {
+			for _, id := range ids {
+				if bigInt, ok := id.(*big.Int); ok {
+					validatorIDs = append(validatorIDs, bigInt)
+				}
+			}
+		}
 	}
 
 	return validatorIDs, nil
@@ -1418,6 +1448,12 @@ func getEpochValidatorReceivedStakeSlot(epoch *big.Int, validatorID *big.Int) (i
 	slot := new(big.Int).SetBytes(outerHash)
 
 	return slot.Int64(), gasUsed
+}
+
+// getDecimalUnit returns the decimal unit value (1e18) used for decimal calculations
+func getDecimalUnit() *big.Int {
+	// This is a pure function that returns 1e18, as defined in Decimal.sol
+	return new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
 }
 
 // getMinSelfStake returns the minimum self-stake value from the ConstantManager contract

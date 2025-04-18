@@ -1582,14 +1582,12 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	if !ok {
 		return nil, gasUsed, vm.ErrExecutionReverted
 	}
-
 	// Get the current epoch
 	currentEpochBigInt, epochGasUsed, err := getCurrentEpoch(evm)
 	gasUsed += epochGasUsed
 	if err != nil {
 		return nil, gasUsed, err
 	}
-	// currentEpoch is used in the implementation
 
 	// Get the epoch snapshot for the current epoch
 	epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(currentEpochBigInt)
@@ -1617,7 +1615,6 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	currentSealedEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(currentSealedEpochSlot)))
 	gasUsed += SloadGasCost
 	currentSealedEpochBigInt := new(big.Int).SetBytes(currentSealedEpoch.Bytes())
-
 	prevEpochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(currentSealedEpochBigInt)
 	gasUsed += slotGasUsed
 

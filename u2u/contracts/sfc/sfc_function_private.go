@@ -133,7 +133,8 @@ func _sealEpoch_offline(evm *vm.EVM, validatorIDs []*big.Int, offlineTimes []*bi
 }
 
 // _sealEpoch_rewards is an internal function to seal rewards in an epoch
-func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.Int, prevEpoch *big.Int, validatorIDs []*big.Int, uptimes []*big.Int, accumulatedOriginatedTxsFee []*big.Int) (uint64, error) {
+func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.Int, prevEpoch *big.Int,
+	validatorIDs []*big.Int, uptimes []*big.Int, accumulatedOriginatedTxsFee []*big.Int) (uint64, error) {
 	// Initialize gas used
 	var gasUsed uint64 = 0
 
@@ -245,17 +246,8 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		return gasUsed, vm.ErrExecutionReverted
 	}
 
-	// Get the decimal unit from the constants manager
-	decimalUnit, cmGasUsed, err := callConstantManagerMethod(evm, "unit")
-	gasUsed += cmGasUsed
-	if err != nil || len(decimalUnit) == 0 {
-		return gasUsed, err
-	}
-	decimalUnitBigInt, ok := decimalUnit[0].(*big.Int)
-	if !ok {
-		return gasUsed, vm.ErrExecutionReverted
-	}
-
+	// Get the decimal unit (1e18) using the helper function
+	decimalUnitBigInt := getDecimalUnit()
 	// Calculate rewards for each validator
 	for i, validatorID := range validatorIDs {
 		// Calculate raw base reward
@@ -416,7 +408,6 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(accumulatedUptimeSlot)), common.BigToHash(newAccumulatedUptime))
 		gasUsed += SstoreGasCost
 	}
-
 	// Update epoch fee
 	epochFeeSlot := currentEpochSnapshotSlot + epochFeeOffset
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(epochFeeSlot)), common.BigToHash(epochFee))
@@ -478,9 +469,9 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		data := common.BigToHash(feeShare).Bytes()
 
 		evm.SfcStateDB.AddLog(&types.Log{
-			Address: ContractAddress,
-			Topics:  topics,
-			Data:    data,
+			Address:     ContractAddress,
+			Topics:      topics,
+			Data:        data,
 			BlockNumber: evm.Context.BlockNumber.Uint64(),
 		})
 	}
@@ -508,16 +499,8 @@ func _sealEpoch_minGasPrice(evm *vm.EVM, epochDuration *big.Int, epochGas *big.I
 	targetEpochGas := new(big.Int).Mul(epochDuration, targetGasPowerPerSecondBigInt)
 	targetEpochGas = new(big.Int).Add(targetEpochGas, big.NewInt(1)) // Add 1 to avoid division by zero
 
-	// Get the decimal unit from the constants manager
-	decimalUnit, cmGasUsed, err := callConstantManagerMethod(evm, "unit")
-	gasUsed += cmGasUsed
-	if err != nil || len(decimalUnit) == 0 {
-		return gasUsed, err
-	}
-	decimalUnitBigInt, ok := decimalUnit[0].(*big.Int)
-	if !ok {
-		return gasUsed, vm.ErrExecutionReverted
-	}
+	// Get the decimal unit (1e18) using the helper function
+	decimalUnitBigInt := getDecimalUnit()
 
 	// Calculate gas price delta ratio
 	gasPriceDeltaRatio := new(big.Int).Mul(epochGas, decimalUnitBigInt)
@@ -814,7 +797,7 @@ func handleCheckDelegatedStakeLimit(evm *vm.EVM, validatorID *big.Int) (bool, er
 
 	// Calculate the maximum allowed delegated stake
 	maxDelegatedStake := new(big.Int).Mul(selfStake, maxDelegatedRatioBigInt)
-	maxDelegatedStake = new(big.Int).Div(maxDelegatedStake, big.NewInt(1e18)) // Divide by Decimal.unit()
+	maxDelegatedStake = new(big.Int).Div(maxDelegatedStake, getDecimalUnit()) // Divide by Decimal.unit()
 
 	// Check if the delegated stake is within the limit
 	return delegatedStake.Cmp(maxDelegatedStake) <= 0, nil

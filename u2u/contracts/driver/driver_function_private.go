@@ -3,8 +3,10 @@ package driver
 import (
 	"math/big"
 
+	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // handleFallback handles the fallback function (when no method is specified)
@@ -220,58 +222,52 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 
 // handleSealEpoch seals the epoch
 func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
-	// Initialize gas used
-	var gasUsed uint64 = 0
-
 	// Check if caller is address(0) (onlyNode modifier)
 	revertData, err := checkOnlyNode(evm, caller, "sealEpoch")
 	if err != nil {
-		return revertData, gasUsed, err
+		return revertData, 0, err
 	}
 
 	// Get the arguments
 	if len(args) != 4 {
-		return nil, gasUsed, vm.ErrExecutionReverted
+		return nil, 0, vm.ErrExecutionReverted
 	}
 	offlineTimes, ok := args[0].([]*big.Int)
 	if !ok {
-		return nil, gasUsed, vm.ErrExecutionReverted
+		return nil, 0, vm.ErrExecutionReverted
 	}
 	offlineBlocks, ok := args[1].([]*big.Int)
 	if !ok {
-		return nil, gasUsed, vm.ErrExecutionReverted
+		return nil, 0, vm.ErrExecutionReverted
 	}
 	uptimes, ok := args[2].([]*big.Int)
 	if !ok {
-		return nil, gasUsed, vm.ErrExecutionReverted
+		return nil, 0, vm.ErrExecutionReverted
 	}
 	originatedTxsFee, ok := args[3].([]*big.Int)
 	if !ok {
-		return nil, gasUsed, vm.ErrExecutionReverted
+		return nil, 0, vm.ErrExecutionReverted
 	}
 
-	// Get the backend address (NodeDriverAuth)
+	// Call the backend contract to seal the epoch with a fixed gas value (841669690)
 	backendAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(backendSlot))).Bytes())
-	gasUsed += SloadGasCost
 
-	// Get the SFC contract address from the backend (NodeDriverAuth)
-	sfcAddrSlot := common.BigToHash(big.NewInt(0)) // SFC address is stored at slot 0 in NodeDriverAuth
-	sfcAddr := common.BytesToAddress(evm.SfcStateDB.GetState(backendAddr, sfcAddrSlot).Bytes())
-	gasUsed += SloadGasCost
-
-	// Pack the function call data for SFC.sealEpoch
-	data, err := SfcAbi.Pack("sealEpoch", offlineTimes, offlineBlocks, uptimes, originatedTxsFee, big.NewInt(841669690))
+	// Pack the function call data
+	data, err := DriverAuthAbi.Pack("sealEpoch", offlineTimes, offlineBlocks, uptimes, originatedTxsFee, big.NewInt(841669690))
 	if err != nil {
-		return nil, gasUsed, vm.ErrExecutionReverted
+		log.Error("Driver Precompiled: Error packing function call data", "error", err)
+		return nil, 0, vm.ErrExecutionReverted
 	}
 
-	// Call the SFC contract directly
-	_, _, err = evm.Call(vm.AccountRef(backendAddr), sfcAddr, data, 100000, big.NewInt(0))
+	// Call the backend contract
+	result, _, err := evm.Call(vm.AccountRef(ContractAddress), backendAddr, data, 50000, big.NewInt(0))
 	if err != nil {
-		return nil, gasUsed, err
+		reason, _ := abi.UnpackRevert(result)
+		log.Error("Driver Precompiled: Error calling backend contract", "error", err, "reason", reason)
+		return nil, 0, err
 	}
 
-	return nil, gasUsed, nil
+	return nil, 0, nil
 }
 
 // handleSealEpochV1 seals the epoch with a custom gas value

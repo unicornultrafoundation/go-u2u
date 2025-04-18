@@ -6,6 +6,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // checkOnlyOwner checks if the caller is the owner of the contract
@@ -52,8 +53,10 @@ func checkOnlyDriver(evm *vm.EVM, caller common.Address, methodName string) ([]b
 		revertReason := "caller is not the Driver contract"
 		revertData, err := encodeRevertReason(methodName, revertReason)
 		if err != nil {
+			log.Error("DriverAuth Precompiled: Failed to encode revert reason", "err", err)
 			return nil, vm.ErrExecutionReverted
 		}
+		log.Error("DriverAuth Precompiled: Caller is not the driver contract", "caller", caller, "driver", driverAddr)
 		return revertData, vm.ErrExecutionReverted
 	}
 	return nil, nil

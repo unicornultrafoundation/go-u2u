@@ -3,8 +3,10 @@ package driverauth
 import (
 	"math/big"
 
+	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // handleFallback handles the fallback function (when no method is specified)
@@ -16,10 +18,10 @@ func handleFallback(evm *vm.EVM, caller common.Address, args []interface{}, inpu
 
 // handleSetGenesisValidator sets a genesis validator
 func handleSetGenesisValidator(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
-	// Check if caller is the driver contract
-	driverAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(driverSlot))).Bytes())
-	if caller != driverAddr {
-		return nil, 0, vm.ErrExecutionReverted
+	// Check if caller is the driver contract using the helper function
+	revertData, err := checkOnlyDriver(evm, caller, "setGenesisValidator")
+	if err != nil {
+		return revertData, 0, err
 	}
 
 	// Get the arguments
@@ -220,10 +222,12 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 
 // handleSealEpoch seals the epoch
 func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
-	// Check if caller is the driver contract
-	driverAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(driverSlot))).Bytes())
-	if caller != driverAddr {
-		return nil, 0, vm.ErrExecutionReverted
+	// Check if caller is the driver contract using the helper function
+	revertData, err := checkOnlyDriver(evm, caller, "sealEpoch")
+	if err != nil {
+		reason, _ := abi.UnpackRevert(revertData)
+		log.Error("Driver Precompiled: Error packing function call data", "reason", reason, "error", err)
+		return revertData, 0, err
 	}
 
 	// Get the arguments
@@ -255,14 +259,17 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	sfcAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(sfcSlot))).Bytes())
 
 	// Pack the function call data
-	data, err := DriverAuthAbi.Pack("sealEpoch", offlineTimes, offlineBlocks, uptimes, originatedTxsFee, usedGas)
+	data, err := SfcAbi.Pack("sealEpoch", offlineTimes, offlineBlocks, uptimes, originatedTxsFee, usedGas)
 	if err != nil {
+		log.Error("DriverAuth Precompiled: Error packing function call data", "error", err)
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
 	// Call the SFC contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), sfcAddr, data, 50000, big.NewInt(0))
+	result, _, err := evm.Call(vm.AccountRef(ContractAddress), sfcAddr, data, 50000, big.NewInt(0))
 	if err != nil {
+		reason, _ := abi.UnpackRevert(result)
+		log.Error("DriverAuth Precompiled: Error calling SFC contract", "error", err, "reason", reason)
 		return nil, 0, err
 	}
 

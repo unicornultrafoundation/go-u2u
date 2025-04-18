@@ -336,7 +336,7 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 	}
 	if err != nil {
 		reason, _ := abi.UnpackRevert(result)
-		log.Error("SFC Precompiled: Revert", "function", method.Name, "reason", reason)
+		log.Error("SFC Precompiled: Revert", "function", method.Name, "err", err, "reason", reason)
 		return nil, 0, vm.ErrExecutionReverted
 	}
 

@@ -182,11 +182,21 @@ func handleCreateValidator(evm *vm.EVM, caller common.Address, args []interface{
 		return revertData, 0, vm.ErrExecutionReverted
 	}
 
-	// Get the minimum self-stake
-	constantsManager := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(constantsManagerSlot)))
-	constantsManagerAddr := common.BytesToAddress(constantsManager.Bytes())
-	minSelfStake := evm.SfcStateDB.GetState(constantsManagerAddr, common.BigToHash(big.NewInt(minSelfStakeSlot)))
-	minSelfStakeBigInt := new(big.Int).SetBytes(minSelfStake.Bytes())
+	// Call the minSelfStake method on the ConstantsManager contract
+	minSelfStakeValues, err := callConstantManagerMethod(evm, "minSelfStake")
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// The result should be a single *big.Int value
+	if len(minSelfStakeValues) != 1 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	minSelfStakeBigInt, ok := minSelfStakeValues[0].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
 
 	// Check that the value is at least the minimum self-stake
 	if value.Cmp(minSelfStakeBigInt) < 0 {
@@ -208,10 +218,14 @@ func handleCreateValidator(evm *vm.EVM, caller common.Address, args []interface{
 		return revertData, 0, vm.ErrExecutionReverted
 	}
 
-	// Increment the last validator ID
+	// Get the last validator ID
 	lastValidatorID := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(lastValidatorIDSlot)))
 	lastValidatorIDBigInt := new(big.Int).SetBytes(lastValidatorID.Bytes())
+
+	// Increment the last validator ID
 	newValidatorID := new(big.Int).Add(lastValidatorIDBigInt, big.NewInt(1))
+
+	// Set the last validator ID
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(lastValidatorIDSlot)), common.BigToHash(newValidatorID))
 
 	// Set the validator ID for the caller
@@ -223,8 +237,11 @@ func handleCreateValidator(evm *vm.EVM, caller common.Address, args []interface{
 
 	// Set the validator created epoch
 	validatorCreatedEpochSlot := getValidatorCreatedEpochSlot(newValidatorID)
-	currentEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(currentEpochSlot)))
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorCreatedEpochSlot)), currentEpoch)
+	currentEpochBigInt, err := getCurrentEpoch(evm)
+	if err != nil {
+		return nil, 0, err
+	}
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorCreatedEpochSlot)), common.BigToHash(currentEpochBigInt))
 
 	// Set the validator created time
 	validatorCreatedTimeSlot := getValidatorCreatedTimeSlot(newValidatorID)
@@ -252,8 +269,12 @@ func handleCreateValidator(evm *vm.EVM, caller common.Address, args []interface{
 		common.BigToHash(newValidatorID),                            // indexed parameter (validatorID)
 		common.BytesToHash(common.LeftPadBytes(caller.Bytes(), 32)), // indexed parameter (auth)
 	}
+	currentEpochBigInt, err = getCurrentEpoch(evm)
+	if err != nil {
+		return nil, 0, err
+	}
 	data, err := SfcAbi.Events["CreatedValidator"].Inputs.NonIndexed().Pack(
-		currentEpoch,
+		currentEpochBigInt,
 		evm.Context.Time,
 	)
 	if err != nil {
@@ -476,10 +497,10 @@ func handleUndelegate(evm *vm.EVM, caller common.Address, args []interface{}) ([
 		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorStatusSlot)), common.BigToHash(big.NewInt(1))) // WITHDRAWN_BIT
 	} else if validatorStatusBigInt.Cmp(big.NewInt(0)) == 0 { // OK_STATUS
 		// Check that the self-stake is at least the minimum self-stake
-		constantsManager := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(constantsManagerSlot)))
-		constantsManagerAddr := common.BytesToAddress(constantsManager.Bytes())
-		minSelfStake := evm.SfcStateDB.GetState(constantsManagerAddr, common.BigToHash(big.NewInt(minSelfStakeSlot)))
-		minSelfStakeBigInt := new(big.Int).SetBytes(minSelfStake.Bytes())
+		minSelfStakeBigInt, err := getMinSelfStake(evm)
+		if err != nil {
+			return nil, 0, err
+		}
 		if selfStake.Cmp(minSelfStakeBigInt) < 0 {
 			// Set the validator as deactivated
 			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorStatusSlot)), common.BigToHash(big.NewInt(1))) // WITHDRAWN_BIT
@@ -492,11 +513,14 @@ func handleUndelegate(evm *vm.EVM, caller common.Address, args []interface{}) ([
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(withdrawalRequestAmountSlot)), common.BigToHash(amount))
 
 	withdrawalRequestEpochSlot := getWithdrawalRequestEpochSlot(caller, toValidatorID, wrID)
-	currentEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(currentEpochSlot)))
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(withdrawalRequestEpochSlot)), currentEpoch)
+	currentEpochBigInt, err := getCurrentEpoch(evm)
+	if err != nil {
+		return nil, 0, err
+	}
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(withdrawalRequestEpochSlot)), common.BigToHash(currentEpochBigInt))
 
 	withdrawalRequestTimeSlot := getWithdrawalRequestTimeSlot(caller, toValidatorID, wrID)
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(withdrawalRequestTimeSlot)), common.BigToHash(big.NewInt(evm.Context.Time)))
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(withdrawalRequestTimeSlot)), common.BigToHash(evm.Context.Time))
 
 	// Sync validator
 	// TODO(trinhdn97): Implement _syncValidator
@@ -524,94 +548,6 @@ func handleUndelegate(evm *vm.EVM, caller common.Address, args []interface{}) ([
 	// TODO: Implement _recountVotes
 
 	return nil, 0, nil
-}
-
-// handleGetValidator returns the validator information for a given ID
-func handleGetValidator(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// Get the arguments
-	if len(args) != 1 {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-	validatorID, ok := args[0].(*big.Int)
-	if !ok {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	// Get the validator status
-	validatorStatusSlot := getValidatorStatusSlot(validatorID)
-	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorStatusSlot)))
-	validatorStatusBigInt := new(big.Int).SetBytes(validatorStatus.Bytes())
-
-	// Get the validator created epoch
-	validatorCreatedEpochSlot := getValidatorCreatedEpochSlot(validatorID)
-	validatorCreatedEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorCreatedEpochSlot)))
-	validatorCreatedEpochBigInt := new(big.Int).SetBytes(validatorCreatedEpoch.Bytes())
-
-	// Get the validator created time
-	validatorCreatedTimeSlot := getValidatorCreatedTimeSlot(validatorID)
-	validatorCreatedTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorCreatedTimeSlot)))
-	validatorCreatedTimeBigInt := new(big.Int).SetBytes(validatorCreatedTime.Bytes())
-
-	// Get the validator deactivated epoch
-	validatorDeactivatedEpochSlot := getValidatorDeactivatedEpochSlot(validatorID)
-	validatorDeactivatedEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorDeactivatedEpochSlot)))
-	validatorDeactivatedEpochBigInt := new(big.Int).SetBytes(validatorDeactivatedEpoch.Bytes())
-
-	// Get the validator deactivated time
-	validatorDeactivatedTimeSlot := getValidatorDeactivatedTimeSlot(validatorID)
-	validatorDeactivatedTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorDeactivatedTimeSlot)))
-	validatorDeactivatedTimeBigInt := new(big.Int).SetBytes(validatorDeactivatedTime.Bytes())
-
-	// Get the validator auth
-	validatorAuthSlot := getValidatorAuthSlot(validatorID)
-	validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorAuthSlot)))
-	validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
-
-	// Get the validator received stake
-	validatorReceivedStakeSlot := getValidatorReceivedStakeSlot(validatorID)
-	validatorReceivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorReceivedStakeSlot)))
-	validatorReceivedStakeBigInt := new(big.Int).SetBytes(validatorReceivedStake.Bytes())
-
-	// Pack the validator information
-	result, err := SfcAbi.Methods["getValidator"].Outputs.Pack(
-		validatorStatusBigInt,
-		validatorCreatedEpochBigInt,
-		validatorCreatedTimeBigInt,
-		validatorDeactivatedEpochBigInt,
-		validatorDeactivatedTimeBigInt,
-		validatorAuthAddr,
-		validatorReceivedStakeBigInt,
-	)
-	if err != nil {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	return result, 0, nil
-}
-
-// handleGetValidatorPubkey returns the validator pubkey for a given ID
-func handleGetValidatorPubkey(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// Get the arguments
-	if len(args) != 1 {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-	validatorID, ok := args[0].(*big.Int)
-	if !ok {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	// Get the validator pubkey
-	validatorPubkeySlot := getValidatorPubkeySlot(validatorID)
-	validatorPubkey := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorPubkeySlot)))
-	validatorPubkeyBytes := validatorPubkey.Bytes()
-
-	// Pack the validator pubkey
-	result, err := SfcAbi.Methods["getValidatorPubkey"].Outputs.Pack(validatorPubkeyBytes)
-	if err != nil {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	return result, 0, nil
 }
 
 // handleGetDelegation returns the delegation information for a given delegator and validator ID
@@ -675,53 +611,6 @@ func handleGetDelegation(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 	return result, 0, nil
 }
 
-// handleGetWithdrawalRequest returns the withdrawal request information for a given delegator, validator ID, and request ID
-func handleGetWithdrawalRequest(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// Get the arguments
-	if len(args) != 3 {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-	delegator, ok := args[0].(common.Address)
-	if !ok {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-	toValidatorID, ok := args[1].(*big.Int)
-	if !ok {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-	wrID, ok := args[2].(*big.Int)
-	if !ok {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	// Get the withdrawal request amount
-	withdrawalRequestAmountSlot := getWithdrawalRequestAmountSlot(delegator, toValidatorID, wrID)
-	withdrawalRequestAmount := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(withdrawalRequestAmountSlot)))
-	withdrawalRequestAmountBigInt := new(big.Int).SetBytes(withdrawalRequestAmount.Bytes())
-
-	// Get the withdrawal request time
-	withdrawalRequestTimeSlot := getWithdrawalRequestTimeSlot(delegator, toValidatorID, wrID)
-	withdrawalRequestTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(withdrawalRequestTimeSlot)))
-	withdrawalRequestTimeBigInt := new(big.Int).SetBytes(withdrawalRequestTime.Bytes())
-
-	// Get the withdrawal request epoch
-	withdrawalRequestEpochSlot := getWithdrawalRequestEpochSlot(delegator, toValidatorID, wrID)
-	withdrawalRequestEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(withdrawalRequestEpochSlot)))
-	withdrawalRequestEpochBigInt := new(big.Int).SetBytes(withdrawalRequestEpoch.Bytes())
-
-	// Pack the withdrawal request information
-	result, err := SfcAbi.Methods["getWithdrawalRequest"].Outputs.Pack(
-		withdrawalRequestAmountBigInt,
-		withdrawalRequestTimeSlot,
-		withdrawalRequestEpochBigInt,
-	)
-	if err != nil {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	return result, 0, nil
-}
-
 // handleIsOwner returns whether the given address is the owner of the contract
 func handleIsOwner(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	// Get the arguments
@@ -734,7 +623,7 @@ func handleIsOwner(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	}
 
 	// Get the owner
-	owner := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(owner)))
+	owner := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(ownerSlot)))
 	ownerAddr := common.BytesToAddress(owner.Bytes())
 
 	// Check if the address is the owner
@@ -742,21 +631,6 @@ func handleIsOwner(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 
 	// Pack the result
 	result, err := SfcAbi.Methods["isOwner"].Outputs.Pack(isOwner)
-	if err != nil {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	return result, 0, nil
-}
-
-// handleOwner returns the owner of the contract
-func handleOwner(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// Get the owner
-	owner := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(owner)))
-	ownerAddr := common.BytesToAddress(owner.Bytes())
-
-	// Pack the result
-	result, err := SfcAbi.Methods["owner"].Outputs.Pack(ownerAddr)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}
@@ -792,11 +666,11 @@ func handleTransferOwnership(evm *vm.EVM, caller common.Address, args []interfac
 	}
 
 	// Get the current owner
-	currentOwner := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(owner)))
+	currentOwner := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(ownerSlot)))
 	currentOwnerAddr := common.BytesToAddress(currentOwner.Bytes())
 
 	// Set the new owner
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(owner)), common.BytesToHash(newOwner.Bytes()))
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(ownerSlot)), common.BytesToHash(newOwner.Bytes()))
 
 	// Emit OwnershipTransferred event
 	topics := []common.Hash{
@@ -823,12 +697,12 @@ func handleRenounceOwnership(evm *vm.EVM, caller common.Address, args []interfac
 	}
 
 	// Get the current owner
-	currentOwner := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(owner)))
+	currentOwner := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(ownerSlot)))
 	currentOwnerAddr := common.BytesToAddress(currentOwner.Bytes())
 
 	// Set the owner to the zero address
 	emptyAddr := common.Address{}
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(owner)), common.BytesToHash(emptyAddr.Bytes()))
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(ownerSlot)), common.BytesToHash(emptyAddr.Bytes()))
 
 	// Emit OwnershipTransferred event
 	topics := []common.Hash{
@@ -893,9 +767,11 @@ func handleGetTotalActiveStake(evm *vm.EVM, args []interface{}) ([]byte, uint64,
 
 // handleGetCurrentEpoch returns the current epoch
 func handleGetCurrentEpoch(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// Get the current epoch
-	currentEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(currentEpochSlot)))
-	currentEpochBigInt := new(big.Int).SetBytes(currentEpoch.Bytes())
+	// Get the current epoch using the utility function
+	currentEpochBigInt, err := getCurrentEpoch(evm)
+	if err != nil {
+		return nil, 0, err
+	}
 
 	// Pack the result
 	result, err := SfcAbi.Methods["currentEpoch"].Outputs.Pack(currentEpochBigInt)
@@ -909,7 +785,7 @@ func handleGetCurrentEpoch(evm *vm.EVM, args []interface{}) ([]byte, uint64, err
 // handleGetCurrentSealedEpoch returns the current sealed epoch
 func handleGetCurrentSealedEpoch(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	// Get the current sealed epoch
-	currentSealedEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(currentSealedEpoch)))
+	currentSealedEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(currentSealedEpochSlot)))
 	currentSealedEpochBigInt := new(big.Int).SetBytes(currentSealedEpoch.Bytes())
 
 	// Pack the result
@@ -982,7 +858,10 @@ func handleClaimRewards(evm *vm.EVM, caller common.Address, args []interface{}) 
 	}
 
 	// Stash the rewards
-	err = handleStashRewards(evm, caller, toValidatorID)
+	// Create arguments for handleStashRewards
+	stashRewardsArgs := []interface{}{caller, toValidatorID}
+	// Call handleStashRewards
+	_, _, err = handleStashRewards(evm, stashRewardsArgs)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}
@@ -1065,7 +944,10 @@ func handleRestakeRewards(evm *vm.EVM, caller common.Address, args []interface{}
 	}
 
 	// Stash the rewards
-	err = handleStashRewards(evm, caller, toValidatorID)
+	// Create arguments for handleStashRewards
+	stashRewardsArgs := []interface{}{caller, toValidatorID}
+	// Call handleStashRewards
+	_, _, err = handleStashRewards(evm, stashRewardsArgs)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}
@@ -1204,7 +1086,7 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	lockupEndTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(lockupEndTimeSlot)))
 	lockupEndTimeBigInt := new(big.Int).SetBytes(lockupEndTime.Bytes())
 
-	if lockupFromEpochBigInt.Cmp(big.NewInt(0)) != 0 && lockupEndTimeBigInt.Cmp(big.NewInt(evm.Context.Time)) > 0 {
+	if lockupFromEpochBigInt.Cmp(big.NewInt(0)) != 0 && lockupEndTimeBigInt.Cmp(evm.Context.Time) > 0 {
 		revertData, err := encodeRevertReason("lockStake", "already locked up")
 		if err != nil {
 			return nil, 0, vm.ErrExecutionReverted
@@ -1213,12 +1095,15 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	}
 
 	// Check that the lockup duration is valid
-	constantsManager := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(constantsManagerSlot)))
-	constantsManagerAddr := common.BytesToAddress(constantsManager.Bytes())
-	minLockupDuration := evm.SfcStateDB.GetState(constantsManagerAddr, common.BigToHash(big.NewInt(minLockupDurationSlot)))
-	minLockupDurationBigInt := new(big.Int).SetBytes(minLockupDuration.Bytes())
-	maxLockupDuration := evm.SfcStateDB.GetState(constantsManagerAddr, common.BigToHash(big.NewInt(maxLockupDurationSlot)))
-	maxLockupDurationBigInt := new(big.Int).SetBytes(maxLockupDuration.Bytes())
+	minLockupDurationBigInt, err := getMinLockupDuration(evm)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	maxLockupDurationBigInt, err := getMaxLockupDuration(evm)
+	if err != nil {
+		return nil, 0, err
+	}
 
 	if lockupDuration.Cmp(minLockupDurationBigInt) < 0 || lockupDuration.Cmp(maxLockupDurationBigInt) > 0 {
 		revertData, err := encodeRevertReason("lockStake", "incorrect duration")
@@ -1233,8 +1118,7 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorAuthSlot)))
 	validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
 
-	endTime := big.NewInt(evm.Context.Time)
-	endTime = new(big.Int).Add(endTime, lockupDuration)
+	endTime := new(big.Int).Add(evm.Context.Time, lockupDuration)
 
 	if caller.Cmp(validatorAuthAddr) != 0 {
 		validatorLockupEndTimeSlot := getLockupEndTimeSlot(validatorAuthAddr, toValidatorID)
@@ -1251,7 +1135,10 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	}
 
 	// Stash rewards
-	err = handleStashRewards(evm, caller, toValidatorID)
+	// Create arguments for handleStashRewards
+	stashRewardsArgs := []interface{}{caller, toValidatorID}
+	// Call handleStashRewards
+	_, _, err = handleStashRewards(evm, stashRewardsArgs)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}
@@ -1270,8 +1157,27 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	}
 
 	// Check that the amount is not greater than the unlocked stake
-	unlockedStake, err := handleGetUnlockedStake(evm, caller, toValidatorID)
+	// Create arguments for handleGetUnlockedStake
+	getUnlockedStakeArgs := []interface{}{caller, toValidatorID}
+	// Call handleGetUnlockedStake
+	unlockedStakeResult, _, err := handleGetUnlockedStake(evm, getUnlockedStakeArgs)
 	if err != nil {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Unpack the result
+	unlockedStakeValues, err := SfcAbi.Methods["getUnlockedStake"].Outputs.Unpack(unlockedStakeResult)
+	if err != nil {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// The result should be a single *big.Int value
+	if len(unlockedStakeValues) != 1 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	unlockedStake, ok := unlockedStakeValues[0].(*big.Int)
+	if !ok {
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
@@ -1291,8 +1197,11 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(lockedStakeSlot)), common.BigToHash(newLockedStake))
 
 	// Update the lockup info
-	currentEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(currentEpochSlot)))
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(lockupFromEpochSlot)), currentEpoch)
+	currentEpochBigInt, err := getCurrentEpoch(evm)
+	if err != nil {
+		return nil, 0, err
+	}
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(lockupFromEpochSlot)), common.BigToHash(currentEpochBigInt))
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(lockupEndTimeSlot)), common.BigToHash(endTime))
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(lockupDurationSlot)), common.BigToHash(lockupDuration))
 
@@ -1316,31 +1225,6 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	})
 
 	return nil, 0, nil
-}
-
-// handleGetValidatorID returns the validator ID for a given address
-func handleGetValidatorID(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// Get the arguments
-	if len(args) != 1 {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-	addr, ok := args[0].(common.Address)
-	if !ok {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	// Get the validator ID
-	validatorIDSlot := getValidatorIDSlot(addr)
-	validatorID := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorIDSlot)))
-	validatorIDBigInt := new(big.Int).SetBytes(validatorID.Bytes())
-
-	// Pack the validator ID
-	result, err := SfcAbi.Methods["getValidatorID"].Outputs.Pack(validatorIDBigInt)
-	if err != nil {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	return result, 0, nil
 }
 
 // handleWithdraw withdraws a delegation
@@ -1405,12 +1289,12 @@ func handleWithdraw(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 	}
 
 	// Check that enough time has passed
-	constantsManager := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(constantsManagerSlot)))
-	constantsManagerAddr := common.BytesToAddress(constantsManager.Bytes())
-	withdrawalPeriodTime := evm.SfcStateDB.GetState(constantsManagerAddr, common.BigToHash(big.NewInt(withdrawalPeriodTimeSlot)))
-	withdrawalPeriodTimeBigInt := new(big.Int).SetBytes(withdrawalPeriodTime.Bytes())
+	withdrawalPeriodTimeBigInt, err := getWithdrawalPeriodTime(evm)
+	if err != nil {
+		return nil, 0, err
+	}
 
-	if big.NewInt(evm.Context.Time).Cmp(new(big.Int).Add(requestTime, withdrawalPeriodTimeBigInt)) < 0 {
+	if evm.Context.Time.Cmp(new(big.Int).Add(requestTime, withdrawalPeriodTimeBigInt)) < 0 {
 		revertData, err := encodeRevertReason("withdraw", "not enough time passed")
 		if err != nil {
 			return nil, 0, vm.ErrExecutionReverted
@@ -1419,11 +1303,15 @@ func handleWithdraw(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 	}
 
 	// Check that enough epochs have passed
-	withdrawalPeriodEpochs := evm.SfcStateDB.GetState(constantsManagerAddr, common.BigToHash(big.NewInt(withdrawalPeriodEpochsSlot)))
-	withdrawalPeriodEpochsBigInt := new(big.Int).SetBytes(withdrawalPeriodEpochs.Bytes())
+	withdrawalPeriodEpochsBigInt, err := getWithdrawalPeriodEpochs(evm)
+	if err != nil {
+		return nil, 0, err
+	}
 
-	currentEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(currentEpochSlot)))
-	currentEpochBigInt := new(big.Int).SetBytes(currentEpoch.Bytes())
+	currentEpochBigInt, err := getCurrentEpoch(evm)
+	if err != nil {
+		return nil, 0, err
+	}
 
 	if currentEpochBigInt.Cmp(new(big.Int).Add(requestEpoch, withdrawalPeriodEpochsBigInt)) < 0 {
 		revertData, err := encodeRevertReason("withdraw", "not enough epochs passed")
@@ -1435,7 +1323,7 @@ func handleWithdraw(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 
 	// Get the amount
 	withdrawalRequestAmountSlot := getWithdrawalRequestAmountSlot(caller, toValidatorID, wrID)
-	withdrawalRequestAmount = evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(withdrawalRequestAmountSlot)))
+	withdrawalRequestAmount = evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(withdrawalRequestAmountSlot))).Big()
 	amount := new(big.Int).SetBytes(withdrawalRequestAmount.Bytes())
 
 	// Check if the validator is slashed
@@ -1502,8 +1390,19 @@ func handleWithdraw(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 
 // CurrentEpoch returns the current epoch
 func handleCurrentEpoch(evm *vm.EVM) ([]byte, uint64, error) {
-	// TODO: Implement currentEpoch handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+	// Get the current epoch using the utility function
+	currentEpochBigInt, err := getCurrentEpoch(evm)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Pack the result
+	result, err := SfcAbi.Methods["currentEpoch"].Outputs.Pack(currentEpochBigInt)
+	if err != nil {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	return result, 0, nil
 }
 
 // ConstsAddress returns the address of the constants contract
@@ -1730,7 +1629,10 @@ func handleUnlockStake(evm *vm.EVM, caller common.Address, args []interface{}) (
 	}
 
 	// Stash rewards
-	err = handleStashRewards(evm, caller, toValidatorID)
+	// Create arguments for handleStashRewards
+	stashRewardsArgs := []interface{}{caller, toValidatorID}
+	// Call handleStashRewards
+	_, _, err = handleStashRewards(evm, stashRewardsArgs)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}

@@ -157,7 +157,20 @@ func handleIsNode(evm *vm.EVM, caller common.Address) (bool, error) {
 }
 
 // handleGetUnlockedStake returns the unlocked stake of a delegator
-func handleGetUnlockedStake(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) (*big.Int, error) {
+func handleGetUnlockedStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
+	// Get the arguments
+	if len(args) != 2 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	delegator, ok := args[0].(common.Address)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	toValidatorID, ok := args[1].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
 	// Get the delegation stake
 	stakeSlot := getStakeSlot(delegator, toValidatorID)
 	stake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(stakeSlot)))
@@ -174,7 +187,13 @@ func handleGetUnlockedStake(evm *vm.EVM, delegator common.Address, toValidatorID
 		unlockedStake = big.NewInt(0)
 	}
 
-	return unlockedStake, nil
+	// Pack the result
+	result, err := SfcAbi.Methods["getUnlockedStake"].Outputs.Pack(unlockedStake)
+	if err != nil {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	return result, 0, nil
 }
 
 // handleCheckAllowedToWithdraw checks if a delegator is allowed to withdraw
@@ -202,9 +221,28 @@ func handleCheckAllowedToWithdraw(evm *vm.EVM, delegator common.Address, toValid
 // handleCheckDelegatedStakeLimit checks if a validator's delegated stake is within the limit
 func handleCheckDelegatedStakeLimit(evm *vm.EVM, validatorID *big.Int) (bool, error) {
 	// Get the self-stake
-	selfStake, err := handleGetSelfStake(evm, validatorID)
+	// Create arguments for handleGetSelfStake
+	args := []interface{}{validatorID}
+	// Call handleGetSelfStake
+	result, _, err := handleGetSelfStake(evm, args)
 	if err != nil {
 		return false, err
+	}
+
+	// Unpack the result
+	selfStakeValues, err := SfcAbi.Methods["getSelfStake"].Outputs.Unpack(result)
+	if err != nil {
+		return false, vm.ErrExecutionReverted
+	}
+
+	// The result should be a single *big.Int value
+	if len(selfStakeValues) != 1 {
+		return false, vm.ErrExecutionReverted
+	}
+
+	selfStake, ok := selfStakeValues[0].(*big.Int)
+	if !ok {
+		return false, vm.ErrExecutionReverted
 	}
 
 	// Get the validator's received stake
@@ -213,10 +251,10 @@ func handleCheckDelegatedStakeLimit(evm *vm.EVM, validatorID *big.Int) (bool, er
 	receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
 
 	// Get the max delegated ratio
-	constantsManager := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(constantsManagerSlot)))
-	constantsManagerAddr := common.BytesToAddress(constantsManager.Bytes())
-	maxDelegatedRatio := evm.SfcStateDB.GetState(constantsManagerAddr, common.BigToHash(big.NewInt(maxDelegatedRatioSlot)))
-	maxDelegatedRatioBigInt := new(big.Int).SetBytes(maxDelegatedRatio.Bytes())
+	maxDelegatedRatioBigInt, err := getMaxDelegatedRatio(evm)
+	if err != nil {
+		return false, err
+	}
 
 	// Calculate the delegated stake
 	delegatedStake := new(big.Int).Sub(receivedStakeBigInt, selfStake)
@@ -233,7 +271,16 @@ func handleCheckDelegatedStakeLimit(evm *vm.EVM, validatorID *big.Int) (bool, er
 }
 
 // handleGetSelfStake returns the self-stake of a validator
-func handleGetSelfStake(evm *vm.EVM, validatorID *big.Int) (*big.Int, error) {
+func handleGetSelfStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
+	// Get the arguments
+	if len(args) != 1 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	validatorID, ok := args[0].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
 	// Get the validator auth
 	validatorAuthSlot := getValidatorAuthSlot(validatorID)
 	validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorAuthSlot)))
@@ -244,14 +291,34 @@ func handleGetSelfStake(evm *vm.EVM, validatorID *big.Int) (*big.Int, error) {
 	stake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(stakeSlot)))
 	stakeBigInt := new(big.Int).SetBytes(stake.Bytes())
 
-	return stakeBigInt, nil
+	// Pack the result
+	result, err := SfcAbi.Methods["getSelfStake"].Outputs.Pack(stakeBigInt)
+	if err != nil {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	return result, 0, nil
 }
 
 // handleStashRewards stashes the rewards for a delegator
-func handleStashRewards(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) error {
+func handleStashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
+	// Get the arguments
+	if len(args) != 2 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	delegator, ok := args[0].(common.Address)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	toValidatorID, ok := args[1].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
 	// Get the current epoch
-	currentEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(currentEpochSlot)))
-	currentEpochBigInt := new(big.Int).SetBytes(currentEpoch.Bytes())
+	currentEpochBigInt, err := getCurrentEpoch(evm)
+	if err != nil {
+		return nil, 0, err
+	}
 
 	// Get the stashed rewards until epoch
 	stashedRewardsUntilEpochSlot := getStashedRewardsUntilEpochSlot(delegator, toValidatorID)
@@ -260,7 +327,7 @@ func handleStashRewards(evm *vm.EVM, delegator common.Address, toValidatorID *bi
 
 	// Check if rewards are already stashed for the current epoch
 	if stashedRewardsUntilEpochBigInt.Cmp(currentEpochBigInt) >= 0 {
-		return nil
+		return nil, 0, nil
 	}
 
 	// Calculate the rewards
@@ -277,13 +344,13 @@ func handleStashRewards(evm *vm.EVM, delegator common.Address, toValidatorID *bi
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(rewardsStashSlot)), common.BigToHash(newRewardsStash))
 
 	// Update the stashed rewards until epoch
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(stashedRewardsUntilEpochSlot)), currentEpoch)
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(stashedRewardsUntilEpochSlot)), common.BigToHash(currentEpochBigInt))
 
-	return nil
+	return nil, 0, nil
 }
 
 // handleSyncValidator synchronizes a validator's state
-func handleSyncValidator(evm *vm.EVM, validatorID *big.Int) error {
+func handleSyncValidator(evm *vm.EVM, validatorID *big.Int) ([]byte, uint64, error) {
 	// Get the validator status
 	validatorStatusSlot := getValidatorStatusSlot(validatorID)
 	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorStatusSlot)))
@@ -293,16 +360,35 @@ func handleSyncValidator(evm *vm.EVM, validatorID *big.Int) error {
 	isActive := (validatorStatusBigInt.Cmp(big.NewInt(0)) == 0) // OK_STATUS
 
 	// Get the self-stake
-	selfStake, err := handleGetSelfStake(evm, validatorID)
+	// Create arguments for handleGetSelfStake
+	args := []interface{}{validatorID}
+	// Call handleGetSelfStake
+	result, _, err := handleGetSelfStake(evm, args)
 	if err != nil {
-		return err
+		return nil, 0, err
+	}
+
+	// Unpack the result
+	selfStakeValues, err := SfcAbi.Methods["getSelfStake"].Outputs.Unpack(result)
+	if err != nil {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// The result should be a single *big.Int value
+	if len(selfStakeValues) != 1 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	selfStake, ok := selfStakeValues[0].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
 	}
 
 	// Get the minimum self-stake
-	constantsManager := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(constantsManagerSlot)))
-	constantsManagerAddr := common.BytesToAddress(constantsManager.Bytes())
-	minSelfStake := evm.SfcStateDB.GetState(constantsManagerAddr, common.BigToHash(big.NewInt(minSelfStakeSlot)))
-	minSelfStakeBigInt := new(big.Int).SetBytes(minSelfStake.Bytes())
+	minSelfStakeBigInt, err := getMinSelfStake(evm)
+	if err != nil {
+		return nil, 0, err
+	}
 
 	// Check if the self-stake is at least the minimum self-stake
 	hasSelfStake := selfStake.Cmp(big.NewInt(0)) > 0
@@ -311,7 +397,7 @@ func handleSyncValidator(evm *vm.EVM, validatorID *big.Int) error {
 	// Check if the delegated stake is within the limit
 	withinDelegatedLimit, err := handleCheckDelegatedStakeLimit(evm, validatorID)
 	if err != nil {
-		return err
+		return nil, 0, err
 	}
 
 	// Update the validator status if necessary
@@ -321,8 +407,11 @@ func handleSyncValidator(evm *vm.EVM, validatorID *big.Int) error {
 
 		// Set the validator deactivated epoch
 		validatorDeactivatedEpochSlot := getValidatorDeactivatedEpochSlot(validatorID)
-		currentEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(currentEpochSlot)))
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorDeactivatedEpochSlot)), currentEpoch)
+		currentEpochBigInt, err := getCurrentEpoch(evm)
+		if err != nil {
+			return nil, 0, err
+		}
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorDeactivatedEpochSlot)), common.BigToHash(currentEpochBigInt))
 
 		// Set the validator deactivated time
 		validatorDeactivatedTimeSlot := getValidatorDeactivatedTimeSlot(validatorID)
@@ -363,5 +452,5 @@ func handleSyncValidator(evm *vm.EVM, validatorID *big.Int) error {
 		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalActiveStakeSlot)), common.BigToHash(newTotalActiveStake))
 	}
 
-	return nil
+	return nil, 0, nil
 }

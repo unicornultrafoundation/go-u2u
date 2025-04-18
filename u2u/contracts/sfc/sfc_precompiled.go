@@ -1,6 +1,7 @@
 package sfc
 
 import (
+	"math/big"
 	"strings"
 
 	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
@@ -11,10 +12,12 @@ import (
 
 var (
 	SfcAbi abi.ABI
+	CMAbi  abi.ABI
 )
 
 func init() {
 	SfcAbi, _ = abi.JSON(strings.NewReader(sfc100.ContractMetaData.ABI))
+	CMAbi, _ = abi.JSON(strings.NewReader(ConstantManagerABIStr))
 }
 
 // SfcPrecompile implements PrecompiledSfcContract interface
@@ -26,7 +29,7 @@ func parseABIInput(input []byte) (*abi.Method, []interface{}, error) {
 	if len(input) == 0 {
 		// Create a dummy method with empty name to trigger the fallback function
 		dummyMethod := &abi.Method{
-			Name: "",
+			Name:   "",
 			Inputs: abi.Arguments{},
 		}
 		return dummyMethod, []interface{}{}, nil
@@ -185,19 +188,19 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 
 	// Public function handlers - State-changing methods
 	case "renounceOwnership":
-		result, gasUsed, err = handleRenounceOwnership(evm, args)
+		result, gasUsed, err = handleRenounceOwnership(evm, caller, args)
 
 	case "transferOwnership":
-		result, gasUsed, err = handleTransferOwnership(evm, args)
+		result, gasUsed, err = handleTransferOwnership(evm, caller, args)
 
 	case "updateConstsAddress":
 		result, gasUsed, err = handleUpdateConstsAddress(evm, args)
 
 	case "updateLibAddress":
-		result, gasUsed, err = handleUpdateLibAddress(evm, args)
+		result, gasUsed, err = handleUpdateLibAddress(evm, caller, args)
 
 	case "updateStakeTokenizerAddress":
-		result, gasUsed, err = handleUpdateStakeTokenizerAddress(evm, args)
+		result, gasUsed, err = handleUpdateStakeTokenizerAddress(evm, caller, args)
 
 	case "updateTreasuryAddress":
 		result, gasUsed, err = handleUpdateTreasuryAddress(evm, args)
@@ -206,16 +209,20 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		result, gasUsed, err = handleUpdateVoteBookAddress(evm, args)
 
 	case "createValidator":
-		result, gasUsed, err = handleCreateValidator(evm, args)
+		// For createValidator, we need to pass a value, but we don't have direct access to it
+		// Use a zero value for now, this should be fixed in a future update
+		result, gasUsed, err = handleCreateValidator(evm, caller, args, big.NewInt(0))
 
 	case "delegate":
-		result, gasUsed, err = handleDelegate(evm, args)
+		// For delegate, we need to pass a value, but we don't have direct access to it
+		// Use a zero value for now, this should be fixed in a future update
+		result, gasUsed, err = handleDelegate(evm, caller, args, big.NewInt(0))
 
 	case "undelegate":
-		result, gasUsed, err = handleUndelegate(evm, args)
+		result, gasUsed, err = handleUndelegate(evm, caller, args)
 
 	case "withdraw":
-		result, gasUsed, err = handleWithdraw(evm, args)
+		result, gasUsed, err = handleWithdraw(evm, caller, args)
 
 	case "deactivateValidator":
 		result, gasUsed, err = handleDeactivateValidator(evm, args)
@@ -224,10 +231,10 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		result, gasUsed, err = handleStashRewards(evm, args)
 
 	case "claimRewards":
-		result, gasUsed, err = handleClaimRewards(evm, args)
+		result, gasUsed, err = handleClaimRewards(evm, caller, args)
 
 	case "restakeRewards":
-		result, gasUsed, err = handleRestakeRewards(evm, args)
+		result, gasUsed, err = handleRestakeRewards(evm, caller, args)
 
 	case "updateBaseRewardPerSecond":
 		result, gasUsed, err = handleUpdateBaseRewardPerSecond(evm, args)
@@ -251,16 +258,16 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		result, gasUsed, err = handleSealEpochValidators(evm, args)
 
 	case "lockStake":
-		result, gasUsed, err = handleLockStake(evm, args)
+		result, gasUsed, err = handleLockStake(evm, caller, args)
 
 	case "relockStake":
 		result, gasUsed, err = handleRelockStake(evm, args)
 
 	case "unlockStake":
-		result, gasUsed, err = handleUnlockStake(evm, args)
+		result, gasUsed, err = handleUnlockStake(evm, caller, args)
 
 	case "initialize":
-		result, gasUsed, err = handleInitialize(evm, args)
+		result, gasUsed, err = handleInitialize(evm, caller, args)
 
 	case "setGenesisValidator":
 		result, gasUsed, err = handleSetGenesisValidator(evm, args)

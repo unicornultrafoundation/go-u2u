@@ -11,7 +11,7 @@ import (
 // checkOnlyOwner checks if the caller is the owner of the contract
 // Returns nil if the caller is the owner, otherwise returns an ABI-encoded revert reason
 func checkOnlyOwner(evm *vm.EVM, caller common.Address, methodName string) ([]byte, error) {
-	owner := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(owner)))
+	owner := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(ownerSlot)))
 	ownerAddr := common.BytesToAddress(owner.Bytes())
 	if caller.Cmp(ownerAddr) != 0 {
 		// Return ABI-encoded revert reason: "Ownable: caller is not the owner"
@@ -340,5 +340,174 @@ func getRewardsStashSlot(delegator common.Address, toValidatorID *big.Int) int64
 // getStashedRewardsUntilEpochSlot calculates the storage slot for a delegation's stashed rewards until epoch
 func getStashedRewardsUntilEpochSlot(delegator common.Address, toValidatorID *big.Int) int64 {
 	// TODO: Implement proper slot calculation
-	return stashedRewardsSlot
+	return rewardsStashSlot
+}
+
+// callConstantManagerMethod calls a method on the ConstantManager contract and returns the result
+// methodName: the name of the method to call
+// args: the arguments to pass to the method
+// Returns: the result of the method call, or an error if the call failed
+func callConstantManagerMethod(evm *vm.EVM, methodName string, args ...interface{}) ([]interface{}, error) {
+	// Get the ConstantsManager contract address
+	constantsManager := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(constantsManagerSlot)))
+	constantsManagerAddr := common.BytesToAddress(constantsManager.Bytes())
+
+	// Pack the function call data
+	data, err := CMAbi.Pack(methodName, args...)
+	if err != nil {
+		return nil, vm.ErrExecutionReverted
+	}
+
+	// Make the call to the ConstantsManager contract
+	result, _, err := evm.Call(vm.AccountRef(ContractAddress), constantsManagerAddr, data, 50000, big.NewInt(0))
+	if err != nil {
+		return nil, err
+	}
+
+	// Unpack the result
+	values, err := CMAbi.Methods[methodName].Outputs.Unpack(result)
+	if err != nil {
+		return nil, vm.ErrExecutionReverted
+	}
+
+	return values, nil
+}
+
+// getCurrentEpoch returns the current epoch value (currentSealedEpoch + 1)
+// This implements the logic from the currentEpoch() function in SFCBase.sol
+func getCurrentEpoch(evm *vm.EVM) (*big.Int, error) {
+	// Get the current sealed epoch
+	currentSealedEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(currentSealedEpochSlot)))
+	currentSealedEpochBigInt := new(big.Int).SetBytes(currentSealedEpoch.Bytes())
+
+	// Calculate current epoch as currentSealedEpoch + 1
+	currentEpochBigInt := new(big.Int).Add(currentSealedEpochBigInt, big.NewInt(1))
+
+	return currentEpochBigInt, nil
+}
+
+// getMinSelfStake returns the minimum self-stake value from the ConstantManager contract
+func getMinSelfStake(evm *vm.EVM) (*big.Int, error) {
+	// Call the minSelfStake method on the ConstantManager contract
+	values, err := callConstantManagerMethod(evm, "minSelfStake")
+	if err != nil {
+		return nil, err
+	}
+
+	// The result should be a single *big.Int value
+	if len(values) != 1 {
+		return nil, vm.ErrExecutionReverted
+	}
+
+	minSelfStakeBigInt, ok := values[0].(*big.Int)
+	if !ok {
+		return nil, vm.ErrExecutionReverted
+	}
+
+	return minSelfStakeBigInt, nil
+}
+
+// getMaxDelegatedRatio returns the maximum delegated ratio value from the ConstantManager contract
+func getMaxDelegatedRatio(evm *vm.EVM) (*big.Int, error) {
+	// Call the maxDelegatedRatio method on the ConstantManager contract
+	values, err := callConstantManagerMethod(evm, "maxDelegatedRatio")
+	if err != nil {
+		return nil, err
+	}
+
+	// The result should be a single *big.Int value
+	if len(values) != 1 {
+		return nil, vm.ErrExecutionReverted
+	}
+
+	maxDelegatedRatioBigInt, ok := values[0].(*big.Int)
+	if !ok {
+		return nil, vm.ErrExecutionReverted
+	}
+
+	return maxDelegatedRatioBigInt, nil
+}
+
+// getWithdrawalPeriodEpochs returns the withdrawal period epochs value from the ConstantManager contract
+func getWithdrawalPeriodEpochs(evm *vm.EVM) (*big.Int, error) {
+	// Call the withdrawalPeriodEpochs method on the ConstantManager contract
+	values, err := callConstantManagerMethod(evm, "withdrawalPeriodEpochs")
+	if err != nil {
+		return nil, err
+	}
+
+	// The result should be a single *big.Int value
+	if len(values) != 1 {
+		return nil, vm.ErrExecutionReverted
+	}
+
+	withdrawalPeriodEpochsBigInt, ok := values[0].(*big.Int)
+	if !ok {
+		return nil, vm.ErrExecutionReverted
+	}
+
+	return withdrawalPeriodEpochsBigInt, nil
+}
+
+// getMinLockupDuration returns the minimum lockup duration value from the ConstantManager contract
+func getMinLockupDuration(evm *vm.EVM) (*big.Int, error) {
+	// Call the minLockupDuration method on the ConstantManager contract
+	values, err := callConstantManagerMethod(evm, "minLockupDuration")
+	if err != nil {
+		return nil, err
+	}
+
+	// The result should be a single *big.Int value
+	if len(values) != 1 {
+		return nil, vm.ErrExecutionReverted
+	}
+
+	minLockupDurationBigInt, ok := values[0].(*big.Int)
+	if !ok {
+		return nil, vm.ErrExecutionReverted
+	}
+
+	return minLockupDurationBigInt, nil
+}
+
+// getMaxLockupDuration returns the maximum lockup duration value from the ConstantManager contract
+func getMaxLockupDuration(evm *vm.EVM) (*big.Int, error) {
+	// Call the maxLockupDuration method on the ConstantManager contract
+	values, err := callConstantManagerMethod(evm, "maxLockupDuration")
+	if err != nil {
+		return nil, err
+	}
+
+	// The result should be a single *big.Int value
+	if len(values) != 1 {
+		return nil, vm.ErrExecutionReverted
+	}
+
+	maxLockupDurationBigInt, ok := values[0].(*big.Int)
+	if !ok {
+		return nil, vm.ErrExecutionReverted
+	}
+
+	return maxLockupDurationBigInt, nil
+}
+
+// getWithdrawalPeriodTime returns the withdrawal period time value from the ConstantManager contract
+func getWithdrawalPeriodTime(evm *vm.EVM) (*big.Int, error) {
+	// Call the withdrawalPeriodTime method on the ConstantManager contract
+	values, err := callConstantManagerMethod(evm, "withdrawalPeriodTime")
+	if err != nil {
+		return nil, err
+	}
+
+	// The result should be a single *big.Int value
+	if len(values) != 1 {
+		return nil, vm.ErrExecutionReverted
+	}
+
+	withdrawalPeriodTimeBigInt, ok := values[0].(*big.Int)
+	if !ok {
+		return nil, vm.ErrExecutionReverted
+	}
+
+	return withdrawalPeriodTimeBigInt, nil
 }

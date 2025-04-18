@@ -1585,20 +1585,21 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	if !ok {
 		return nil, gasUsed, vm.ErrExecutionReverted
 	}
-	// Get the current epoch
+	// Get the current epoch (corresponds to snapshot in Solidity)
 	currentEpochBigInt, epochGasUsed, err := getCurrentEpoch(evm)
 	gasUsed += epochGasUsed
 	if err != nil {
 		return nil, gasUsed, err
 	}
 
-	// Get the epoch snapshot for the current epoch
-	epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(currentEpochBigInt)
+	// Get the epoch snapshot slot for the current epoch
+	// This is equivalent to "snapshot" in the Solidity code
+	currentEpochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(currentEpochBigInt)
 	gasUsed += slotGasUsed
 
 	// Get the validator IDs for the current epoch
 	// For a dynamic array in a struct, we first get the length from the slot
-	validatorIDsSlot := epochSnapshotSlot + validatorIDsOffset
+	validatorIDsSlot := currentEpochSnapshotSlot + validatorIDsOffset
 	validatorIDsLengthHash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorIDsSlot)))
 	gasUsed += SloadGasCost
 
@@ -1633,11 +1634,15 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 		return nil, gasUsed, err
 	}
 
-	// Get the previous epoch snapshot
-	currentSealedEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(currentSealedEpochSlot)))
+	// Get the previous epoch (corresponds to prevSnapshot in Solidity)
+	// In Solidity, this is "currentSealedEpoch"
+	currentSealedEpochHash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(currentSealedEpochSlot)))
 	gasUsed += SloadGasCost
-	currentSealedEpochBigInt := new(big.Int).SetBytes(currentSealedEpoch.Bytes())
-	prevEpochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(currentSealedEpochBigInt)
+	prevEpochBigInt := new(big.Int).SetBytes(currentSealedEpochHash.Bytes())
+
+	// Get the epoch snapshot slot for the previous epoch
+	// This is equivalent to "prevSnapshot" in the Solidity code
+	prevEpochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(prevEpochBigInt)
 	gasUsed += slotGasUsed
 
 	// Get the end time of the previous epoch
@@ -1653,7 +1658,8 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	}
 
 	// Call _sealEpoch_rewards
-	rewardsGasUsed, err := _sealEpoch_rewards(evm, epochDuration, currentEpochBigInt, currentSealedEpochBigInt, validatorIDs, uptimes, originatedTxsFee)
+	// In Solidity: _sealEpoch_rewards(epochDuration, snapshot, prevSnapshot, validatorIDs, uptimes, originatedTxsFee)
+	rewardsGasUsed, err := _sealEpoch_rewards(evm, epochDuration, currentEpochBigInt, prevEpochBigInt, validatorIDs, uptimes, originatedTxsFee)
 	gasUsed += rewardsGasUsed
 	if err != nil {
 		return nil, gasUsed, err
@@ -1670,8 +1676,8 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(currentSealedEpochSlot)), common.BigToHash(currentEpochBigInt))
 	gasUsed += SstoreGasCost
 
-	// Update epoch snapshot end time
-	endTimeSlot := epochSnapshotSlot + endTimeOffset
+	// Update epoch snapshot end time (snapshot.endTime = _now() in Solidity)
+	endTimeSlot := currentEpochSnapshotSlot + endTimeOffset
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(endTimeSlot)), common.BigToHash(evm.Context.Time))
 	gasUsed += SstoreGasCost
 
@@ -1686,8 +1692,8 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 		return nil, gasUsed, vm.ErrExecutionReverted
 	}
 
-	// Update epoch snapshot base reward per second
-	baseRewardPerSecondSlot := epochSnapshotSlot + baseRewardPerSecondOffset
+	// Update epoch snapshot base reward per second (snapshot.baseRewardPerSecond = c.baseRewardPerSecond() in Solidity)
+	baseRewardPerSecondSlot := currentEpochSnapshotSlot + baseRewardPerSecondOffset
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(baseRewardPerSecondSlot)), common.BigToHash(baseRewardPerSecondBigInt))
 	gasUsed += SstoreGasCost
 
@@ -1696,8 +1702,8 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	gasUsed += SloadGasCost
 	totalSupplyBigInt := new(big.Int).SetBytes(totalSupply.Bytes())
 
-	// Update epoch snapshot total supply
-	totalSupplySnapshotSlot := epochSnapshotSlot + totalSupplyOffset
+	// Update epoch snapshot total supply (snapshot.totalSupply = totalSupply in Solidity)
+	totalSupplySnapshotSlot := currentEpochSnapshotSlot + totalSupplyOffset
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalSupplySnapshotSlot)), common.BigToHash(totalSupplyBigInt))
 	gasUsed += SstoreGasCost
 

@@ -1466,6 +1466,98 @@ func trimMinGasPrice(x *big.Int) *big.Int {
 	return x
 }
 
+// _mintNativeToken mints native tokens to the specified address
+// This is a helper function to call the _mintNativeToken handler
+func _mintNativeToken(evm *vm.EVM, receiver common.Address, amount *big.Int) (uint64, error) {
+	// Pack the arguments
+	args := []interface{}{
+		receiver,
+		amount,
+	}
+
+	// Call the _mintNativeToken handler
+	_, gasUsed, err := handle_mintNativeToken(evm, args)
+	if err != nil {
+		return gasUsed, err
+	}
+
+	return gasUsed, nil
+}
+
+// Rewards struct represents the different types of rewards
+type Rewards struct {
+	LockupExtraReward *big.Int
+	LockupBaseReward  *big.Int
+	UnlockedReward    *big.Int
+}
+
+// _scaleLockupReward scales the reward based on the lockup duration
+// This is a port of the _scaleLockupReward function from SFCBase.sol
+func _scaleLockupReward(evm *vm.EVM, fullReward *big.Int, lockupDuration *big.Int) (Rewards, uint64, error) {
+	// Initialize gas used
+	var gasUsed uint64 = 0
+
+	// Initialize reward with zeros
+	reward := Rewards{
+		LockupExtraReward: big.NewInt(0),
+		LockupBaseReward:  big.NewInt(0),
+		UnlockedReward:    big.NewInt(0),
+	}
+
+	// Get the unlockedRewardRatio from the constants manager
+	unlockedRewardRatio, cmGasUsed, err := callConstantManagerMethod(evm, "unlockedRewardRatio")
+	gasUsed += cmGasUsed
+	if err != nil || len(unlockedRewardRatio) == 0 {
+		return reward, gasUsed, err
+	}
+	unlockedRewardRatioBigInt, ok := unlockedRewardRatio[0].(*big.Int)
+	if !ok {
+		return reward, gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Check if lockupDuration is not zero
+	if lockupDuration.Cmp(big.NewInt(0)) != 0 {
+		// Get the decimal unit
+		decimalUnit := getDecimalUnit()
+
+		// Calculate maxLockupExtraRatio = Decimal.unit() - unlockedRewardRatio
+		maxLockupExtraRatio := new(big.Int).Sub(decimalUnit, unlockedRewardRatioBigInt)
+
+		// Get the maxLockupDuration from the constants manager
+		maxLockupDuration, cmGasUsed, err := callConstantManagerMethod(evm, "maxLockupDuration")
+		gasUsed += cmGasUsed
+		if err != nil || len(maxLockupDuration) == 0 {
+			return reward, gasUsed, err
+		}
+		maxLockupDurationBigInt, ok := maxLockupDuration[0].(*big.Int)
+		if !ok {
+			return reward, gasUsed, vm.ErrExecutionReverted
+		}
+
+		// Calculate lockupExtraRatio = maxLockupExtraRatio * lockupDuration / maxLockupDuration
+		lockupExtraRatio := new(big.Int).Mul(maxLockupExtraRatio, lockupDuration)
+		lockupExtraRatio = new(big.Int).Div(lockupExtraRatio, maxLockupDurationBigInt)
+
+		// Calculate totalScaledReward = fullReward * (unlockedRewardRatio + lockupExtraRatio) / Decimal.unit()
+		totalRewardRatio := new(big.Int).Add(unlockedRewardRatioBigInt, lockupExtraRatio)
+		totalScaledReward := new(big.Int).Mul(fullReward, totalRewardRatio)
+		totalScaledReward = new(big.Int).Div(totalScaledReward, decimalUnit)
+
+		// Calculate lockupBaseReward = fullReward * unlockedRewardRatio / Decimal.unit()
+		reward.LockupBaseReward = new(big.Int).Mul(fullReward, unlockedRewardRatioBigInt)
+		reward.LockupBaseReward = new(big.Int).Div(reward.LockupBaseReward, decimalUnit)
+
+		// Calculate lockupExtraReward = totalScaledReward - lockupBaseReward
+		reward.LockupExtraReward = new(big.Int).Sub(totalScaledReward, reward.LockupBaseReward)
+	} else {
+		// Calculate unlockedReward = fullReward * unlockedRewardRatio / Decimal.unit()
+		reward.UnlockedReward = new(big.Int).Mul(fullReward, unlockedRewardRatioBigInt)
+		reward.UnlockedReward = new(big.Int).Div(reward.UnlockedReward, getDecimalUnit())
+	}
+
+	return reward, gasUsed, nil
+}
+
 // getMinSelfStake returns the minimum self-stake value from the ConstantManager contract
 func getMinSelfStake(evm *vm.EVM) (*big.Int, uint64, error) {
 	// Call the minSelfStake method on the ConstantManager contract

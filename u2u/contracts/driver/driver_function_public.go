@@ -3,6 +3,7 @@ package driver
 import (
 	"math/big"
 
+	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
@@ -124,14 +125,18 @@ func handleSetBalance(evm *vm.EVM, caller common.Address, args []interface{}) ([
 	evmWriterAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(evmWriterSlot))).Bytes())
 
 	// Pack the function call data
-	data, err := DriverAbi.Pack("setBalance", account, value)
+	data, err := EvmWriterAbi.Pack("setBalance", account, value)
 	if err != nil {
+		log.Error("Driver SetBalance: Error packing function call data", "method", "setBalance",
+			"account", account.Hex(), "value", value, "error", err)
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
 	// Call the EVMWriter contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), evmWriterAddr, data, defaultGasLimit, big.NewInt(0))
+	result, _, err := evm.Call(vm.AccountRef(ContractAddress), evmWriterAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
+		reason, _ := abi.UnpackRevert(result)
+		log.Error("Driver SetBalance: Error calling EVMWriter", "error", err, "method", "setBalance", "reason", reason)
 		return nil, 0, err
 	}
 

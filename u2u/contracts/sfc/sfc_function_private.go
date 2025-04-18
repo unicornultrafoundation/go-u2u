@@ -3,9 +3,10 @@ package sfc
 import (
 	"math/big"
 
+	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
 	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
@@ -319,24 +320,31 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 
 			lockupDuration := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(lockupDurationSlot)))
 			gasUsed += SloadGasCost
-			// Unused in current implementation, but kept for future use
-			_ = new(big.Int).SetBytes(lockupDuration.Bytes())
+			lockupDurationBigInt := new(big.Int).SetBytes(lockupDuration.Bytes())
 
 			// Scale lockup rewards
-			// TODO: Implement _scaleLockupReward
-			// For now, we'll just stash the rewards directly
+			reward, scaleGasUsed, err := _scaleLockupReward(evm, lCommissionRewardFull, lockupDurationBigInt)
+			gasUsed += scaleGasUsed
+			if err != nil {
+				return gasUsed, err
+			}
+
+			// Calculate total reward
+			lCommissionReward := new(big.Int).Add(reward.LockupBaseReward, reward.LockupExtraReward)
+			uCommissionReward := reward.UnlockedReward
 
 			// Update rewards stash
 			rewardsStashSlot, slotGasUsed := getRewardsStashSlot(validatorAuthAddr, validatorID)
 			gasUsed += slotGasUsed
 
-			// TODO: Implement proper rewards stashing with lockup scaling
-			// For now, just add the commission reward to the stash
+			// Get current rewards stash
 			rewardsStash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(rewardsStashSlot)))
 			gasUsed += SloadGasCost
 			rewardsStashBigInt := new(big.Int).SetBytes(rewardsStash.Bytes())
 
-			newRewardsStash := new(big.Int).Add(rewardsStashBigInt, commissionRewardFull)
+			// Add the total commission reward (locked + unlocked) to the stash
+			totalCommissionReward := new(big.Int).Add(lCommissionReward, uCommissionReward)
+			newRewardsStash := new(big.Int).Add(rewardsStashBigInt, totalCommissionReward)
 			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(rewardsStashSlot)), common.BigToHash(newRewardsStash))
 			gasUsed += SstoreGasCost
 
@@ -348,7 +356,8 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 			gasUsed += SloadGasCost
 			stashedLockupRewardsBigInt := new(big.Int).SetBytes(stashedLockupRewards.Bytes())
 
-			newStashedLockupRewards := new(big.Int).Add(stashedLockupRewardsBigInt, commissionRewardFull)
+			// Add only the locked rewards to the stashed lockup rewards
+			newStashedLockupRewards := new(big.Int).Add(stashedLockupRewardsBigInt, lCommissionReward)
 			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(stashedLockupRewardsSlot)), common.BigToHash(newStashedLockupRewards))
 			gasUsed += SstoreGasCost
 		}
@@ -452,28 +461,12 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		feeShare := new(big.Int).Mul(epochFee, treasuryFeeShareBigInt)
 		feeShare = new(big.Int).Div(feeShare, decimalUnitBigInt)
 
-		// Mint native token
-		// TODO: Implement _mintNativeToken
-		// For now, we'll just update the total supply
-		totalSupplyBigInt = new(big.Int).Add(totalSupplyBigInt, feeShare)
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalSupplySlot)), common.BigToHash(totalSupplyBigInt))
-		gasUsed += SstoreGasCost
-
-		// Transfer to treasury
-		// TODO: Implement proper transfer
-		// For now, we'll just emit a log
-		topics := []common.Hash{
-			common.BytesToHash([]byte("TreasuryTransfer")),
-			common.BytesToHash(treasuryAddr.Bytes()),
+		// Mint native token to the treasury address
+		mintGasUsed, err := _mintNativeToken(evm, treasuryAddr, feeShare)
+		gasUsed += mintGasUsed
+		if err != nil {
+			return gasUsed, err
 		}
-		data := common.BigToHash(feeShare).Bytes()
-
-		evm.SfcStateDB.AddLog(&types.Log{
-			Address:     ContractAddress,
-			Topics:      topics,
-			Data:        data,
-			BlockNumber: evm.Context.BlockNumber.Uint64(),
-		})
 	}
 
 	return gasUsed, nil
@@ -567,8 +560,55 @@ func handle_calcValidatorCommission(evm *vm.EVM, args []interface{}) ([]byte, ui
 
 // _mintNativeToken is an internal function to mint native tokens
 func handle_mintNativeToken(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement _mintNativeToken handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+	// Initialize gas used
+	var gasUsed uint64 = 0
+
+	// Get the arguments
+	if len(args) != 2 {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	receiver, ok := args[0].(common.Address)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	amount, ok := args[1].(*big.Int)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Implement the _mintNativeToken logic
+	// 1. Call node.incBalance to increase the balance of the receiver
+	nodeDriverAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(nodeDriverAuthSlot)))
+	gasUsed += SloadGasCost
+	nodeDriverAuthAddr := common.BytesToAddress(nodeDriverAuth.Bytes())
+
+	// Pack the function call data for incBalance
+	data, err := NodeDriverAuthAbi.Pack("incBalance", receiver, amount)
+	if err != nil {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Call the node driver
+	result, _, err := evm.Call(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, defaultGasLimit, big.NewInt(0))
+	if err != nil {
+		reason, _ := abi.UnpackRevert(result)
+		log.Error("SFC: Error calling NodeDriverAuth method", "method", "incBalance", "err", err, "reason", reason)
+		return nil, gasUsed, err
+	}
+
+	// 2. Update the total supply
+	totalSupply := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalSupplySlot)))
+	gasUsed += SloadGasCost
+	totalSupplyBigInt := new(big.Int).SetBytes(totalSupply.Bytes())
+
+	// Add the amount to the total supply
+	newTotalSupply := new(big.Int).Add(totalSupplyBigInt, amount)
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalSupplySlot)), common.BigToHash(newTotalSupply))
+	gasUsed += SstoreGasCost
+
+	return nil, gasUsed, nil
 }
 
 // _scaleLockupReward is an internal function to scale lockup reward

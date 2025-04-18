@@ -14,6 +14,7 @@ var (
 	DriverAbi     abi.ABI
 	SfcAbi        abi.ABI
 	DriverAuthAbi abi.ABI
+	EvmWriterAbi  abi.ABI
 )
 
 func init() {
@@ -24,6 +25,7 @@ func init() {
 	}
 	SfcAbi, _ = abi.JSON(strings.NewReader(SfcAbiStr))
 	DriverAuthAbi, _ = abi.JSON(strings.NewReader(DriverAuthAbiStr))
+	EvmWriterAbi, _ = abi.JSON(strings.NewReader(EvmWriterABIStr))
 }
 
 // parseABIInput parses the input data and returns the method and unpacked parameters

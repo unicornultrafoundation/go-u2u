@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
@@ -241,14 +242,16 @@ func handleIncBalance(evm *vm.EVM, caller common.Address, args []interface{}) ([
 	driverAddr := common.BytesToAddress(evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(driverSlot))).Bytes())
 
 	// Pack the function call data
-	data, err := DriverAuthAbi.Pack("setBalance", acc, balance)
+	data, err := DriverAbi.Pack("setBalance", acc, balance)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
 	// Call the driver contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
+	result, _, err := evm.Call(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
+		reason, _ := abi.UnpackRevert(result)
+		log.Error("DriverAuth Precompiled: Error calling driver contract", "error", err, "method", "incBalance", "reason", reason)
 		return nil, 0, err
 	}
 

@@ -81,7 +81,10 @@ func (p *StateProcessor) Process(
 		}
 
 		statedb.Prepare(tx.Hash(), i)
-		receipt, _, skip, err = ApplyTransaction(msg, p.config, gp, statedb, blockNumber, blockHash, tx, usedGas, vmenv, cfg, onNewLog)
+		if sfcStatedb != nil {
+			sfcStatedb.Prepare(tx.Hash(), i)
+		}
+		receipt, _, skip, err = ApplyTransaction(msg, p.config, gp, statedb, sfcStatedb, blockNumber, blockHash, tx, usedGas, vmenv, cfg, onNewLog)
 		if skip {
 			skipped = append(skipped, uint32(i))
 			err = nil
@@ -101,6 +104,7 @@ func ApplyTransaction(
 	config *params.ChainConfig,
 	gp *GasPool,
 	statedb *state.StateDB,
+	sfcStatedb *state.StateDB,
 	blockNumber *big.Int,
 	blockHash common.Hash,
 	tx *types.Transaction,
@@ -116,7 +120,7 @@ func ApplyTransaction(
 ) {
 	// Create a new context to be used in the EVM environment.
 	txContext := NewEVMTxContext(msg)
-	evm.Reset(txContext, statedb, nil)
+	evm.Reset(txContext, statedb, sfcStatedb)
 
 	// Test if type of tracer is transaction tracing
 	// logger, in that case, set a info for it
@@ -142,13 +146,25 @@ func ApplyTransaction(
 	for _, l := range logs {
 		onNewLog(l, statedb)
 	}
+	if sfcStatedb != nil {
+		sfcLogs := sfcStatedb.GetLogs(tx.Hash(), blockHash)
+		for _, l := range sfcLogs {
+			onNewLog(l, statedb)
+		}
+	}
 
 	// Update the state with pending changes.
 	var root []byte
 	if config.IsByzantium(blockNumber) {
 		statedb.Finalise(true)
+		if sfcStatedb != nil {
+			sfcStatedb.Finalise(true)
+		}
 	} else {
 		root = statedb.IntermediateRoot(config.IsEIP158(blockNumber)).Bytes()
+		if sfcStatedb != nil {
+			sfcStatedb.IntermediateRoot(config.IsEIP158(blockNumber)).Bytes()
+		}
 	}
 	*usedGas += result.UsedGas
 
@@ -170,6 +186,7 @@ func ApplyTransaction(
 
 	// Set the receipt logs.
 	receipt.Logs = logs
+	// TODO(trinhdn97): include logs and root of SfcStateDB here
 	receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
 	receipt.BlockHash = blockHash
 	receipt.BlockNumber = blockNumber

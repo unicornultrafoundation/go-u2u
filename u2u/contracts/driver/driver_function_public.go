@@ -129,7 +129,7 @@ func handleSetBalance(evm *vm.EVM, caller common.Address, args []interface{}) ([
 	}
 
 	// Call the EVMWriter contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), evmWriterAddr, data, 50000, big.NewInt(0))
+	_, _, err = evm.Call(vm.AccountRef(ContractAddress), evmWriterAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -168,7 +168,7 @@ func handleCopyCode(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 	}
 
 	// Call the EVMWriter contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), evmWriterAddr, data, 50000, big.NewInt(0))
+	_, _, err = evm.Call(vm.AccountRef(ContractAddress), evmWriterAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -207,7 +207,7 @@ func handleSwapCode(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 	}
 
 	// Call the EVMWriter contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), evmWriterAddr, data, 50000, big.NewInt(0))
+	_, _, err = evm.Call(vm.AccountRef(ContractAddress), evmWriterAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -250,7 +250,7 @@ func handleSetStorage(evm *vm.EVM, caller common.Address, args []interface{}) ([
 	}
 
 	// Call the EVMWriter contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), evmWriterAddr, data, 50000, big.NewInt(0))
+	_, _, err = evm.Call(vm.AccountRef(ContractAddress), evmWriterAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -289,7 +289,7 @@ func handleIncNonce(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 	}
 
 	// Call the EVMWriter contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), evmWriterAddr, data, 50000, big.NewInt(0))
+	_, _, err = evm.Call(vm.AccountRef(ContractAddress), evmWriterAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}

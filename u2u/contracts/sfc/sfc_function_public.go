@@ -3,9 +3,11 @@ package sfc
 import (
 	"math/big"
 
+	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // Handler functions for SFC contract public and external functions
@@ -1683,9 +1685,120 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 }
 
 // SealEpochValidators seals the validators for the current epoch
-func handleSealEpochValidators(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement sealEpochValidators handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
+	// Initialize gas used
+	var gasUsed uint64 = 0
+
+	// Check if caller is the NodeDriverAuth contract (onlyDriver modifier)
+	revertData, checkGasUsed, err := checkOnlyDriver(evm, caller, "sealEpochValidators")
+	gasUsed += checkGasUsed
+	if err != nil {
+		return revertData, gasUsed, err
+	}
+
+	// Get the arguments
+	if len(args) != 1 {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	nextValidatorIDs, ok := args[0].([]*big.Int)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Get the current epoch
+	currentEpochBigInt, epochGasUsed, err := getCurrentEpoch(evm)
+	gasUsed += epochGasUsed
+	if err != nil {
+		return nil, gasUsed, err
+	}
+
+	// Get the epoch snapshot slot for the current epoch
+	epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(currentEpochBigInt)
+	gasUsed += slotGasUsed
+
+	// Initialize total stake for the snapshot
+	totalStake := big.NewInt(0)
+
+	// Fill data for the next snapshot
+	for _, validatorID := range nextValidatorIDs {
+		// Get the validator's received stake
+		validatorReceivedStakeSlot, slotGasUsed := getValidatorReceivedStakeSlot(validatorID)
+		gasUsed += slotGasUsed
+
+		receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorReceivedStakeSlot)))
+		gasUsed += SloadGasCost
+		receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
+
+		// Set the received stake for this validator in the epoch snapshot
+		validatorReceivedStakeEpochSlot, slotGasUsed := getEpochValidatorReceivedStakeSlot(currentEpochBigInt, validatorID)
+		gasUsed += slotGasUsed
+
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorReceivedStakeEpochSlot)), common.BigToHash(receivedStakeBigInt))
+		gasUsed += SstoreGasCost
+
+		// Add to total stake
+		totalStake = new(big.Int).Add(totalStake, receivedStakeBigInt)
+	}
+
+	// Set the validator IDs for the epoch snapshot
+	validatorIDsSlot := epochSnapshotSlot + validatorIDsOffset
+
+	// Encode the validator IDs using the Arguments type directly
+	// Create a temporary Arguments object for uint256[]
+	uint256ArrayType, err := abi.NewType("uint256[]", "uint256[]", nil)
+	if err != nil {
+		log.Error("SFC: Error creating uint256[] type", "err", err)
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Create arguments for the array
+	abiArgs := abi.Arguments{{
+		Type: uint256ArrayType,
+	}}
+
+	// Pack the validator IDs
+	validatorIDsData, err := abiArgs.Pack(nextValidatorIDs)
+	if err != nil {
+		log.Error("SFC: Error packing validatorIDs", "err", err)
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Store the validator IDs
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorIDsSlot)), common.BytesToHash(validatorIDsData))
+	gasUsed += SstoreGasCost
+
+	// Set the total stake for the epoch snapshot
+	totalStakeSlot := epochSnapshotSlot + totalStakeOffset
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalStakeSlot)), common.BigToHash(totalStake))
+	gasUsed += SstoreGasCost
+
+	// Update the minimum gas price in the node
+	minGasPrice := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(minGasPriceSlot)))
+	gasUsed += SloadGasCost
+	minGasPriceBigInt := new(big.Int).SetBytes(minGasPrice.Bytes())
+
+	// Call the node to update the minimum gas price
+	nodeDriverAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(nodeDriverAuthSlot)))
+	gasUsed += SloadGasCost
+	nodeDriverAuthAddr := common.BytesToAddress(nodeDriverAuth.Bytes())
+
+	// Pack the function call data
+	data, err := NodeDriverAuthAbi.Pack("updateMinGasPrice", minGasPriceBigInt)
+	if err != nil {
+		log.Error("SFC: Error packing updateMinGasPrice call data", "err", err)
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Call the node driver
+	result, _, err := evm.Call(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, 50000, big.NewInt(0))
+	if err != nil {
+		reason, _ := abi.UnpackRevert(result)
+		log.Error("SFC: Error calling NodeDriverAuth method", "method", "updateMinGasPrice", "err", err, "reason", reason)
+		return nil, gasUsed, err
+	}
+
+	return nil, gasUsed, nil
 }
 
 // RelockStake relocks stake for a validator

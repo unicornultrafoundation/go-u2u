@@ -734,7 +734,7 @@ func handleCheckAllowedToWithdraw(evm *vm.EVM, delegator common.Address, toValid
 	data = append(data, common.LeftPadBytes(toValidatorID.Bytes(), 32)...)
 
 	// Make the call to the StakeTokenizer contract
-	result, _, err := evm.Call(vm.AccountRef(ContractAddress), stakeTokenizerAddr, data, 50000, big.NewInt(0))
+	result, _, err := evm.Call(vm.AccountRef(ContractAddress), stakeTokenizerAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return false, err
 	}
@@ -1045,12 +1045,12 @@ func callSFCLibDelegate(evm *vm.EVM, delegator common.Address, toValidatorID *bi
 	data = append(data, common.LeftPadBytes(amount.Bytes(), 32)...)
 
 	// Make the call to the SFCLib contract
-	result, leftOverGas, err := evm.Call(vm.AccountRef(ContractAddress), sfcLibAddress, data, 50000, big.NewInt(0))
+	result, leftOverGas, err := evm.Call(vm.AccountRef(ContractAddress), sfcLibAddress, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
-		return nil, 50000 - leftOverGas, err
+		return nil, defaultGasLimit - leftOverGas, err
 	}
 
-	return result, 50000 - leftOverGas, nil
+	return result, defaultGasLimit - leftOverGas, nil
 }
 
 // handleGetSelfStake returns the self-stake of a validator

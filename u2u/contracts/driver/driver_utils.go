@@ -10,6 +10,8 @@ import (
 
 // Gas costs for storage operations
 const (
+	defaultGasLimit = 300000
+	
 	SloadGasCost  uint64 = 2100  // Cost of SLOAD (GetState) operation (ColdSloadCostEIP2929)
 	SstoreGasCost uint64 = 20000 // Cost of SSTORE (SetState) operation (SstoreSetGasEIP2200)
 	HashGasCost   uint64 = 30    // Cost of hash operation (Keccak256)

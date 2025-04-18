@@ -9,6 +9,10 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
+const (
+	defaultGasLimit = 300000
+)
+
 // checkOnlyOwner checks if the caller is the owner of the contract
 // Returns nil if the caller is the owner, otherwise returns an ABI-encoded revert reason
 func checkOnlyOwner(evm *vm.EVM, caller common.Address, methodName string) ([]byte, error) {

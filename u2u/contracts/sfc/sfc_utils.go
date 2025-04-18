@@ -13,6 +13,8 @@ import (
 
 // Gas costs for storage operations
 const (
+	defaultGasLimit = 300000
+
 	SloadGasCost  uint64 = 2100  // Cost of SLOAD (GetState) operation (ColdSloadCostEIP2929)
 	SstoreGasCost uint64 = 20000 // Cost of SSTORE (SetState) operation (SstoreSetGasEIP2200)
 	HashGasCost   uint64 = 30    // Cost of hash operation (Keccak256)
@@ -84,6 +86,7 @@ func checkOnlyDriver(evm *vm.EVM, caller common.Address, methodName string) ([]b
 		if err != nil {
 			return nil, gasUsed, vm.ErrExecutionReverted
 		}
+		log.Error("SFC: Caller is not the NodeDriverAuth contract", "caller", caller, "nodeDriverAuth", nodeAddr)
 		return revertData, gasUsed, vm.ErrExecutionReverted
 	}
 	return nil, gasUsed, nil
@@ -917,15 +920,15 @@ func callConstantManagerMethod(evm *vm.EVM, methodName string, args ...interface
 	}
 
 	// Make the call to the ConstantsManager contract
-	result, leftOverGas, err := evm.Call(vm.AccountRef(ContractAddress), constantsManagerAddr, data, 50000, big.NewInt(0))
+	result, leftOverGas, err := evm.Call(vm.AccountRef(ContractAddress), constantsManagerAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		reason, _ := abi.UnpackRevert(result)
 		log.Error("SFC: Error calling ConstantsManager method", "method", methodName, "err", err, "reason", reason)
-		return []interface{}{result}, gasUsed + (50000 - leftOverGas), err
+		return []interface{}{result}, gasUsed + (defaultGasLimit - leftOverGas), err
 	}
 
 	// Add the gas used by the call
-	gasUsed += (50000 - leftOverGas)
+	gasUsed += (defaultGasLimit - leftOverGas)
 
 	// Unpack the result
 	values, err := CMAbi.Methods[methodName].Outputs.Unpack(result)
@@ -1204,13 +1207,13 @@ func _syncValidator(evm *vm.EVM, validatorID *big.Int, syncPubkey bool) (uint64,
 	nodeDriverAuthAddr := common.BytesToAddress(nodeDriverAuth.Bytes())
 
 	// Pack the function call data
-	data, err := DriverAbi.Pack("updateValidatorWeight", validatorID, weight)
+	data, err := NodeDriverAbi.Pack("updateValidatorWeight", validatorID, weight)
 	if err != nil {
 		return gasUsed, vm.ErrExecutionReverted
 	}
 
 	// Call the node driver
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, 50000, big.NewInt(0))
+	_, _, err = evm.Call(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return gasUsed, err
 	}
@@ -1225,13 +1228,13 @@ func _syncValidator(evm *vm.EVM, validatorID *big.Int, syncPubkey bool) (uint64,
 		gasUsed += SloadGasCost
 
 		// Pack the function call data
-		data, err := DriverAbi.Pack("updateValidatorPubkey", validatorID, pubkeyHash.Bytes())
+		data, err := NodeDriverAbi.Pack("updateValidatorPubkey", validatorID, pubkeyHash.Bytes())
 		if err != nil {
 			return gasUsed, vm.ErrExecutionReverted
 		}
 
 		// Call the node driver
-		_, _, err = evm.Call(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, 50000, big.NewInt(0))
+		_, _, err = evm.Call(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, defaultGasLimit, big.NewInt(0))
 		if err != nil {
 			return gasUsed, err
 		}

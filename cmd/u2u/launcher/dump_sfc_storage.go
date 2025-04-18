@@ -69,7 +69,9 @@ func dumpSfcStorage(ctx *cli.Context) error {
 
 	if isDumpStorageHashValid(stateDb, sfcStateDb) {
 		// Save dumped SFC contract's storage to disk
-		evms.CommitSfcState(latestBlockIndex, hash.Hash(sfcStateTrieHash), false)
+		if err := evms.CommitSfcState(latestBlockIndex, hash.Hash(sfcStateTrieHash), false); err != nil {
+			panic(err)
+		}
 		evms.CapSfcState()
 
 		// Save the sfcStateTrieHash for future use (include into the native block header)
@@ -89,10 +91,6 @@ func dumpSfcStorage(ctx *cli.Context) error {
 			LlrFullBlockRecord: *br,
 			Idx:                latestBlockIndex,
 		})
-
-		//previousBlock := gdb.GetBlock(latestBlockIndex - 1)
-		//previousBlock.SfcStateRoot = hash.Hash(sfcStateTrieHash)
-		//gdb.SetBlock(latestBlockIndex-1, previousBlock)
 
 		log.Info("Dump SFC contract's storage successfully at", "block", latestBlockIndex, "stateTrieHash", sfcStateTrieHash.Hex())
 	}

@@ -2,7 +2,7 @@ package evmstore
 
 import (
 	"errors"
-	
+
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/unicornultrafoundation/go-helios/hash"
 	"github.com/unicornultrafoundation/go-helios/native/idx"

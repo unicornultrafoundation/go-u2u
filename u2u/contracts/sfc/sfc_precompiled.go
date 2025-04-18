@@ -12,15 +12,17 @@ import (
 )
 
 var (
-	SfcAbi    abi.ABI
-	CMAbi     abi.ABI
-	DriverAbi abi.ABI
+	SfcAbi            abi.ABI
+	CMAbi             abi.ABI
+	NodeDriverAbi     abi.ABI
+	NodeDriverAuthAbi abi.ABI
 )
 
 func init() {
 	SfcAbi, _ = abi.JSON(strings.NewReader(sfc100.ContractMetaData.ABI))
 	CMAbi, _ = abi.JSON(strings.NewReader(ConstantManagerABIStr))
-	DriverAbi, _ = abi.JSON(strings.NewReader(DriverABIStr))
+	NodeDriverAbi, _ = abi.JSON(strings.NewReader(NodeDriverABIStr))
+	NodeDriverAuthAbi, _ = abi.JSON(strings.NewReader(NodeDriverAuthABIStr))
 }
 
 // SfcPrecompile implements PrecompiledSfcContract interface
@@ -258,7 +260,7 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		result, gasUsed, err = handleSealEpoch(evm, caller, args)
 
 	case "sealEpochValidators":
-		result, gasUsed, err = handleSealEpochValidators(evm, args)
+		result, gasUsed, err = handleSealEpochValidators(evm, caller, args)
 
 	case "lockStake":
 		result, gasUsed, err = handleLockStake(evm, caller, args)
@@ -341,7 +343,7 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 	}
 
 	if suppliedGas < gasUsed {
-		log.Error("SFC Precompiled: Out of gas", "function", method.Name)
+		log.Error("SFC Precompiled: Out of gas", "function", method.Name, "suppliedGas", suppliedGas, "gasUsed", gasUsed)
 		return nil, 0, vm.ErrOutOfGas
 	}
 	log.Debug("SFC Precompiled: Success", "function", method.Name)

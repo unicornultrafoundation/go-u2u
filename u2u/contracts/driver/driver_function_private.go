@@ -218,8 +218,7 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 	}
 
 	// Call the backend contract
-	log.Info("Driver SealEpochValidators: calling DriverAuth sealEpochValidators", "to", backendAddr.Hex(),
-		"raw slot", backend.Hex())
+	log.Info("Driver SealEpochValidators: calling DriverAuth sealEpochValidators", "to", backendAddr.Hex())
 	result, _, err := evm.Call(vm.AccountRef(ContractAddress), backendAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		reason, _ := abi.UnpackRevert(result)

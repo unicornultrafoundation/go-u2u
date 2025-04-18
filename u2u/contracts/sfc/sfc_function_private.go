@@ -525,17 +525,8 @@ func _sealEpoch_minGasPrice(evm *vm.EVM, epochDuration *big.Int, epochGas *big.I
 	denominator := new(big.Int).Add(epochDuration, counterweightBigInt)
 	gasPriceDeltaRatio = new(big.Int).Div(numerator, denominator)
 
-	// Limit the max/min possible delta in one epoch
-	// TODO: Implement GP.trimGasPriceChangeRatio
-	// For now, we'll use a simple approach to limit the ratio between 0.5 and 2.0
-	minRatio := new(big.Int).Div(decimalUnitBigInt, big.NewInt(2)) // 0.5 * unit
-	maxRatio := new(big.Int).Mul(decimalUnitBigInt, big.NewInt(2)) // 2.0 * unit
-
-	if gasPriceDeltaRatio.Cmp(minRatio) < 0 {
-		gasPriceDeltaRatio = minRatio
-	} else if gasPriceDeltaRatio.Cmp(maxRatio) > 0 {
-		gasPriceDeltaRatio = maxRatio
-	}
+	// Limit the max/min possible delta in one epoch using the trimGasPriceChangeRatio helper function
+	gasPriceDeltaRatio = trimGasPriceChangeRatio(gasPriceDeltaRatio)
 
 	// Get the current min gas price
 	minGasPrice := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(minGasPriceSlot)))
@@ -546,17 +537,8 @@ func _sealEpoch_minGasPrice(evm *vm.EVM, epochDuration *big.Int, epochGas *big.I
 	newMinGasPrice := new(big.Int).Mul(minGasPriceBigInt, gasPriceDeltaRatio)
 	newMinGasPrice = new(big.Int).Div(newMinGasPrice, decimalUnitBigInt)
 
-	// Limit the max/min possible minGasPrice
-	// TODO: Implement GP.trimMinGasPrice
-	// For now, we'll use a simple approach to limit the min gas price between 1 gwei and 1000 gwei
-	minGasPriceLimit := big.NewInt(1000000000)    // 1 gwei
-	maxGasPriceLimit := big.NewInt(1000000000000) // 1000 gwei
-
-	if newMinGasPrice.Cmp(minGasPriceLimit) < 0 {
-		newMinGasPrice = minGasPriceLimit
-	} else if newMinGasPrice.Cmp(maxGasPriceLimit) > 0 {
-		newMinGasPrice = maxGasPriceLimit
-	}
+	// Limit the max/min possible minGasPrice using the trimMinGasPrice helper function
+	newMinGasPrice = trimMinGasPrice(newMinGasPrice)
 
 	// Apply new minGasPrice
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(minGasPriceSlot)), common.BigToHash(newMinGasPrice))

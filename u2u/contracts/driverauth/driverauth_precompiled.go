@@ -73,8 +73,12 @@ func (c *DriverAuthPrecompile) Run(evm *vm.EVM, caller common.Address, input []b
 		return nil, 0, err
 	}
 
-	var result []byte
-	var gasUsed uint64
+	var (
+		result  []byte
+		gasUsed uint64
+	)
+
+	log.Info("DriverAuth Precompiled: Calling function", "function", method.Name, "args", args, "caller", caller.Hex())
 
 	// Dispatch to the appropriate handler based on the method name
 	switch method.Name {

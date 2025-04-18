@@ -8,10 +8,10 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 )
 
-// Gas costs for storage operations
+// Gas costs and limits
 const (
-	defaultGasLimit = 300000
-	
+	defaultGasLimit uint64 = 800000 // Default gas limit for contract calls
+
 	SloadGasCost  uint64 = 2100  // Cost of SLOAD (GetState) operation (ColdSloadCostEIP2929)
 	SstoreGasCost uint64 = 20000 // Cost of SSTORE (SetState) operation (SstoreSetGasEIP2200)
 	HashGasCost   uint64 = 30    // Cost of hash operation (Keccak256)

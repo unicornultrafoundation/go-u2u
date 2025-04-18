@@ -70,8 +70,13 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		return nil, 0, err
 	}
 
-	var result []byte
-	var gasUsed uint64
+	var (
+		result  []byte
+		gasUsed uint64
+	)
+
+	log.Info("SFC Precompiled: Calling function", "function", method.Name, "args", args, "caller", caller.Hex())
+
 	switch method.Name {
 	case "owner":
 		result, gasUsed, err = handleOwner(evm)

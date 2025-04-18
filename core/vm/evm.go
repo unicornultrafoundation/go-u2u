@@ -255,15 +255,10 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			evm.Context.Transfer(evm.SfcStateDB, caller.Address(), addr, value)
 			// Run SFC precompiled
 			start := time.Now()
-			log.Info("SFC precompiled calling", "action", "call", "height", evm.Context.BlockNumber,
+			log.Debug("SFC precompiled calling", "action", "call", "height", evm.Context.BlockNumber,
 				"caller", caller.Address().Hex(),
 				"to", addr.Hex())
 			ret, _, err = sp.Run(evm, caller.Address(), input, gas)
-
-			driver := evm.SfcStateDB.GetState(common.HexToAddress("0xd100ae0000000000000000000000000000000000"), common.BigToHash(big.NewInt(int64(0x67))))
-			driverAddr := common.BytesToAddress(driver.Bytes())
-			log.Info("Current driver address", "action", "call", "addr", driverAddr.Hex())
-
 			// TODO(trinhdn97): compared sfc state precompiled gas used/output/error with the correct execution from smc
 			// as well for call code, delegate and static calls.
 			sfcExecutionElapsed = time.Since(start)
@@ -271,6 +266,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			// When an error was returned by the SFC precompiles or when setting the creation code
 			// above, we revert to the snapshot and consume any gas remaining.
 			if err != nil {
+				log.Error("SFC precompiled error: Reverting to snapshot", "action", "call", "err", err)
 				evm.SfcStateDB.RevertToSnapshot(snapshot)
 				if !errors.Is(err, ErrExecutionReverted) {
 					// TODO(trinhdn97): try to consume all remaining gas here, in case this is a valid revert.
@@ -361,7 +357,8 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 		if isSfcPrecompile && evm.SfcStateDB != nil {
 			snapshot := evm.SfcStateDB.Snapshot()
 			start := time.Now()
-			log.Info("SFC precompiled calling", "action", "callcode", "height", evm.Context.BlockNumber, "caller", caller.Address().Hex())
+			log.Debug("SFC precompiled calling", "action", "callcode", "height", evm.Context.BlockNumber,
+				"caller", caller.Address().Hex(), "to", addr.Hex())
 			ret, _, err = sp.Run(evm, caller.Address(), input, gas)
 			sfcExecutionElapsed = time.Since(start)
 			if err != nil {
@@ -432,7 +429,8 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 		if isSfcPrecompile && evm.SfcStateDB != nil {
 			snapshot := evm.SfcStateDB.Snapshot()
 			start := time.Now()
-			log.Info("SFC precompiled calling", "action", "delegatecall", "height", evm.Context.BlockNumber, "caller", caller.Address().Hex())
+			log.Debug("SFC precompiled calling", "action", "delegatecall", "height", evm.Context.BlockNumber,
+				"caller", caller.Address().Hex(), "to", addr.Hex())
 			ret, _, err = sp.Run(evm, caller.Address(), input, gas)
 			sfcExecutionElapsed = time.Since(start)
 			if err != nil {
@@ -510,19 +508,14 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 		sp, isSfcPrecompile := evm.sfcPrecompile(addr)
 		if isSfcPrecompile && evm.SfcStateDB != nil {
 			snapshot := evm.SfcStateDB.Snapshot()
-			evm.SfcStateDB.AddBalance(addr, big0)
 			start := time.Now()
-			log.Info("SFC precompiled calling", "action", "staticcall", "height", evm.Context.BlockNumber,
+			log.Debug("SFC precompiled calling", "action", "staticcall", "height", evm.Context.BlockNumber,
 				"caller", caller.Address().Hex(),
 				"to", addr.Hex())
 			ret, _, err = sp.Run(evm, caller.Address(), input, gas)
-
-			driver := evm.SfcStateDB.GetState(common.HexToAddress("0xd100ae0000000000000000000000000000000000"), common.BigToHash(big.NewInt(int64(0x67))))
-			driverAddr := common.BytesToAddress(driver.Bytes())
-			log.Info("Current driver address", "action", "staticcall", "addr", driverAddr.Hex())
 			sfcExecutionElapsed = time.Since(start)
 			if err != nil {
-				log.Warn("SFC precompiled error: Reverting to snapshot", "err", err)
+				log.Error("SFC precompiled error: Reverting to snapshot", "action", "staticcall", "err", err)
 				evm.SfcStateDB.RevertToSnapshot(snapshot)
 				if !errors.Is(err, ErrExecutionReverted) {
 				}

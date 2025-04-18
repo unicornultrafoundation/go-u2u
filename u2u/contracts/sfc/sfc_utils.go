@@ -11,9 +11,9 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
-// Gas costs for storage operations
+// Gas costs and limits
 const (
-	defaultGasLimit = 300000
+	defaultGasLimit uint64 = 800000 // Default gas limit for contract calls
 
 	SloadGasCost  uint64 = 2100  // Cost of SLOAD (GetState) operation (ColdSloadCostEIP2929)
 	SstoreGasCost uint64 = 20000 // Cost of SSTORE (SetState) operation (SstoreSetGasEIP2200)
@@ -1010,50 +1010,6 @@ func getOfflinePenaltyThresholdTime(evm *vm.EVM) (*big.Int, uint64, error) {
 	return threshold, gasUsed, nil
 }
 
-// decodeValidatorIDs decodes validator IDs from storage
-func decodeValidatorIDs(data []byte) ([]*big.Int, error) {
-	// If data is empty, return an empty array
-	if len(data) == 0 {
-		return []*big.Int{}, nil
-	}
-
-	// Decode the validator IDs using ABI decoding
-	// The data is expected to be an ABI-encoded array of uint256
-	validatorIDs := []*big.Int{}
-
-	// Create a temporary ABI definition for an array of uint256
-	arrayType, err := abi.NewType("uint256[]", "uint256[]", nil)
-	if err != nil {
-		log.Error("SFC: Error creating array type", "err", err)
-		return nil, err
-	}
-
-	// Create arguments for the array
-	args := abi.Arguments{{
-		Type: arrayType,
-	}}
-
-	// Unpack the data
-	values, err := args.Unpack(data)
-	if err != nil {
-		log.Error("SFC: Error unpacking validatorIDs", "err", err)
-		return nil, err
-	}
-
-	// Extract the validator IDs
-	if len(values) > 0 {
-		if ids, ok := values[0].([]interface{}); ok {
-			for _, id := range ids {
-				if bigInt, ok := id.(*big.Int); ok {
-					validatorIDs = append(validatorIDs, bigInt)
-				}
-			}
-		}
-	}
-
-	return validatorIDs, nil
-}
-
 // getValidatorStatusSlotByID calculates the storage slot for a validator's status by ID
 func getValidatorStatusSlotByID(validatorID *big.Int) (int64, uint64) {
 	return getValidatorStatusSlot(validatorID)
@@ -1457,6 +1413,57 @@ func getEpochValidatorReceivedStakeSlot(epoch *big.Int, validatorID *big.Int) (i
 func getDecimalUnit() *big.Int {
 	// This is a pure function that returns 1e18, as defined in Decimal.sol
 	return new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+}
+
+// trimGasPriceChangeRatio limits the gas price change ratio to be between 95% and 105%
+// This is a port of the GP.trimGasPriceChangeRatio function from GasPriceConstants.sol
+func trimGasPriceChangeRatio(x *big.Int) *big.Int {
+	// Get the decimal unit
+	unit := getDecimalUnit()
+
+	// Calculate 105% of unit
+	maxRatio := new(big.Int).Mul(unit, big.NewInt(105))
+	maxRatio = new(big.Int).Div(maxRatio, big.NewInt(100))
+
+	// Calculate 95% of unit
+	minRatio := new(big.Int).Mul(unit, big.NewInt(95))
+	minRatio = new(big.Int).Div(minRatio, big.NewInt(100))
+
+	// Check if x is greater than 105% of unit
+	if x.Cmp(maxRatio) > 0 {
+		return maxRatio
+	}
+
+	// Check if x is less than 95% of unit
+	if x.Cmp(minRatio) < 0 {
+		return minRatio
+	}
+
+	// Return x unchanged if it's within the allowed range
+	return x
+}
+
+// trimMinGasPrice limits the minimum gas price to be between 1 gwei and 1000000 gwei
+// This is a port of the GP.trimMinGasPrice function from GasPriceConstants.sol
+func trimMinGasPrice(x *big.Int) *big.Int {
+	// Calculate 1 gwei (1e9)
+	minGasPrice := new(big.Int).Mul(big.NewInt(1), big.NewInt(1000000000))
+
+	// Calculate 1000000 gwei (1e15)
+	maxGasPrice := new(big.Int).Mul(big.NewInt(1000000), big.NewInt(1000000000))
+
+	// Check if x is greater than 1000000 gwei
+	if x.Cmp(maxGasPrice) > 0 {
+		return maxGasPrice
+	}
+
+	// Check if x is less than 1 gwei
+	if x.Cmp(minGasPrice) < 0 {
+		return minGasPrice
+	}
+
+	// Return x unchanged if it's within the allowed range
+	return x
 }
 
 // getMinSelfStake returns the minimum self-stake value from the ConstantManager contract

@@ -9,8 +9,9 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
+// Gas costs and limits
 const (
-	defaultGasLimit = 300000
+	defaultGasLimit uint64 = 800000 // Default gas limit for contract calls
 )
 
 // checkOnlyOwner checks if the caller is the owner of the contract

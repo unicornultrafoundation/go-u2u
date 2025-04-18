@@ -7,6 +7,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/crypto"
 	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
@@ -1596,14 +1597,33 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	gasUsed += slotGasUsed
 
 	// Get the validator IDs for the current epoch
+	// For a dynamic array in a struct, we first get the length from the slot
 	validatorIDsSlot := epochSnapshotSlot + validatorIDsOffset
-	validatorIDsHash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorIDsSlot)))
+	validatorIDsLengthHash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorIDsSlot)))
 	gasUsed += SloadGasCost
 
-	// Decode the validator IDs
-	validatorIDs, err := decodeValidatorIDs(validatorIDsHash.Bytes())
-	if err != nil {
-		return nil, gasUsed, vm.ErrExecutionReverted
+	// Convert the length hash to a big.Int
+	validatorIDsLength := new(big.Int).SetBytes(validatorIDsLengthHash.Bytes()).Uint64()
+
+	// Calculate the base slot for the array elements
+	// The array elements start at keccak256(slot)
+	validatorIDsBaseSlotBytes := crypto.Keccak256(common.BigToHash(big.NewInt(validatorIDsSlot)).Bytes())
+	gasUsed += HashGasCost
+	validatorIDsBaseSlot := new(big.Int).SetBytes(validatorIDsBaseSlotBytes)
+
+	// Read each validator ID from storage
+	validatorIDs := make([]*big.Int, 0, validatorIDsLength)
+	for i := uint64(0); i < validatorIDsLength; i++ {
+		// Calculate the slot for this array element: baseSlot + i
+		elementSlot := new(big.Int).Add(validatorIDsBaseSlot, big.NewInt(int64(i)))
+
+		// Get the validator ID from storage
+		validatorIDHash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(elementSlot))
+		gasUsed += SloadGasCost
+
+		// Convert the hash to a big.Int and add it to the list
+		validatorID := new(big.Int).SetBytes(validatorIDHash.Bytes())
+		validatorIDs = append(validatorIDs, validatorID)
 	}
 
 	// Call _sealEpoch_offline
@@ -1742,31 +1762,27 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 	}
 
 	// Set the validator IDs for the epoch snapshot
+	// For a dynamic array in a struct, we first set the length at the slot
 	validatorIDsSlot := epochSnapshotSlot + validatorIDsOffset
-
-	// Encode the validator IDs using the Arguments type directly
-	// Create a temporary Arguments object for uint256[]
-	uint256ArrayType, err := abi.NewType("uint256[]", "uint256[]", nil)
-	if err != nil {
-		log.Error("SFC: Error creating uint256[] type", "err", err)
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	// Create arguments for the array
-	abiArgs := abi.Arguments{{
-		Type: uint256ArrayType,
-	}}
-
-	// Pack the validator IDs
-	validatorIDsData, err := abiArgs.Pack(nextValidatorIDs)
-	if err != nil {
-		log.Error("SFC: Error packing validatorIDs", "err", err)
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	// Store the validator IDs
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorIDsSlot)), common.BytesToHash(validatorIDsData))
+	validatorIDsLength := big.NewInt(int64(len(nextValidatorIDs)))
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorIDsSlot)), common.BigToHash(validatorIDsLength))
 	gasUsed += SstoreGasCost
+
+	// Calculate the base slot for the array elements
+	// The array elements start at keccak256(slot)
+	validatorIDsBaseSlotBytes := crypto.Keccak256(common.BigToHash(big.NewInt(validatorIDsSlot)).Bytes())
+	gasUsed += HashGasCost
+	validatorIDsBaseSlot := new(big.Int).SetBytes(validatorIDsBaseSlotBytes)
+
+	// Store each validator ID in storage
+	for i, validatorID := range nextValidatorIDs {
+		// Calculate the slot for this array element: baseSlot + i
+		elementSlot := new(big.Int).Add(validatorIDsBaseSlot, big.NewInt(int64(i)))
+
+		// Store the validator ID
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(elementSlot), common.BigToHash(validatorID))
+		gasUsed += SstoreGasCost
+	}
 
 	// Set the total stake for the epoch snapshot
 	totalStakeSlot := epochSnapshotSlot + totalStakeOffset

@@ -100,6 +100,10 @@ func dumpSfcStorage(ctx *cli.Context) error {
 
 func dumpSfcStorageByStateDb(stateDb *state.StateDB, sfcStateDb *state.StateDB) (common.Hash, error) {
 	for sfcAddress := range u2u.DefaultVMConfig.SfcPrecompiles {
+		// Warming up the state object to persist later
+		sfcStateDb.AddBalance(sfcAddress, stateDb.GetBalance(sfcAddress))
+		sfcStateDb.SetNonce(sfcAddress, stateDb.GetNonce(sfcAddress))
+		sfcStateDb.SetCode(sfcAddress, stateDb.GetCode(sfcAddress))
 		stateDb.ForEachStorage(sfcAddress, func(key, value common.Hash) bool {
 			log.Debug("Looping on storage trie", "Contract", sfcAddress, "Key", key.Hex(), "Value", value.Hex())
 			sfcStateDb.SetState(sfcAddress, key, value)

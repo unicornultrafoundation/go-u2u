@@ -7,99 +7,131 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
-	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
 // Gas costs for storage operations
 const (
 	SloadGasCost  uint64 = 2100  // Cost of SLOAD (GetState) operation (ColdSloadCostEIP2929)
 	SstoreGasCost uint64 = 20000 // Cost of SSTORE (SetState) operation (SstoreSetGasEIP2200)
+	HashGasCost   uint64 = 30    // Cost of hash operation (Keccak256)
 )
 
 // checkOnlyOwner checks if the caller is the owner of the contract
 // Returns nil if the caller is the owner, otherwise returns an ABI-encoded revert reason
-func checkOnlyOwner(evm *vm.EVM, caller common.Address, methodName string) ([]byte, error) {
+func checkOnlyOwner(evm *vm.EVM, caller common.Address, methodName string) ([]byte, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Get owner address (SLOAD operation)
 	owner := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(ownerSlot)))
+	gasUsed += SloadGasCost
+
 	ownerAddr := common.BytesToAddress(owner.Bytes())
 	if caller.Cmp(ownerAddr) != 0 {
 		// Return ABI-encoded revert reason: "Ownable: caller is not the owner"
 		revertReason := "Ownable: caller is not the owner"
 		revertData, err := encodeRevertReason(methodName, revertReason)
 		if err != nil {
-			return nil, vm.ErrExecutionReverted
+			return nil, gasUsed, vm.ErrExecutionReverted
 		}
-		return revertData, vm.ErrExecutionReverted
+		return revertData, gasUsed, vm.ErrExecutionReverted
 	}
-	return nil, nil
+	return nil, gasUsed, nil
 }
 
 // checkOnlyDriver checks if the caller is the NodeDriverAuth contract
 // Returns nil if the caller is the NodeDriverAuth, otherwise returns an ABI-encoded revert reason
-func checkOnlyDriver(evm *vm.EVM, caller common.Address, methodName string) ([]byte, error) {
+func checkOnlyDriver(evm *vm.EVM, caller common.Address, methodName string) ([]byte, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Get NodeDriverAuth address (SLOAD operation)
 	node := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(nodeDriverAuthSlot)))
+	gasUsed += SloadGasCost
+
 	nodeAddr := common.BytesToAddress(node.Bytes())
 	if caller.Cmp(nodeAddr) != 0 {
 		// Return ABI-encoded revert reason: "caller is not the NodeDriverAuth contract"
 		revertReason := "caller is not the NodeDriverAuth contract"
 		revertData, err := encodeRevertReason(methodName, revertReason)
 		if err != nil {
-			return nil, vm.ErrExecutionReverted
+			return nil, gasUsed, vm.ErrExecutionReverted
 		}
-		return revertData, vm.ErrExecutionReverted
+		return revertData, gasUsed, vm.ErrExecutionReverted
 	}
-	return nil, nil
+	return nil, gasUsed, nil
 }
 
 // checkValidatorExists checks if a validator with the given ID exists
 // Returns nil if the validator exists, otherwise returns an ABI-encoded revert reason
-func checkValidatorExists(evm *vm.EVM, validatorID *big.Int, methodName string) ([]byte, error) {
-	// Check if validator exists
-	// Use validatorSlot directly from sfc_variable_layout.go
-	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorSlot)))
+func checkValidatorExists(evm *vm.EVM, validatorID *big.Int, methodName string) ([]byte, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Calculate validator status slot
+	statusSlot, slotGasUsed := getValidatorStatusSlot(validatorID)
+	gasUsed += slotGasUsed
+
+	// Check if validator exists (SLOAD operation)
+	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(statusSlot)))
+	gasUsed += SloadGasCost
+
 	emptyHash := common.Hash{}
 	if validatorStatus.Cmp(emptyHash) == 0 {
 		// Return ABI-encoded revert reason: "validator doesn't exist"
 		revertReason := "validator doesn't exist"
 		revertData, err := encodeRevertReason(methodName, revertReason)
 		if err != nil {
-			return nil, vm.ErrExecutionReverted
+			return nil, gasUsed, vm.ErrExecutionReverted
 		}
-		return revertData, vm.ErrExecutionReverted
+		return revertData, gasUsed, vm.ErrExecutionReverted
 	}
-	return nil, nil
+	return nil, gasUsed, nil
 }
 
 // checkValidatorNotExists checks if a validator with the given ID does not exist
 // Returns nil if the validator does not exist, otherwise returns an ABI-encoded revert reason
-func checkValidatorNotExists(evm *vm.EVM, validatorID *big.Int, methodName string) ([]byte, error) {
-	// Check if validator doesn't exist
-	// Use validatorSlot directly from sfc_variable_layout.go
-	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorSlot)))
+func checkValidatorNotExists(evm *vm.EVM, validatorID *big.Int, methodName string) ([]byte, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Calculate validator status slot
+	statusSlot, slotGasUsed := getValidatorStatusSlot(validatorID)
+	gasUsed += slotGasUsed
+
+	// Check if validator doesn't exist (SLOAD operation)
+	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(statusSlot)))
+	gasUsed += SloadGasCost
+
 	emptyHash := common.Hash{}
 	if validatorStatus.Cmp(emptyHash) != 0 {
 		// Return ABI-encoded revert reason: "validator already exists"
 		revertReason := "validator already exists"
 		revertData, err := encodeRevertReason(methodName, revertReason)
 		if err != nil {
-			return nil, vm.ErrExecutionReverted
+			return nil, gasUsed, vm.ErrExecutionReverted
 		}
-		return revertData, vm.ErrExecutionReverted
+		return revertData, gasUsed, vm.ErrExecutionReverted
 	}
-	return nil, nil
+	return nil, gasUsed, nil
 }
 
 // checkValidatorActive checks if a validator is active
 // Returns nil if the validator is active, otherwise returns an ABI-encoded revert reason
-func checkValidatorActive(evm *vm.EVM, validatorID *big.Int, methodName string) ([]byte, error) {
+func checkValidatorActive(evm *vm.EVM, validatorID *big.Int, methodName string) ([]byte, uint64, error) {
+	var gasUsed uint64 = 0
+
 	// First check if validator exists
-	revertData, err := checkValidatorExists(evm, validatorID, methodName)
+	revertData, existsGasUsed, err := checkValidatorExists(evm, validatorID, methodName)
+	gasUsed += existsGasUsed
 	if err != nil {
-		return revertData, err
+		return revertData, gasUsed, err
 	}
 
-	// Check if validator is active
-	// Use validatorSlot directly from sfc_variable_layout.go
-	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorSlot)))
+	// Calculate validator status slot
+	statusSlot, slotGasUsed := getValidatorStatusSlot(validatorID)
+	gasUsed += slotGasUsed
+
+	// Check if validator is active (SLOAD operation)
+	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(statusSlot)))
+	gasUsed += SloadGasCost
+
 	statusBigInt := new(big.Int).SetBytes(validatorStatus.Bytes())
 
 	// Check if validator is not deactivated
@@ -108,9 +140,9 @@ func checkValidatorActive(evm *vm.EVM, validatorID *big.Int, methodName string) 
 		revertReason := "validator is deactivated"
 		revertData, err := encodeRevertReason(methodName, revertReason)
 		if err != nil {
-			return nil, vm.ErrExecutionReverted
+			return nil, gasUsed, vm.ErrExecutionReverted
 		}
-		return revertData, vm.ErrExecutionReverted
+		return revertData, gasUsed, vm.ErrExecutionReverted
 	}
 
 	// Check if validator is not offline
@@ -119,9 +151,9 @@ func checkValidatorActive(evm *vm.EVM, validatorID *big.Int, methodName string) 
 		revertReason := "validator is offline"
 		revertData, err := encodeRevertReason(methodName, revertReason)
 		if err != nil {
-			return nil, vm.ErrExecutionReverted
+			return nil, gasUsed, vm.ErrExecutionReverted
 		}
-		return revertData, vm.ErrExecutionReverted
+		return revertData, gasUsed, vm.ErrExecutionReverted
 	}
 
 	// Check if validator is not a cheater
@@ -130,83 +162,103 @@ func checkValidatorActive(evm *vm.EVM, validatorID *big.Int, methodName string) 
 		revertReason := "validator is a cheater"
 		revertData, err := encodeRevertReason(methodName, revertReason)
 		if err != nil {
-			return nil, vm.ErrExecutionReverted
+			return nil, gasUsed, vm.ErrExecutionReverted
 		}
-		return revertData, vm.ErrExecutionReverted
+		return revertData, gasUsed, vm.ErrExecutionReverted
 	}
 
-	return nil, nil
+	return nil, gasUsed, nil
 }
 
 // checkDelegationExists checks if a delegation exists
 // Returns nil if the delegation exists, otherwise returns an ABI-encoded revert reason
-func checkDelegationExists(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int, methodName string) ([]byte, error) {
-	// Check if delegation exists
-	// Use stakeSlot directly from sfc_variable_layout.go
-	delegation := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(stakeSlot)))
+func checkDelegationExists(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int, methodName string) ([]byte, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Calculate stake slot
+	stakeSlotNum, slotGasUsed := getStakeSlot(delegator, toValidatorID)
+	gasUsed += slotGasUsed
+
+	// Check if delegation exists (SLOAD operation)
+	delegation := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(stakeSlotNum)))
+	gasUsed += SloadGasCost
+
 	emptyHash := common.Hash{}
 	if delegation.Cmp(emptyHash) == 0 {
 		// Return ABI-encoded revert reason: "delegation doesn't exist"
 		revertReason := "delegation doesn't exist"
 		revertData, err := encodeRevertReason(methodName, revertReason)
 		if err != nil {
-			return nil, vm.ErrExecutionReverted
+			return nil, gasUsed, vm.ErrExecutionReverted
 		}
-		return revertData, vm.ErrExecutionReverted
+		return revertData, gasUsed, vm.ErrExecutionReverted
 	}
-	return nil, nil
+	return nil, gasUsed, nil
 }
 
 // checkDelegationNotExists checks if a delegation does not exist
 // Returns nil if the delegation does not exist, otherwise returns an ABI-encoded revert reason
-func checkDelegationNotExists(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int, methodName string) ([]byte, error) {
-	// Check if delegation doesn't exist
-	// Use stakeSlot directly from sfc_variable_layout.go
-	delegation := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(stakeSlot)))
+func checkDelegationNotExists(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int, methodName string) ([]byte, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Calculate stake slot
+	stakeSlotNum, slotGasUsed := getStakeSlot(delegator, toValidatorID)
+	gasUsed += slotGasUsed
+
+	// Check if delegation doesn't exist (SLOAD operation)
+	delegation := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(stakeSlotNum)))
+	gasUsed += SloadGasCost
+
 	emptyHash := common.Hash{}
 	if delegation.Cmp(emptyHash) != 0 {
 		// Return ABI-encoded revert reason: "delegation already exists"
 		revertReason := "delegation already exists"
 		revertData, err := encodeRevertReason(methodName, revertReason)
 		if err != nil {
-			return nil, vm.ErrExecutionReverted
+			return nil, gasUsed, vm.ErrExecutionReverted
 		}
-		return revertData, vm.ErrExecutionReverted
+		return revertData, gasUsed, vm.ErrExecutionReverted
 	}
-	return nil, nil
+	return nil, gasUsed, nil
 }
 
 // checkAlreadyInitialized checks if the contract is already initialized
 // Returns nil if the contract is not initialized, otherwise returns an ABI-encoded revert reason
-func checkAlreadyInitialized(evm *vm.EVM, methodName string) ([]byte, error) {
-	// Check if contract is already initialized
+func checkAlreadyInitialized(evm *vm.EVM, methodName string) ([]byte, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Check if contract is already initialized (SLOAD operation)
 	initializedFlag := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(isInitialized)))
+	gasUsed += SloadGasCost
+
 	emptyHash := common.Hash{}
 	if initializedFlag.Cmp(emptyHash) != 0 {
 		// Return ABI-encoded revert reason: "already initialized"
 		revertReason := "already initialized"
 		revertData, err := encodeRevertReason(methodName, revertReason)
 		if err != nil {
-			return nil, vm.ErrExecutionReverted
+			return nil, gasUsed, vm.ErrExecutionReverted
 		}
-		return revertData, vm.ErrExecutionReverted
+		return revertData, gasUsed, vm.ErrExecutionReverted
 	}
-	return nil, nil
+	return nil, gasUsed, nil
 }
 
 // checkZeroAddress checks if an address is the zero address
 // Returns nil if the address is not zero, otherwise returns an ABI-encoded revert reason
-func checkZeroAddress(addr common.Address, methodName string, message string) ([]byte, error) {
+func checkZeroAddress(addr common.Address, methodName string, message string) ([]byte, uint64, error) {
+	var gasUsed uint64 = 0
+
 	emptyAddr := common.Address{}
 	if addr.Cmp(emptyAddr) == 0 {
 		// Return ABI-encoded revert reason with the provided message
 		revertData, err := encodeRevertReason(methodName, message)
 		if err != nil {
-			return nil, vm.ErrExecutionReverted
+			return nil, gasUsed, vm.ErrExecutionReverted
 		}
-		return revertData, vm.ErrExecutionReverted
+		return revertData, gasUsed, vm.ErrExecutionReverted
 	}
-	return nil, nil
+	return nil, gasUsed, nil
 }
 
 // encodeRevertReason encodes a revert reason as an ABI-encoded error
@@ -247,8 +299,9 @@ func getValidatorStatusSlot(validatorID *big.Int) (int64, uint64) {
 	validatorSlotBytes := common.LeftPadBytes(big.NewInt(validatorSlot).Bytes(), 32) // Left-pad to 32 bytes
 	hashInput := append(validatorIDBytes, validatorSlotBytes...)
 
-	// Calculate the hash
+	// Calculate the hash - add gas cost for hashing
 	hash := crypto.Keccak256(hashInput)
+	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
 	slot := new(big.Int).SetBytes(hash)
@@ -279,8 +332,9 @@ func getValidatorCreatedEpochSlot(validatorID *big.Int) (int64, uint64) {
 	validatorSlotBytes := common.LeftPadBytes(big.NewInt(validatorSlot).Bytes(), 32) // Left-pad to 32 bytes
 	hashInput := append(validatorIDBytes, validatorSlotBytes...)
 
-	// Calculate the hash
+	// Calculate the hash - add gas cost for hashing
 	hash := crypto.Keccak256(hashInput)
+	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
 	slot := new(big.Int).SetBytes(hash)
@@ -311,8 +365,9 @@ func getValidatorCreatedTimeSlot(validatorID *big.Int) (int64, uint64) {
 	validatorSlotBytes := common.LeftPadBytes(big.NewInt(validatorSlot).Bytes(), 32) // Left-pad to 32 bytes
 	hashInput := append(validatorIDBytes, validatorSlotBytes...)
 
-	// Calculate the hash
+	// Calculate the hash - add gas cost for hashing
 	hash := crypto.Keccak256(hashInput)
+	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
 	slot := new(big.Int).SetBytes(hash)
@@ -343,8 +398,9 @@ func getValidatorDeactivatedEpochSlot(validatorID *big.Int) (int64, uint64) {
 	validatorSlotBytes := common.LeftPadBytes(big.NewInt(validatorSlot).Bytes(), 32) // Left-pad to 32 bytes
 	hashInput := append(validatorIDBytes, validatorSlotBytes...)
 
-	// Calculate the hash
+	// Calculate the hash - add gas cost for hashing
 	hash := crypto.Keccak256(hashInput)
+	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
 	slot := new(big.Int).SetBytes(hash)
@@ -375,8 +431,9 @@ func getValidatorDeactivatedTimeSlot(validatorID *big.Int) (int64, uint64) {
 	validatorSlotBytes := common.LeftPadBytes(big.NewInt(validatorSlot).Bytes(), 32) // Left-pad to 32 bytes
 	hashInput := append(validatorIDBytes, validatorSlotBytes...)
 
-	// Calculate the hash
+	// Calculate the hash - add gas cost for hashing
 	hash := crypto.Keccak256(hashInput)
+	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
 	slot := new(big.Int).SetBytes(hash)
@@ -397,8 +454,9 @@ func getValidatorCommissionSlot(validatorID *big.Int) (int64, uint64) {
 	validatorCommissionSlotBytes := common.LeftPadBytes(big.NewInt(validatorCommissionSlot).Bytes(), 32) // Left-pad to 32 bytes
 	hashInput := append(validatorIDBytes, validatorCommissionSlotBytes...)
 
-	// Calculate the hash
+	// Calculate the hash - add gas cost for hashing
 	hash := crypto.Keccak256(hashInput)
+	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
 	slot := new(big.Int).SetBytes(hash)
@@ -436,8 +494,9 @@ func getValidatorAuthSlot(validatorID *big.Int) (int64, uint64) {
 	validatorSlotBytes := common.LeftPadBytes(big.NewInt(validatorSlot).Bytes(), 32) // Left-pad to 32 bytes
 	hashInput := append(validatorIDBytes, validatorSlotBytes...)
 
-	// Calculate the hash
+	// Calculate the hash - add gas cost for hashing
 	hash := crypto.Keccak256(hashInput)
+	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
 	slot := new(big.Int).SetBytes(hash)
@@ -458,8 +517,9 @@ func getValidatorPubkeySlot(validatorID *big.Int) (int64, uint64) {
 	validatorPubkeySlotBytes := common.LeftPadBytes(big.NewInt(validatorPubkeySlot).Bytes(), 32) // Left-pad to 32 bytes
 	hashInput := append(validatorIDBytes, validatorPubkeySlotBytes...)
 
-	// Calculate the hash
+	// Calculate the hash - add gas cost for hashing
 	hash := crypto.Keccak256(hashInput)
+	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
 	slot := new(big.Int).SetBytes(hash)
@@ -479,15 +539,17 @@ func getStakeSlot(delegator common.Address, toValidatorID *big.Int) (int64, uint
 	stakeSlotBytes := common.LeftPadBytes(big.NewInt(stakeSlot).Bytes(), 32) // Left-pad to 32 bytes
 	innerHashInput := append(delegatorBytes, stakeSlotBytes...)
 
-	// Calculate the inner hash
+	// Calculate the inner hash - add gas cost for hashing
 	innerHash := crypto.Keccak256(innerHashInput)
+	gasUsed += HashGasCost
 
 	// Create the outer hash input: abi.encode(toValidatorID, innerHash)
 	toValidatorIDBytes := common.LeftPadBytes(toValidatorID.Bytes(), 32) // Left-pad to 32 bytes
 	outerHashInput := append(toValidatorIDBytes, innerHash...)
 
-	// Calculate the outer hash
+	// Calculate the outer hash - add gas cost for hashing
 	outerHash := crypto.Keccak256(outerHashInput)
+	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
 	slot := new(big.Int).SetBytes(outerHash)
@@ -517,8 +579,9 @@ func getValidatorReceivedStakeSlot(validatorID *big.Int) (int64, uint64) {
 	validatorSlotBytes := common.LeftPadBytes(big.NewInt(validatorSlot).Bytes(), 32) // Left-pad to 32 bytes
 	hashInput := append(validatorIDBytes, validatorSlotBytes...)
 
-	// Calculate the hash
+	// Calculate the hash - add gas cost for hashing
 	hash := crypto.Keccak256(hashInput)
+	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
 	slot := new(big.Int).SetBytes(hash)
@@ -538,16 +601,19 @@ func getWithdrawalRequestSlot(delegator common.Address, toValidatorID *big.Int, 
 	withdrawalRequestSlotBytes := common.LeftPadBytes(big.NewInt(withdrawalRequestSlot).Bytes(), 32) // Left-pad to 32 bytes
 	innerHashInput1 := append(delegatorBytes, withdrawalRequestSlotBytes...)
 	innerHash1 := crypto.Keccak256(innerHashInput1)
+	gasUsed += HashGasCost
 
 	// Step 2: Calculate keccak256(abi.encode(toValidatorID, innerHash1))
 	toValidatorIDBytes := common.LeftPadBytes(toValidatorID.Bytes(), 32) // Left-pad to 32 bytes
 	innerHashInput2 := append(toValidatorIDBytes, innerHash1...)
 	innerHash2 := crypto.Keccak256(innerHashInput2)
+	gasUsed += HashGasCost
 
 	// Step 3: Calculate keccak256(abi.encode(wrID, innerHash2))
 	wrIDBytes := common.LeftPadBytes(wrID.Bytes(), 32) // Left-pad to 32 bytes
 	outerHashInput := append(wrIDBytes, innerHash2...)
 	outerHash := crypto.Keccak256(outerHashInput)
+	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
 	slot := new(big.Int).SetBytes(outerHash)
@@ -562,35 +628,18 @@ func getWithdrawalRequestSlot(delegator common.Address, toValidatorID *big.Int, 
 }
 
 // getWithdrawalRequestAmountSlot calculates the storage slot for a withdrawal request amount
-func getWithdrawalRequestAmountSlot(delegator common.Address, toValidatorID *big.Int, wrID *big.Int) int64 {
-	// TODO: Implement proper slot calculation
-	return withdrawalRequestSlot
+func getWithdrawalRequestAmountSlot(delegator common.Address, toValidatorID *big.Int, wrID *big.Int) (int64, uint64) {
+	// Get the base slot for the withdrawal request
+	baseSlot, gasUsed := getWithdrawalRequestSlot(delegator, toValidatorID, wrID)
+
+	// The amount field is at the base slot (first field in the struct)
+	return baseSlot, gasUsed
 }
 
 // getWithdrawalRequestEpochSlot calculates the storage slot for a withdrawal request epoch
 func getWithdrawalRequestEpochSlot(delegator common.Address, toValidatorID *big.Int, wrID *big.Int) (int64, uint64) {
-	// Initialize gas used
-	var gasUsed uint64 = 0
-	// For a mapping(address => mapping(uint256 => mapping(uint256 => WithdrawalRequest))), we need to calculate the slot in multiple steps
-
-	// Step 1: Calculate keccak256(abi.encode(delegator, withdrawalRequestSlot))
-	delegatorBytes := common.LeftPadBytes(delegator.Bytes(), 32)                                     // Left-pad to 32 bytes
-	withdrawalRequestSlotBytes := common.LeftPadBytes(big.NewInt(withdrawalRequestSlot).Bytes(), 32) // Left-pad to 32 bytes
-	innerHashInput1 := append(delegatorBytes, withdrawalRequestSlotBytes...)
-	innerHash1 := crypto.Keccak256(innerHashInput1)
-
-	// Step 2: Calculate keccak256(abi.encode(toValidatorID, innerHash1))
-	toValidatorIDBytes := common.LeftPadBytes(toValidatorID.Bytes(), 32) // Left-pad to 32 bytes
-	innerHashInput2 := append(toValidatorIDBytes, innerHash1...)
-	innerHash2 := crypto.Keccak256(innerHashInput2)
-
-	// Step 3: Calculate keccak256(abi.encode(wrID, innerHash2))
-	wrIDBytes := common.LeftPadBytes(wrID.Bytes(), 32) // Left-pad to 32 bytes
-	outerHashInput := append(wrIDBytes, innerHash2...)
-	outerHash := crypto.Keccak256(outerHashInput)
-
-	// Convert the hash to a big.Int
-	slot := new(big.Int).SetBytes(outerHash)
+	// Get the base slot for the withdrawal request
+	baseSlot, gasUsed := getWithdrawalRequestSlot(delegator, toValidatorID, wrID)
 
 	// The WithdrawalRequest struct has the following fields:
 	// uint256 amount;
@@ -598,33 +647,13 @@ func getWithdrawalRequestEpochSlot(delegator common.Address, toValidatorID *big.
 	// uint256 time;
 
 	// The epoch field is at slot + 1
-	return new(big.Int).Add(slot, big.NewInt(1)).Int64(), gasUsed
+	return new(big.Int).Add(big.NewInt(baseSlot), big.NewInt(1)).Int64(), gasUsed
 }
 
 // getWithdrawalRequestTimeSlot calculates the storage slot for a withdrawal request time
 func getWithdrawalRequestTimeSlot(delegator common.Address, toValidatorID *big.Int, wrID *big.Int) (int64, uint64) {
-	// Initialize gas used
-	var gasUsed uint64 = 0
-	// For a mapping(address => mapping(uint256 => mapping(uint256 => WithdrawalRequest))), we need to calculate the slot in multiple steps
-
-	// Step 1: Calculate keccak256(abi.encode(delegator, withdrawalRequestSlot))
-	delegatorBytes := common.LeftPadBytes(delegator.Bytes(), 32)                                     // Left-pad to 32 bytes
-	withdrawalRequestSlotBytes := common.LeftPadBytes(big.NewInt(withdrawalRequestSlot).Bytes(), 32) // Left-pad to 32 bytes
-	innerHashInput1 := append(delegatorBytes, withdrawalRequestSlotBytes...)
-	innerHash1 := crypto.Keccak256(innerHashInput1)
-
-	// Step 2: Calculate keccak256(abi.encode(toValidatorID, innerHash1))
-	toValidatorIDBytes := common.LeftPadBytes(toValidatorID.Bytes(), 32) // Left-pad to 32 bytes
-	innerHashInput2 := append(toValidatorIDBytes, innerHash1...)
-	innerHash2 := crypto.Keccak256(innerHashInput2)
-
-	// Step 3: Calculate keccak256(abi.encode(wrID, innerHash2))
-	wrIDBytes := common.LeftPadBytes(wrID.Bytes(), 32) // Left-pad to 32 bytes
-	outerHashInput := append(wrIDBytes, innerHash2...)
-	outerHash := crypto.Keccak256(outerHashInput)
-
-	// Convert the hash to a big.Int
-	slot := new(big.Int).SetBytes(outerHash)
+	// Get the base slot for the withdrawal request
+	baseSlot, gasUsed := getWithdrawalRequestSlot(delegator, toValidatorID, wrID)
 
 	// The WithdrawalRequest struct has the following fields:
 	// uint256 amount;
@@ -632,7 +661,7 @@ func getWithdrawalRequestTimeSlot(delegator common.Address, toValidatorID *big.I
 	// uint256 time;
 
 	// The time field is at slot + 2
-	return new(big.Int).Add(slot, big.NewInt(2)).Int64(), gasUsed
+	return new(big.Int).Add(big.NewInt(baseSlot), big.NewInt(2)).Int64(), gasUsed
 }
 
 // getValidatorIDSlot calculates the storage slot for a validator ID
@@ -647,8 +676,9 @@ func getValidatorIDSlot(addr common.Address) (int64, uint64) {
 	validatorIDSlotBytes := common.LeftPadBytes(big.NewInt(validatorIDSlot).Bytes(), 32) // Left-pad to 32 bytes
 	hashInput := append(addrBytes, validatorIDSlotBytes...)
 
-	// Calculate the hash
+	// Calculate the hash - add gas cost for hashing
 	hash := crypto.Keccak256(hashInput)
+	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
 	slot := new(big.Int).SetBytes(hash)
@@ -668,15 +698,17 @@ func getLockedStakeSlot(delegator common.Address, toValidatorID *big.Int) (int64
 	lockupInfoSlotBytes := common.LeftPadBytes(big.NewInt(lockupInfoSlot).Bytes(), 32) // Left-pad to 32 bytes
 	innerHashInput := append(delegatorBytes, lockupInfoSlotBytes...)
 
-	// Calculate the inner hash
+	// Calculate the inner hash - add gas cost for hashing
 	innerHash := crypto.Keccak256(innerHashInput)
+	gasUsed += HashGasCost
 
 	// Create the outer hash input: abi.encode(toValidatorID, innerHash)
 	toValidatorIDBytes := common.LeftPadBytes(toValidatorID.Bytes(), 32) // Left-pad to 32 bytes
 	outerHashInput := append(toValidatorIDBytes, innerHash...)
 
-	// Calculate the outer hash
+	// Calculate the outer hash - add gas cost for hashing
 	outerHash := crypto.Keccak256(outerHashInput)
+	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
 	slot := new(big.Int).SetBytes(outerHash)
@@ -693,28 +725,8 @@ func getLockedStakeSlot(delegator common.Address, toValidatorID *big.Int) (int64
 
 // getLockupFromEpochSlot calculates the storage slot for a delegation's lockup from epoch
 func getLockupFromEpochSlot(delegator common.Address, toValidatorID *big.Int) (int64, uint64) {
-	// Initialize gas used
-	var gasUsed uint64 = 0
-	// For a mapping(address => mapping(uint256 => LockedDelegation)), first we need to get the slot for the LockedDelegation struct
-	// keccak256(abi.encode(toValidatorID, keccak256(abi.encode(delegator, lockupInfoSlot))))
-
-	// Create the inner hash input: abi.encode(delegator, lockupInfoSlot)
-	delegatorBytes := common.LeftPadBytes(delegator.Bytes(), 32)                       // Left-pad to 32 bytes
-	lockupInfoSlotBytes := common.LeftPadBytes(big.NewInt(lockupInfoSlot).Bytes(), 32) // Left-pad to 32 bytes
-	innerHashInput := append(delegatorBytes, lockupInfoSlotBytes...)
-
-	// Calculate the inner hash
-	innerHash := crypto.Keccak256(innerHashInput)
-
-	// Create the outer hash input: abi.encode(toValidatorID, innerHash)
-	toValidatorIDBytes := common.LeftPadBytes(toValidatorID.Bytes(), 32) // Left-pad to 32 bytes
-	outerHashInput := append(toValidatorIDBytes, innerHash...)
-
-	// Calculate the outer hash
-	outerHash := crypto.Keccak256(outerHashInput)
-
-	// Convert the hash to a big.Int
-	slot := new(big.Int).SetBytes(outerHash)
+	// Get the base slot for the locked delegation
+	baseSlot, gasUsed := getLockedStakeSlot(delegator, toValidatorID)
 
 	// The LockedDelegation struct has the following fields:
 	// uint256 lockedStake;
@@ -723,33 +735,13 @@ func getLockupFromEpochSlot(delegator common.Address, toValidatorID *big.Int) (i
 	// uint256 duration;
 
 	// The fromEpoch field is at slot + 1
-	return new(big.Int).Add(slot, big.NewInt(1)).Int64(), gasUsed
+	return new(big.Int).Add(big.NewInt(baseSlot), big.NewInt(1)).Int64(), gasUsed
 }
 
 // getLockupEndTimeSlot calculates the storage slot for a delegation's lockup end time
 func getLockupEndTimeSlot(delegator common.Address, toValidatorID *big.Int) (int64, uint64) {
-	// Initialize gas used
-	var gasUsed uint64 = 0
-	// For a mapping(address => mapping(uint256 => LockedDelegation)), first we need to get the slot for the LockedDelegation struct
-	// keccak256(abi.encode(toValidatorID, keccak256(abi.encode(delegator, lockupInfoSlot))))
-
-	// Create the inner hash input: abi.encode(delegator, lockupInfoSlot)
-	delegatorBytes := common.LeftPadBytes(delegator.Bytes(), 32)                       // Left-pad to 32 bytes
-	lockupInfoSlotBytes := common.LeftPadBytes(big.NewInt(lockupInfoSlot).Bytes(), 32) // Left-pad to 32 bytes
-	innerHashInput := append(delegatorBytes, lockupInfoSlotBytes...)
-
-	// Calculate the inner hash
-	innerHash := crypto.Keccak256(innerHashInput)
-
-	// Create the outer hash input: abi.encode(toValidatorID, innerHash)
-	toValidatorIDBytes := common.LeftPadBytes(toValidatorID.Bytes(), 32) // Left-pad to 32 bytes
-	outerHashInput := append(toValidatorIDBytes, innerHash...)
-
-	// Calculate the outer hash
-	outerHash := crypto.Keccak256(outerHashInput)
-
-	// Convert the hash to a big.Int
-	slot := new(big.Int).SetBytes(outerHash)
+	// Get the base slot for the locked delegation
+	baseSlot, gasUsed := getLockedStakeSlot(delegator, toValidatorID)
 
 	// The LockedDelegation struct has the following fields:
 	// uint256 lockedStake;
@@ -758,33 +750,13 @@ func getLockupEndTimeSlot(delegator common.Address, toValidatorID *big.Int) (int
 	// uint256 duration;
 
 	// The endTime field is at slot + 2
-	return new(big.Int).Add(slot, big.NewInt(2)).Int64(), gasUsed
+	return new(big.Int).Add(big.NewInt(baseSlot), big.NewInt(2)).Int64(), gasUsed
 }
 
 // getLockupDurationSlot calculates the storage slot for a delegation's lockup duration
 func getLockupDurationSlot(delegator common.Address, toValidatorID *big.Int) (int64, uint64) {
-	// Initialize gas used
-	var gasUsed uint64 = 0
-	// For a mapping(address => mapping(uint256 => LockedDelegation)), first we need to get the slot for the LockedDelegation struct
-	// keccak256(abi.encode(toValidatorID, keccak256(abi.encode(delegator, lockupInfoSlot))))
-
-	// Create the inner hash input: abi.encode(delegator, lockupInfoSlot)
-	delegatorBytes := common.LeftPadBytes(delegator.Bytes(), 32)                       // Left-pad to 32 bytes
-	lockupInfoSlotBytes := common.LeftPadBytes(big.NewInt(lockupInfoSlot).Bytes(), 32) // Left-pad to 32 bytes
-	innerHashInput := append(delegatorBytes, lockupInfoSlotBytes...)
-
-	// Calculate the inner hash
-	innerHash := crypto.Keccak256(innerHashInput)
-
-	// Create the outer hash input: abi.encode(toValidatorID, innerHash)
-	toValidatorIDBytes := common.LeftPadBytes(toValidatorID.Bytes(), 32) // Left-pad to 32 bytes
-	outerHashInput := append(toValidatorIDBytes, innerHash...)
-
-	// Calculate the outer hash
-	outerHash := crypto.Keccak256(outerHashInput)
-
-	// Convert the hash to a big.Int
-	slot := new(big.Int).SetBytes(outerHash)
+	// Get the base slot for the locked delegation
+	baseSlot, gasUsed := getLockedStakeSlot(delegator, toValidatorID)
 
 	// The LockedDelegation struct has the following fields:
 	// uint256 lockedStake;
@@ -793,14 +765,15 @@ func getLockupDurationSlot(delegator common.Address, toValidatorID *big.Int) (in
 	// uint256 duration;
 
 	// The duration field is at slot + 3
-	return new(big.Int).Add(slot, big.NewInt(3)).Int64(), gasUsed
+	return new(big.Int).Add(big.NewInt(baseSlot), big.NewInt(3)).Int64(), gasUsed
 }
 
 // getEarlyWithdrawalPenaltySlot calculates the storage slot for a delegation's early withdrawal penalty
 func getEarlyWithdrawalPenaltySlot(delegator common.Address, toValidatorID *big.Int) (int64, uint64) {
 	// Initialize gas used
 	var gasUsed uint64 = 0
-	// TODO: Implement proper slot calculation
+	// TODO: Implement proper slot calculation with gas tracking
+	// For now, just return a placeholder slot
 	return stakeSlot, gasUsed
 }
 
@@ -816,15 +789,17 @@ func getRewardsStashSlot(delegator common.Address, toValidatorID *big.Int) (int6
 	rewardsStashSlotBytes := common.LeftPadBytes(big.NewInt(rewardsStashSlot).Bytes(), 32) // Left-pad to 32 bytes
 	innerHashInput := append(delegatorBytes, rewardsStashSlotBytes...)
 
-	// Calculate the inner hash
+	// Calculate the inner hash - add gas cost for hashing
 	innerHash := crypto.Keccak256(innerHashInput)
+	gasUsed += HashGasCost
 
 	// Create the outer hash input: abi.encode(toValidatorID, innerHash)
 	toValidatorIDBytes := common.LeftPadBytes(toValidatorID.Bytes(), 32) // Left-pad to 32 bytes
 	outerHashInput := append(toValidatorIDBytes, innerHash...)
 
-	// Calculate the outer hash
+	// Calculate the outer hash - add gas cost for hashing
 	outerHash := crypto.Keccak256(outerHashInput)
+	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
 	slot := new(big.Int).SetBytes(outerHash)
@@ -844,15 +819,17 @@ func getStashedRewardsUntilEpochSlot(delegator common.Address, toValidatorID *bi
 	stashedRewardsUntilEpochSlotBytes := common.LeftPadBytes(big.NewInt(stashedRewardsUntilEpochSlot).Bytes(), 32) // Left-pad to 32 bytes
 	innerHashInput := append(delegatorBytes, stashedRewardsUntilEpochSlotBytes...)
 
-	// Calculate the inner hash
+	// Calculate the inner hash - add gas cost for hashing
 	innerHash := crypto.Keccak256(innerHashInput)
+	gasUsed += HashGasCost
 
 	// Create the outer hash input: abi.encode(toValidatorID, innerHash)
 	toValidatorIDBytes := common.LeftPadBytes(toValidatorID.Bytes(), 32) // Left-pad to 32 bytes
 	outerHashInput := append(toValidatorIDBytes, innerHash...)
 
-	// Calculate the outer hash
+	// Calculate the outer hash - add gas cost for hashing
 	outerHash := crypto.Keccak256(outerHashInput)
+	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
 	slot := new(big.Int).SetBytes(outerHash)
@@ -870,7 +847,7 @@ func callConstantManagerMethod(evm *vm.EVM, methodName string, args ...interface
 
 	// Get the ConstantsManager contract address (SLOAD operation)
 	constantsManager := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(constantsManagerSlot)))
-	gasUsed += params.ColdSloadCostEIP2929 // Add gas for SLOAD
+	gasUsed += SloadGasCost // Add gas for SLOAD
 	constantsManagerAddr := common.BytesToAddress(constantsManager.Bytes())
 
 	// Pack the function call data
@@ -905,7 +882,7 @@ func getCurrentEpoch(evm *vm.EVM) (*big.Int, uint64, error) {
 
 	// Get the current sealed epoch (SLOAD operation)
 	currentSealedEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(currentSealedEpochSlot)))
-	gasUsed += params.ColdSloadCostEIP2929 // Add gas for SLOAD
+	gasUsed += SloadGasCost // Add gas for SLOAD
 	currentSealedEpochBigInt := new(big.Int).SetBytes(currentSealedEpoch.Bytes())
 
 	// Calculate current epoch as currentSealedEpoch + 1

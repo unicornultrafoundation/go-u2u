@@ -337,15 +337,17 @@ func handleInternalDelegate(evm *vm.EVM, delegator common.Address, toValidatorID
 	// return callSFCLibDelegate(evm, delegator, toValidatorID, amount)
 
 	// Check that the validator exists
-	revertData, err := checkValidatorExists(evm, toValidatorID, "_delegate")
+	revertData, checkGasUsed, err := checkValidatorExists(evm, toValidatorID, "_delegate")
+	gasUsed += checkGasUsed
 	if err != nil {
-		return revertData, 0, err
+		return revertData, gasUsed, err
 	}
 
 	// Check that the validator is active
-	revertData, err = checkValidatorActive(evm, toValidatorID, "_delegate")
+	revertData, checkGasUsed, err = checkValidatorActive(evm, toValidatorID, "_delegate")
+	gasUsed += checkGasUsed
 	if err != nil {
-		return revertData, 0, err
+		return revertData, gasUsed, err
 	}
 
 	// Check that the amount is greater than 0

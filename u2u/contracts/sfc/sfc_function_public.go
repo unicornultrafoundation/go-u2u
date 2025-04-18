@@ -13,9 +13,10 @@ import (
 // handleInitialize initializes the SFC contract
 func handleInitialize(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	// Check if contract is already initialized
-	revertData, err := checkAlreadyInitialized(evm, "initialize")
+	revertData, checkGasUsed, err := checkAlreadyInitialized(evm, "initialize")
+	var gasUsed uint64 = checkGasUsed
 	if err != nil {
-		return revertData, 0, err
+		return revertData, gasUsed, err
 	}
 
 	// Get the arguments
@@ -120,9 +121,10 @@ func handleVersion(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 // handleUpdateStakeTokenizerAddress updates the stake tokenizer address
 func handleUpdateStakeTokenizerAddress(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	// Check if caller is the owner
-	revertData, err := checkOnlyOwner(evm, caller, "updateStakeTokenizerAddress")
+	revertData, checkGasUsed, err := checkOnlyOwner(evm, caller, "updateStakeTokenizerAddress")
+	var gasUsed uint64 = checkGasUsed
 	if err != nil {
-		return revertData, 0, err
+		return revertData, gasUsed, err
 	}
 
 	// Get the arguments
@@ -143,9 +145,10 @@ func handleUpdateStakeTokenizerAddress(evm *vm.EVM, caller common.Address, args 
 // handleUpdateLibAddress updates the lib address
 func handleUpdateLibAddress(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	// Check if caller is the owner
-	revertData, err := checkOnlyOwner(evm, caller, "updateLibAddress")
+	revertData, checkGasUsed, err := checkOnlyOwner(evm, caller, "updateLibAddress")
+	var gasUsed uint64 = checkGasUsed
 	if err != nil {
-		return revertData, 0, err
+		return revertData, gasUsed, err
 	}
 
 	// Get the arguments
@@ -404,15 +407,17 @@ func handleUndelegate(evm *vm.EVM, caller common.Address, args []interface{}) ([
 	}
 
 	// Check that the validator exists
-	revertData, err := checkValidatorExists(evm, toValidatorID, "undelegate")
+	revertData, checkGasUsed, err := checkValidatorExists(evm, toValidatorID, "undelegate")
+	gasUsed += checkGasUsed
 	if err != nil {
-		return revertData, 0, err
+		return revertData, gasUsed, err
 	}
 
 	// Check that the delegation exists
-	revertData, err = checkDelegationExists(evm, caller, toValidatorID, "undelegate")
+	revertData, checkGasUsed, err = checkDelegationExists(evm, caller, toValidatorID, "undelegate")
+	gasUsed += checkGasUsed
 	if err != nil {
-		return revertData, 0, err
+		return revertData, gasUsed, err
 	}
 
 	// Stash rewards
@@ -507,17 +512,20 @@ func handleUndelegate(evm *vm.EVM, caller common.Address, args []interface{}) ([
 	gasUsed += rawGasUsed
 
 	// Set the withdrawal request
-	withdrawalRequestAmountSlot := getWithdrawalRequestAmountSlot(caller, toValidatorID, wrID)
+	withdrawalRequestAmountSlot, slotGasUsed := getWithdrawalRequestAmountSlot(caller, toValidatorID, wrID)
+	gasUsed += slotGasUsed
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(withdrawalRequestAmountSlot)), common.BigToHash(amount))
 
-	withdrawalRequestEpochSlot, _ := getWithdrawalRequestEpochSlot(caller, toValidatorID, wrID)
+	withdrawalRequestEpochSlot, epochSlotGasUsed := getWithdrawalRequestEpochSlot(caller, toValidatorID, wrID)
+	gasUsed += epochSlotGasUsed
 	currentEpochBigInt, _, err := getCurrentEpoch(evm)
 	if err != nil {
 		return nil, 0, err
 	}
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(withdrawalRequestEpochSlot)), common.BigToHash(currentEpochBigInt))
 
-	withdrawalRequestTimeSlot, _ := getWithdrawalRequestTimeSlot(caller, toValidatorID, wrID)
+	withdrawalRequestTimeSlot, timeSlotGasUsed := getWithdrawalRequestTimeSlot(caller, toValidatorID, wrID)
+	gasUsed += timeSlotGasUsed
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(withdrawalRequestTimeSlot)), common.BigToHash(evm.Context.Time))
 
 	// Sync validator
@@ -665,9 +673,10 @@ func handleIsOwner(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 // handleTransferOwnership transfers ownership of the contract
 func handleTransferOwnership(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	// Check if caller is the owner
-	revertData, err := checkOnlyOwner(evm, caller, "transferOwnership")
+	revertData, checkGasUsed, err := checkOnlyOwner(evm, caller, "transferOwnership")
+	var gasUsed uint64 = checkGasUsed
 	if err != nil {
-		return revertData, 0, err
+		return revertData, gasUsed, err
 	}
 
 	// Get the arguments
@@ -716,9 +725,10 @@ func handleTransferOwnership(evm *vm.EVM, caller common.Address, args []interfac
 func handleRenounceOwnership(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	var gasUsed uint64 = 0
 	// Check if caller is the owner
-	revertData, err := checkOnlyOwner(evm, caller, "renounceOwnership")
+	revertData, checkGasUsed, err := checkOnlyOwner(evm, caller, "renounceOwnership")
+	gasUsed += checkGasUsed
 	if err != nil {
-		return revertData, 0, err
+		return revertData, gasUsed, err
 	}
 
 	// Get the current owner
@@ -872,9 +882,10 @@ func handleClaimRewards(evm *vm.EVM, caller common.Address, args []interface{}) 
 	}
 
 	// Check that the validator exists
-	revertData, err := checkValidatorExists(evm, toValidatorID, "claimRewards")
+	revertData, checkGasUsed, err := checkValidatorExists(evm, toValidatorID, "claimRewards")
+	gasUsed = checkGasUsed
 	if err != nil {
-		return revertData, 0, err
+		return revertData, gasUsed, err
 	}
 
 	// Check that the delegator is allowed to withdraw
@@ -960,9 +971,10 @@ func handleRestakeRewards(evm *vm.EVM, caller common.Address, args []interface{}
 	}
 
 	// Check that the validator exists
-	revertData, err := checkValidatorExists(evm, toValidatorID, "restakeRewards")
+	revertData, checkGasUsed, err := checkValidatorExists(evm, toValidatorID, "restakeRewards")
+	gasUsed = checkGasUsed
 	if err != nil {
-		return revertData, 0, err
+		return revertData, gasUsed, err
 	}
 
 	// Check that the delegator is allowed to withdraw
@@ -1098,15 +1110,17 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	}
 
 	// Check that the validator exists
-	revertData, err := checkValidatorExists(evm, toValidatorID, "lockStake")
+	revertData, checkGasUsed, err := checkValidatorExists(evm, toValidatorID, "lockStake")
+	gasUsed = checkGasUsed
 	if err != nil {
-		return revertData, 0, err
+		return revertData, gasUsed, err
 	}
 
 	// Check that the validator is active
-	revertData, err = checkValidatorActive(evm, toValidatorID, "lockStake")
+	revertData, checkGasUsed, err = checkValidatorActive(evm, toValidatorID, "lockStake")
+	gasUsed += checkGasUsed
 	if err != nil {
-		return revertData, 0, err
+		return revertData, gasUsed, err
 	}
 
 	// Check that the amount is greater than 0
@@ -1291,9 +1305,10 @@ func handleWithdraw(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 	}
 
 	// Check that the validator exists
-	revertData, err := checkValidatorExists(evm, toValidatorID, "withdraw")
+	revertData, checkGasUsed, err := checkValidatorExists(evm, toValidatorID, "withdraw")
+	gasUsed = checkGasUsed
 	if err != nil {
-		return revertData, 0, err
+		return revertData, gasUsed, err
 	}
 
 	// Check that the withdrawal request exists
@@ -1375,8 +1390,10 @@ func handleWithdraw(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 	}
 
 	// Get the amount
-	withdrawalRequestAmountSlot := getWithdrawalRequestAmountSlot(caller, toValidatorID, wrID)
+	withdrawalRequestAmountSlot, slotGasUsed := getWithdrawalRequestAmountSlot(caller, toValidatorID, wrID)
+	gasUsed += slotGasUsed
 	withdrawalRequestAmount = evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(withdrawalRequestAmountSlot))).Big()
+	gasUsed += SloadGasCost
 	amount := new(big.Int).SetBytes(withdrawalRequestAmount.Bytes())
 
 	// Check if the validator is slashed
@@ -1627,9 +1644,10 @@ func handleUnlockStake(evm *vm.EVM, caller common.Address, args []interface{}) (
 	}
 
 	// Check that the validator exists
-	revertData, err := checkValidatorExists(evm, toValidatorID, "unlockStake")
+	revertData, checkGasUsed, err := checkValidatorExists(evm, toValidatorID, "unlockStake")
+	gasUsed = checkGasUsed
 	if err != nil {
-		return revertData, 0, err
+		return revertData, gasUsed, err
 	}
 
 	// Check that the amount is greater than 0

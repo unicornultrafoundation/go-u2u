@@ -8,6 +8,13 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 )
 
+// Gas costs for storage operations
+const (
+	SloadGasCost  uint64 = 2100  // Cost of SLOAD (GetState) operation (ColdSloadCostEIP2929)
+	SstoreGasCost uint64 = 20000 // Cost of SSTORE (SetState) operation (SstoreSetGasEIP2200)
+	HashGasCost   uint64 = 30    // Cost of hash operation (Keccak256)
+)
+
 // checkOnlyBackend checks if the caller is the backend of the contract
 // Returns nil if the caller is the backend, otherwise returns an ABI-encoded revert reason
 func checkOnlyBackend(evm *vm.EVM, caller common.Address, methodName string) ([]byte, error) {

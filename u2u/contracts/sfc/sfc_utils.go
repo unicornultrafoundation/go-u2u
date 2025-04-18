@@ -5,8 +5,10 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
 	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
+	"github.com/unicornultrafoundation/go-u2u/rlp"
 )
 
 // Gas costs for storage operations
@@ -14,6 +16,33 @@ const (
 	SloadGasCost  uint64 = 2100  // Cost of SLOAD (GetState) operation (ColdSloadCostEIP2929)
 	SstoreGasCost uint64 = 20000 // Cost of SSTORE (SetState) operation (SstoreSetGasEIP2200)
 	HashGasCost   uint64 = 30    // Cost of hash operation (Keccak256)
+)
+
+// EpochSnapshot struct offsets
+const (
+	endTimeOffset                     int64 = 0  // uint256 endTime
+	epochFeeOffset                    int64 = 1  // uint256 epochFee
+	totalBaseRewardOffset             int64 = 2  // uint256 totalBaseRewardWeight
+	totalTxRewardOffset               int64 = 3  // uint256 totalTxRewardWeight
+	baseRewardPerSecondOffset         int64 = 4  // uint256 baseRewardPerSecond
+	totalStakeOffset                  int64 = 5  // uint256 totalStake
+	totalSupplyOffset                 int64 = 6  // uint256 totalSupply
+	validatorIDsOffset                int64 = 7  // uint256[] validatorIDs
+	offlineTimeOffset                 int64 = 8  // mapping(uint256 => uint256) offlineTime
+	offlineBlocksOffset               int64 = 9  // mapping(uint256 => uint256) offlineBlocks
+	accumulatedRewardPerTokenOffset   int64 = 10 // mapping(uint256 => uint256) accumulatedRewardPerToken
+	accumulatedUptimeOffset           int64 = 11 // mapping(uint256 => uint256) accumulatedUptime
+	accumulatedOriginatedTxsFeeOffset int64 = 12 // mapping(uint256 => uint256) accumulatedOriginatedTxsFee
+	receiveStakeOffset                int64 = 13 // mapping(uint256 => uint256) receivedStake
+)
+
+// Validator status bits
+const (
+	OK_STATUS      uint64 = 0
+	WITHDRAWN_BIT  uint64 = 1
+	OFFLINE_BIT    uint64 = 1 << 3
+	DOUBLESIGN_BIT uint64 = 1 << 7
+	CHEATER_MASK   uint64 = DOUBLESIGN_BIT
 )
 
 // checkOnlyOwner checks if the caller is the owner of the contract
@@ -807,6 +836,36 @@ func getRewardsStashSlot(delegator common.Address, toValidatorID *big.Int) (int6
 	return slot.Int64(), gasUsed
 }
 
+// getStashedLockupRewardsSlot calculates the storage slot for a delegation's stashed lockup rewards
+func getStashedLockupRewardsSlot(delegator common.Address, toValidatorID *big.Int) (int64, uint64) {
+	// Initialize gas used
+	var gasUsed uint64 = 0
+	// For a mapping(address => mapping(uint256 => uint256)), the slot is calculated as:
+	// keccak256(abi.encode(toValidatorID, keccak256(abi.encode(delegator, stashedLockupRewardsSlot))))
+
+	// Create the inner hash input: abi.encode(delegator, stashedLockupRewardsSlot)
+	delegatorBytes := common.LeftPadBytes(delegator.Bytes(), 32)                                           // Left-pad to 32 bytes
+	stashedLockupRewardsSlotBytes := common.LeftPadBytes(big.NewInt(stashedLockupRewardsSlot).Bytes(), 32) // Left-pad to 32 bytes
+	innerHashInput := append(delegatorBytes, stashedLockupRewardsSlotBytes...)
+
+	// Calculate the inner hash - add gas cost for hashing
+	innerHash := crypto.Keccak256(innerHashInput)
+	gasUsed += HashGasCost
+
+	// Create the outer hash input: abi.encode(toValidatorID, innerHash)
+	toValidatorIDBytes := common.LeftPadBytes(toValidatorID.Bytes(), 32) // Left-pad to 32 bytes
+	outerHashInput := append(toValidatorIDBytes, innerHash...)
+
+	// Calculate the outer hash - add gas cost for hashing
+	outerHash := crypto.Keccak256(outerHashInput)
+	gasUsed += HashGasCost
+
+	// Convert the hash to a big.Int
+	slot := new(big.Int).SetBytes(outerHash)
+
+	return slot.Int64(), gasUsed
+}
+
 // getStashedRewardsUntilEpochSlot calculates the storage slot for a delegation's stashed rewards until epoch
 func getStashedRewardsUntilEpochSlot(delegator common.Address, toValidatorID *big.Int) (int64, uint64) {
 	// Initialize gas used
@@ -889,6 +948,476 @@ func getCurrentEpoch(evm *vm.EVM) (*big.Int, uint64, error) {
 	currentEpochBigInt := new(big.Int).Add(currentSealedEpochBigInt, big.NewInt(1))
 
 	return currentEpochBigInt, gasUsed, nil
+}
+
+// getEpochSnapshotSlot calculates the storage slot for an epoch snapshot
+func getEpochSnapshotSlot(epoch *big.Int) (int64, uint64) {
+	// Initialize gas used
+	var gasUsed uint64 = 0
+
+	// For a mapping(uint256 => EpochSnapshot), the slot is calculated as:
+	// keccak256(abi.encode(epoch, epochSnapshotSlot))
+
+	// Create the hash input: abi.encode(epoch, epochSnapshotSlot)
+	epochBytes := common.LeftPadBytes(epoch.Bytes(), 32)                                     // Left-pad to 32 bytes
+	epochSnapshotSlotBytes := common.LeftPadBytes(big.NewInt(epochSnapshotSlot).Bytes(), 32) // Left-pad to 32 bytes
+	hashInput := append(epochBytes, epochSnapshotSlotBytes...)
+
+	// Calculate the hash - add gas cost for hashing
+	hash := crypto.Keccak256(hashInput)
+	gasUsed += HashGasCost
+
+	// Convert the hash to a big.Int
+	slot := new(big.Int).SetBytes(hash)
+
+	return slot.Int64(), gasUsed
+}
+
+// getOfflinePenaltyThresholdBlocksNum gets the offline penalty threshold blocks number from the constants manager
+func getOfflinePenaltyThresholdBlocksNum(evm *vm.EVM) (*big.Int, uint64, error) {
+	result, gasUsed, err := callConstantManagerMethod(evm, "offlinePenaltyThresholdBlocksNum")
+	if err != nil || len(result) == 0 {
+		return nil, gasUsed, err
+	}
+
+	threshold, ok := result[0].(*big.Int)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	return threshold, gasUsed, nil
+}
+
+// getOfflinePenaltyThresholdTime gets the offline penalty threshold time from the constants manager
+func getOfflinePenaltyThresholdTime(evm *vm.EVM) (*big.Int, uint64, error) {
+	result, gasUsed, err := callConstantManagerMethod(evm, "offlinePenaltyThresholdTime")
+	if err != nil || len(result) == 0 {
+		return nil, gasUsed, err
+	}
+
+	threshold, ok := result[0].(*big.Int)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	return threshold, gasUsed, nil
+}
+
+// decodeValidatorIDs decodes validator IDs from storage
+func decodeValidatorIDs(data []byte) ([]*big.Int, error) {
+	// If data is empty, return an empty array
+	if len(data) == 0 {
+		return []*big.Int{}, nil
+	}
+
+	// Decode the validator IDs
+	// The data is expected to be an RLP-encoded array of big.Int
+	var validatorIDs []*big.Int
+	err := rlp.DecodeBytes(data, &validatorIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	return validatorIDs, nil
+}
+
+// getValidatorStatusSlotByID calculates the storage slot for a validator's status by ID
+func getValidatorStatusSlotByID(validatorID *big.Int) (int64, uint64) {
+	return getValidatorStatusSlot(validatorID)
+}
+
+// _setValidatorDeactivated sets a validator as deactivated with the specified status bit
+func _setValidatorDeactivated(evm *vm.EVM, validatorID *big.Int, statusBit uint64) (uint64, error) {
+	// Initialize gas used
+	var gasUsed uint64 = 0
+
+	// Get the validator status slot
+	statusSlot, slotGasUsed := getValidatorStatusSlotByID(validatorID)
+	gasUsed += slotGasUsed
+
+	// Get the current status
+	status := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(statusSlot)))
+	gasUsed += SloadGasCost
+	statusBigInt := new(big.Int).SetBytes(status.Bytes())
+
+	// Check if the validator is already deactivated with this status
+	currentStatus := statusBigInt.Uint64()
+	if currentStatus == OK_STATUS && statusBit != OK_STATUS {
+		// Get the validator's received stake slot
+		receivedStakeSlot, slotGasUsed := getValidatorReceivedStakeSlot(validatorID)
+		gasUsed += slotGasUsed
+
+		// Get the validator's received stake
+		receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(receivedStakeSlot)))
+		gasUsed += SloadGasCost
+		receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
+
+		// Update totalActiveStake
+		totalActiveStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalActiveStakeSlot)))
+		gasUsed += SloadGasCost
+		totalActiveStakeBigInt := new(big.Int).SetBytes(totalActiveStake.Bytes())
+
+		// Subtract the validator's stake from totalActiveStake
+		newTotalActiveStake := new(big.Int).Sub(totalActiveStakeBigInt, receivedStakeBigInt)
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalActiveStakeSlot)), common.BigToHash(newTotalActiveStake))
+		gasUsed += SstoreGasCost
+	}
+
+	// Status as a number is proportional to severity
+	if statusBit > currentStatus {
+		// Update the validator status
+		newStatus := new(big.Int).SetUint64(statusBit)
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(statusSlot)), common.BigToHash(newStatus))
+		gasUsed += SstoreGasCost
+
+		// Check if the validator is not already deactivated
+		deactivatedEpochSlot, slotGasUsed := getValidatorDeactivatedEpochSlot(validatorID)
+		gasUsed += slotGasUsed
+
+		deactivatedEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(deactivatedEpochSlot)))
+		gasUsed += SloadGasCost
+		deactivatedEpochBigInt := new(big.Int).SetBytes(deactivatedEpoch.Bytes())
+
+		if deactivatedEpochBigInt.Cmp(big.NewInt(0)) == 0 {
+			// Set the deactivated epoch to the current epoch
+			currentEpochBigInt, epochGasUsed, err := getCurrentEpoch(evm)
+			gasUsed += epochGasUsed
+			if err != nil {
+				return gasUsed, err
+			}
+
+			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(deactivatedEpochSlot)), common.BigToHash(currentEpochBigInt))
+			gasUsed += SstoreGasCost
+
+			// Set the deactivated time to the current time
+			deactivatedTimeSlot, slotGasUsed := getValidatorDeactivatedTimeSlot(validatorID)
+			gasUsed += slotGasUsed
+
+			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(deactivatedTimeSlot)), common.BigToHash(evm.Context.Time))
+			gasUsed += SstoreGasCost
+
+			// Emit DeactivatedValidator event
+			topics := []common.Hash{
+				SfcAbi.Events["DeactivatedValidator"].ID,
+				common.BigToHash(validatorID), // indexed parameter (validatorID)
+			}
+			data := common.BigToHash(currentEpochBigInt).Bytes()
+			data = append(data, common.BigToHash(evm.Context.Time).Bytes()...)
+
+			evm.SfcStateDB.AddLog(&types.Log{
+				Address:     ContractAddress,
+				Topics:      topics,
+				Data:        data,
+				BlockNumber: evm.Context.BlockNumber.Uint64(),
+			})
+		}
+
+		// Emit ChangedValidatorStatus event
+		topics := []common.Hash{
+			SfcAbi.Events["ChangedValidatorStatus"].ID,
+			common.BigToHash(validatorID), // indexed parameter (validatorID)
+		}
+		data := common.BigToHash(new(big.Int).SetUint64(statusBit)).Bytes()
+
+		evm.SfcStateDB.AddLog(&types.Log{
+			Address:     ContractAddress,
+			Topics:      topics,
+			Data:        data,
+			BlockNumber: evm.Context.BlockNumber.Uint64(),
+		})
+	}
+
+	return gasUsed, nil
+}
+
+// _syncValidator syncs a validator's weight with the node
+func _syncValidator(evm *vm.EVM, validatorID *big.Int, syncPubkey bool) (uint64, error) {
+	// Initialize gas used
+	var gasUsed uint64 = 0
+
+	// Check if validator exists
+	validatorCreatedTimeSlot, slotGasUsed := getValidatorCreatedTimeSlot(validatorID)
+	gasUsed += slotGasUsed
+
+	validatorCreatedTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorCreatedTimeSlot)))
+	gasUsed += SloadGasCost
+
+	if validatorCreatedTime.Big().Cmp(big.NewInt(0)) == 0 {
+		return gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Get the validator's received stake
+	receivedStakeSlot, slotGasUsed := getValidatorReceivedStakeSlot(validatorID)
+	gasUsed += slotGasUsed
+
+	receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(receivedStakeSlot)))
+	gasUsed += SloadGasCost
+	receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
+
+	// Get the validator's status
+	statusSlot, slotGasUsed := getValidatorStatusSlotByID(validatorID)
+	gasUsed += slotGasUsed
+
+	status := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(statusSlot)))
+	gasUsed += SloadGasCost
+	statusBigInt := new(big.Int).SetBytes(status.Bytes())
+
+	// Calculate weight
+	weight := receivedStakeBigInt
+	if statusBigInt.Uint64() != OK_STATUS {
+		weight = big.NewInt(0)
+	}
+
+	// Call the node to update validator weight
+	nodeDriverAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(nodeDriverAuthSlot)))
+	gasUsed += SloadGasCost
+	nodeDriverAuthAddr := common.BytesToAddress(nodeDriverAuth.Bytes())
+
+	// Pack the function call data
+	data, err := DriverAbi.Pack("updateValidatorWeight", validatorID, weight)
+	if err != nil {
+		return gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Call the node driver
+	_, _, err = evm.Call(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, 50000, big.NewInt(0))
+	if err != nil {
+		return gasUsed, err
+	}
+
+	// If syncPubkey is true and weight is not zero, update validator pubkey
+	if syncPubkey && weight.Cmp(big.NewInt(0)) != 0 {
+		// Get the validator's pubkey
+		pubkeySlot, slotGasUsed := getValidatorPubkeySlot(validatorID)
+		gasUsed += slotGasUsed
+
+		pubkeyHash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(pubkeySlot)))
+		gasUsed += SloadGasCost
+
+		// Pack the function call data
+		data, err := DriverAbi.Pack("updateValidatorPubkey", validatorID, pubkeyHash.Bytes())
+		if err != nil {
+			return gasUsed, vm.ErrExecutionReverted
+		}
+
+		// Call the node driver
+		_, _, err = evm.Call(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, 50000, big.NewInt(0))
+		if err != nil {
+			return gasUsed, err
+		}
+	}
+
+	return gasUsed, nil
+}
+
+// getEpochValidatorOfflineTimeSlot calculates the storage slot for a validator's offline time in an epoch
+func getEpochValidatorOfflineTimeSlot(epoch *big.Int, validatorID *big.Int) (int64, uint64) {
+	// Initialize gas used
+	var gasUsed uint64 = 0
+
+	// First get the epoch snapshot slot
+	epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(epoch)
+	gasUsed += slotGasUsed
+
+	// For a mapping(uint256 => mapping(uint256 => uint256)), the slot is calculated as:
+	// keccak256(abi.encode(validatorID, keccak256(abi.encode(offlineTimeOffset, epochSnapshotSlot))))
+
+	// Create the inner hash input: abi.encode(offlineTimeOffset, epochSnapshotSlot)
+	offlineTimeOffsetBytes := common.LeftPadBytes(big.NewInt(offlineTimeOffset).Bytes(), 32) // Left-pad to 32 bytes
+	epochSnapshotSlotBytes := common.LeftPadBytes(big.NewInt(epochSnapshotSlot).Bytes(), 32) // Left-pad to 32 bytes
+	innerHashInput := append(offlineTimeOffsetBytes, epochSnapshotSlotBytes...)
+
+	// Calculate the inner hash - add gas cost for hashing
+	innerHash := crypto.Keccak256(innerHashInput)
+	gasUsed += HashGasCost
+
+	// Create the outer hash input: abi.encode(validatorID, innerHash)
+	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32) // Left-pad to 32 bytes
+	outerHashInput := append(validatorIDBytes, innerHash...)
+
+	// Calculate the outer hash - add gas cost for hashing
+	outerHash := crypto.Keccak256(outerHashInput)
+	gasUsed += HashGasCost
+
+	// Convert the hash to a big.Int
+	slot := new(big.Int).SetBytes(outerHash)
+
+	return slot.Int64(), gasUsed
+}
+
+// getEpochValidatorOfflineBlocksSlot calculates the storage slot for a validator's offline blocks in an epoch
+func getEpochValidatorOfflineBlocksSlot(epoch *big.Int, validatorID *big.Int) (int64, uint64) {
+	// Initialize gas used
+	var gasUsed uint64 = 0
+
+	// First get the epoch snapshot slot
+	epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(epoch)
+	gasUsed += slotGasUsed
+
+	// For a mapping(uint256 => mapping(uint256 => uint256)), the slot is calculated as:
+	// keccak256(abi.encode(validatorID, keccak256(abi.encode(offlineBlocksOffset, epochSnapshotSlot))))
+
+	// Create the inner hash input: abi.encode(offlineBlocksOffset, epochSnapshotSlot)
+	offlineBlocksOffsetBytes := common.LeftPadBytes(big.NewInt(offlineBlocksOffset).Bytes(), 32) // Left-pad to 32 bytes
+	epochSnapshotSlotBytes := common.LeftPadBytes(big.NewInt(epochSnapshotSlot).Bytes(), 32)     // Left-pad to 32 bytes
+	innerHashInput := append(offlineBlocksOffsetBytes, epochSnapshotSlotBytes...)
+
+	// Calculate the inner hash - add gas cost for hashing
+	innerHash := crypto.Keccak256(innerHashInput)
+	gasUsed += HashGasCost
+
+	// Create the outer hash input: abi.encode(validatorID, innerHash)
+	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32) // Left-pad to 32 bytes
+	outerHashInput := append(validatorIDBytes, innerHash...)
+
+	// Calculate the outer hash - add gas cost for hashing
+	outerHash := crypto.Keccak256(outerHashInput)
+	gasUsed += HashGasCost
+
+	// Convert the hash to a big.Int
+	slot := new(big.Int).SetBytes(outerHash)
+
+	return slot.Int64(), gasUsed
+}
+
+// getEpochValidatorAccumulatedRewardPerTokenSlot calculates the storage slot for a validator's accumulated reward per token in an epoch
+func getEpochValidatorAccumulatedRewardPerTokenSlot(epoch *big.Int, validatorID *big.Int) (int64, uint64) {
+	// Initialize gas used
+	var gasUsed uint64 = 0
+
+	// First get the epoch snapshot slot
+	epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(epoch)
+	gasUsed += slotGasUsed
+
+	// For a mapping(uint256 => mapping(uint256 => uint256)), the slot is calculated as:
+	// keccak256(abi.encode(validatorID, keccak256(abi.encode(accumulatedRewardPerTokenOffset, epochSnapshotSlot))))
+
+	// Create the inner hash input: abi.encode(accumulatedRewardPerTokenOffset, epochSnapshotSlot)
+	accumulatedRewardPerTokenOffsetBytes := common.LeftPadBytes(big.NewInt(accumulatedRewardPerTokenOffset).Bytes(), 32) // Left-pad to 32 bytes
+	epochSnapshotSlotBytes := common.LeftPadBytes(big.NewInt(epochSnapshotSlot).Bytes(), 32)                             // Left-pad to 32 bytes
+	innerHashInput := append(accumulatedRewardPerTokenOffsetBytes, epochSnapshotSlotBytes...)
+
+	// Calculate the inner hash - add gas cost for hashing
+	innerHash := crypto.Keccak256(innerHashInput)
+	gasUsed += HashGasCost
+
+	// Create the outer hash input: abi.encode(validatorID, innerHash)
+	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32) // Left-pad to 32 bytes
+	outerHashInput := append(validatorIDBytes, innerHash...)
+
+	// Calculate the outer hash - add gas cost for hashing
+	outerHash := crypto.Keccak256(outerHashInput)
+	gasUsed += HashGasCost
+
+	// Convert the hash to a big.Int
+	slot := new(big.Int).SetBytes(outerHash)
+
+	return slot.Int64(), gasUsed
+}
+
+// getEpochValidatorAccumulatedUptimeSlot calculates the storage slot for a validator's accumulated uptime in an epoch
+func getEpochValidatorAccumulatedUptimeSlot(epoch *big.Int, validatorID *big.Int) (int64, uint64) {
+	// Initialize gas used
+	var gasUsed uint64 = 0
+
+	// First get the epoch snapshot slot
+	epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(epoch)
+	gasUsed += slotGasUsed
+
+	// For a mapping(uint256 => mapping(uint256 => uint256)), the slot is calculated as:
+	// keccak256(abi.encode(validatorID, keccak256(abi.encode(accumulatedUptimeOffset, epochSnapshotSlot))))
+
+	// Create the inner hash input: abi.encode(accumulatedUptimeOffset, epochSnapshotSlot)
+	accumulatedUptimeOffsetBytes := common.LeftPadBytes(big.NewInt(accumulatedUptimeOffset).Bytes(), 32) // Left-pad to 32 bytes
+	epochSnapshotSlotBytes := common.LeftPadBytes(big.NewInt(epochSnapshotSlot).Bytes(), 32)             // Left-pad to 32 bytes
+	innerHashInput := append(accumulatedUptimeOffsetBytes, epochSnapshotSlotBytes...)
+
+	// Calculate the inner hash - add gas cost for hashing
+	innerHash := crypto.Keccak256(innerHashInput)
+	gasUsed += HashGasCost
+
+	// Create the outer hash input: abi.encode(validatorID, innerHash)
+	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32) // Left-pad to 32 bytes
+	outerHashInput := append(validatorIDBytes, innerHash...)
+
+	// Calculate the outer hash - add gas cost for hashing
+	outerHash := crypto.Keccak256(outerHashInput)
+	gasUsed += HashGasCost
+
+	// Convert the hash to a big.Int
+	slot := new(big.Int).SetBytes(outerHash)
+
+	return slot.Int64(), gasUsed
+}
+
+// getEpochValidatorAccumulatedOriginatedTxsFeeSlot calculates the storage slot for a validator's accumulated originated txs fee in an epoch
+func getEpochValidatorAccumulatedOriginatedTxsFeeSlot(epoch *big.Int, validatorID *big.Int) (int64, uint64) {
+	// Initialize gas used
+	var gasUsed uint64 = 0
+
+	// First get the epoch snapshot slot
+	epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(epoch)
+	gasUsed += slotGasUsed
+
+	// For a mapping(uint256 => mapping(uint256 => uint256)), the slot is calculated as:
+	// keccak256(abi.encode(validatorID, keccak256(abi.encode(accumulatedOriginatedTxsFeeOffset, epochSnapshotSlot))))
+
+	// Create the inner hash input: abi.encode(accumulatedOriginatedTxsFeeOffset, epochSnapshotSlot)
+	accumulatedOriginatedTxsFeeOffsetBytes := common.LeftPadBytes(big.NewInt(accumulatedOriginatedTxsFeeOffset).Bytes(), 32) // Left-pad to 32 bytes
+	epochSnapshotSlotBytes := common.LeftPadBytes(big.NewInt(epochSnapshotSlot).Bytes(), 32)                                 // Left-pad to 32 bytes
+	innerHashInput := append(accumulatedOriginatedTxsFeeOffsetBytes, epochSnapshotSlotBytes...)
+
+	// Calculate the inner hash - add gas cost for hashing
+	innerHash := crypto.Keccak256(innerHashInput)
+	gasUsed += HashGasCost
+
+	// Create the outer hash input: abi.encode(validatorID, innerHash)
+	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32) // Left-pad to 32 bytes
+	outerHashInput := append(validatorIDBytes, innerHash...)
+
+	// Calculate the outer hash - add gas cost for hashing
+	outerHash := crypto.Keccak256(outerHashInput)
+	gasUsed += HashGasCost
+
+	// Convert the hash to a big.Int
+	slot := new(big.Int).SetBytes(outerHash)
+
+	return slot.Int64(), gasUsed
+}
+
+// getEpochValidatorReceivedStakeSlot calculates the storage slot for a validator's received stake in an epoch
+func getEpochValidatorReceivedStakeSlot(epoch *big.Int, validatorID *big.Int) (int64, uint64) {
+	// Initialize gas used
+	var gasUsed uint64 = 0
+
+	// First get the epoch snapshot slot
+	epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(epoch)
+	gasUsed += slotGasUsed
+
+	// For a mapping(uint256 => mapping(uint256 => uint256)), the slot is calculated as:
+	// keccak256(abi.encode(validatorID, keccak256(abi.encode(receiveStakeOffset, epochSnapshotSlot))))
+
+	// Create the inner hash input: abi.encode(receiveStakeOffset, epochSnapshotSlot)
+	receiveStakeOffsetBytes := common.LeftPadBytes(big.NewInt(receiveStakeOffset).Bytes(), 32) // Left-pad to 32 bytes
+	epochSnapshotSlotBytes := common.LeftPadBytes(big.NewInt(epochSnapshotSlot).Bytes(), 32)   // Left-pad to 32 bytes
+	innerHashInput := append(receiveStakeOffsetBytes, epochSnapshotSlotBytes...)
+
+	// Calculate the inner hash - add gas cost for hashing
+	innerHash := crypto.Keccak256(innerHashInput)
+	gasUsed += HashGasCost
+
+	// Create the outer hash input: abi.encode(validatorID, innerHash)
+	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32) // Left-pad to 32 bytes
+	outerHashInput := append(validatorIDBytes, innerHash...)
+
+	// Calculate the outer hash - add gas cost for hashing
+	outerHash := crypto.Keccak256(outerHashInput)
+	gasUsed += HashGasCost
+
+	// Convert the hash to a big.Int
+	slot := new(big.Int).SetBytes(outerHash)
+
+	return slot.Int64(), gasUsed
 }
 
 // getMinSelfStake returns the minimum self-stake value from the ConstantManager contract

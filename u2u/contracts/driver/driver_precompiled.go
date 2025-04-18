@@ -7,10 +7,12 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/gossip/contract/driver100"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 var (
 	DriverAbi abi.ABI
+	SfcAbi    abi.ABI
 )
 
 func init() {
@@ -19,6 +21,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+	SfcAbi, _ = abi.JSON(strings.NewReader(SfcAbiStr))
 }
 
 // parseABIInput parses the input data and returns the method and unpacked parameters
@@ -27,7 +30,7 @@ func parseABIInput(input []byte) (*abi.Method, []interface{}, error) {
 	if len(input) == 0 {
 		// Create a dummy method with empty name to trigger the fallback function
 		dummyMethod := &abi.Method{
-			Name: "",
+			Name:   "",
 			Inputs: abi.Arguments{},
 		}
 		return dummyMethod, []interface{}{}, nil
@@ -122,16 +125,20 @@ func (p *DriverPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte,
 		result, gasUsed, err = handleFallback(evm, caller, args, input)
 
 	default:
+		log.Debug("Driver Precompiled: Unknown function", "function", method.Name)
 		return nil, 0, vm.ErrSfcFunctionNotImplemented
 	}
-
 	if err != nil {
+		reason, _ := abi.UnpackRevert(result)
+		log.Error("Driver Precompiled: Revert", "function", method.Name, "reason", reason)
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
 	if suppliedGas < gasUsed {
+		log.Error("Driver Precompiled: Out of gas", "function", method.Name)
 		return nil, 0, vm.ErrOutOfGas
 	}
+	log.Debug("Driver Precompiled: Success", "function", method.Name)
 
 	return result, gasUsed, nil
 }

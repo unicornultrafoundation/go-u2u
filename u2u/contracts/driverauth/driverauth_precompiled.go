@@ -7,6 +7,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/gossip/contract/driverauth100"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 var (
@@ -155,16 +156,20 @@ func (c *DriverAuthPrecompile) Run(evm *vm.EVM, caller common.Address, input []b
 		result, gasUsed, err = handleFallback(evm, caller, args, input)
 
 	default:
+		log.Debug("DriverAuth Precompiled: Unknown function", "function", method.Name)
 		return nil, 0, vm.ErrSfcFunctionNotImplemented
 	}
-
 	if err != nil {
+		reason, _ := abi.UnpackRevert(result)
+		log.Error("DriverAuth Precompiled: Revert", "function", method.Name, "reason", reason)
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
 	if suppliedGas < gasUsed {
+		log.Error("DriverAuth Precompiled: Out of gas", "function", method.Name)
 		return nil, 0, vm.ErrOutOfGas
 	}
+	log.Debug("DriverAuth Precompiled: Success", "function", method.Name)
 
 	return result, gasUsed, nil
 }

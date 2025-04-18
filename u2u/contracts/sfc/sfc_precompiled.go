@@ -8,16 +8,19 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/gossip/contract/sfc100"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 var (
-	SfcAbi abi.ABI
-	CMAbi  abi.ABI
+	SfcAbi    abi.ABI
+	CMAbi     abi.ABI
+	DriverAbi abi.ABI
 )
 
 func init() {
 	SfcAbi, _ = abi.JSON(strings.NewReader(sfc100.ContractMetaData.ABI))
 	CMAbi, _ = abi.JSON(strings.NewReader(ConstantManagerABIStr))
+	DriverAbi, _ = abi.JSON(strings.NewReader(DriverABIStr))
 }
 
 // SfcPrecompile implements PrecompiledSfcContract interface
@@ -252,7 +255,7 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		result, gasUsed, err = handleBurnU2U(evm, args)
 
 	case "sealEpoch":
-		result, gasUsed, err = handleSealEpoch(evm, args)
+		result, gasUsed, err = handleSealEpoch(evm, caller, args)
 
 	case "sealEpochValidators":
 		result, gasUsed, err = handleSealEpochValidators(evm, args)
@@ -282,14 +285,16 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 	case "_delegate":
 		result, gasUsed, err = handle_delegate(evm, args, input)
 
+	// These internal functions are now implemented directly in the handleSealEpoch function
+	// and are no longer called separately
 	case "_sealEpoch_offline":
-		result, gasUsed, err = handle_sealEpoch_offline(evm, args)
+		return nil, 0, vm.ErrSfcFunctionNotImplemented
 
 	case "_sealEpoch_rewards":
-		result, gasUsed, err = handle_sealEpoch_rewards(evm, args)
+		return nil, 0, vm.ErrSfcFunctionNotImplemented
 
 	case "_sealEpoch_minGasPrice":
-		result, gasUsed, err = handle_sealEpoch_minGasPrice(evm, args)
+		return nil, 0, vm.ErrSfcFunctionNotImplemented
 
 	case "_calcRawValidatorEpochBaseReward":
 		result, gasUsed, err = handle_calcRawValidatorEpochBaseReward(evm, args)
@@ -326,14 +331,20 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		result, gasUsed, err = handleFallback(evm, args, input)
 
 	default:
+		log.Debug("SFC Precompiled: Unknown function", "function", method.Name)
 		return nil, 0, vm.ErrSfcFunctionNotImplemented
 	}
 	if err != nil {
+		reason, _ := abi.UnpackRevert(result)
+		log.Error("SFC Precompiled: Revert", "function", method.Name, "reason", reason)
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
 	if suppliedGas < gasUsed {
+		log.Error("SFC Precompiled: Out of gas", "function", method.Name)
 		return nil, 0, vm.ErrOutOfGas
 	}
+	log.Debug("SFC Precompiled: Success", "function", method.Name)
+
 	return result, gasUsed, nil
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 var (
@@ -151,16 +152,20 @@ func (c *ConstantManagerPrecompile) Run(evm *vm.EVM, caller common.Address, inpu
 		result, gasUsed, err = handleFallback(evm, args, input)
 
 	default:
+		log.Debug("CM Precompiled: Unknown function", "function", method.Name)
 		return nil, 0, vm.ErrSfcFunctionNotImplemented
 	}
-
 	if err != nil {
+		reason, _ := abi.UnpackRevert(result)
+		log.Error("CM Precompiled: Revert", "function", method.Name, "reason", reason)
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
 	if suppliedGas < gasUsed {
+		log.Error("CM Precompiled: Out of gas", "function", method.Name)
 		return nil, 0, vm.ErrOutOfGas
 	}
+	log.Debug("CM Precompiled: Success", "function", method.Name)
 
 	return result, gasUsed, nil
 }

@@ -574,74 +574,6 @@ func handleUndelegate(evm *vm.EVM, caller common.Address, args []interface{}) ([
 	return nil, gasUsed, nil
 }
 
-// handleGetDelegation returns the delegation information for a given delegator and validator ID
-func handleGetDelegation(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	var gasUsed uint64 = 0
-	// Get the arguments
-	if len(args) != 2 {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-	delegator, ok := args[0].(common.Address)
-	if !ok {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-	toValidatorID, ok := args[1].(*big.Int)
-	if !ok {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	// Get the delegation stake
-	stakeSlot, getGasUsed := getStakeSlot(delegator, toValidatorID)
-	gasUsed += getGasUsed
-	stake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(stakeSlot)))
-	stakeBigInt := new(big.Int).SetBytes(stake.Bytes())
-
-	// Get the delegation locked stake
-	lockedStakeSlot, getGasUsed := getLockedStakeSlot(delegator, toValidatorID)
-	gasUsed += getGasUsed
-	lockedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(lockedStakeSlot)))
-	lockedStakeBigInt := new(big.Int).SetBytes(lockedStake.Bytes())
-
-	// Get the delegation lock-up from epoch
-	lockupFromEpochSlot, getGasUsed := getLockupFromEpochSlot(delegator, toValidatorID)
-	gasUsed += getGasUsed
-	lockupFromEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(lockupFromEpochSlot)))
-	lockupFromEpochBigInt := new(big.Int).SetBytes(lockupFromEpoch.Bytes())
-
-	// Get the delegation lock-up end time
-	lockupEndTimeSlot, getGasUsed := getLockupEndTimeSlot(delegator, toValidatorID)
-	gasUsed += getGasUsed
-	lockupEndTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(lockupEndTimeSlot)))
-	lockupEndTimeBigInt := new(big.Int).SetBytes(lockupEndTime.Bytes())
-
-	// Get the delegation lock-up duration
-	lockupDurationSlot, getGasUsed := getLockupDurationSlot(delegator, toValidatorID)
-	gasUsed += getGasUsed
-	lockupDuration := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(lockupDurationSlot)))
-	lockupDurationBigInt := new(big.Int).SetBytes(lockupDuration.Bytes())
-
-	// Get the delegation early withdrawal penalty
-	earlyWithdrawalPenaltySlot, getGasUsed := getEarlyWithdrawalPenaltySlot(delegator, toValidatorID)
-	gasUsed += getGasUsed
-	earlyWithdrawalPenalty := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(earlyWithdrawalPenaltySlot)))
-	earlyWithdrawalPenaltyBigInt := new(big.Int).SetBytes(earlyWithdrawalPenalty.Bytes())
-
-	// Pack the delegation information
-	result, err := SfcAbi.Methods["getDelegation"].Outputs.Pack(
-		stakeBigInt,
-		lockedStakeBigInt,
-		lockupFromEpochBigInt,
-		lockupEndTimeBigInt,
-		lockupDurationBigInt,
-		earlyWithdrawalPenaltyBigInt,
-	)
-	if err != nil {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	return result, gasUsed, nil
-}
-
 // handleIsOwner returns whether the given address is the owner of the contract
 func handleIsOwner(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	var gasUsed uint64 = 0
@@ -1610,9 +1542,147 @@ func handleBurnU2U(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 }
 
 // SealEpoch seals the current epoch
-func handleSealEpoch(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement sealEpoch handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
+	// Initialize gas used
+	var gasUsed uint64 = 0
+
+	// Check if caller is the NodeDriverAuth contract (onlyDriver modifier)
+	revertData, checkGasUsed, err := checkOnlyDriver(evm, caller, "sealEpoch")
+	gasUsed += checkGasUsed
+	if err != nil {
+		return revertData, gasUsed, err
+	}
+
+	// Get the arguments
+	if len(args) != 5 {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	offlineTimes, ok := args[0].([]*big.Int)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	offlineBlocks, ok := args[1].([]*big.Int)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	uptimes, ok := args[2].([]*big.Int)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	originatedTxsFee, ok := args[3].([]*big.Int)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	epochGas, ok := args[4].(*big.Int)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Get the current epoch
+	currentEpochBigInt, epochGasUsed, err := getCurrentEpoch(evm)
+	gasUsed += epochGasUsed
+	if err != nil {
+		return nil, gasUsed, err
+	}
+	// currentEpoch is used in the implementation
+
+	// Get the epoch snapshot for the current epoch
+	epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(currentEpochBigInt)
+	gasUsed += slotGasUsed
+
+	// Get the validator IDs for the current epoch
+	validatorIDsSlot := epochSnapshotSlot + validatorIDsOffset
+	validatorIDsHash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorIDsSlot)))
+	gasUsed += SloadGasCost
+
+	// Decode the validator IDs
+	validatorIDs, err := decodeValidatorIDs(validatorIDsHash.Bytes())
+	if err != nil {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Call _sealEpoch_offline
+	offlineGasUsed, err := _sealEpoch_offline(evm, validatorIDs, offlineTimes, offlineBlocks, currentEpochBigInt)
+	gasUsed += offlineGasUsed
+	if err != nil {
+		return nil, gasUsed, err
+	}
+
+	// Get the previous epoch snapshot
+	currentSealedEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(currentSealedEpochSlot)))
+	gasUsed += SloadGasCost
+	currentSealedEpochBigInt := new(big.Int).SetBytes(currentSealedEpoch.Bytes())
+
+	prevEpochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(currentSealedEpochBigInt)
+	gasUsed += slotGasUsed
+
+	// Get the end time of the previous epoch
+	prevEndTimeSlot := prevEpochSnapshotSlot + endTimeOffset
+	prevEndTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(prevEndTimeSlot)))
+	gasUsed += SloadGasCost
+	prevEndTimeBigInt := new(big.Int).SetBytes(prevEndTime.Bytes())
+
+	// Calculate epoch duration
+	epochDuration := big.NewInt(1) // Default to 1 if current time <= prevEndTime
+	if evm.Context.Time.Cmp(prevEndTimeBigInt) > 0 {
+		epochDuration = new(big.Int).Sub(evm.Context.Time, prevEndTimeBigInt)
+	}
+
+	// Call _sealEpoch_rewards
+	rewardsGasUsed, err := _sealEpoch_rewards(evm, epochDuration, currentEpochBigInt, currentSealedEpochBigInt, validatorIDs, uptimes, originatedTxsFee)
+	gasUsed += rewardsGasUsed
+	if err != nil {
+		return nil, gasUsed, err
+	}
+
+	// Call _sealEpoch_minGasPrice
+	minGasPriceGasUsed, err := _sealEpoch_minGasPrice(evm, epochDuration, epochGas)
+	gasUsed += minGasPriceGasUsed
+	if err != nil {
+		return nil, gasUsed, err
+	}
+
+	// Update currentSealedEpoch
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(currentSealedEpochSlot)), common.BigToHash(currentEpochBigInt))
+	gasUsed += SstoreGasCost
+
+	// Update epoch snapshot end time
+	endTimeSlot := epochSnapshotSlot + endTimeOffset
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(endTimeSlot)), common.BigToHash(evm.Context.Time))
+	gasUsed += SstoreGasCost
+
+	// Get the base reward per second from constants manager
+	baseRewardPerSecond, cmGasUsed, err := callConstantManagerMethod(evm, "baseRewardPerSecond")
+	gasUsed += cmGasUsed
+	if err != nil || len(baseRewardPerSecond) == 0 {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+	baseRewardPerSecondBigInt, ok := baseRewardPerSecond[0].(*big.Int)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Update epoch snapshot base reward per second
+	baseRewardPerSecondSlot := epochSnapshotSlot + baseRewardPerSecondOffset
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(baseRewardPerSecondSlot)), common.BigToHash(baseRewardPerSecondBigInt))
+	gasUsed += SstoreGasCost
+
+	// Get the total supply
+	totalSupply := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalSupplySlot)))
+	gasUsed += SloadGasCost
+	totalSupplyBigInt := new(big.Int).SetBytes(totalSupply.Bytes())
+
+	// Update epoch snapshot total supply
+	totalSupplySnapshotSlot := epochSnapshotSlot + totalSupplyOffset
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalSupplySnapshotSlot)), common.BigToHash(totalSupplyBigInt))
+	gasUsed += SstoreGasCost
+
+	return nil, gasUsed, nil
 }
 
 // SealEpochValidators seals the validators for the current epoch

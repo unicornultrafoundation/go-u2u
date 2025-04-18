@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/params"
 )
@@ -73,21 +74,512 @@ func handle_delegate(evm *vm.EVM, args []interface{}, input []byte) ([]byte, uin
 }
 
 // _sealEpoch_offline is an internal function to seal offline validators in an epoch
-func handle_sealEpoch_offline(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement _sealEpoch_offline handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+func _sealEpoch_offline(evm *vm.EVM, validatorIDs []*big.Int, offlineTimes []*big.Int, offlineBlocks []*big.Int, currentEpoch *big.Int) (uint64, error) {
+	// Initialize gas used
+	var gasUsed uint64 = 0
+
+	// Get the epoch snapshot slot (not used directly in this function but needed for gas calculation)
+	_, slotGasUsed := getEpochSnapshotSlot(currentEpoch)
+	gasUsed += slotGasUsed
+
+	// Get the offline penalty thresholds from the constants manager
+	offlinePenaltyThresholdBlocksNum, thresholdGasUsed, err := getOfflinePenaltyThresholdBlocksNum(evm)
+	gasUsed += thresholdGasUsed
+	if err != nil {
+		return gasUsed, err
+	}
+
+	offlinePenaltyThresholdTime, thresholdGasUsed, err := getOfflinePenaltyThresholdTime(evm)
+	gasUsed += thresholdGasUsed
+	if err != nil {
+		return gasUsed, err
+	}
+
+	// Iterate through validators
+	for i, validatorID := range validatorIDs {
+		// Check if the validator exceeds the offline thresholds
+		if offlineBlocks[i].Cmp(offlinePenaltyThresholdBlocksNum) > 0 && offlineTimes[i].Cmp(offlinePenaltyThresholdTime) >= 0 {
+			// Deactivate the validator with OFFLINE_BIT
+			deactivateGasUsed, err := _setValidatorDeactivated(evm, validatorID, OFFLINE_BIT)
+			gasUsed += deactivateGasUsed
+			if err != nil {
+				return gasUsed, err
+			}
+
+			// Sync the validator
+			syncGasUsed, err := _syncValidator(evm, validatorID, false)
+			gasUsed += syncGasUsed
+			if err != nil {
+				return gasUsed, err
+			}
+		}
+
+		// Store offline time in the epoch snapshot
+		offlineTimeSlot, slotGasUsed := getEpochValidatorOfflineTimeSlot(currentEpoch, validatorID)
+		gasUsed += slotGasUsed
+
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(offlineTimeSlot)), common.BigToHash(offlineTimes[i]))
+		gasUsed += SstoreGasCost
+
+		// Store offline blocks in the epoch snapshot
+		offlineBlocksSlot, slotGasUsed := getEpochValidatorOfflineBlocksSlot(currentEpoch, validatorID)
+		gasUsed += slotGasUsed
+
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(offlineBlocksSlot)), common.BigToHash(offlineBlocks[i]))
+		gasUsed += SstoreGasCost
+	}
+
+	return gasUsed, nil
 }
 
 // _sealEpoch_rewards is an internal function to seal rewards in an epoch
-func handle_sealEpoch_rewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement _sealEpoch_rewards handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.Int, prevEpoch *big.Int, validatorIDs []*big.Int, uptimes []*big.Int, accumulatedOriginatedTxsFee []*big.Int) (uint64, error) {
+	// Initialize gas used
+	var gasUsed uint64 = 0
+
+	// Get the epoch snapshot slots
+	currentEpochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(currentEpoch)
+	gasUsed += slotGasUsed
+
+	// Get previous epoch snapshot slot (used later for calculations)
+	_, slotGasUsed = getEpochSnapshotSlot(prevEpoch)
+	gasUsed += slotGasUsed
+
+	// Initialize context for rewards calculation
+	baseRewardWeights := make([]*big.Int, len(validatorIDs))
+	totalBaseRewardWeight := big.NewInt(0)
+	txRewardWeights := make([]*big.Int, len(validatorIDs))
+	totalTxRewardWeight := big.NewInt(0)
+	epochFee := big.NewInt(0)
+
+	// Calculate tx reward weights and epoch fee
+	for i, validatorID := range validatorIDs {
+		// Get previous accumulated originated txs fee
+		prevAccumulatedTxsFeeSlot, slotGasUsed := getEpochValidatorAccumulatedOriginatedTxsFeeSlot(prevEpoch, validatorID)
+		gasUsed += slotGasUsed
+
+		prevAccumulatedTxsFee := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(prevAccumulatedTxsFeeSlot)))
+		gasUsed += SloadGasCost
+		prevAccumulatedTxsFeeBigInt := new(big.Int).SetBytes(prevAccumulatedTxsFee.Bytes())
+
+		// Calculate originated txs fee for this epoch
+		originatedTxsFee := big.NewInt(0)
+		if accumulatedOriginatedTxsFee[i].Cmp(prevAccumulatedTxsFeeBigInt) > 0 {
+			originatedTxsFee = new(big.Int).Sub(accumulatedOriginatedTxsFee[i], prevAccumulatedTxsFeeBigInt)
+		}
+
+		// Calculate tx reward weight: originatedTxsFee * uptime / epochDuration
+		txRewardWeight := new(big.Int).Mul(originatedTxsFee, uptimes[i])
+		txRewardWeight = new(big.Int).Div(txRewardWeight, epochDuration)
+		txRewardWeights[i] = txRewardWeight
+
+		// Update total tx reward weight
+		totalTxRewardWeight = new(big.Int).Add(totalTxRewardWeight, txRewardWeight)
+
+		// Update epoch fee
+		epochFee = new(big.Int).Add(epochFee, originatedTxsFee)
+	}
+
+	// Calculate base reward weights
+	for i, validatorID := range validatorIDs {
+		// Get validator's received stake
+		receivedStakeSlot, slotGasUsed := getEpochValidatorReceivedStakeSlot(currentEpoch, validatorID)
+		gasUsed += slotGasUsed
+
+		receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(receivedStakeSlot)))
+		gasUsed += SloadGasCost
+		receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
+
+		// Calculate base reward weight: (stake * uptime / epochDuration) * (uptime / epochDuration)
+		term1 := new(big.Int).Mul(receivedStakeBigInt, uptimes[i])
+		term1 = new(big.Int).Div(term1, epochDuration)
+		term2 := new(big.Int).Mul(term1, uptimes[i])
+		baseRewardWeight := new(big.Int).Div(term2, epochDuration)
+		baseRewardWeights[i] = baseRewardWeight
+
+		// Update total base reward weight
+		totalBaseRewardWeight = new(big.Int).Add(totalBaseRewardWeight, baseRewardWeight)
+	}
+
+	// Get the base reward per second from the constants manager
+	baseRewardPerSecond, cmGasUsed, err := callConstantManagerMethod(evm, "baseRewardPerSecond")
+	gasUsed += cmGasUsed
+	if err != nil || len(baseRewardPerSecond) == 0 {
+		return gasUsed, err
+	}
+	baseRewardPerSecondBigInt, ok := baseRewardPerSecond[0].(*big.Int)
+	if !ok {
+		return gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Get the validator commission from the constants manager
+	validatorCommission, cmGasUsed, err := callConstantManagerMethod(evm, "validatorCommission")
+	gasUsed += cmGasUsed
+	if err != nil || len(validatorCommission) == 0 {
+		return gasUsed, err
+	}
+	validatorCommissionBigInt, ok := validatorCommission[0].(*big.Int)
+	if !ok {
+		return gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Get the burnt fee share from the constants manager
+	burntFeeShare, cmGasUsed, err := callConstantManagerMethod(evm, "burntFeeShare")
+	gasUsed += cmGasUsed
+	if err != nil || len(burntFeeShare) == 0 {
+		return gasUsed, err
+	}
+	burntFeeShareBigInt, ok := burntFeeShare[0].(*big.Int)
+	if !ok {
+		return gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Get the treasury fee share from the constants manager
+	treasuryFeeShare, cmGasUsed, err := callConstantManagerMethod(evm, "treasuryFeeShare")
+	gasUsed += cmGasUsed
+	if err != nil || len(treasuryFeeShare) == 0 {
+		return gasUsed, err
+	}
+	treasuryFeeShareBigInt, ok := treasuryFeeShare[0].(*big.Int)
+	if !ok {
+		return gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Get the decimal unit from the constants manager
+	decimalUnit, cmGasUsed, err := callConstantManagerMethod(evm, "unit")
+	gasUsed += cmGasUsed
+	if err != nil || len(decimalUnit) == 0 {
+		return gasUsed, err
+	}
+	decimalUnitBigInt, ok := decimalUnit[0].(*big.Int)
+	if !ok {
+		return gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Calculate rewards for each validator
+	for i, validatorID := range validatorIDs {
+		// Calculate raw base reward
+		rawBaseReward := big.NewInt(0)
+		if baseRewardWeights[i].Cmp(big.NewInt(0)) > 0 {
+			totalReward := new(big.Int).Mul(epochDuration, baseRewardPerSecondBigInt)
+			rawBaseReward = new(big.Int).Mul(totalReward, baseRewardWeights[i])
+			rawBaseReward = new(big.Int).Div(rawBaseReward, totalBaseRewardWeight)
+		}
+
+		// Calculate raw tx reward
+		rawTxReward := big.NewInt(0)
+		if txRewardWeights[i].Cmp(big.NewInt(0)) > 0 {
+			// Calculate fee reward except burntFeeShare and treasuryFeeShare
+			txReward := new(big.Int).Mul(epochFee, txRewardWeights[i])
+			txReward = new(big.Int).Div(txReward, totalTxRewardWeight)
+
+			// Subtract burnt and treasury shares
+			shareToSubtract := new(big.Int).Add(burntFeeShareBigInt, treasuryFeeShareBigInt)
+			shareToKeep := new(big.Int).Sub(decimalUnitBigInt, shareToSubtract)
+
+			rawTxReward = new(big.Int).Mul(txReward, shareToKeep)
+			rawTxReward = new(big.Int).Div(rawTxReward, decimalUnitBigInt)
+		}
+
+		// Calculate total raw reward
+		rawReward := new(big.Int).Add(rawBaseReward, rawTxReward)
+
+		// Get validator auth address
+		validatorAuthSlot, slotGasUsed := getValidatorAuthSlot(validatorID)
+		gasUsed += slotGasUsed
+
+		validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorAuthSlot)))
+		gasUsed += SloadGasCost
+		validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
+
+		// Calculate validator's commission
+		commissionRewardFull := new(big.Int).Mul(rawReward, validatorCommissionBigInt)
+		commissionRewardFull = new(big.Int).Div(commissionRewardFull, decimalUnitBigInt)
+
+		// Get validator's self-stake
+		selfStakeSlot, slotGasUsed := getStakeSlot(validatorAuthAddr, validatorID)
+		gasUsed += slotGasUsed
+
+		selfStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(selfStakeSlot)))
+		gasUsed += SloadGasCost
+		selfStakeBigInt := new(big.Int).SetBytes(selfStake.Bytes())
+
+		// Process commission reward if self-stake is not zero
+		if selfStakeBigInt.Cmp(big.NewInt(0)) != 0 {
+			// Get locked stake
+			lockedStakeSlot, slotGasUsed := getLockedStakeSlot(validatorAuthAddr, validatorID)
+			gasUsed += slotGasUsed
+
+			lockedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(lockedStakeSlot)))
+			gasUsed += SloadGasCost
+			lockedStakeBigInt := new(big.Int).SetBytes(lockedStake.Bytes())
+
+			// Calculate locked and unlocked commission rewards
+			lCommissionRewardFull := new(big.Int).Mul(commissionRewardFull, lockedStakeBigInt)
+			lCommissionRewardFull = new(big.Int).Div(lCommissionRewardFull, selfStakeBigInt)
+
+			// Unused in current implementation, but kept for future use
+			_ = new(big.Int).Sub(commissionRewardFull, lCommissionRewardFull)
+
+			// Get lockup duration
+			lockupDurationSlot, slotGasUsed := getLockupDurationSlot(validatorAuthAddr, validatorID)
+			gasUsed += slotGasUsed
+
+			lockupDuration := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(lockupDurationSlot)))
+			gasUsed += SloadGasCost
+			// Unused in current implementation, but kept for future use
+			_ = new(big.Int).SetBytes(lockupDuration.Bytes())
+
+			// Scale lockup rewards
+			// TODO: Implement _scaleLockupReward
+			// For now, we'll just stash the rewards directly
+
+			// Update rewards stash
+			rewardsStashSlot, slotGasUsed := getRewardsStashSlot(validatorAuthAddr, validatorID)
+			gasUsed += slotGasUsed
+
+			// TODO: Implement proper rewards stashing with lockup scaling
+			// For now, just add the commission reward to the stash
+			rewardsStash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(rewardsStashSlot)))
+			gasUsed += SloadGasCost
+			rewardsStashBigInt := new(big.Int).SetBytes(rewardsStash.Bytes())
+
+			newRewardsStash := new(big.Int).Add(rewardsStashBigInt, commissionRewardFull)
+			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(rewardsStashSlot)), common.BigToHash(newRewardsStash))
+			gasUsed += SstoreGasCost
+
+			// Update stashed lockup rewards
+			stashedLockupRewardsSlot, slotGasUsed := getStashedLockupRewardsSlot(validatorAuthAddr, validatorID)
+			gasUsed += slotGasUsed
+
+			stashedLockupRewards := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(stashedLockupRewardsSlot)))
+			gasUsed += SloadGasCost
+			stashedLockupRewardsBigInt := new(big.Int).SetBytes(stashedLockupRewards.Bytes())
+
+			newStashedLockupRewards := new(big.Int).Add(stashedLockupRewardsBigInt, commissionRewardFull)
+			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(stashedLockupRewardsSlot)), common.BigToHash(newStashedLockupRewards))
+			gasUsed += SstoreGasCost
+		}
+
+		// Calculate delegators' reward
+		delegatorsReward := new(big.Int).Sub(rawReward, commissionRewardFull)
+
+		// Get validator's received stake
+		receivedStakeSlot, slotGasUsed := getValidatorReceivedStakeSlot(validatorID)
+		gasUsed += slotGasUsed
+
+		receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(receivedStakeSlot)))
+		gasUsed += SloadGasCost
+		receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
+
+		// Calculate reward per token
+		rewardPerToken := big.NewInt(0)
+		if receivedStakeBigInt.Cmp(big.NewInt(0)) != 0 {
+			rewardPerToken = new(big.Int).Mul(delegatorsReward, decimalUnitBigInt)
+			rewardPerToken = new(big.Int).Div(rewardPerToken, receivedStakeBigInt)
+		}
+
+		// Update accumulated reward per token
+		accumulatedRewardPerTokenSlot, slotGasUsed := getEpochValidatorAccumulatedRewardPerTokenSlot(currentEpoch, validatorID)
+		gasUsed += slotGasUsed
+
+		prevAccumulatedRewardPerTokenSlot, slotGasUsed := getEpochValidatorAccumulatedRewardPerTokenSlot(prevEpoch, validatorID)
+		gasUsed += slotGasUsed
+
+		prevAccumulatedRewardPerToken := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(prevAccumulatedRewardPerTokenSlot)))
+		gasUsed += SloadGasCost
+		prevAccumulatedRewardPerTokenBigInt := new(big.Int).SetBytes(prevAccumulatedRewardPerToken.Bytes())
+
+		newAccumulatedRewardPerToken := new(big.Int).Add(prevAccumulatedRewardPerTokenBigInt, rewardPerToken)
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(accumulatedRewardPerTokenSlot)), common.BigToHash(newAccumulatedRewardPerToken))
+		gasUsed += SstoreGasCost
+
+		// Update accumulated originated txs fee
+		accumulatedOriginatedTxsFeeSlot, slotGasUsed := getEpochValidatorAccumulatedOriginatedTxsFeeSlot(currentEpoch, validatorID)
+		gasUsed += slotGasUsed
+
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(accumulatedOriginatedTxsFeeSlot)), common.BigToHash(accumulatedOriginatedTxsFee[i]))
+		gasUsed += SstoreGasCost
+
+		// Update accumulated uptime
+		accumulatedUptimeSlot, slotGasUsed := getEpochValidatorAccumulatedUptimeSlot(currentEpoch, validatorID)
+		gasUsed += slotGasUsed
+
+		prevAccumulatedUptimeSlot, slotGasUsed := getEpochValidatorAccumulatedUptimeSlot(prevEpoch, validatorID)
+		gasUsed += slotGasUsed
+
+		prevAccumulatedUptime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(prevAccumulatedUptimeSlot)))
+		gasUsed += SloadGasCost
+		prevAccumulatedUptimeBigInt := new(big.Int).SetBytes(prevAccumulatedUptime.Bytes())
+
+		newAccumulatedUptime := new(big.Int).Add(prevAccumulatedUptimeBigInt, uptimes[i])
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(accumulatedUptimeSlot)), common.BigToHash(newAccumulatedUptime))
+		gasUsed += SstoreGasCost
+	}
+
+	// Update epoch fee
+	epochFeeSlot := currentEpochSnapshotSlot + epochFeeOffset
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(epochFeeSlot)), common.BigToHash(epochFee))
+	gasUsed += SstoreGasCost
+
+	// Update total base reward weight
+	totalBaseRewardSlot := currentEpochSnapshotSlot + totalBaseRewardOffset
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalBaseRewardSlot)), common.BigToHash(totalBaseRewardWeight))
+	gasUsed += SstoreGasCost
+
+	// Update total tx reward weight
+	totalTxRewardSlot := currentEpochSnapshotSlot + totalTxRewardOffset
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalTxRewardSlot)), common.BigToHash(totalTxRewardWeight))
+	gasUsed += SstoreGasCost
+
+	// Update total supply
+	totalSupply := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalSupplySlot)))
+	gasUsed += SloadGasCost
+	totalSupplyBigInt := new(big.Int).SetBytes(totalSupply.Bytes())
+
+	// Subtract epoch fee from total supply
+	if totalSupplyBigInt.Cmp(epochFee) > 0 {
+		totalSupplyBigInt = new(big.Int).Sub(totalSupplyBigInt, epochFee)
+	} else {
+		totalSupplyBigInt = big.NewInt(0)
+	}
+
+	// Update total supply
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalSupplySlot)), common.BigToHash(totalSupplyBigInt))
+	gasUsed += SstoreGasCost
+
+	// Transfer 10% of fees to treasury if treasury address is set
+	treasuryAddress := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(treasuryAddressSlot)))
+	gasUsed += SloadGasCost
+	treasuryAddressBytes := treasuryAddress.Bytes()
+
+	// Check if treasury address is not zero
+	emptyAddr := common.Address{}
+	treasuryAddr := common.BytesToAddress(treasuryAddressBytes)
+	if treasuryAddr.Cmp(emptyAddr) != 0 {
+		// Calculate fee share
+		feeShare := new(big.Int).Mul(epochFee, treasuryFeeShareBigInt)
+		feeShare = new(big.Int).Div(feeShare, decimalUnitBigInt)
+
+		// Mint native token
+		// TODO: Implement _mintNativeToken
+		// For now, we'll just update the total supply
+		totalSupplyBigInt = new(big.Int).Add(totalSupplyBigInt, feeShare)
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalSupplySlot)), common.BigToHash(totalSupplyBigInt))
+		gasUsed += SstoreGasCost
+
+		// Transfer to treasury
+		// TODO: Implement proper transfer
+		// For now, we'll just emit a log
+		topics := []common.Hash{
+			common.BytesToHash([]byte("TreasuryTransfer")),
+			common.BytesToHash(treasuryAddr.Bytes()),
+		}
+		data := common.BigToHash(feeShare).Bytes()
+
+		evm.SfcStateDB.AddLog(&types.Log{
+			Address: ContractAddress,
+			Topics:  topics,
+			Data:    data,
+			BlockNumber: evm.Context.BlockNumber.Uint64(),
+		})
+	}
+
+	return gasUsed, nil
 }
 
 // _sealEpoch_minGasPrice is an internal function to seal minimum gas price in an epoch
-func handle_sealEpoch_minGasPrice(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement _sealEpoch_minGasPrice handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+func _sealEpoch_minGasPrice(evm *vm.EVM, epochDuration *big.Int, epochGas *big.Int) (uint64, error) {
+	// Initialize gas used
+	var gasUsed uint64 = 0
+
+	// Get the target gas power per second from the constants manager
+	targetGasPowerPerSecond, cmGasUsed, err := callConstantManagerMethod(evm, "targetGasPowerPerSecond")
+	gasUsed += cmGasUsed
+	if err != nil || len(targetGasPowerPerSecond) == 0 {
+		return gasUsed, err
+	}
+	targetGasPowerPerSecondBigInt, ok := targetGasPowerPerSecond[0].(*big.Int)
+	if !ok {
+		return gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Calculate target epoch gas
+	targetEpochGas := new(big.Int).Mul(epochDuration, targetGasPowerPerSecondBigInt)
+	targetEpochGas = new(big.Int).Add(targetEpochGas, big.NewInt(1)) // Add 1 to avoid division by zero
+
+	// Get the decimal unit from the constants manager
+	decimalUnit, cmGasUsed, err := callConstantManagerMethod(evm, "unit")
+	gasUsed += cmGasUsed
+	if err != nil || len(decimalUnit) == 0 {
+		return gasUsed, err
+	}
+	decimalUnitBigInt, ok := decimalUnit[0].(*big.Int)
+	if !ok {
+		return gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Calculate gas price delta ratio
+	gasPriceDeltaRatio := new(big.Int).Mul(epochGas, decimalUnitBigInt)
+	gasPriceDeltaRatio = new(big.Int).Div(gasPriceDeltaRatio, targetEpochGas)
+
+	// Get the gas price balancing counterweight from the constants manager
+	counterweight, cmGasUsed, err := callConstantManagerMethod(evm, "gasPriceBalancingCounterweight")
+	gasUsed += cmGasUsed
+	if err != nil || len(counterweight) == 0 {
+		return gasUsed, err
+	}
+	counterweightBigInt, ok := counterweight[0].(*big.Int)
+	if !ok {
+		return gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Scale down the change speed
+	// gasPriceDeltaRatio = (epochDuration * gasPriceDeltaRatio + counterweight * Decimal.unit()) / (epochDuration + counterweight)
+	term1 := new(big.Int).Mul(epochDuration, gasPriceDeltaRatio)
+	term2 := new(big.Int).Mul(counterweightBigInt, decimalUnitBigInt)
+	numerator := new(big.Int).Add(term1, term2)
+	denominator := new(big.Int).Add(epochDuration, counterweightBigInt)
+	gasPriceDeltaRatio = new(big.Int).Div(numerator, denominator)
+
+	// Limit the max/min possible delta in one epoch
+	// TODO: Implement GP.trimGasPriceChangeRatio
+	// For now, we'll use a simple approach to limit the ratio between 0.5 and 2.0
+	minRatio := new(big.Int).Div(decimalUnitBigInt, big.NewInt(2)) // 0.5 * unit
+	maxRatio := new(big.Int).Mul(decimalUnitBigInt, big.NewInt(2)) // 2.0 * unit
+
+	if gasPriceDeltaRatio.Cmp(minRatio) < 0 {
+		gasPriceDeltaRatio = minRatio
+	} else if gasPriceDeltaRatio.Cmp(maxRatio) > 0 {
+		gasPriceDeltaRatio = maxRatio
+	}
+
+	// Get the current min gas price
+	minGasPrice := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(minGasPriceSlot)))
+	gasUsed += SloadGasCost
+	minGasPriceBigInt := new(big.Int).SetBytes(minGasPrice.Bytes())
+
+	// Apply the ratio
+	newMinGasPrice := new(big.Int).Mul(minGasPriceBigInt, gasPriceDeltaRatio)
+	newMinGasPrice = new(big.Int).Div(newMinGasPrice, decimalUnitBigInt)
+
+	// Limit the max/min possible minGasPrice
+	// TODO: Implement GP.trimMinGasPrice
+	// For now, we'll use a simple approach to limit the min gas price between 1 gwei and 1000 gwei
+	minGasPriceLimit := big.NewInt(1000000000)    // 1 gwei
+	maxGasPriceLimit := big.NewInt(1000000000000) // 1000 gwei
+
+	if newMinGasPrice.Cmp(minGasPriceLimit) < 0 {
+		newMinGasPrice = minGasPriceLimit
+	} else if newMinGasPrice.Cmp(maxGasPriceLimit) > 0 {
+		newMinGasPrice = maxGasPriceLimit
+	}
+
+	// Apply new minGasPrice
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(minGasPriceSlot)), common.BigToHash(newMinGasPrice))
+	gasUsed += SstoreGasCost
+
+	return gasUsed, nil
 }
 
 // _calcRawValidatorEpochBaseReward is an internal function to calculate raw validator epoch base reward

@@ -304,6 +304,8 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			evm.IsSfcCorrupted("call", caller.Address(), addr)
 			sfcDiffCallMeter.Mark(int64(evmExecutionElapsed - sfcExecutionElapsed))
 			sfcCallGauge.Inc(1)
+			log.Info("Average time diff per call", "evm", evmExecutionElapsed,
+				"sfc", sfcExecutionElapsed, "diff", evmExecutionElapsed-sfcExecutionElapsed)
 		}
 	}
 	// When an error was returned by the EVM or when setting the creation code

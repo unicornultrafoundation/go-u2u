@@ -19,6 +19,7 @@ package state
 import (
 	"bytes"
 	"fmt"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"io"
 	"math/big"
 	"time"
@@ -310,9 +311,13 @@ func (s *stateObject) setState(key, value common.Hash) {
 // finalise moves all dirty storage slots into the pending area to be hashed or
 // committed later. It is invoked at the end of every transaction.
 func (s *stateObject) finalise(prefetch bool) {
+	var isHeavyLog = s.address.Cmp(common.HexToAddress("0xfc00face00000000000000000000000000000000")) == 0
 	slotsToPrefetch := make([][]byte, 0, len(s.dirtyStorage))
 	for key, value := range s.dirtyStorage {
 		s.pendingStorage[key] = value
+		if isHeavyLog {
+			log.Info("@@@@@@ stateObject finalise", "key", key.Hex(), "value", value.Hex())
+		}
 		if value != s.originStorage[key] {
 			slotsToPrefetch = append(slotsToPrefetch, common.CopyBytes(key[:])) // Copy needed for closure
 		}
@@ -329,6 +334,10 @@ func (s *stateObject) finalise(prefetch bool) {
 // It will return nil if the trie has not been loaded and no changes have been made
 func (s *stateObject) updateTrie(db Database) Trie {
 	// Make sure all dirty slots are finalized into the pending storage area
+	var isHeavyLog = s.address.Cmp(common.HexToAddress("0xfc00face00000000000000000000000000000000")) == 0
+	if isHeavyLog {
+		log.Info("@@@@ updateTrie -> finalise")
+	}
 	s.finalise(false) // Don't prefetch any more, pull directly if need be
 	if len(s.pendingStorage) == 0 {
 		return s.trie
@@ -383,6 +392,10 @@ func (s *stateObject) updateTrie(db Database) Trie {
 
 // UpdateRoot sets the trie root to the current root hash of
 func (s *stateObject) updateRoot(db Database) {
+	var isHeavyLog = s.address.Cmp(common.HexToAddress("0xfc00face00000000000000000000000000000000")) == 0
+	if isHeavyLog {
+		log.Info("@@@@@@@ updateRoot -> updateTrie")
+	}
 	// If nothing changed, don't bother with hashing anything
 	if s.updateTrie(db) == nil {
 		return
@@ -392,11 +405,18 @@ func (s *stateObject) updateRoot(db Database) {
 		defer func(start time.Time) { s.db.StorageHashes += time.Since(start) }(time.Now())
 	}
 	s.data.Root = s.trie.Hash()
+	if isHeavyLog {
+		log.Info("updateRoot", "newAddrRoot", s.data.Root.Hex())
+	}
 }
 
 // CommitTrie the storage trie of the object to db.
 // This updates the trie root.
 func (s *stateObject) CommitTrie(db Database) error {
+	var isHeavyLog = s.address.Cmp(common.HexToAddress("0xfc00face00000000000000000000000000000000")) == 0
+	if isHeavyLog {
+		log.Info("@@@@@@@ CommitTrie -> updateTrie")
+	}
 	// If nothing changed, don't bother with hashing anything
 	if s.updateTrie(db) == nil {
 		return nil

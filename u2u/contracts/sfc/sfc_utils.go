@@ -958,7 +958,7 @@ func getCurrentEpoch(evm *vm.EVM) (*big.Int, uint64, error) {
 }
 
 // getEpochSnapshotSlot calculates the storage slot for an epoch snapshot
-func getEpochSnapshotSlot(epoch *big.Int) (int64, uint64) {
+func getEpochSnapshotSlot(epoch *big.Int) (*big.Int, uint64) {
 	// Initialize gas used
 	var gasUsed uint64 = 0
 
@@ -973,11 +973,26 @@ func getEpochSnapshotSlot(epoch *big.Int) (int64, uint64) {
 	// Calculate the hash - add gas cost for hashing
 	hash := crypto.Keccak256(hashInput)
 	gasUsed += HashGasCost
+	log.Trace("SFC: Epoch Snapshot Slot", "hashslot", common.Bytes2Hex(hash))
 
 	// Convert the hash to a big.Int
 	slot := new(big.Int).SetBytes(hash)
+	return slot, gasUsed
+}
 
-	return slot.Int64(), gasUsed
+// getEpochSnapshotFieldSlot calculates the storage slot for a field in an epoch snapshot
+func getEpochSnapshotFieldSlot(epoch *big.Int, fieldOffset int64) (*big.Int, uint64) {
+	// Initialize gas used
+	var gasUsed uint64 = 0
+
+	// Get the base slot for the epoch snapshot
+	baseSlot, slotGasUsed := getEpochSnapshotSlot(epoch)
+	gasUsed += slotGasUsed
+
+	// Add the field offset to the base slot
+	fieldSlot := new(big.Int).Add(baseSlot, big.NewInt(fieldOffset))
+
+	return fieldSlot, gasUsed
 }
 
 // getOfflinePenaltyThresholdBlocksNum gets the offline penalty threshold blocks number from the constants manager
@@ -1215,7 +1230,7 @@ func getEpochValidatorOfflineTimeSlot(epoch *big.Int, validatorID *big.Int) (int
 
 	// Create the inner hash input: abi.encode(offlineTimeOffset, epochSnapshotSlot)
 	offlineTimeOffsetBytes := common.LeftPadBytes(big.NewInt(offlineTimeOffset).Bytes(), 32) // Left-pad to 32 bytes
-	epochSnapshotSlotBytes := common.LeftPadBytes(big.NewInt(epochSnapshotSlot).Bytes(), 32) // Left-pad to 32 bytes
+	epochSnapshotSlotBytes := common.LeftPadBytes(epochSnapshotSlot.Bytes(), 32)             // Left-pad to 32 bytes
 	innerHashInput := append(offlineTimeOffsetBytes, epochSnapshotSlotBytes...)
 
 	// Calculate the inner hash - add gas cost for hashing
@@ -1250,7 +1265,7 @@ func getEpochValidatorOfflineBlocksSlot(epoch *big.Int, validatorID *big.Int) (i
 
 	// Create the inner hash input: abi.encode(offlineBlocksOffset, epochSnapshotSlot)
 	offlineBlocksOffsetBytes := common.LeftPadBytes(big.NewInt(offlineBlocksOffset).Bytes(), 32) // Left-pad to 32 bytes
-	epochSnapshotSlotBytes := common.LeftPadBytes(big.NewInt(epochSnapshotSlot).Bytes(), 32)     // Left-pad to 32 bytes
+	epochSnapshotSlotBytes := common.LeftPadBytes(epochSnapshotSlot.Bytes(), 32)                 // Left-pad to 32 bytes
 	innerHashInput := append(offlineBlocksOffsetBytes, epochSnapshotSlotBytes...)
 
 	// Calculate the inner hash - add gas cost for hashing
@@ -1285,7 +1300,7 @@ func getEpochValidatorAccumulatedRewardPerTokenSlot(epoch *big.Int, validatorID 
 
 	// Create the inner hash input: abi.encode(accumulatedRewardPerTokenOffset, epochSnapshotSlot)
 	accumulatedRewardPerTokenOffsetBytes := common.LeftPadBytes(big.NewInt(accumulatedRewardPerTokenOffset).Bytes(), 32) // Left-pad to 32 bytes
-	epochSnapshotSlotBytes := common.LeftPadBytes(big.NewInt(epochSnapshotSlot).Bytes(), 32)                             // Left-pad to 32 bytes
+	epochSnapshotSlotBytes := common.LeftPadBytes(epochSnapshotSlot.Bytes(), 32)                                         // Left-pad to 32 bytes
 	innerHashInput := append(accumulatedRewardPerTokenOffsetBytes, epochSnapshotSlotBytes...)
 
 	// Calculate the inner hash - add gas cost for hashing
@@ -1320,7 +1335,7 @@ func getEpochValidatorAccumulatedUptimeSlot(epoch *big.Int, validatorID *big.Int
 
 	// Create the inner hash input: abi.encode(accumulatedUptimeOffset, epochSnapshotSlot)
 	accumulatedUptimeOffsetBytes := common.LeftPadBytes(big.NewInt(accumulatedUptimeOffset).Bytes(), 32) // Left-pad to 32 bytes
-	epochSnapshotSlotBytes := common.LeftPadBytes(big.NewInt(epochSnapshotSlot).Bytes(), 32)             // Left-pad to 32 bytes
+	epochSnapshotSlotBytes := common.LeftPadBytes(epochSnapshotSlot.Bytes(), 32)                         // Left-pad to 32 bytes
 	innerHashInput := append(accumulatedUptimeOffsetBytes, epochSnapshotSlotBytes...)
 
 	// Calculate the inner hash - add gas cost for hashing
@@ -1355,7 +1370,7 @@ func getEpochValidatorAccumulatedOriginatedTxsFeeSlot(epoch *big.Int, validatorI
 
 	// Create the inner hash input: abi.encode(accumulatedOriginatedTxsFeeOffset, epochSnapshotSlot)
 	accumulatedOriginatedTxsFeeOffsetBytes := common.LeftPadBytes(big.NewInt(accumulatedOriginatedTxsFeeOffset).Bytes(), 32) // Left-pad to 32 bytes
-	epochSnapshotSlotBytes := common.LeftPadBytes(big.NewInt(epochSnapshotSlot).Bytes(), 32)                                 // Left-pad to 32 bytes
+	epochSnapshotSlotBytes := common.LeftPadBytes(epochSnapshotSlot.Bytes(), 32)                                             // Left-pad to 32 bytes
 	innerHashInput := append(accumulatedOriginatedTxsFeeOffsetBytes, epochSnapshotSlotBytes...)
 
 	// Calculate the inner hash - add gas cost for hashing
@@ -1390,7 +1405,7 @@ func getEpochValidatorReceivedStakeSlot(epoch *big.Int, validatorID *big.Int) (i
 
 	// Create the inner hash input: abi.encode(receiveStakeOffset, epochSnapshotSlot)
 	receiveStakeOffsetBytes := common.LeftPadBytes(big.NewInt(receiveStakeOffset).Bytes(), 32) // Left-pad to 32 bytes
-	epochSnapshotSlotBytes := common.LeftPadBytes(big.NewInt(epochSnapshotSlot).Bytes(), 32)   // Left-pad to 32 bytes
+	epochSnapshotSlotBytes := common.LeftPadBytes(epochSnapshotSlot.Bytes(), 32)               // Left-pad to 32 bytes
 	innerHashInput := append(receiveStakeOffsetBytes, epochSnapshotSlotBytes...)
 
 	// Calculate the inner hash - add gas cost for hashing

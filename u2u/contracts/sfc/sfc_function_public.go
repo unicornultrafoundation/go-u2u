@@ -1599,8 +1599,8 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 
 	// Get the validator IDs for the current epoch
 	// For a dynamic array in a struct, we first get the length from the slot
-	validatorIDsSlot := currentEpochSnapshotSlot + validatorIDsOffset
-	validatorIDsLengthHash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorIDsSlot)))
+	validatorIDsSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(validatorIDsOffset))
+	validatorIDsLengthHash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorIDsSlot))
 	gasUsed += SloadGasCost
 
 	// Convert the length hash to a big.Int
@@ -1608,7 +1608,7 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 
 	// Calculate the base slot for the array elements
 	// The array elements start at keccak256(slot)
-	validatorIDsBaseSlotBytes := crypto.Keccak256(common.BigToHash(big.NewInt(validatorIDsSlot)).Bytes())
+	validatorIDsBaseSlotBytes := crypto.Keccak256(common.BigToHash(validatorIDsSlot).Bytes())
 	gasUsed += HashGasCost
 	validatorIDsBaseSlot := new(big.Int).SetBytes(validatorIDsBaseSlotBytes)
 
@@ -1646,8 +1646,8 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	gasUsed += slotGasUsed
 
 	// Get the end time of the previous epoch
-	prevEndTimeSlot := prevEpochSnapshotSlot + endTimeOffset
-	prevEndTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(prevEndTimeSlot)))
+	prevEndTimeSlot := new(big.Int).Add(prevEpochSnapshotSlot, big.NewInt(endTimeOffset))
+	prevEndTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(prevEndTimeSlot))
 	gasUsed += SloadGasCost
 	prevEndTimeBigInt := new(big.Int).SetBytes(prevEndTime.Bytes())
 
@@ -1677,8 +1677,8 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	gasUsed += SstoreGasCost
 
 	// Update epoch snapshot end time (snapshot.endTime = _now() in Solidity)
-	endTimeSlot := currentEpochSnapshotSlot + endTimeOffset
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(endTimeSlot)), common.BigToHash(evm.Context.Time))
+	endTimeSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(endTimeOffset))
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(endTimeSlot), common.BigToHash(evm.Context.Time))
 	gasUsed += SstoreGasCost
 
 	// Get the base reward per second from constants manager
@@ -1693,8 +1693,8 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	}
 
 	// Update epoch snapshot base reward per second (snapshot.baseRewardPerSecond = c.baseRewardPerSecond() in Solidity)
-	baseRewardPerSecondSlot := currentEpochSnapshotSlot + baseRewardPerSecondOffset
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(baseRewardPerSecondSlot)), common.BigToHash(baseRewardPerSecondBigInt))
+	baseRewardPerSecondSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(baseRewardPerSecondOffset))
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(baseRewardPerSecondSlot), common.BigToHash(baseRewardPerSecondBigInt))
 	gasUsed += SstoreGasCost
 
 	// Get the total supply
@@ -1703,8 +1703,8 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	totalSupplyBigInt := new(big.Int).SetBytes(totalSupply.Bytes())
 
 	// Update epoch snapshot total supply (snapshot.totalSupply = totalSupply in Solidity)
-	totalSupplySnapshotSlot := currentEpochSnapshotSlot + totalSupplyOffset
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalSupplySnapshotSlot)), common.BigToHash(totalSupplyBigInt))
+	totalSupplySnapshotSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(totalSupplyOffset))
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(totalSupplySnapshotSlot), common.BigToHash(totalSupplyBigInt))
 	gasUsed += SstoreGasCost
 
 	return nil, gasUsed, nil
@@ -1769,14 +1769,14 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 
 	// Set the validator IDs for the epoch snapshot
 	// For a dynamic array in a struct, we first set the length at the slot
-	validatorIDsSlot := epochSnapshotSlot + validatorIDsOffset
+	validatorIDsSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(validatorIDsOffset))
 	validatorIDsLength := big.NewInt(int64(len(nextValidatorIDs)))
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorIDsSlot)), common.BigToHash(validatorIDsLength))
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorIDsSlot), common.BigToHash(validatorIDsLength))
 	gasUsed += SstoreGasCost
 
 	// Calculate the base slot for the array elements
 	// The array elements start at keccak256(slot)
-	validatorIDsBaseSlotBytes := crypto.Keccak256(common.BigToHash(big.NewInt(validatorIDsSlot)).Bytes())
+	validatorIDsBaseSlotBytes := crypto.Keccak256(common.BigToHash(validatorIDsSlot).Bytes())
 	gasUsed += HashGasCost
 	validatorIDsBaseSlot := new(big.Int).SetBytes(validatorIDsBaseSlotBytes)
 
@@ -1791,8 +1791,8 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 	}
 
 	// Set the total stake for the epoch snapshot
-	totalStakeSlot := epochSnapshotSlot + totalStakeOffset
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalStakeSlot)), common.BigToHash(totalStake))
+	totalStakeSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(totalStakeOffset))
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(totalStakeSlot), common.BigToHash(totalStake))
 	gasUsed += SstoreGasCost
 
 	// Update the minimum gas price in the node

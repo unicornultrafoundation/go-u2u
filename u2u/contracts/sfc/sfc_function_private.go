@@ -6,6 +6,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/crypto"
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/params"
 )
@@ -139,12 +140,23 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 	// Initialize gas used
 	var gasUsed uint64 = 0
 
-	// Get the epoch snapshot slots
+	// Declare variables to avoid redeclaration issues
+	var accumulatedOriginatedTxsFeeOffsetBytes []byte
+	var accumulatedRewardPerTokenOffsetBytes []byte
+	var accumulatedUptimeOffsetBytes []byte
+	var currentEpochSnapshotSlotBytes []byte
+	var prevEpochSnapshotSlotBytes []byte
+	var innerHashInput []byte
+	var innerHash []byte
+	var validatorIDBytes []byte
+	var outerHashInput []byte
+	var outerHash []byte
+
+	// Pre-calculate the epoch snapshot base slots for current and previous epochs
 	currentEpochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(currentEpoch)
 	gasUsed += slotGasUsed
 
-	// Get previous epoch snapshot slot (used later for calculations)
-	_, slotGasUsed = getEpochSnapshotSlot(prevEpoch)
+	prevEpochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(prevEpoch)
 	gasUsed += slotGasUsed
 
 	// Initialize context for rewards calculation
@@ -157,8 +169,20 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 	// Calculate tx reward weights and epoch fee
 	for i, validatorID := range validatorIDs {
 		// Get previous accumulated originated txs fee
-		prevAccumulatedTxsFeeSlot, slotGasUsed := getEpochValidatorAccumulatedOriginatedTxsFeeSlot(prevEpoch, validatorID)
-		gasUsed += slotGasUsed
+		// For a mapping within a struct, we need to calculate the slot as:
+		// keccak256(abi.encode(validatorID, keccak256(abi.encode(accumulatedOriginatedTxsFeeOffset, prevEpochSnapshotSlot))))
+		accumulatedOriginatedTxsFeeOffsetBytes = common.LeftPadBytes(big.NewInt(accumulatedOriginatedTxsFeeOffset).Bytes(), 32)
+		prevEpochSnapshotSlotBytes = common.LeftPadBytes(prevEpochSnapshotSlot.Bytes(), 32)
+		innerHashInput = append(accumulatedOriginatedTxsFeeOffsetBytes, prevEpochSnapshotSlotBytes...)
+		innerHash = crypto.Keccak256(innerHashInput)
+		gasUsed += HashGasCost
+
+		validatorIDBytes = common.LeftPadBytes(validatorID.Bytes(), 32)
+		outerHashInput = append(validatorIDBytes, innerHash...)
+		outerHash = crypto.Keccak256(outerHashInput)
+		gasUsed += HashGasCost
+
+		prevAccumulatedTxsFeeSlot := new(big.Int).SetBytes(outerHash).Int64()
 
 		prevAccumulatedTxsFee := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(prevAccumulatedTxsFeeSlot)))
 		gasUsed += SloadGasCost
@@ -381,11 +405,35 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		}
 
 		// Update accumulated reward per token
-		accumulatedRewardPerTokenSlot, slotGasUsed := getEpochValidatorAccumulatedRewardPerTokenSlot(currentEpoch, validatorID)
-		gasUsed += slotGasUsed
+		// For a mapping within a struct, we need to calculate the slot as:
+		// keccak256(abi.encode(validatorID, keccak256(abi.encode(accumulatedRewardPerTokenOffset, currentEpochSnapshotSlot))))
+		// Calculate slot for current epoch
+		accumulatedRewardPerTokenOffsetBytes = common.LeftPadBytes(big.NewInt(accumulatedRewardPerTokenOffset).Bytes(), 32)
+		currentEpochSnapshotSlotBytes = common.LeftPadBytes(currentEpochSnapshotSlot.Bytes(), 32)
+		innerHashInput = append(accumulatedRewardPerTokenOffsetBytes, currentEpochSnapshotSlotBytes...)
+		innerHash = crypto.Keccak256(innerHashInput)
+		gasUsed += HashGasCost
 
-		prevAccumulatedRewardPerTokenSlot, slotGasUsed := getEpochValidatorAccumulatedRewardPerTokenSlot(prevEpoch, validatorID)
-		gasUsed += slotGasUsed
+		validatorIDBytes = common.LeftPadBytes(validatorID.Bytes(), 32)
+		outerHashInput = append(validatorIDBytes, innerHash...)
+		outerHash = crypto.Keccak256(outerHashInput)
+		gasUsed += HashGasCost
+
+		accumulatedRewardPerTokenSlot := new(big.Int).SetBytes(outerHash).Int64()
+
+		// For the previous epoch
+		accumulatedRewardPerTokenOffsetBytes = common.LeftPadBytes(big.NewInt(accumulatedRewardPerTokenOffset).Bytes(), 32)
+		prevEpochSnapshotSlotBytes = common.LeftPadBytes(prevEpochSnapshotSlot.Bytes(), 32)
+		innerHashInput = append(accumulatedRewardPerTokenOffsetBytes, prevEpochSnapshotSlotBytes...)
+		innerHash = crypto.Keccak256(innerHashInput)
+		gasUsed += HashGasCost
+
+		validatorIDBytes = common.LeftPadBytes(validatorID.Bytes(), 32)
+		outerHashInput = append(validatorIDBytes, innerHash...)
+		outerHash = crypto.Keccak256(outerHashInput)
+		gasUsed += HashGasCost
+
+		prevAccumulatedRewardPerTokenSlot := new(big.Int).SetBytes(outerHash).Int64()
 
 		prevAccumulatedRewardPerToken := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(prevAccumulatedRewardPerTokenSlot)))
 		gasUsed += SloadGasCost
@@ -396,18 +444,54 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		gasUsed += SstoreGasCost
 
 		// Update accumulated originated txs fee
-		accumulatedOriginatedTxsFeeSlot, slotGasUsed := getEpochValidatorAccumulatedOriginatedTxsFeeSlot(currentEpoch, validatorID)
-		gasUsed += slotGasUsed
+		// For a mapping within a struct, we need to calculate the slot as:
+		// keccak256(abi.encode(validatorID, keccak256(abi.encode(accumulatedOriginatedTxsFeeOffset, currentEpochSnapshotSlot))))
+		accumulatedOriginatedTxsFeeOffsetBytes = common.LeftPadBytes(big.NewInt(accumulatedOriginatedTxsFeeOffset).Bytes(), 32)
+		currentEpochSnapshotSlotBytes = common.LeftPadBytes(currentEpochSnapshotSlot.Bytes(), 32)
+		innerHashInput = append(accumulatedOriginatedTxsFeeOffsetBytes, currentEpochSnapshotSlotBytes...)
+		innerHash = crypto.Keccak256(innerHashInput)
+		gasUsed += HashGasCost
+
+		validatorIDBytes = common.LeftPadBytes(validatorID.Bytes(), 32)
+		outerHashInput = append(validatorIDBytes, innerHash...)
+		outerHash = crypto.Keccak256(outerHashInput)
+		gasUsed += HashGasCost
+
+		accumulatedOriginatedTxsFeeSlot := new(big.Int).SetBytes(outerHash).Int64()
 
 		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(accumulatedOriginatedTxsFeeSlot)), common.BigToHash(accumulatedOriginatedTxsFee[i]))
 		gasUsed += SstoreGasCost
 
 		// Update accumulated uptime
-		accumulatedUptimeSlot, slotGasUsed := getEpochValidatorAccumulatedUptimeSlot(currentEpoch, validatorID)
-		gasUsed += slotGasUsed
+		// For a mapping within a struct, we need to calculate the slot as:
+		// keccak256(abi.encode(validatorID, keccak256(abi.encode(accumulatedUptimeOffset, currentEpochSnapshotSlot))))
+		// Calculate slot for current epoch
+		accumulatedUptimeOffsetBytes = common.LeftPadBytes(big.NewInt(accumulatedUptimeOffset).Bytes(), 32)
+		currentEpochSnapshotSlotBytes = common.LeftPadBytes(currentEpochSnapshotSlot.Bytes(), 32)
+		innerHashInput = append(accumulatedUptimeOffsetBytes, currentEpochSnapshotSlotBytes...)
+		innerHash = crypto.Keccak256(innerHashInput)
+		gasUsed += HashGasCost
 
-		prevAccumulatedUptimeSlot, slotGasUsed := getEpochValidatorAccumulatedUptimeSlot(prevEpoch, validatorID)
-		gasUsed += slotGasUsed
+		validatorIDBytes = common.LeftPadBytes(validatorID.Bytes(), 32)
+		outerHashInput = append(validatorIDBytes, innerHash...)
+		outerHash = crypto.Keccak256(outerHashInput)
+		gasUsed += HashGasCost
+
+		accumulatedUptimeSlot := new(big.Int).SetBytes(outerHash).Int64()
+
+		// For the previous epoch
+		accumulatedUptimeOffsetBytes = common.LeftPadBytes(big.NewInt(accumulatedUptimeOffset).Bytes(), 32)
+		prevEpochSnapshotSlotBytes = common.LeftPadBytes(prevEpochSnapshotSlot.Bytes(), 32)
+		innerHashInput = append(accumulatedUptimeOffsetBytes, prevEpochSnapshotSlotBytes...)
+		innerHash = crypto.Keccak256(innerHashInput)
+		gasUsed += HashGasCost
+
+		validatorIDBytes = common.LeftPadBytes(validatorID.Bytes(), 32)
+		outerHashInput = append(validatorIDBytes, innerHash...)
+		outerHash = crypto.Keccak256(outerHashInput)
+		gasUsed += HashGasCost
+
+		prevAccumulatedUptimeSlot := new(big.Int).SetBytes(outerHash).Int64()
 
 		prevAccumulatedUptime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(prevAccumulatedUptimeSlot)))
 		gasUsed += SloadGasCost
@@ -418,18 +502,18 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		gasUsed += SstoreGasCost
 	}
 	// Update epoch fee
-	epochFeeSlot := currentEpochSnapshotSlot + epochFeeOffset
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(epochFeeSlot)), common.BigToHash(epochFee))
+	epochFeeSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(epochFeeOffset))
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(epochFeeSlot), common.BigToHash(epochFee))
 	gasUsed += SstoreGasCost
 
 	// Update total base reward weight
-	totalBaseRewardSlot := currentEpochSnapshotSlot + totalBaseRewardOffset
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalBaseRewardSlot)), common.BigToHash(totalBaseRewardWeight))
+	totalBaseRewardSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(totalBaseRewardOffset))
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(totalBaseRewardSlot), common.BigToHash(totalBaseRewardWeight))
 	gasUsed += SstoreGasCost
 
 	// Update total tx reward weight
-	totalTxRewardSlot := currentEpochSnapshotSlot + totalTxRewardOffset
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalTxRewardSlot)), common.BigToHash(totalTxRewardWeight))
+	totalTxRewardSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(totalTxRewardOffset))
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(totalTxRewardSlot), common.BigToHash(totalTxRewardWeight))
 	gasUsed += SstoreGasCost
 
 	// Update total supply

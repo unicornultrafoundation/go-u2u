@@ -116,18 +116,43 @@ func _sealEpoch_offline(evm *vm.EVM, validatorIDs []*big.Int, offlineTimes []*bi
 			}
 		}
 
-		// Store offline time in the epoch snapshot
-		offlineTimeSlot, slotGasUsed := getEpochValidatorOfflineTimeSlot(currentEpoch, validatorID)
+		// Store offline time in the epoch snapshot (snapshot.offlineTime[validatorID] = offlineTimes[i])
+		// For a mapping within a struct, we need to calculate the slot as:
+		// keccak256(key . (struct_slot + offset))
+		// First, get the base slot for the struct
+		epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(currentEpoch)
 		gasUsed += slotGasUsed
 
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(offlineTimeSlot)), common.BigToHash(offlineTimes[i]))
+		// Add the offset for the offlineTime mapping within the struct
+		mappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(offlineTimeOffset))
+
+		// Then, calculate the slot for the specific key: keccak256(validatorID . mappingSlot)
+		validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)
+		mappingSlotBytes := common.LeftPadBytes(mappingSlot.Bytes(), 32)
+		outerHashInput := append(validatorIDBytes, mappingSlotBytes...)
+		offlineTimeSlotHash := crypto.Keccak256Hash(outerHashInput)
+		offlineTimeSlot := new(big.Int).SetBytes(offlineTimeSlotHash.Bytes())
+		gasUsed += HashGasCost
+
+		// Set the value in the state
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(offlineTimeSlot), common.BigToHash(offlineTimes[i]))
 		gasUsed += SstoreGasCost
 
-		// Store offline blocks in the epoch snapshot
-		offlineBlocksSlot, slotGasUsed := getEpochValidatorOfflineBlocksSlot(currentEpoch, validatorID)
-		gasUsed += slotGasUsed
+		// Store offline blocks in the epoch snapshot (snapshot.offlineBlocks[validatorID] = offlineBlocks[i])
+		// For a mapping within a struct, we need to calculate the slot as:
+		// keccak256(key . (struct_slot + offset))
+		// Add the offset for the offlineBlocks mapping within the struct
+		blocksMappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(offlineBlocksOffset))
 
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(offlineBlocksSlot)), common.BigToHash(offlineBlocks[i]))
+		// Then, calculate the slot for the specific key: keccak256(validatorID . blocksMappingSlot)
+		blocksMappingSlotBytes := common.LeftPadBytes(blocksMappingSlot.Bytes(), 32)
+		blockHashInput := append(validatorIDBytes, blocksMappingSlotBytes...)
+		offlineBlocksSlotHash := crypto.Keccak256Hash(blockHashInput)
+		offlineBlocksSlot := new(big.Int).SetBytes(offlineBlocksSlotHash.Bytes())
+		gasUsed += HashGasCost
+
+		// Set the value in the state
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(offlineBlocksSlot), common.BigToHash(offlineBlocks[i]))
 		gasUsed += SstoreGasCost
 	}
 
@@ -142,8 +167,6 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 
 	// Declare variables to avoid redeclaration issues
 	var accumulatedOriginatedTxsFeeOffsetBytes []byte
-	var accumulatedRewardPerTokenOffsetBytes []byte
-	var accumulatedUptimeOffsetBytes []byte
 	var currentEpochSnapshotSlotBytes []byte
 	var prevEpochSnapshotSlotBytes []byte
 	var innerHashInput []byte
@@ -182,9 +205,9 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		outerHash = crypto.Keccak256(outerHashInput)
 		gasUsed += HashGasCost
 
-		prevAccumulatedTxsFeeSlot := new(big.Int).SetBytes(outerHash).Int64()
+		prevAccumulatedTxsFeeSlot := new(big.Int).SetBytes(outerHash)
 
-		prevAccumulatedTxsFee := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(prevAccumulatedTxsFeeSlot)))
+		prevAccumulatedTxsFee := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(prevAccumulatedTxsFeeSlot))
 		gasUsed += SloadGasCost
 		prevAccumulatedTxsFeeBigInt := new(big.Int).SetBytes(prevAccumulatedTxsFee.Bytes())
 
@@ -305,7 +328,7 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		validatorAuthSlot, slotGasUsed := getValidatorAuthSlot(validatorID)
 		gasUsed += slotGasUsed
 
-		validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorAuthSlot)))
+		validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorAuthSlot))
 		gasUsed += SloadGasCost
 		validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
 
@@ -317,7 +340,7 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		selfStakeSlot, slotGasUsed := getStakeSlot(validatorAuthAddr, validatorID)
 		gasUsed += slotGasUsed
 
-		selfStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(selfStakeSlot)))
+		selfStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(selfStakeSlot))
 		gasUsed += SloadGasCost
 		selfStakeBigInt := new(big.Int).SetBytes(selfStake.Bytes())
 
@@ -327,7 +350,7 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 			lockedStakeSlot, slotGasUsed := getLockedStakeSlot(validatorAuthAddr, validatorID)
 			gasUsed += slotGasUsed
 
-			lockedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(lockedStakeSlot)))
+			lockedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockedStakeSlot))
 			gasUsed += SloadGasCost
 			lockedStakeBigInt := new(big.Int).SetBytes(lockedStake.Bytes())
 
@@ -342,7 +365,7 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 			lockupDurationSlot, slotGasUsed := getLockupDurationSlot(validatorAuthAddr, validatorID)
 			gasUsed += slotGasUsed
 
-			lockupDuration := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(lockupDurationSlot)))
+			lockupDuration := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupDurationSlot))
 			gasUsed += SloadGasCost
 			lockupDurationBigInt := new(big.Int).SetBytes(lockupDuration.Bytes())
 
@@ -362,27 +385,27 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 			gasUsed += slotGasUsed
 
 			// Get current rewards stash
-			rewardsStash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(rewardsStashSlot)))
+			rewardsStash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(rewardsStashSlot))
 			gasUsed += SloadGasCost
 			rewardsStashBigInt := new(big.Int).SetBytes(rewardsStash.Bytes())
 
 			// Add the total commission reward (locked + unlocked) to the stash
 			totalCommissionReward := new(big.Int).Add(lCommissionReward, uCommissionReward)
 			newRewardsStash := new(big.Int).Add(rewardsStashBigInt, totalCommissionReward)
-			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(rewardsStashSlot)), common.BigToHash(newRewardsStash))
+			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(rewardsStashSlot), common.BigToHash(newRewardsStash))
 			gasUsed += SstoreGasCost
 
 			// Update stashed lockup rewards
 			stashedLockupRewardsSlot, slotGasUsed := getStashedLockupRewardsSlot(validatorAuthAddr, validatorID)
 			gasUsed += slotGasUsed
 
-			stashedLockupRewards := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(stashedLockupRewardsSlot)))
+			stashedLockupRewards := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stashedLockupRewardsSlot))
 			gasUsed += SloadGasCost
 			stashedLockupRewardsBigInt := new(big.Int).SetBytes(stashedLockupRewards.Bytes())
 
 			// Add only the locked rewards to the stashed lockup rewards
 			newStashedLockupRewards := new(big.Int).Add(stashedLockupRewardsBigInt, lCommissionReward)
-			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(stashedLockupRewardsSlot)), common.BigToHash(newStashedLockupRewards))
+			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedLockupRewardsSlot), common.BigToHash(newStashedLockupRewards))
 			gasUsed += SstoreGasCost
 		}
 
@@ -406,46 +429,41 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 
 		// Update accumulated reward per token
 		// For a mapping within a struct, we need to calculate the slot as:
-		// keccak256(abi.encode(validatorID, keccak256(abi.encode(accumulatedRewardPerTokenOffset, currentEpochSnapshotSlot))))
-		// Calculate slot for current epoch
-		accumulatedRewardPerTokenOffsetBytes = common.LeftPadBytes(big.NewInt(accumulatedRewardPerTokenOffset).Bytes(), 32)
-		currentEpochSnapshotSlotBytes = common.LeftPadBytes(currentEpochSnapshotSlot.Bytes(), 32)
-		innerHashInput = append(accumulatedRewardPerTokenOffsetBytes, currentEpochSnapshotSlotBytes...)
-		innerHash = crypto.Keccak256(innerHashInput)
-		gasUsed += HashGasCost
+		// keccak256(key . (struct_slot + offset))
+		// Add the offset for the accumulatedRewardPerToken mapping within the struct
+		mappingSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(accumulatedRewardPerTokenOffset))
 
+		// Then, calculate the slot for the specific key: keccak256(validatorID . mappingSlot)
 		validatorIDBytes = common.LeftPadBytes(validatorID.Bytes(), 32)
-		outerHashInput = append(validatorIDBytes, innerHash...)
-		outerHash = crypto.Keccak256(outerHashInput)
+		mappingSlotBytes := common.LeftPadBytes(mappingSlot.Bytes(), 32)
+		outerHashInput = append(validatorIDBytes, mappingSlotBytes...)
+		accumulatedRewardPerTokenSlotHash := crypto.Keccak256Hash(outerHashInput)
+		accumulatedRewardPerTokenSlot := new(big.Int).SetBytes(accumulatedRewardPerTokenSlotHash.Bytes())
 		gasUsed += HashGasCost
-
-		accumulatedRewardPerTokenSlot := new(big.Int).SetBytes(outerHash).Int64()
 
 		// For the previous epoch
-		accumulatedRewardPerTokenOffsetBytes = common.LeftPadBytes(big.NewInt(accumulatedRewardPerTokenOffset).Bytes(), 32)
-		prevEpochSnapshotSlotBytes = common.LeftPadBytes(prevEpochSnapshotSlot.Bytes(), 32)
-		innerHashInput = append(accumulatedRewardPerTokenOffsetBytes, prevEpochSnapshotSlotBytes...)
-		innerHash = crypto.Keccak256(innerHashInput)
-		gasUsed += HashGasCost
+		// For a mapping within a struct, we need to calculate the slot as:
+		// keccak256(key . (struct_slot + offset))
+		// Add the offset for the accumulatedRewardPerToken mapping within the struct
+		prevMappingSlot := new(big.Int).Add(prevEpochSnapshotSlot, big.NewInt(accumulatedRewardPerTokenOffset))
 
+		// Then, calculate the slot for the specific key: keccak256(validatorID . prevMappingSlot)
 		validatorIDBytes = common.LeftPadBytes(validatorID.Bytes(), 32)
-		outerHashInput = append(validatorIDBytes, innerHash...)
-		outerHash = crypto.Keccak256(outerHashInput)
+		prevMappingSlotBytes := common.LeftPadBytes(prevMappingSlot.Bytes(), 32)
+		outerHashInput = append(validatorIDBytes, prevMappingSlotBytes...)
+		prevAccumulatedRewardPerTokenSlotHash := crypto.Keccak256Hash(outerHashInput)
+		prevAccumulatedRewardPerTokenSlot := new(big.Int).SetBytes(prevAccumulatedRewardPerTokenSlotHash.Bytes())
 		gasUsed += HashGasCost
 
-		prevAccumulatedRewardPerTokenSlot := new(big.Int).SetBytes(outerHash).Int64()
-
-		prevAccumulatedRewardPerToken := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(prevAccumulatedRewardPerTokenSlot)))
+		prevAccumulatedRewardPerToken := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(prevAccumulatedRewardPerTokenSlot))
 		gasUsed += SloadGasCost
 		prevAccumulatedRewardPerTokenBigInt := new(big.Int).SetBytes(prevAccumulatedRewardPerToken.Bytes())
 
 		newAccumulatedRewardPerToken := new(big.Int).Add(prevAccumulatedRewardPerTokenBigInt, rewardPerToken)
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(accumulatedRewardPerTokenSlot)), common.BigToHash(newAccumulatedRewardPerToken))
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(accumulatedRewardPerTokenSlot), common.BigToHash(newAccumulatedRewardPerToken))
 		gasUsed += SstoreGasCost
 
-		// Update accumulated originated txs fee
-		// For a mapping within a struct, we need to calculate the slot as:
-		// keccak256(abi.encode(validatorID, keccak256(abi.encode(accumulatedOriginatedTxsFeeOffset, currentEpochSnapshotSlot))))
+		// Update accumulated originated txs fee (snapshot.accumulatedOriginatedTxsFee[validatorID] = accumulatedOriginatedTxsFee[i])
 		accumulatedOriginatedTxsFeeOffsetBytes = common.LeftPadBytes(big.NewInt(accumulatedOriginatedTxsFeeOffset).Bytes(), 32)
 		currentEpochSnapshotSlotBytes = common.LeftPadBytes(currentEpochSnapshotSlot.Bytes(), 32)
 		innerHashInput = append(accumulatedOriginatedTxsFeeOffsetBytes, currentEpochSnapshotSlotBytes...)
@@ -457,48 +475,58 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		outerHash = crypto.Keccak256(outerHashInput)
 		gasUsed += HashGasCost
 
-		accumulatedOriginatedTxsFeeSlot := new(big.Int).SetBytes(outerHash).Int64()
+		// Update accumulated originated txs fee (snapshot.accumulatedOriginatedTxsFee[validatorID] = accumulatedOriginatedTxsFee[i])
+		// For a mapping within a struct, we need to calculate the slot as:
+		// keccak256(key . (struct_slot + offset))
+		// Add the offset for the accumulatedOriginatedTxsFee mapping within the struct
+		originatedTxsFeeSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(accumulatedOriginatedTxsFeeOffset))
 
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(accumulatedOriginatedTxsFeeSlot)), common.BigToHash(accumulatedOriginatedTxsFee[i]))
+		// Then, calculate the slot for the specific key: keccak256(validatorID . originatedTxsFeeSlot)
+		validatorIDBytes = common.LeftPadBytes(validatorID.Bytes(), 32)
+		originatedTxsFeeSlotBytes := common.LeftPadBytes(originatedTxsFeeSlot.Bytes(), 32)
+		outerHashInput = append(validatorIDBytes, originatedTxsFeeSlotBytes...)
+		accumulatedOriginatedTxsFeeSlotHash := crypto.Keccak256Hash(outerHashInput)
+		accumulatedOriginatedTxsFeeSlot := new(big.Int).SetBytes(accumulatedOriginatedTxsFeeSlotHash.Bytes())
+		gasUsed += HashGasCost
+
+		// Set the value in the state
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(accumulatedOriginatedTxsFeeSlot), common.BigToHash(accumulatedOriginatedTxsFee[i]))
 		gasUsed += SstoreGasCost
 
 		// Update accumulated uptime
 		// For a mapping within a struct, we need to calculate the slot as:
-		// keccak256(abi.encode(validatorID, keccak256(abi.encode(accumulatedUptimeOffset, currentEpochSnapshotSlot))))
-		// Calculate slot for current epoch
-		accumulatedUptimeOffsetBytes = common.LeftPadBytes(big.NewInt(accumulatedUptimeOffset).Bytes(), 32)
-		currentEpochSnapshotSlotBytes = common.LeftPadBytes(currentEpochSnapshotSlot.Bytes(), 32)
-		innerHashInput = append(accumulatedUptimeOffsetBytes, currentEpochSnapshotSlotBytes...)
-		innerHash = crypto.Keccak256(innerHashInput)
-		gasUsed += HashGasCost
+		// keccak256(key . (struct_slot + offset))
+		// Add the offset for the accumulatedUptime mapping within the struct
+		uptimeMappingSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(accumulatedUptimeOffset))
 
+		// Then, calculate the slot for the specific key: keccak256(validatorID . uptimeMappingSlot)
 		validatorIDBytes = common.LeftPadBytes(validatorID.Bytes(), 32)
-		outerHashInput = append(validatorIDBytes, innerHash...)
-		outerHash = crypto.Keccak256(outerHashInput)
+		uptimeMappingSlotBytes := common.LeftPadBytes(uptimeMappingSlot.Bytes(), 32)
+		outerHashInput = append(validatorIDBytes, uptimeMappingSlotBytes...)
+		accumulatedUptimeSlotHash := crypto.Keccak256Hash(outerHashInput)
+		accumulatedUptimeSlot := new(big.Int).SetBytes(accumulatedUptimeSlotHash.Bytes())
 		gasUsed += HashGasCost
-
-		accumulatedUptimeSlot := new(big.Int).SetBytes(outerHash).Int64()
 
 		// For the previous epoch
-		accumulatedUptimeOffsetBytes = common.LeftPadBytes(big.NewInt(accumulatedUptimeOffset).Bytes(), 32)
-		prevEpochSnapshotSlotBytes = common.LeftPadBytes(prevEpochSnapshotSlot.Bytes(), 32)
-		innerHashInput = append(accumulatedUptimeOffsetBytes, prevEpochSnapshotSlotBytes...)
-		innerHash = crypto.Keccak256(innerHashInput)
-		gasUsed += HashGasCost
+		// For a mapping within a struct, we need to calculate the slot as:
+		// keccak256(key . (struct_slot + offset))
+		// Add the offset for the accumulatedUptime mapping within the struct
+		prevUptimeMappingSlot := new(big.Int).Add(prevEpochSnapshotSlot, big.NewInt(accumulatedUptimeOffset))
 
+		// Then, calculate the slot for the specific key: keccak256(validatorID . prevUptimeMappingSlot)
 		validatorIDBytes = common.LeftPadBytes(validatorID.Bytes(), 32)
-		outerHashInput = append(validatorIDBytes, innerHash...)
-		outerHash = crypto.Keccak256(outerHashInput)
+		prevUptimeMappingSlotBytes := common.LeftPadBytes(prevUptimeMappingSlot.Bytes(), 32)
+		outerHashInput = append(validatorIDBytes, prevUptimeMappingSlotBytes...)
+		prevAccumulatedUptimeSlotHash := crypto.Keccak256Hash(outerHashInput)
+		prevAccumulatedUptimeSlot := new(big.Int).SetBytes(prevAccumulatedUptimeSlotHash.Bytes())
 		gasUsed += HashGasCost
 
-		prevAccumulatedUptimeSlot := new(big.Int).SetBytes(outerHash).Int64()
-
-		prevAccumulatedUptime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(prevAccumulatedUptimeSlot)))
+		prevAccumulatedUptime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(prevAccumulatedUptimeSlot))
 		gasUsed += SloadGasCost
 		prevAccumulatedUptimeBigInt := new(big.Int).SetBytes(prevAccumulatedUptime.Bytes())
 
 		newAccumulatedUptime := new(big.Int).Add(prevAccumulatedUptimeBigInt, uptimes[i])
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(accumulatedUptimeSlot)), common.BigToHash(newAccumulatedUptime))
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(accumulatedUptimeSlot), common.BigToHash(newAccumulatedUptime))
 		gasUsed += SstoreGasCost
 	}
 	// Update epoch fee
@@ -792,14 +820,14 @@ func handleGetUnlockedStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, er
 	// Get the delegation stake
 	stakeSlot, slotGasUsed := getStakeSlot(delegator, toValidatorID)
 	gasUsed += slotGasUsed
-	stake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(stakeSlot)))
+	stake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stakeSlot))
 	gasUsed += params.ColdSloadCostEIP2929 // Add gas for SLOAD
 	stakeBigInt := new(big.Int).SetBytes(stake.Bytes())
 
 	// Get the delegation locked stake
 	lockedStakeSlot, slotGasUsed := getLockedStakeSlot(delegator, toValidatorID)
 	gasUsed += slotGasUsed
-	lockedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(lockedStakeSlot)))
+	lockedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockedStakeSlot))
 	gasUsed += params.ColdSloadCostEIP2929 // Add gas for SLOAD
 	lockedStakeBigInt := new(big.Int).SetBytes(lockedStake.Bytes())
 
@@ -825,7 +853,7 @@ func handleCheckAllowedToWithdraw(evm *vm.EVM, delegator common.Address, toValid
 	// Get the validator status
 	validatorStatusSlot, slotGasUsed := getValidatorStatusSlot(toValidatorID)
 	gasUsed += slotGasUsed
-	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorStatusSlot)))
+	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorStatusSlot))
 	gasUsed += params.ColdSloadCostEIP2929 // Add gas for SLOAD
 	validatorStatusBigInt := new(big.Int).SetBytes(validatorStatus.Bytes())
 
@@ -835,7 +863,7 @@ func handleCheckAllowedToWithdraw(evm *vm.EVM, delegator common.Address, toValid
 	// Get the validator auth
 	validatorAuthSlot, slotGasUsed := getValidatorAuthSlot(toValidatorID)
 	gasUsed += slotGasUsed
-	validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorAuthSlot)))
+	validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorAuthSlot))
 	gasUsed += params.ColdSloadCostEIP2929 // Add gas for SLOAD
 	validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
 
@@ -976,10 +1004,10 @@ func handleInternalDelegate(evm *vm.EVM, delegator common.Address, toValidatorID
 
 	// Update the stake
 	stakeSlot, _ := getStakeSlot(delegator, toValidatorID)
-	stake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(stakeSlot)))
+	stake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stakeSlot))
 	stakeBigInt := new(big.Int).SetBytes(stake.Bytes())
 	newStake := new(big.Int).Add(stakeBigInt, amount)
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(stakeSlot)), common.BigToHash(newStake))
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stakeSlot), common.BigToHash(newStake))
 
 	// Update the validator's received stake
 	validatorReceivedStakeSlot, _ := getValidatorReceivedStakeSlot(toValidatorID)
@@ -997,7 +1025,7 @@ func handleInternalDelegate(evm *vm.EVM, delegator common.Address, toValidatorID
 	// Update the total active stake if the validator is active
 	validatorStatusSlot, slotGasUsed := getValidatorStatusSlot(toValidatorID)
 	gasUsed += slotGasUsed
-	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorStatusSlot)))
+	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorStatusSlot))
 	gasUsed += params.ColdSloadCostEIP2929 // Add gas for SLOAD
 	validatorStatusBigInt := new(big.Int).SetBytes(validatorStatus.Bytes())
 	if validatorStatusBigInt.Cmp(big.NewInt(0)) == 0 { // OK_STATUS
@@ -1017,11 +1045,11 @@ func handleRawUndelegate(evm *vm.EVM, delegator common.Address, toValidatorID *b
 	// Update the stake
 	stakeSlot, slotGasUsed := getStakeSlot(delegator, toValidatorID)
 	gasUsed += slotGasUsed
-	stake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(stakeSlot)))
+	stake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stakeSlot))
 	gasUsed += params.ColdSloadCostEIP2929 // Add gas for SLOAD
 	stakeBigInt := new(big.Int).SetBytes(stake.Bytes())
 	newStake := new(big.Int).Sub(stakeBigInt, amount)
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(stakeSlot)), common.BigToHash(newStake))
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stakeSlot), common.BigToHash(newStake))
 	gasUsed += params.SstoreSetGasEIP2200 // Add gas for SSTORE
 
 	// Update the validator's received stake
@@ -1042,7 +1070,7 @@ func handleRawUndelegate(evm *vm.EVM, delegator common.Address, toValidatorID *b
 
 	// Update the total active stake if the validator is active
 	validatorStatusSlot, _ := getValidatorStatusSlot(toValidatorID)
-	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorStatusSlot)))
+	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorStatusSlot))
 	validatorStatusBigInt := new(big.Int).SetBytes(validatorStatus.Bytes())
 	if validatorStatusBigInt.Cmp(big.NewInt(0)) == 0 { // OK_STATUS
 		totalActiveStakeState := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalActiveStakeSlot)))
@@ -1082,7 +1110,7 @@ func handleRawUndelegate(evm *vm.EVM, delegator common.Address, toValidatorID *b
 	// Check if the validator should be deactivated
 	if selfStake.Cmp(big.NewInt(0)) == 0 {
 		// Set the validator as deactivated
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorStatusSlot)), common.BigToHash(big.NewInt(1))) // WITHDRAWN_BIT
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorStatusSlot), common.BigToHash(big.NewInt(1))) // WITHDRAWN_BIT
 	} else if validatorStatusBigInt.Cmp(big.NewInt(0)) == 0 { // OK_STATUS
 		// Check that the self-stake is at least the minimum self-stake
 		minSelfStakeBigInt, minSelfStakeGas, err := getMinSelfStake(evm)
@@ -1092,7 +1120,7 @@ func handleRawUndelegate(evm *vm.EVM, delegator common.Address, toValidatorID *b
 		gasUsed += minSelfStakeGas
 		if selfStake.Cmp(minSelfStakeBigInt) < 0 {
 			// Set the validator as deactivated
-			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorStatusSlot)), common.BigToHash(big.NewInt(1))) // WITHDRAWN_BIT
+			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorStatusSlot), common.BigToHash(big.NewInt(1))) // WITHDRAWN_BIT
 		} else {
 			// Check that the delegated stake is within the limit
 			withinLimit, err := handleCheckDelegatedStakeLimit(evm, toValidatorID)
@@ -1101,7 +1129,7 @@ func handleRawUndelegate(evm *vm.EVM, delegator common.Address, toValidatorID *b
 			}
 			if !withinLimit {
 				// Set the validator as deactivated
-				evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorStatusSlot)), common.BigToHash(big.NewInt(1))) // WITHDRAWN_BIT
+				evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorStatusSlot), common.BigToHash(big.NewInt(1))) // WITHDRAWN_BIT
 			}
 		}
 	}
@@ -1109,7 +1137,7 @@ func handleRawUndelegate(evm *vm.EVM, delegator common.Address, toValidatorID *b
 	// Get the validator auth address
 	validatorAuthSlot, slotGasUsed := getValidatorAuthSlot(toValidatorID)
 	gasUsed += slotGasUsed
-	validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorAuthSlot)))
+	validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorAuthSlot))
 	gasUsed += params.ColdSloadCostEIP2929 // Add gas for SLOAD
 	validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
 
@@ -1128,7 +1156,6 @@ func handleRawUndelegate(evm *vm.EVM, delegator common.Address, toValidatorID *b
 // handleRecountVotes implements the _recountVotes function logic
 func handleRecountVotes(evm *vm.EVM, delegator common.Address, validatorAuth common.Address, strict bool) ([]byte, uint64, error) {
 	// Get the voteBookAddress
-	voteBookAddressSlot, _ := getVoteBookAddressSlot()
 	voteBookAddress := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(voteBookAddressSlot)))
 	voteBookAddressBytes := voteBookAddress.Bytes()
 
@@ -1206,12 +1233,12 @@ func handleGetSelfStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, error)
 
 	// Get the validator auth
 	validatorAuthSlot, _ := getValidatorAuthSlot(validatorID)
-	validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorAuthSlot)))
+	validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorAuthSlot))
 	validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
 
 	// Get the self-stake
 	stakeSlot, _ := getStakeSlot(validatorAuthAddr, validatorID)
-	stake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(stakeSlot)))
+	stake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stakeSlot))
 	stakeBigInt := new(big.Int).SetBytes(stake.Bytes())
 
 	// Pack the result
@@ -1246,7 +1273,7 @@ func handleStashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error)
 
 	// Get the stashed rewards until epoch
 	stashedRewardsUntilEpochSlot, _ := getStashedRewardsUntilEpochSlot(delegator, toValidatorID)
-	stashedRewardsUntilEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(stashedRewardsUntilEpochSlot)))
+	stashedRewardsUntilEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stashedRewardsUntilEpochSlot))
 	stashedRewardsUntilEpochBigInt := new(big.Int).SetBytes(stashedRewardsUntilEpoch.Bytes())
 
 	// Check if rewards are already stashed for the current epoch
@@ -1257,7 +1284,7 @@ func handleStashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error)
 	// Calculate the rewards using _newRewards logic
 	// Get the delegation stake
 	stakeSlot, _ := getStakeSlot(delegator, toValidatorID)
-	stake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(stakeSlot)))
+	stake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stakeSlot))
 	stakeBigInt := new(big.Int).SetBytes(stake.Bytes())
 
 	// Get the validator's received stake
@@ -1269,7 +1296,7 @@ func handleStashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error)
 
 	// Get the validator status
 	validatorStatusSlot, _ := getValidatorStatusSlot(toValidatorID)
-	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorStatusSlot)))
+	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorStatusSlot))
 	validatorStatusBigInt := new(big.Int).SetBytes(validatorStatus.Bytes())
 
 	// Check if the validator is active
@@ -1281,7 +1308,7 @@ func handleStashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error)
 		// Get the validator's auth address
 		validatorAuthSlot, slotGasUsed := getValidatorAuthSlot(toValidatorID)
 		gasUsed += slotGasUsed
-		validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorAuthSlot)))
+		validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorAuthSlot))
 		validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
 
 		// Check if the delegator is the validator (self-stake)
@@ -1292,7 +1319,7 @@ func handleStashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error)
 		if !isSelfStake {
 			validatorCommissionSlot, slotGasUsed := getValidatorCommissionSlot(toValidatorID)
 			gasUsed += slotGasUsed
-			commission := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorCommissionSlot)))
+			commission := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorCommissionSlot))
 			validatorCommission = new(big.Int).SetBytes(commission.Bytes())
 		}
 
@@ -1326,15 +1353,15 @@ func handleStashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error)
 	// Get the current stashed rewards
 	rewardsStashSlot, slotGasUsed := getRewardsStashSlot(delegator, toValidatorID)
 	gasUsed += slotGasUsed
-	rewardsStash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(rewardsStashSlot)))
+	rewardsStash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(rewardsStashSlot))
 	rewardsStashBigInt := new(big.Int).SetBytes(rewardsStash.Bytes())
 
 	// Add the rewards to the stash
 	newRewardsStash := new(big.Int).Add(rewardsStashBigInt, rewards)
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(rewardsStashSlot)), common.BigToHash(newRewardsStash))
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(rewardsStashSlot), common.BigToHash(newRewardsStash))
 
 	// Update the stashed rewards until epoch
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(stashedRewardsUntilEpochSlot)), common.BigToHash(currentEpochBigInt))
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedRewardsUntilEpochSlot), common.BigToHash(currentEpochBigInt))
 
 	return nil, 0, nil
 }
@@ -1346,7 +1373,7 @@ func handleSyncValidator(evm *vm.EVM, validatorID *big.Int) ([]byte, uint64, err
 	// Get the validator status
 	validatorStatusSlot, slotGasUsed := getValidatorStatusSlot(validatorID)
 	gasUsed += slotGasUsed
-	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorStatusSlot)))
+	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorStatusSlot))
 	validatorStatusBigInt := new(big.Int).SetBytes(validatorStatus.Bytes())
 
 	// Check if the validator is active
@@ -1396,7 +1423,7 @@ func handleSyncValidator(evm *vm.EVM, validatorID *big.Int) ([]byte, uint64, err
 	// Update the validator status if necessary
 	if isActive && (!hasSelfStake || !hasEnoughSelfStake || !withinDelegatedLimit) {
 		// Set the validator as deactivated
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorStatusSlot)), common.BigToHash(big.NewInt(1))) // WITHDRAWN_BIT
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorStatusSlot), common.BigToHash(big.NewInt(1))) // WITHDRAWN_BIT
 
 		// Set the validator deactivated epoch
 		validatorDeactivatedEpochSlot, slotGasUsed := getValidatorDeactivatedEpochSlot(validatorID)
@@ -1405,12 +1432,12 @@ func handleSyncValidator(evm *vm.EVM, validatorID *big.Int) ([]byte, uint64, err
 		if err != nil {
 			return nil, 0, err
 		}
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorDeactivatedEpochSlot)), common.BigToHash(currentEpochBigInt))
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorDeactivatedEpochSlot), common.BigToHash(currentEpochBigInt))
 
 		// Set the validator deactivated time
 		validatorDeactivatedTimeSlot, slotGasUsed := getValidatorDeactivatedTimeSlot(validatorID)
 		gasUsed += slotGasUsed
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorDeactivatedTimeSlot)), common.BigToHash(evm.Context.Time))
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorDeactivatedTimeSlot), common.BigToHash(evm.Context.Time))
 
 		// Update the total active stake
 		validatorReceivedStakeSlot, slotGasUsed := getValidatorReceivedStakeSlot(validatorID)
@@ -1427,15 +1454,15 @@ func handleSyncValidator(evm *vm.EVM, validatorID *big.Int) ([]byte, uint64, err
 		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalActiveStakeSlot)), common.BigToHash(newTotalActiveStake))
 	} else if !isActive && hasSelfStake && hasEnoughSelfStake && withinDelegatedLimit {
 		// Set the validator as active
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorStatusSlot)), common.BigToHash(big.NewInt(0))) // OK_STATUS
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorStatusSlot), common.BigToHash(big.NewInt(0))) // OK_STATUS
 
 		// Clear the validator deactivated epoch
 		validatorDeactivatedEpochSlot, _ := getValidatorDeactivatedEpochSlot(validatorID)
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorDeactivatedEpochSlot)), common.BigToHash(big.NewInt(0)))
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorDeactivatedEpochSlot), common.BigToHash(big.NewInt(0)))
 
 		// Clear the validator deactivated time
 		validatorDeactivatedTimeSlot, _ := getValidatorDeactivatedTimeSlot(validatorID)
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorDeactivatedTimeSlot)), common.BigToHash(big.NewInt(0)))
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorDeactivatedTimeSlot), common.BigToHash(big.NewInt(0)))
 
 		// Update the total active stake
 		validatorReceivedStakeSlot, _ := getValidatorReceivedStakeSlot(validatorID)

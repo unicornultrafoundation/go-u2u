@@ -984,11 +984,13 @@ func getEpochSnapshotSlot(epoch *big.Int) (int64, uint64) {
 func getOfflinePenaltyThresholdBlocksNum(evm *vm.EVM) (*big.Int, uint64, error) {
 	result, gasUsed, err := callConstantManagerMethod(evm, "offlinePenaltyThresholdBlocksNum")
 	if err != nil || len(result) == 0 {
+		log.Error("SFC: Error getting offline penalty threshold blocks number from ConstantsManager", "err", err)
 		return nil, gasUsed, err
 	}
 
 	threshold, ok := result[0].(*big.Int)
 	if !ok {
+		log.Error("SFC: Error typecasting offline penalty threshold blocks number from ConstantsManager")
 		return nil, gasUsed, vm.ErrExecutionReverted
 	}
 

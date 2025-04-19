@@ -1,21 +1,29 @@
 package evmmodule
 
 import (
-	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/core/state"
-	"github.com/unicornultrafoundation/go-u2u/core/types"
-	"github.com/unicornultrafoundation/go-u2u/log"
-	"github.com/unicornultrafoundation/go-u2u/params"
 	"math"
 	"math/big"
 
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/core/state"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip/blockproc"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/params"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/utils"
 )
+
+var SfcPrecompiles = []common.Address{
+	common.HexToAddress("0xFC00FACE00000000000000000000000000000000"),
+	common.HexToAddress("0xD100ae0000000000000000000000000000000000"),
+	common.HexToAddress("0xd100A01E00000000000000000000000000000000"),
+	common.HexToAddress("0x6CA548f6DF5B540E72262E935b6Fe3e72cDd68C9"),
+	common.HexToAddress("0xFC01fACE00000000000000000000000000000000"), // SFCLib
+}
 
 type EVMModule struct{}
 
@@ -135,12 +143,22 @@ func (p *U2UEVMProcessor) Finalize() (evmBlock *evmcore.EvmBlock, skippedTxs []u
 		if err != nil {
 			log.Crit("Failed to commit sfc state", "err", err)
 		}
+		evmBlock.SfcStateRoot = newSfcStateHash
+
+		// extra dual state verification
 		if newSfcStateHash.Cmp(types.EmptyRootHash) == 0 {
 			log.Error("SFC state is empty now", "block", p.block.Idx)
 		} else {
 			log.Info("SFC state is healthy", "block", p.block.Idx, "root", newSfcStateHash.Hex())
 		}
-		evmBlock.SfcStateRoot = newSfcStateHash
+		for _, addr := range SfcPrecompiles {
+			original := p.statedb.GetStorageRoot(addr)
+			sfc := p.sfcStateDb.GetStorageRoot(addr)
+			if original.Cmp(sfc) != 0 {
+				log.Error("U2UEVMProcessor.Finalize: SFC corrupted after applying block", "addr", addr,
+					"original", original.Hex(), "sfc", sfc.Hex())
+			}
+		}
 	}
 	return
 }

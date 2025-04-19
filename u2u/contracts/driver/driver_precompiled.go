@@ -80,7 +80,7 @@ func (p *DriverPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte,
 		gasUsed uint64
 	)
 
-	log.Info("Driver Precompiled: Calling function", "function", method.Name, "args", args, "caller", caller.Hex())
+	log.Info("Driver Precompiled: Calling function", "function", method.Name, "caller", caller.Hex(), "args", args)
 
 	// Dispatch to the appropriate handler based on the method name
 	switch method.Name {

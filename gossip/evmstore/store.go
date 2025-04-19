@@ -49,6 +49,7 @@ type Store struct {
 	SfcState state.Database
 	EvmLogs  topicsdb.Index
 	Snaps    *snapshot.Tree
+	SfcSnaps *snapshot.Tree
 
 	cache struct {
 		TxPositions *wlru.Cache `cache:"-"` // store by pointer

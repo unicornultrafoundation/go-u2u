@@ -212,7 +212,7 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		receivedStakeSlot, slotGasUsed := getEpochValidatorReceivedStakeSlot(currentEpoch, validatorID)
 		gasUsed += slotGasUsed
 
-		receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(receivedStakeSlot)))
+		receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(receivedStakeSlot))
 		gasUsed += SloadGasCost
 		receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
 
@@ -393,7 +393,7 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		receivedStakeSlot, slotGasUsed := getValidatorReceivedStakeSlot(validatorID)
 		gasUsed += slotGasUsed
 
-		receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(receivedStakeSlot)))
+		receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(receivedStakeSlot))
 		gasUsed += SloadGasCost
 		receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
 
@@ -920,7 +920,7 @@ func handleCheckDelegatedStakeLimit(evm *vm.EVM, validatorID *big.Int) (bool, er
 
 	// Get the validator's received stake
 	validatorReceivedStakeSlot, _ := getValidatorReceivedStakeSlot(validatorID)
-	receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorReceivedStakeSlot)))
+	receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorReceivedStakeSlot))
 	receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
 
 	// Get the max delegated ratio
@@ -983,10 +983,10 @@ func handleInternalDelegate(evm *vm.EVM, delegator common.Address, toValidatorID
 
 	// Update the validator's received stake
 	validatorReceivedStakeSlot, _ := getValidatorReceivedStakeSlot(toValidatorID)
-	receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorReceivedStakeSlot)))
+	receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorReceivedStakeSlot))
 	receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
 	newReceivedStake := new(big.Int).Add(receivedStakeBigInt, amount)
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorReceivedStakeSlot)), common.BigToHash(newReceivedStake))
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorReceivedStakeSlot), common.BigToHash(newReceivedStake))
 
 	// Update the total stake
 	totalStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalStakeSlot)))
@@ -1027,11 +1027,11 @@ func handleRawUndelegate(evm *vm.EVM, delegator common.Address, toValidatorID *b
 	// Update the validator's received stake
 	validatorReceivedStakeSlot, slotGasUsed := getValidatorReceivedStakeSlot(toValidatorID)
 	gasUsed += slotGasUsed
-	receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorReceivedStakeSlot)))
+	receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorReceivedStakeSlot))
 	gasUsed += params.ColdSloadCostEIP2929 // Add gas for SLOAD
 	receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
 	newReceivedStake := new(big.Int).Sub(receivedStakeBigInt, amount)
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorReceivedStakeSlot)), common.BigToHash(newReceivedStake))
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorReceivedStakeSlot), common.BigToHash(newReceivedStake))
 	gasUsed += params.SstoreSetGasEIP2200 // Add gas for SSTORE
 
 	// Update the total stake
@@ -1263,7 +1263,7 @@ func handleStashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error)
 	// Get the validator's received stake
 	validatorReceivedStakeSlot, slotGasUsed := getValidatorReceivedStakeSlot(toValidatorID)
 	gasUsed += slotGasUsed
-	receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorReceivedStakeSlot)))
+	receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorReceivedStakeSlot))
 	gasUsed += params.ColdSloadCostEIP2929 // Add gas for SLOAD
 	receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
 
@@ -1415,7 +1415,7 @@ func handleSyncValidator(evm *vm.EVM, validatorID *big.Int) ([]byte, uint64, err
 		// Update the total active stake
 		validatorReceivedStakeSlot, slotGasUsed := getValidatorReceivedStakeSlot(validatorID)
 		gasUsed += slotGasUsed
-		receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorReceivedStakeSlot)))
+		receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorReceivedStakeSlot))
 		receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
 
 		totalActiveStakeState := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalActiveStakeSlot)))
@@ -1439,7 +1439,7 @@ func handleSyncValidator(evm *vm.EVM, validatorID *big.Int) ([]byte, uint64, err
 
 		// Update the total active stake
 		validatorReceivedStakeSlot, _ := getValidatorReceivedStakeSlot(validatorID)
-		receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorReceivedStakeSlot)))
+		receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorReceivedStakeSlot))
 		receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
 
 		totalActiveStakeState := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalActiveStakeSlot)))

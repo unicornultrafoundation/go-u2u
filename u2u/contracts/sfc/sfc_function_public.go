@@ -969,10 +969,10 @@ func handleRestakeRewards(evm *vm.EVM, caller common.Address, args []interface{}
 	// Update the validator's received stake
 	validatorReceivedStakeSlot, getGasUsed := getValidatorReceivedStakeSlot(toValidatorID)
 	gasUsed += getGasUsed
-	receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorReceivedStakeSlot)))
+	receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorReceivedStakeSlot))
 	receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
 	newReceivedStake := new(big.Int).Add(receivedStakeBigInt, rewardsStashBigInt)
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorReceivedStakeSlot)), common.BigToHash(newReceivedStake))
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorReceivedStakeSlot), common.BigToHash(newReceivedStake))
 
 	// Update the total stake
 	totalStakeState := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalStakeSlot)))
@@ -1756,7 +1756,7 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 		validatorReceivedStakeSlot, slotGasUsed := getValidatorReceivedStakeSlot(validatorID)
 		gasUsed += slotGasUsed
 
-		receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(validatorReceivedStakeSlot)))
+		receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorReceivedStakeSlot))
 		gasUsed += SloadGasCost
 		receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
 
@@ -1764,7 +1764,7 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 		validatorReceivedStakeEpochSlot, slotGasUsed := getEpochValidatorReceivedStakeSlot(currentEpochBigInt, validatorID)
 		gasUsed += slotGasUsed
 
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorReceivedStakeEpochSlot)), common.BigToHash(receivedStakeBigInt))
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorReceivedStakeEpochSlot), common.BigToHash(receivedStakeBigInt))
 		gasUsed += SstoreGasCost
 
 		// Add to total stake (snapshot.totalStake = snapshot.totalStake.add(receivedStake))

@@ -224,10 +224,12 @@ func (s *Service) processEvent(e *native.EventPayload) error {
 		s.Log.Warn("EVM snapshot is not ready during event processing", "gen", gen, "err", err)
 		return errDirtyEvmSnap
 	}
-	if gen, err := s.store.evm.SfcSnaps.Generating(); gen || err != nil {
-		// never allow fullsync while SFC snap is still generating, as it may lead to a race condition
-		s.Log.Warn("SFC snapshot is not ready during event processing", "gen", gen, "err", err)
-		return errDirtyEvmSnap
+	if s.store.cfg.EVM.SfcEnabled {
+		if gen, err := s.store.evm.SfcSnaps.Generating(); gen || err != nil {
+			// never allow fullsync while SFC snap is still generating, as it may lead to a race condition
+			s.Log.Warn("SFC snapshot is not ready during event processing", "gen", gen, "err", err)
+			return errDirtyEvmSnap
+		}
 	}
 	atomic.StoreUint32(&s.eventBusyFlag, 1)
 	defer atomic.StoreUint32(&s.eventBusyFlag, 0)

@@ -11,7 +11,7 @@ import (
 
 // Gas costs and limits
 const (
-	defaultGasLimit uint64 = 800000 // Default gas limit for contract calls
+	defaultGasLimit uint64 = 1200000 // Default gas limit for contract calls
 )
 
 // checkOnlyOwner checks if the caller is the owner of the contract

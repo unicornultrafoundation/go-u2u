@@ -13,7 +13,7 @@ import (
 
 // Gas costs and limits
 const (
-	defaultGasLimit uint64 = 800000 // Default gas limit for contract calls
+	defaultGasLimit uint64 = 1200000 // Default gas limit for contract calls
 
 	SloadGasCost  uint64 = 2100  // Cost of SLOAD (GetState) operation (ColdSloadCostEIP2929)
 	SstoreGasCost uint64 = 20000 // Cost of SSTORE (SetState) operation (SstoreSetGasEIP2200)
@@ -25,24 +25,24 @@ const (
 // In Solidity, struct members are allocated storage slots sequentially in the order they appear
 const (
 	// Mappings are stored at their assigned slot (but actual data is at hash(key . slot))
-	receiveStakeOffset                int64 = 0  // mapping(uint256 => uint256) receivedStake
-	accumulatedRewardPerTokenOffset   int64 = 1  // mapping(uint256 => uint256) accumulatedRewardPerToken
-	accumulatedUptimeOffset           int64 = 2  // mapping(uint256 => uint256) accumulatedUptime
-	accumulatedOriginatedTxsFeeOffset int64 = 3  // mapping(uint256 => uint256) accumulatedOriginatedTxsFee
-	offlineTimeOffset                 int64 = 4  // mapping(uint256 => uint256) offlineTime
-	offlineBlocksOffset               int64 = 5  // mapping(uint256 => uint256) offlineBlocks
+	receiveStakeOffset                int64 = 0 // mapping(uint256 => uint256) receivedStake
+	accumulatedRewardPerTokenOffset   int64 = 1 // mapping(uint256 => uint256) accumulatedRewardPerToken
+	accumulatedUptimeOffset           int64 = 2 // mapping(uint256 => uint256) accumulatedUptime
+	accumulatedOriginatedTxsFeeOffset int64 = 3 // mapping(uint256 => uint256) accumulatedOriginatedTxsFee
+	offlineTimeOffset                 int64 = 4 // mapping(uint256 => uint256) offlineTime
+	offlineBlocksOffset               int64 = 5 // mapping(uint256 => uint256) offlineBlocks
 
 	// Dynamic array length is stored at the slot
-	validatorIDsOffset                int64 = 6  // uint256[] validatorIDs
+	validatorIDsOffset int64 = 6 // uint256[] validatorIDs
 
 	// Fixed-size fields are stored sequentially
-	endTimeOffset                     int64 = 7  // uint256 endTime
-	epochFeeOffset                    int64 = 8  // uint256 epochFee
-	totalBaseRewardOffset             int64 = 9  // uint256 totalBaseRewardWeight
-	totalTxRewardOffset               int64 = 10 // uint256 totalTxRewardWeight
-	baseRewardPerSecondOffset         int64 = 11 // uint256 baseRewardPerSecond
-	totalStakeOffset                  int64 = 12 // uint256 totalStake
-	totalSupplyOffset                 int64 = 13 // uint256 totalSupply
+	endTimeOffset             int64 = 7  // uint256 endTime
+	epochFeeOffset            int64 = 8  // uint256 epochFee
+	totalBaseRewardOffset     int64 = 9  // uint256 totalBaseRewardWeight
+	totalTxRewardOffset       int64 = 10 // uint256 totalTxRewardWeight
+	baseRewardPerSecondOffset int64 = 11 // uint256 baseRewardPerSecond
+	totalStakeOffset          int64 = 12 // uint256 totalStake
+	totalSupplyOffset         int64 = 13 // uint256 totalSupply
 )
 
 // Validator status bits
@@ -597,7 +597,7 @@ func getStakeSlot(delegator common.Address, toValidatorID *big.Int) (int64, uint
 }
 
 // getValidatorReceivedStakeSlot calculates the storage slot for a validator's received stake
-func getValidatorReceivedStakeSlot(validatorID *big.Int) (int64, uint64) {
+func getValidatorReceivedStakeSlot(validatorID *big.Int) (*big.Int, uint64) {
 	// Initialize gas used
 	var gasUsed uint64 = 0
 	// The Validator struct has the following fields:
@@ -626,7 +626,7 @@ func getValidatorReceivedStakeSlot(validatorID *big.Int) (int64, uint64) {
 	slot := new(big.Int).SetBytes(hash)
 
 	// The receivedStake field is at slot + 3
-	return new(big.Int).Add(slot, big.NewInt(3)).Int64(), gasUsed
+	return new(big.Int).Add(slot, big.NewInt(3)), gasUsed
 }
 
 // getWithdrawalRequestSlot calculates the storage slot for a withdrawal request
@@ -1061,7 +1061,7 @@ func _setValidatorDeactivated(evm *vm.EVM, validatorID *big.Int, statusBit uint6
 		gasUsed += slotGasUsed
 
 		// Get the validator's received stake
-		receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(receivedStakeSlot)))
+		receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(receivedStakeSlot))
 		gasUsed += SloadGasCost
 		receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
 
@@ -1163,7 +1163,7 @@ func _syncValidator(evm *vm.EVM, validatorID *big.Int, syncPubkey bool) (uint64,
 	receivedStakeSlot, slotGasUsed := getValidatorReceivedStakeSlot(validatorID)
 	gasUsed += slotGasUsed
 
-	receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(receivedStakeSlot)))
+	receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(receivedStakeSlot))
 	gasUsed += SloadGasCost
 	receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
 
@@ -1399,38 +1399,29 @@ func getEpochValidatorAccumulatedOriginatedTxsFeeSlot(epoch *big.Int, validatorI
 }
 
 // getEpochValidatorReceivedStakeSlot calculates the storage slot for a validator's received stake in an epoch
-func getEpochValidatorReceivedStakeSlot(epoch *big.Int, validatorID *big.Int) (int64, uint64) {
-	// Initialize gas used
+func getEpochValidatorReceivedStakeSlot(epoch *big.Int, validatorID *big.Int) (*big.Int, uint64) {
 	var gasUsed uint64 = 0
 
-	// First get the epoch snapshot slot
-	epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(epoch)
-	gasUsed += slotGasUsed
-
-	// For a mapping(uint256 => mapping(uint256 => uint256)), the slot is calculated as:
-	// keccak256(abi.encode(validatorID, keccak256(abi.encode(receiveStakeOffset, epochSnapshotSlot))))
-
-	// Create the inner hash input: abi.encode(receiveStakeOffset, epochSnapshotSlot)
-	receiveStakeOffsetBytes := common.LeftPadBytes(big.NewInt(receiveStakeOffset).Bytes(), 32) // Left-pad to 32 bytes
-	epochSnapshotSlotBytes := common.LeftPadBytes(epochSnapshotSlot.Bytes(), 32)               // Left-pad to 32 bytes
-	innerHashInput := append(receiveStakeOffsetBytes, epochSnapshotSlotBytes...)
-
-	// Calculate the inner hash - add gas cost for hashing
-	innerHash := crypto.Keccak256(innerHashInput)
+	// Step 1: Calculate the slot for getEpochSnapshot[epoch]
+	epochBytes := common.LeftPadBytes(epoch.Bytes(), 32)
+	epochSnapshotSlotBytes := common.LeftPadBytes(big.NewInt(epochSnapshotSlot).Bytes(), 32)
+	epochHashInput := append(epochBytes, epochSnapshotSlotBytes...)
+	epochHash := crypto.Keccak256(epochHashInput)
 	gasUsed += HashGasCost
 
-	// Create the outer hash input: abi.encode(validatorID, innerHash)
-	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32) // Left-pad to 32 bytes
-	outerHashInput := append(validatorIDBytes, innerHash...)
+	// Step 2: Add the offset for receivedStake within the struct
+	// receivedStake is the first mapping in the struct, so its offset is 0
+	structSlot := new(big.Int).SetBytes(epochHash)
+	mappingSlot := new(big.Int).Add(structSlot, big.NewInt(receiveStakeOffset))
 
-	// Calculate the outer hash - add gas cost for hashing
-	outerHash := crypto.Keccak256(outerHashInput)
+	// Step 3: Calculate the final slot for receivedStake[validatorID]
+	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)
+	mappingSlotBytes := common.LeftPadBytes(mappingSlot.Bytes(), 32)
+	finalHashInput := append(validatorIDBytes, mappingSlotBytes...)
+	finalHash := crypto.Keccak256(finalHashInput)
 	gasUsed += HashGasCost
 
-	// Convert the hash to a big.Int
-	slot := new(big.Int).SetBytes(outerHash)
-
-	return slot.Int64(), gasUsed
+	return new(big.Int).SetBytes(finalHash), gasUsed
 }
 
 // getDecimalUnit returns the decimal unit value (1e18) used for decimal calculations

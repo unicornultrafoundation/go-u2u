@@ -613,8 +613,42 @@ func handle_mintNativeToken(evm *vm.EVM, args []interface{}) ([]byte, uint64, er
 
 // _scaleLockupReward is an internal function to scale lockup reward
 func handle_scaleLockupReward(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement _scaleLockupReward handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+	// Initialize gas used
+	var gasUsed uint64 = 0
+
+	// Get the arguments
+	if len(args) != 2 {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	fullReward, ok := args[0].(*big.Int)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	lockupDuration, ok := args[1].(*big.Int)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Call the _scaleLockupReward helper function
+	reward, scaleGasUsed, err := _scaleLockupReward(evm, fullReward, lockupDuration)
+	gasUsed += scaleGasUsed
+	if err != nil {
+		return nil, gasUsed, err
+	}
+
+	// Pack the result
+	result, err := SfcAbi.Methods["_scaleLockupReward"].Outputs.Pack(
+		reward.LockupBaseReward,
+		reward.LockupExtraReward,
+		reward.UnlockedReward,
+	)
+	if err != nil {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	return result, gasUsed, nil
 }
 
 // _setValidatorDeactivated is an internal function to set a validator as deactivated

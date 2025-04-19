@@ -76,7 +76,7 @@ func getFreePort() (int, error) {
 // The node serving the network is started in the same process as the caller. This
 // is intended to facilitate debugging of client code in the context of a running
 // node.
-func StartIntegrationTestNet(directory string) (*IntegrationTestNet, error) {
+func StartIntegrationTestNet(directory string, isSfc bool) (*IntegrationTestNet, error) {
 	// find free ports for the http-client, ws-client, and network interfaces
 	var err error
 	httpClientPort, err := getFreePort()
@@ -122,7 +122,9 @@ func StartIntegrationTestNet(directory string) (*IntegrationTestNet, error) {
 			"--nodiscover",
 			"--ipcpath", getIPCPath(),
 			"--cache", "8192",
-			"--sfc",
+		}
+		if isSfc {
+			os.Args = append(os.Args, "--sfc")
 		}
 		err := u2u.Run()
 		if err != nil {

@@ -28,7 +28,7 @@ func setup() error {
 		}
 	}
 	if testnet == nil {
-		testnet, err = StartIntegrationTestNet(dataDir)
+		testnet, err = StartIntegrationTestNet(dataDir, false)
 		if err != nil {
 			return err
 		}
@@ -51,7 +51,7 @@ func TestSFCStore_CanDumpSFCStorageAndThenSyncAgain(t *testing.T) {
 		t.Fatalf("Failed to heal the DB after dumping: %v", err)
 	}
 	// restart the network on that healed DB after dumping
-	testnet, err = StartIntegrationTestNet(dataDir)
+	testnet, err = StartIntegrationTestNet(dataDir, true)
 	if err != nil {
 		t.Fatalf("Failed to start the fake network: %v", err)
 	}

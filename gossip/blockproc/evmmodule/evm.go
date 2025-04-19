@@ -133,14 +133,14 @@ func (p *U2UEVMProcessor) Finalize() (evmBlock *evmcore.EvmBlock, skippedTxs []u
 	receipts = p.receipts
 
 	// Get state root
-	log.Info("!!!!!!!!! Finalize after block")
+	log.Trace("U2UEVMProcessor.Finalize after block", "block", p.block.Idx)
 	newStateHash, err := p.statedb.Commit(true)
 	if err != nil {
 		log.Crit("Failed to commit state", "err", err)
 	}
 	evmBlock.Root = newStateHash
 	if p.sfcStateDb != nil {
-		log.Info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Separate two commit logs")
+		log.Trace("Separate two commit logs when U2UEVMProcessor.Finalize after block")
 		newSfcStateHash, err := p.sfcStateDb.Commit(true)
 		if err != nil {
 			log.Crit("Failed to commit sfc state", "err", err)

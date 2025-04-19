@@ -793,12 +793,8 @@ func (s *StateDB) GetRefund() uint64 {
 func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 	addressesToPrefetch := make([][]byte, 0, len(s.journal.dirties))
 	for addr := range s.journal.dirties {
-		var isHeavyLog = addr.Cmp(common.HexToAddress("0xfc00face00000000000000000000000000000000")) == 0
 		obj, exist := s.stateObjects[addr]
 		if !exist {
-			if isHeavyLog {
-				log.Info("@@@@ StateDB Finalise -> !exist")
-			}
 			// ripeMD is 'touched' at block 1714175, in tx 0x1237f737031e40bcde4a8b7e717b2d15e3ecadfe49bb1bbc71ee9deb09c6fcf2
 			// That tx goes out of gas, and although the notion of 'touched' does not exist there, the
 			// touch-event will still be recorded in the journal. Since ripeMD is a special snowflake,
@@ -808,9 +804,6 @@ func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 			continue
 		}
 		if obj.suicided || (deleteEmptyObjects && obj.empty()) {
-			if isHeavyLog {
-				log.Info("@@@@ StateDB Finalise -> case 2")
-			}
 			obj.deleted = true
 
 			// If state snapshotting is active, also mark the destruction there.
@@ -823,9 +816,6 @@ func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 				delete(s.snapStorage, obj.addrHash)        // Clear out any previously updated storage data (may be recreated via a ressurrect)
 			}
 		} else {
-			if isHeavyLog {
-				log.Info("@@@@ StateDB Finalise -> obj.finalise")
-			}
 			obj.finalise(true) // Prefetch slots in the background
 		}
 		s.stateObjectsPending[addr] = struct{}{}

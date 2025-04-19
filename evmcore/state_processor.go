@@ -177,10 +177,10 @@ func ApplyTransaction(
 	// Update the state with pending changes.
 	var root []byte
 	if config.IsByzantium(blockNumber) {
-		log.Info("!!!!!!!!! Finalize after tx")
+		log.Trace("StateProcessor.Process during ApplyTransaction", "txHash", tx.Hash().Hex())
 		statedb.Finalise(true)
 		if sfcStatedb != nil {
-			log.Info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Separate two commit logs")
+			log.Trace("Separate two commit logs when StateProcessor.Process during ApplyTransaction")
 			sfcStatedb.Finalise(true)
 		}
 	} else {

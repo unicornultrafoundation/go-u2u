@@ -376,36 +376,90 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 				return gasUsed, err
 			}
 
-			// Calculate total reward
-			lCommissionReward := new(big.Int).Add(reward.LockupBaseReward, reward.LockupExtraReward)
-			uCommissionReward := reward.UnlockedReward
+			// Scale lockup reward for unlocked commission
+			uCommissionRewardFull := new(big.Int).Sub(commissionRewardFull, lCommissionRewardFull)
+			uReward, scaleGasUsed, err := _scaleLockupReward(evm, uCommissionRewardFull, big.NewInt(0))
+			gasUsed += scaleGasUsed
+			if err != nil {
+				return gasUsed, err
+			}
 
-			// Update rewards stash
+			// Get current rewards stash
+			// The Rewards struct has three fields stored at consecutive slots
 			rewardsStashSlot, slotGasUsed := getRewardsStashSlot(validatorAuthAddr, validatorID)
 			gasUsed += slotGasUsed
 
-			// Get current rewards stash
-			rewardsStash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(rewardsStashSlot))
+			// Get lockupExtraReward (first field)
+			lockupExtraReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(rewardsStashSlot))
 			gasUsed += SloadGasCost
-			rewardsStashBigInt := new(big.Int).SetBytes(rewardsStash.Bytes())
 
-			// Add the total commission reward (locked + unlocked) to the stash
-			totalCommissionReward := new(big.Int).Add(lCommissionReward, uCommissionReward)
-			newRewardsStash := new(big.Int).Add(rewardsStashBigInt, totalCommissionReward)
-			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(rewardsStashSlot), common.BigToHash(newRewardsStash))
+			// Get lockupBaseReward (second field)
+			lockupBaseRewardSlot := new(big.Int).Add(rewardsStashSlot, big.NewInt(1))
+			lockupBaseReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupBaseRewardSlot))
+			gasUsed += SloadGasCost
+
+			// Get unlockedReward (third field)
+			unlockedRewardSlot := new(big.Int).Add(rewardsStashSlot, big.NewInt(2))
+			unlockedReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(unlockedRewardSlot))
+			gasUsed += SloadGasCost
+
+			// Convert the rewards stash to a Rewards struct
+			currentRewardsStash := Rewards{
+				LockupExtraReward: new(big.Int).SetBytes(lockupExtraReward.Bytes()),
+				LockupBaseReward:  new(big.Int).SetBytes(lockupBaseReward.Bytes()),
+				UnlockedReward:    new(big.Int).SetBytes(unlockedReward.Bytes()),
+			}
+
+			// Use sumRewards to add the rewards
+			newRewardsStash := sumRewards(currentRewardsStash, reward, uReward)
+
+			// Store each field of the Rewards struct separately
+			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(rewardsStashSlot), common.BigToHash(newRewardsStash.LockupExtraReward))
+			gasUsed += SstoreGasCost
+
+			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(lockupBaseRewardSlot), common.BigToHash(newRewardsStash.LockupBaseReward))
+			gasUsed += SstoreGasCost
+
+			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(unlockedRewardSlot), common.BigToHash(newRewardsStash.UnlockedReward))
 			gasUsed += SstoreGasCost
 
 			// Update stashed lockup rewards
+			// The Rewards struct has three fields stored at consecutive slots
 			stashedLockupRewardsSlot, slotGasUsed := getStashedLockupRewardsSlot(validatorAuthAddr, validatorID)
 			gasUsed += slotGasUsed
 
-			stashedLockupRewards := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stashedLockupRewardsSlot))
+			// Get lockupExtraReward (first field)
+			stashedLockupExtraReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stashedLockupRewardsSlot))
 			gasUsed += SloadGasCost
-			stashedLockupRewardsBigInt := new(big.Int).SetBytes(stashedLockupRewards.Bytes())
 
-			// Add only the locked rewards to the stashed lockup rewards
-			newStashedLockupRewards := new(big.Int).Add(stashedLockupRewardsBigInt, lCommissionReward)
-			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedLockupRewardsSlot), common.BigToHash(newStashedLockupRewards))
+			// Get lockupBaseReward (second field)
+			stashedLockupBaseRewardSlot := new(big.Int).Add(stashedLockupRewardsSlot, big.NewInt(1))
+			stashedLockupBaseReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stashedLockupBaseRewardSlot))
+			gasUsed += SloadGasCost
+
+			// Get unlockedReward (third field)
+			stashedUnlockedRewardSlot := new(big.Int).Add(stashedLockupRewardsSlot, big.NewInt(2))
+			stashedUnlockedReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stashedUnlockedRewardSlot))
+			gasUsed += SloadGasCost
+
+			// Convert the stashed lockup rewards to a Rewards struct
+			currentStashedLockupRewards := Rewards{
+				LockupExtraReward: new(big.Int).SetBytes(stashedLockupExtraReward.Bytes()),
+				LockupBaseReward:  new(big.Int).SetBytes(stashedLockupBaseReward.Bytes()),
+				UnlockedReward:    new(big.Int).SetBytes(stashedUnlockedReward.Bytes()),
+			}
+
+			// Use sumRewards to add the rewards
+			newStashedLockupRewards := sumRewards(currentStashedLockupRewards, reward, uReward)
+
+			// Store each field of the Rewards struct separately
+			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedLockupRewardsSlot), common.BigToHash(newStashedLockupRewards.LockupExtraReward))
+			gasUsed += SstoreGasCost
+
+			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedLockupBaseRewardSlot), common.BigToHash(newStashedLockupRewards.LockupBaseReward))
+			gasUsed += SstoreGasCost
+
+			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedUnlockedRewardSlot), common.BigToHash(newStashedLockupRewards.UnlockedReward))
 			gasUsed += SstoreGasCost
 		}
 
@@ -573,12 +627,28 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		feeShare := new(big.Int).Mul(epochFee, treasuryFeeShareBigInt)
 		feeShare = new(big.Int).Div(feeShare, decimalUnitBigInt)
 
-		// Mint native token to the treasury address
-		mintGasUsed, err := _mintNativeToken(evm, treasuryAddr, feeShare)
+		// First mint native token to the contract itself
+		// This matches the Solidity code: _mintNativeToken(feeShare);
+		mintGasUsed, err := _mintNativeToken(evm, ContractAddress, feeShare)
 		gasUsed += mintGasUsed
 		if err != nil {
 			return gasUsed, err
 		}
+
+		// Then make a call to transfer the tokens to the treasury address
+		// This simulates the Solidity code: treasuryAddress.call.value(feeShare)("");
+		callData := []byte{} // Empty call data
+		_, _, err = evm.Call(
+			vm.AccountRef(ContractAddress), // Caller
+			treasuryAddr,                   // Target address
+			callData,                       // Call data (empty)
+			21000,                          // Gas limit for a simple transfer
+			feeShare,                       // Value to transfer
+		)
+		if err != nil {
+			return gasUsed, err
+		}
+		gasUsed += 21000 // Add gas for the transfer
 	}
 
 	return gasUsed, nil

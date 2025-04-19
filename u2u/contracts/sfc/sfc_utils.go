@@ -13,7 +13,7 @@ import (
 
 // Gas costs and limits
 const (
-	defaultGasLimit uint64 = 1200000 // Default gas limit for contract calls
+	defaultGasLimit uint64 = 3000000 // Default gas limit for contract calls
 
 	SloadGasCost  uint64 = 2100  // Cost of SLOAD (GetState) operation (ColdSloadCostEIP2929)
 	SstoreGasCost uint64 = 20000 // Cost of SSTORE (SetState) operation (SstoreSetGasEIP2200)
@@ -1456,6 +1456,16 @@ func trimMinGasPrice(x *big.Int) *big.Int {
 
 	// Return x unchanged if it's within the allowed range
 	return x
+}
+
+// sumRewards adds three Rewards structs together and returns the result
+// This is a port of the sumRewards function from SFCBase.sol
+func sumRewards(a Rewards, b Rewards, c Rewards) Rewards {
+	return Rewards{
+		LockupExtraReward: new(big.Int).Add(new(big.Int).Add(a.LockupExtraReward, b.LockupExtraReward), c.LockupExtraReward),
+		LockupBaseReward:  new(big.Int).Add(new(big.Int).Add(a.LockupBaseReward, b.LockupBaseReward), c.LockupBaseReward),
+		UnlockedReward:    new(big.Int).Add(new(big.Int).Add(a.UnlockedReward, b.UnlockedReward), c.UnlockedReward),
+	}
 }
 
 // _mintNativeToken mints native tokens to the specified address

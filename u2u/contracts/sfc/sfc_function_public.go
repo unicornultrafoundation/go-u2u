@@ -1743,12 +1743,16 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 	epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(currentEpochBigInt)
 	gasUsed += slotGasUsed
 
-	// Initialize total stake for the snapshot
-	totalStake := big.NewInt(0)
+	// Get the existing total stake for the snapshot
+	totalStakeSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(totalStakeOffset))
+	totalStakeHash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(totalStakeSlot))
+	gasUsed += SloadGasCost
+	totalStake := new(big.Int).SetBytes(totalStakeHash.Bytes())
 
 	// Fill data for the next snapshot
+	// This corresponds to the loop in the Solidity implementation that sets receivedStake and adds to totalStake
 	for _, validatorID := range nextValidatorIDs {
-		// Get the validator's received stake
+		// Get the validator's received stake from getValidator[validatorID].receivedStake
 		validatorReceivedStakeSlot, slotGasUsed := getValidatorReceivedStakeSlot(validatorID)
 		gasUsed += slotGasUsed
 
@@ -1756,14 +1760,14 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 		gasUsed += SloadGasCost
 		receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
 
-		// Set the received stake for this validator in the epoch snapshot
+		// Set the received stake for this validator in the epoch snapshot (snapshot.receivedStake[validatorID] = receivedStake)
 		validatorReceivedStakeEpochSlot, slotGasUsed := getEpochValidatorReceivedStakeSlot(currentEpochBigInt, validatorID)
 		gasUsed += slotGasUsed
 
 		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorReceivedStakeEpochSlot)), common.BigToHash(receivedStakeBigInt))
 		gasUsed += SstoreGasCost
 
-		// Add to total stake
+		// Add to total stake (snapshot.totalStake = snapshot.totalStake.add(receivedStake))
 		totalStake = new(big.Int).Add(totalStake, receivedStakeBigInt)
 	}
 
@@ -1780,7 +1784,8 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 	gasUsed += HashGasCost
 	validatorIDsBaseSlot := new(big.Int).SetBytes(validatorIDsBaseSlotBytes)
 
-	// Store each validator ID in storage
+	// Store each validator ID in the validatorIDs array of the epoch snapshot
+	// This corresponds to `snapshot.validatorIDs = nextValidatorIDs` in the Solidity implementation
 	for i, validatorID := range nextValidatorIDs {
 		// Calculate the slot for this array element: baseSlot + i
 		elementSlot := new(big.Int).Add(validatorIDsBaseSlot, big.NewInt(int64(i)))
@@ -1790,17 +1795,18 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 		gasUsed += SstoreGasCost
 	}
 
-	// Set the total stake for the epoch snapshot
-	totalStakeSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(totalStakeOffset))
+	// Set the updated total stake for the epoch snapshot
+	// We've already calculated the totalStakeSlot above and updated totalStake in the loop
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(totalStakeSlot), common.BigToHash(totalStake))
 	gasUsed += SstoreGasCost
 
 	// Update the minimum gas price in the node
+	// This corresponds to `node.updateMinGasPrice(minGasPrice)` in the Solidity implementation
 	minGasPrice := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(minGasPriceSlot)))
 	gasUsed += SloadGasCost
 	minGasPriceBigInt := new(big.Int).SetBytes(minGasPrice.Bytes())
 
-	// Call the node to update the minimum gas price
+	// Get the node driver auth address to call updateMinGasPrice
 	nodeDriverAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(nodeDriverAuthSlot)))
 	gasUsed += SloadGasCost
 	nodeDriverAuthAddr := common.BytesToAddress(nodeDriverAuth.Bytes())
@@ -1813,7 +1819,6 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 	}
 
 	// Call the node driver
-	log.Info("SFC: Calling NodeDriverAuth updateMinGasPrice", "minGasPrice", minGasPriceBigInt)
 	result, _, err := evm.Call(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, 50000, big.NewInt(0))
 	if err != nil {
 		reason, _ := abi.UnpackRevert(result)

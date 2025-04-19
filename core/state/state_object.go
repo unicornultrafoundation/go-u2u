@@ -405,9 +405,6 @@ func (s *stateObject) updateRoot(db Database) {
 		defer func(start time.Time) { s.db.StorageHashes += time.Since(start) }(time.Now())
 	}
 	s.data.Root = s.trie.Hash()
-	if isHeavyLog {
-		log.Info("updateRoot", "newAddrRoot", s.data.Root.Hex())
-	}
 }
 
 // CommitTrie the storage trie of the object to db.

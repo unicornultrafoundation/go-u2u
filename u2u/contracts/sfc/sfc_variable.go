@@ -237,13 +237,14 @@ func handleGetEpochSnapshot(evm *vm.EVM, args []interface{}) ([]byte, uint64, er
 	key := common.BigToHash(epoch)
 	slot := crypto.Keccak256Hash(key.Bytes(), common.BigToHash(big.NewInt(epochSnapshotSlot)).Bytes())
 
-	endTime := evm.SfcStateDB.GetState(ContractAddress, slot)
-	epochFee := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(1).Add(slot.Big(), big.NewInt(1))))
-	totalBaseRewardWeight := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(1).Add(slot.Big(), big.NewInt(2))))
-	totalTxRewardWeight := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(1).Add(slot.Big(), big.NewInt(3))))
-	baseRewardPerSecond := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(1).Add(slot.Big(), big.NewInt(4))))
-	totalStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(1).Add(slot.Big(), big.NewInt(5))))
-	totalSupply := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(1).Add(slot.Big(), big.NewInt(6))))
+	// Get all the fixed-size fields in the order they appear in the struct
+	endTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(1).Add(slot.Big(), big.NewInt(endTimeOffset))))
+	epochFee := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(1).Add(slot.Big(), big.NewInt(epochFeeOffset))))
+	totalBaseRewardWeight := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(1).Add(slot.Big(), big.NewInt(totalBaseRewardOffset))))
+	totalTxRewardWeight := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(1).Add(slot.Big(), big.NewInt(totalTxRewardOffset))))
+	baseRewardPerSecond := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(1).Add(slot.Big(), big.NewInt(baseRewardPerSecondOffset))))
+	totalStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(1).Add(slot.Big(), big.NewInt(totalStakeOffset))))
+	totalSupply := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(1).Add(slot.Big(), big.NewInt(totalSupplyOffset))))
 
 	result, err := SfcAbi.Methods["getEpochSnapshot"].Outputs.Pack(
 		endTime.Big(),

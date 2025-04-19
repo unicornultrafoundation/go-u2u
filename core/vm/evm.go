@@ -258,7 +258,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			}
 			evm.Context.Transfer(evm.SfcStateDB, caller.Address(), addr, value)
 			// Run SFC precompiled
-			log.Info("SFC precompiled calling", "action", "call", "height", evm.Context.BlockNumber,
+			log.Debug("SFC precompiled calling", "action", "call", "height", evm.Context.BlockNumber,
 				"caller", caller.Address().Hex(),
 				"to", addr.Hex())
 			start := time.Now()
@@ -304,8 +304,8 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			evm.IsSfcCorrupted("call", caller.Address(), addr)
 			sfcDiffCallMeter.Mark(int64(evmExecutionElapsed - sfcExecutionElapsed))
 			sfcCallGauge.Inc(1)
-			log.Info("Average time diff per call", "evm", evmExecutionElapsed,
-				"sfc", sfcExecutionElapsed, "diff", evmExecutionElapsed-sfcExecutionElapsed)
+			//log.Info("Average time diff per call", "evm", evmExecutionElapsed,
+			//	"sfc", sfcExecutionElapsed, "diff", evmExecutionElapsed-sfcExecutionElapsed)
 		}
 	}
 	// When an error was returned by the EVM or when setting the creation code

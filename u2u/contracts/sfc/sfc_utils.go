@@ -21,21 +21,28 @@ const (
 )
 
 // EpochSnapshot struct offsets
+// These offsets are based on the storage layout of the EpochSnapshot struct in SFCState.sol
+// In Solidity, struct members are allocated storage slots sequentially in the order they appear
 const (
-	endTimeOffset                     int64 = 0  // uint256 endTime
-	epochFeeOffset                    int64 = 1  // uint256 epochFee
-	totalBaseRewardOffset             int64 = 2  // uint256 totalBaseRewardWeight
-	totalTxRewardOffset               int64 = 3  // uint256 totalTxRewardWeight
-	baseRewardPerSecondOffset         int64 = 4  // uint256 baseRewardPerSecond
-	totalStakeOffset                  int64 = 5  // uint256 totalStake
-	totalSupplyOffset                 int64 = 6  // uint256 totalSupply
-	validatorIDsOffset                int64 = 7  // uint256[] validatorIDs
-	offlineTimeOffset                 int64 = 8  // mapping(uint256 => uint256) offlineTime
-	offlineBlocksOffset               int64 = 9  // mapping(uint256 => uint256) offlineBlocks
-	accumulatedRewardPerTokenOffset   int64 = 10 // mapping(uint256 => uint256) accumulatedRewardPerToken
-	accumulatedUptimeOffset           int64 = 11 // mapping(uint256 => uint256) accumulatedUptime
-	accumulatedOriginatedTxsFeeOffset int64 = 12 // mapping(uint256 => uint256) accumulatedOriginatedTxsFee
-	receiveStakeOffset                int64 = 13 // mapping(uint256 => uint256) receivedStake
+	// Mappings are stored at their assigned slot (but actual data is at hash(key . slot))
+	receiveStakeOffset                int64 = 0  // mapping(uint256 => uint256) receivedStake
+	accumulatedRewardPerTokenOffset   int64 = 1  // mapping(uint256 => uint256) accumulatedRewardPerToken
+	accumulatedUptimeOffset           int64 = 2  // mapping(uint256 => uint256) accumulatedUptime
+	accumulatedOriginatedTxsFeeOffset int64 = 3  // mapping(uint256 => uint256) accumulatedOriginatedTxsFee
+	offlineTimeOffset                 int64 = 4  // mapping(uint256 => uint256) offlineTime
+	offlineBlocksOffset               int64 = 5  // mapping(uint256 => uint256) offlineBlocks
+
+	// Dynamic array length is stored at the slot
+	validatorIDsOffset                int64 = 6  // uint256[] validatorIDs
+
+	// Fixed-size fields are stored sequentially
+	endTimeOffset                     int64 = 7  // uint256 endTime
+	epochFeeOffset                    int64 = 8  // uint256 epochFee
+	totalBaseRewardOffset             int64 = 9  // uint256 totalBaseRewardWeight
+	totalTxRewardOffset               int64 = 10 // uint256 totalTxRewardWeight
+	baseRewardPerSecondOffset         int64 = 11 // uint256 baseRewardPerSecond
+	totalStakeOffset                  int64 = 12 // uint256 totalStake
+	totalSupplyOffset                 int64 = 13 // uint256 totalSupply
 )
 
 // Validator status bits

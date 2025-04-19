@@ -217,7 +217,6 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 	}
 
 	// Call the SFC contract
-	log.Info("DriverAuth SealEpochValidators: calling SFC sealEpochValidators")
 	result, _, err := evm.Call(vm.AccountRef(ContractAddress), sfcAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		reason, _ := abi.UnpackRevert(result)

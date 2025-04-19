@@ -41,6 +41,7 @@ require (
 require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/google/pprof v0.0.0-20230207041349-798e818bf904 // indirect
+	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
@@ -97,7 +98,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
-	golang.org/x/net v0.37.0
+	golang.org/x/net v0.39.0
 	golang.org/x/sync v0.13.0
 	golang.org/x/text v0.24.0 // indirect
 	golang.org/x/time v0.3.0

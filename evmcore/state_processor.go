@@ -26,10 +26,19 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
 	"github.com/unicornultrafoundation/go-u2u/evmcore/txtracer"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/params"
 	"github.com/unicornultrafoundation/go-u2u/utils/signers/gsignercache"
 	"github.com/unicornultrafoundation/go-u2u/utils/signers/internaltx"
 )
+
+var SfcPrecompiles = []common.Address{
+	common.HexToAddress("0xFC00FACE00000000000000000000000000000000"),
+	common.HexToAddress("0xD100ae0000000000000000000000000000000000"),
+	common.HexToAddress("0xd100A01E00000000000000000000000000000000"),
+	common.HexToAddress("0x6CA548f6DF5B540E72262E935b6Fe3e72cDd68C9"),
+	common.HexToAddress("0xFC01fACE00000000000000000000000000000000"), // SFCLib
+}
 
 // StateProcessor is a basic Processor, which takes care of
 // the state transitioning from one point to another.
@@ -81,7 +90,10 @@ func (p *StateProcessor) Process(
 		}
 
 		statedb.Prepare(tx.Hash(), i)
-		receipt, _, skip, err = ApplyTransaction(msg, p.config, gp, statedb, blockNumber, blockHash, tx, usedGas, vmenv, cfg, onNewLog)
+		if sfcStatedb != nil {
+			sfcStatedb.Prepare(tx.Hash(), i)
+		}
+		receipt, _, skip, err = ApplyTransaction(msg, p.config, gp, statedb, sfcStatedb, blockNumber, blockHash, tx, usedGas, vmenv, cfg, onNewLog)
 		if skip {
 			skipped = append(skipped, uint32(i))
 			err = nil
@@ -92,6 +104,18 @@ func (p *StateProcessor) Process(
 		}
 		receipts = append(receipts, receipt)
 		allLogs = append(allLogs, receipt.Logs...)
+
+		// extra dual state verification
+		if sfcStatedb != nil {
+			for _, addr := range SfcPrecompiles {
+				original := statedb.GetStorageRoot(addr)
+				sfc := sfcStatedb.GetStorageRoot(addr)
+				if original.Cmp(sfc) != 0 {
+					log.Error("StateProcessor.Process: SFC corrupted after applying tx", "addr", addr,
+						"tx", tx.Hash().Hex(), "original", original.Hex(), "sfc", sfc.Hex())
+				}
+			}
+		}
 	}
 	return
 }
@@ -101,6 +125,7 @@ func ApplyTransaction(
 	config *params.ChainConfig,
 	gp *GasPool,
 	statedb *state.StateDB,
+	sfcStatedb *state.StateDB,
 	blockNumber *big.Int,
 	blockHash common.Hash,
 	tx *types.Transaction,
@@ -116,7 +141,7 @@ func ApplyTransaction(
 ) {
 	// Create a new context to be used in the EVM environment.
 	txContext := NewEVMTxContext(msg)
-	evm.Reset(txContext, statedb, nil)
+	evm.Reset(txContext, statedb, sfcStatedb)
 
 	// Test if type of tracer is transaction tracing
 	// logger, in that case, set a info for it
@@ -142,13 +167,27 @@ func ApplyTransaction(
 	for _, l := range logs {
 		onNewLog(l, statedb)
 	}
+	if sfcStatedb != nil {
+		sfcLogs := sfcStatedb.GetLogs(tx.Hash(), blockHash)
+		for _, l := range sfcLogs {
+			onNewLog(l, statedb)
+		}
+	}
 
 	// Update the state with pending changes.
 	var root []byte
 	if config.IsByzantium(blockNumber) {
+		log.Info("!!!!!!!!! Finalize after tx")
 		statedb.Finalise(true)
+		if sfcStatedb != nil {
+			log.Info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Separate two commit logs")
+			sfcStatedb.Finalise(true)
+		}
 	} else {
 		root = statedb.IntermediateRoot(config.IsEIP158(blockNumber)).Bytes()
+		if sfcStatedb != nil {
+			sfcStatedb.IntermediateRoot(config.IsEIP158(blockNumber)).Bytes()
+		}
 	}
 	*usedGas += result.UsedGas
 
@@ -170,6 +209,7 @@ func ApplyTransaction(
 
 	// Set the receipt logs.
 	receipt.Logs = logs
+	// TODO(trinhdn97): include logs and root of SfcStateDB here
 	receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
 	receipt.BlockHash = blockHash
 	receipt.BlockNumber = blockNumber

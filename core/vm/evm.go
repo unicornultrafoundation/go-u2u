@@ -17,9 +17,9 @@
 package vm
 
 import (
+	"bytes"
 	"errors"
 	"math/big"
-	"reflect"
 	"sync/atomic"
 	"time"
 
@@ -69,7 +69,7 @@ func (evm *EVM) statePrecompile(addr common.Address) (PrecompiledStateContract, 
 	return p, ok
 }
 
-func (evm *EVM) sfcPrecompile(addr common.Address) (PrecompiledStateContract, bool) {
+func (evm *EVM) sfcPrecompile(addr common.Address) (PrecompiledSfcContract, bool) {
 	if evm.Config.SfcPrecompiles == nil {
 		return nil, false
 	}
@@ -155,7 +155,7 @@ func NewEVM(blockCtx BlockContext, txCtx TxContext, statedb StateDB, sfcStatedb 
 		chainConfig: chainConfig,
 		chainRules:  chainConfig.Rules(blockCtx.BlockNumber),
 	}
-	if !isNilInterface(sfcStatedb) {
+	if !common.IsNilInterface(sfcStatedb) {
 		evm.SfcStateDB = sfcStatedb
 	}
 	evm.interpreter = NewEVMInterpreter(evm, config)
@@ -167,7 +167,7 @@ func NewEVM(blockCtx BlockContext, txCtx TxContext, statedb StateDB, sfcStatedb 
 func (evm *EVM) Reset(txCtx TxContext, statedb StateDB, sfcStatedb StateDB) {
 	evm.TxContext = txCtx
 	evm.StateDB = statedb
-	if !isNilInterface(sfcStatedb) {
+	if !common.IsNilInterface(sfcStatedb) {
 		evm.SfcStateDB = sfcStatedb
 	}
 }
@@ -240,6 +240,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	var (
 		sfcExecutionElapsed time.Duration
 		evmExecutionElapsed time.Duration
+		sfcRet              []byte
 	)
 	if isPrecompile {
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
@@ -251,12 +252,17 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			snapshot := evm.SfcStateDB.Snapshot()
 			// Create a state object if not exist, then transfer any value
 			if !evm.SfcStateDB.Exist(addr) {
+				log.Info("SFC precompiled account not exist, creating new account", "height", evm.Context.BlockNumber,
+					"to", addr.Hex())
 				evm.SfcStateDB.CreateAccount(addr)
 			}
 			evm.Context.Transfer(evm.SfcStateDB, caller.Address(), addr, value)
 			// Run SFC precompiled
+			log.Debug("SFC precompiled calling", "action", "call", "height", evm.Context.BlockNumber,
+				"caller", caller.Address().Hex(),
+				"to", addr.Hex())
 			start := time.Now()
-			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+			sfcRet, _, err = sp.Run(evm, caller.Address(), input, gas)
 			// TODO(trinhdn97): compared sfc state precompiled gas used/output/error with the correct execution from smc
 			// as well for call code, delegate and static calls.
 			sfcExecutionElapsed = time.Since(start)
@@ -264,6 +270,8 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			// When an error was returned by the SFC precompiles or when setting the creation code
 			// above, we revert to the snapshot and consume any gas remaining.
 			if err != nil {
+				log.Error("SFC precompiled error: Reverting to snapshot", "action", "call",
+					"from", caller.Address().Hex(), "to", addr.Hex(), "err", err)
 				evm.SfcStateDB.RevertToSnapshot(snapshot)
 				if !errors.Is(err, ErrExecutionReverted) {
 					// TODO(trinhdn97): try to consume all remaining gas here, in case this is a valid revert.
@@ -288,10 +296,16 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		}
 
 		if isSfcPrecompile && evm.SfcStateDB != nil {
-			if ok, addr := evm.IsSfcCorrupted(); ok {
-				log.Warn("SFC corrupted after applying tx", "action", "call", "height", evm.Context.BlockNumber, "addr", addr)
+			if bytes.Compare(ret, sfcRet) != 0 {
+				log.Error("SFC precompiled output is different from EVM", "action", "call",
+					"caller", caller.Address().Hex(), "to", addr.Hex(),
+					"evm", common.Bytes2Hex(ret), "sfc", common.Bytes2Hex(sfcRet))
 			}
+			evm.IsSfcCorrupted("call", caller.Address(), addr)
 			sfcDiffCallMeter.Mark(int64(evmExecutionElapsed - sfcExecutionElapsed))
+			sfcCallGauge.Inc(1)
+			//log.Info("Average time diff per call", "evm", evmExecutionElapsed,
+			//	"sfc", sfcExecutionElapsed, "diff", evmExecutionElapsed-sfcExecutionElapsed)
 		}
 	}
 	// When an error was returned by the EVM or when setting the creation code
@@ -352,8 +366,10 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 		sp, isSfcPrecompile := evm.sfcPrecompile(addr)
 		if isSfcPrecompile && evm.SfcStateDB != nil {
 			snapshot := evm.SfcStateDB.Snapshot()
+			log.Debug("SFC precompiled calling", "action", "callcode", "height", evm.Context.BlockNumber,
+				"caller", caller.Address().Hex(), "to", addr.Hex())
 			start := time.Now()
-			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+			ret, _, err = sp.Run(evm, caller.Address(), input, gas)
 			sfcExecutionElapsed = time.Since(start)
 			if err != nil {
 				evm.SfcStateDB.RevertToSnapshot(snapshot)
@@ -372,10 +388,9 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 		gas = contract.Gas
 
 		if isSfcPrecompile && evm.SfcStateDB != nil {
-			if ok, addr := evm.IsSfcCorrupted(); ok {
-				log.Warn("SFC corrupted after applying tx", "action", "call code", "height", evm.Context.BlockNumber, "addr", addr)
-			}
+			evm.IsSfcCorrupted("callcode", caller.Address(), addr)
 			sfcDiffCallCodeMeter.Mark(int64(evmExecutionElapsed - sfcExecutionElapsed))
+			sfcCallCodeGauge.Inc(1)
 		}
 	}
 	if err != nil {
@@ -421,8 +436,10 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 		sp, isSfcPrecompile := evm.sfcPrecompile(addr)
 		if isSfcPrecompile && evm.SfcStateDB != nil {
 			snapshot := evm.SfcStateDB.Snapshot()
+			log.Debug("SFC precompiled calling", "action", "delegatecall", "height", evm.Context.BlockNumber,
+				"caller", caller.Address().Hex(), "to", addr.Hex())
 			start := time.Now()
-			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+			ret, _, err = sp.Run(evm, caller.Address(), input, gas)
 			sfcExecutionElapsed = time.Since(start)
 			if err != nil {
 				evm.SfcStateDB.RevertToSnapshot(snapshot)
@@ -440,10 +457,9 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 		gas = contract.Gas
 
 		if isSfcPrecompile && evm.SfcStateDB != nil {
-			if ok, addr := evm.IsSfcCorrupted(); ok {
-				log.Warn("SFC corrupted after applying tx", "action", "delegate call", "height", evm.Context.BlockNumber, "addr", addr)
-			}
+			evm.IsSfcCorrupted("delegatecall", caller.Address(), addr)
 			sfcDiffDelegateCallMeter.Mark(int64(evmExecutionElapsed - sfcExecutionElapsed))
+			sfcDelegateCallGauge.Inc(1)
 		}
 	}
 	if err != nil {
@@ -498,11 +514,14 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 		sp, isSfcPrecompile := evm.sfcPrecompile(addr)
 		if isSfcPrecompile && evm.SfcStateDB != nil {
 			snapshot := evm.SfcStateDB.Snapshot()
-			evm.SfcStateDB.AddBalance(addr, big0)
+			log.Debug("SFC precompiled calling", "action", "staticcall", "height", evm.Context.BlockNumber,
+				"caller", caller.Address().Hex(),
+				"to", addr.Hex())
 			start := time.Now()
-			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+			ret, _, err = sp.Run(evm, caller.Address(), input, gas)
 			sfcExecutionElapsed = time.Since(start)
 			if err != nil {
+				log.Error("SFC precompiled error: Reverting to snapshot", "action", "staticcall", "err", err)
 				evm.SfcStateDB.RevertToSnapshot(snapshot)
 				if !errors.Is(err, ErrExecutionReverted) {
 				}
@@ -526,10 +545,9 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 		gas = contract.Gas
 
 		if isSfcPrecompile && evm.SfcStateDB != nil {
-			if ok, addr := evm.IsSfcCorrupted(); ok {
-				log.Warn("SFC corrupted after applying tx", "action", "static call", "height", evm.Context.BlockNumber, "addr", addr)
-			}
+			evm.IsSfcCorrupted("staticcall", caller.Address(), addr)
 			sfcDiffStaticCallMeter.Mark(int64(evmExecutionElapsed - sfcExecutionElapsed))
+			sfcStaticCallGauge.Inc(1)
 		}
 	}
 	if err != nil {
@@ -650,6 +668,7 @@ func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64,
 // Create creates a new contract using code as deployment code.
 func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.Int) (ret []byte, contractAddr common.Address, leftOverGas uint64, err error) {
 	contractAddr = crypto.CreateAddress(caller.Address(), evm.StateDB.GetNonce(caller.Address()))
+	// TODO(trinhdn97): handle create and create2 to also create the corresponding state object in SFC state
 	return evm.create(caller, &codeAndHash{code: code}, gas, value, contractAddr, CREATE)
 }
 
@@ -666,22 +685,14 @@ func (evm *EVM) Create2(caller ContractRef, code []byte, gas uint64, endowment *
 // ChainConfig returns the environment's chain configuration
 func (evm *EVM) ChainConfig() *params.ChainConfig { return evm.chainConfig }
 
-func (evm *EVM) IsSfcCorrupted() (corrupted bool, sfcAddr common.Address) {
+func (evm *EVM) IsSfcCorrupted(action string, from, to common.Address) {
 	for addr := range evm.Config.SfcPrecompiles {
-		if evm.StateDB.GetStorageRoot(addr).Cmp(evm.SfcStateDB.GetStorageRoot(addr)) != 0 {
-			corrupted = true
-			sfcAddr = addr
-			break
+		original := evm.StateDB.GetStorageRoot(addr)
+		sfc := evm.SfcStateDB.GetStorageRoot(addr)
+		if original.Cmp(sfc) != 0 {
+			log.Warn("SFC corrupted after applying tx", "action", action, "addr", addr,
+				"from", from.Hex(), "to", to.Hex(),
+				"original", original.Hex(), "sfc", sfc.Hex())
 		}
 	}
-	return corrupted, sfcAddr
-}
-
-func isNilInterface(i interface{}) bool {
-	if i == nil {
-		return true
-	}
-	// Check if the concrete value stored in the interface is nil
-	v := reflect.ValueOf(i)
-	return (v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface) && v.IsNil()
 }

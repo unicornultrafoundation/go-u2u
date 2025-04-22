@@ -7,7 +7,6 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
-	"github.com/unicornultrafoundation/go-u2u/crypto"
 	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
@@ -333,13 +332,11 @@ func getValidatorStatusSlot(validatorID *big.Int) (*big.Int, uint64) {
 	// keccak256(abi.encode(validatorID, validatorSlot))
 	// Then, for the status field (which is the first field), we use that slot directly
 
-	// Create the hash input: abi.encode(validatorID, validatorSlot)
-	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)                 // Left-pad to 32 bytes
-	validatorSlotBytes := common.LeftPadBytes(big.NewInt(validatorSlot).Bytes(), 32) // Left-pad to 32 bytes
-	hashInput := append(validatorIDBytes, validatorSlotBytes...)
+	// Create the hash input using cached padded values
+	hashInput := CreateHashInput(validatorID, validatorSlot)
 
 	// Calculate the hash - add gas cost for hashing
-	hash := crypto.Keccak256(hashInput)
+	hash := CachedKeccak256(hashInput)
 	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
@@ -366,13 +363,11 @@ func getValidatorCreatedEpochSlot(validatorID *big.Int) (*big.Int, uint64) {
 	// keccak256(abi.encode(validatorID, validatorSlot))
 	// Then, for the createdEpoch field (which is the fifth field), we add 4 to the base slot
 
-	// Create the hash input: abi.encode(validatorID, validatorSlot)
-	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)                 // Left-pad to 32 bytes
-	validatorSlotBytes := common.LeftPadBytes(big.NewInt(validatorSlot).Bytes(), 32) // Left-pad to 32 bytes
-	hashInput := append(validatorIDBytes, validatorSlotBytes...)
+	// Create the hash input using cached padded values
+	hashInput := CreateHashInput(validatorID, validatorSlot)
 
 	// Calculate the hash - add gas cost for hashing
-	hash := crypto.Keccak256(hashInput)
+	hash := CachedKeccak256(hashInput)
 	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
@@ -399,13 +394,11 @@ func getValidatorCreatedTimeSlot(validatorID *big.Int) (*big.Int, uint64) {
 	// keccak256(abi.encode(validatorID, validatorSlot))
 	// Then, for the createdTime field (which is the sixth field), we add 5 to the base slot
 
-	// Create the hash input: abi.encode(validatorID, validatorSlot)
-	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)                 // Left-pad to 32 bytes
-	validatorSlotBytes := common.LeftPadBytes(big.NewInt(validatorSlot).Bytes(), 32) // Left-pad to 32 bytes
-	hashInput := append(validatorIDBytes, validatorSlotBytes...)
+	// Create the hash input using cached padded values
+	hashInput := CreateHashInput(validatorID, validatorSlot)
 
 	// Calculate the hash - add gas cost for hashing
-	hash := crypto.Keccak256(hashInput)
+	hash := CachedKeccak256(hashInput)
 	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
@@ -432,13 +425,11 @@ func getValidatorDeactivatedEpochSlot(validatorID *big.Int) (*big.Int, uint64) {
 	// keccak256(abi.encode(validatorID, validatorSlot))
 	// Then, for the deactivatedEpoch field (which is the third field), we add 2 to the base slot
 
-	// Create the hash input: abi.encode(validatorID, validatorSlot)
-	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)                 // Left-pad to 32 bytes
-	validatorSlotBytes := common.LeftPadBytes(big.NewInt(validatorSlot).Bytes(), 32) // Left-pad to 32 bytes
-	hashInput := append(validatorIDBytes, validatorSlotBytes...)
+	// Create the hash input using cached padded values
+	hashInput := CreateHashInput(validatorID, validatorSlot)
 
 	// Calculate the hash - add gas cost for hashing
-	hash := crypto.Keccak256(hashInput)
+	hash := CachedKeccak256(hashInput)
 	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
@@ -465,13 +456,11 @@ func getValidatorDeactivatedTimeSlot(validatorID *big.Int) (*big.Int, uint64) {
 	// keccak256(abi.encode(validatorID, validatorSlot))
 	// Then, for the deactivatedTime field (which is the second field), we add 1 to the base slot
 
-	// Create the hash input: abi.encode(validatorID, validatorSlot)
-	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)                 // Left-pad to 32 bytes
-	validatorSlotBytes := common.LeftPadBytes(big.NewInt(validatorSlot).Bytes(), 32) // Left-pad to 32 bytes
-	hashInput := append(validatorIDBytes, validatorSlotBytes...)
+	// Create the hash input using cached padded values
+	hashInput := CreateHashInput(validatorID, validatorSlot)
 
 	// Calculate the hash - add gas cost for hashing
-	hash := crypto.Keccak256(hashInput)
+	hash := CachedKeccak256(hashInput)
 	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
@@ -488,13 +477,11 @@ func getValidatorCommissionSlot(validatorID *big.Int) (*big.Int, uint64) {
 	// For a mapping(uint256 => uint256), the slot is calculated as:
 	// keccak256(abi.encode(validatorID, validatorCommissionSlot))
 
-	// Create the hash input: abi.encode(validatorID, validatorCommissionSlot)
-	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)                                     // Left-pad to 32 bytes
-	validatorCommissionSlotBytes := common.LeftPadBytes(big.NewInt(validatorCommissionSlot).Bytes(), 32) // Left-pad to 32 bytes
-	hashInput := append(validatorIDBytes, validatorCommissionSlotBytes...)
+	// Create the hash input using cached padded values
+	hashInput := CreateHashInput(validatorID, validatorCommissionSlot)
 
 	// Calculate the hash - add gas cost for hashing
-	hash := crypto.Keccak256(hashInput)
+	hash := CachedKeccak256(hashInput)
 	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
@@ -520,13 +507,11 @@ func getValidatorAuthSlot(validatorID *big.Int) (*big.Int, uint64) {
 	// keccak256(abi.encode(validatorID, validatorSlot))
 	// Then, for the auth field (which is the seventh field), we add 6 to the base slot
 
-	// Create the hash input: abi.encode(validatorID, validatorSlot)
-	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)                 // Left-pad to 32 bytes
-	validatorSlotBytes := common.LeftPadBytes(big.NewInt(validatorSlot).Bytes(), 32) // Left-pad to 32 bytes
-	hashInput := append(validatorIDBytes, validatorSlotBytes...)
+	// Create the hash input using cached padded values
+	hashInput := CreateHashInput(validatorID, validatorSlot)
 
 	// Calculate the hash - add gas cost for hashing
-	hash := crypto.Keccak256(hashInput)
+	hash := CachedKeccak256(hashInput)
 	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
@@ -543,13 +528,11 @@ func getValidatorPubkeySlot(validatorID *big.Int) (*big.Int, uint64) {
 	// For a mapping(uint256 => bytes), the slot is calculated as:
 	// keccak256(abi.encode(validatorID, validatorPubkeySlot))
 
-	// Create the hash input: abi.encode(validatorID, validatorPubkeySlot)
-	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)                             // Left-pad to 32 bytes
-	validatorPubkeySlotBytes := common.LeftPadBytes(big.NewInt(validatorPubkeySlot).Bytes(), 32) // Left-pad to 32 bytes
-	hashInput := append(validatorIDBytes, validatorPubkeySlotBytes...)
+	// Create the hash input using cached padded values
+	hashInput := CreateHashInput(validatorID, validatorPubkeySlot)
 
 	// Calculate the hash - add gas cost for hashing
-	hash := crypto.Keccak256(hashInput)
+	hash := CachedKeccak256(hashInput)
 	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
@@ -565,21 +548,18 @@ func getStakeSlot(delegator common.Address, toValidatorID *big.Int) (*big.Int, u
 	// For a mapping(address => mapping(uint256 => uint256)), the slot is calculated as:
 	// keccak256(abi.encode(toValidatorID, keccak256(abi.encode(delegator, stakeSlot))))
 
-	// Create the inner hash input: abi.encode(delegator, stakeSlot)
-	delegatorBytes := common.LeftPadBytes(delegator.Bytes(), 32)             // Left-pad to 32 bytes
-	stakeSlotBytes := common.LeftPadBytes(big.NewInt(stakeSlot).Bytes(), 32) // Left-pad to 32 bytes
-	innerHashInput := append(delegatorBytes, stakeSlotBytes...)
+	// Create the inner hash input using cached padded values
+	innerHashInput := CreateAddressHashInput(delegator, stakeSlot)
 
 	// Calculate the inner hash - add gas cost for hashing
-	innerHash := crypto.Keccak256(innerHashInput)
+	innerHash := CachedKeccak256(innerHashInput)
 	gasUsed += HashGasCost
 
-	// Create the outer hash input: abi.encode(toValidatorID, innerHash)
-	toValidatorIDBytes := common.LeftPadBytes(toValidatorID.Bytes(), 32) // Left-pad to 32 bytes
-	outerHashInput := append(toValidatorIDBytes, innerHash...)
+	// Create the outer hash input using cached nested hash input
+	outerHashInput := CreateNestedHashInput(toValidatorID, innerHash)
 
 	// Calculate the outer hash - add gas cost for hashing
-	outerHash := crypto.Keccak256(outerHashInput)
+	outerHash := CachedKeccak256(outerHashInput)
 	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
@@ -605,13 +585,11 @@ func getValidatorReceivedStakeSlot(validatorID *big.Int) (*big.Int, uint64) {
 	// keccak256(abi.encode(validatorID, validatorSlot))
 	// Then, for the receivedStake field (which is the fourth field), we add 3 to the base slot
 
-	// Create the hash input: abi.encode(validatorID, validatorSlot)
-	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)                 // Left-pad to 32 bytes
-	validatorSlotBytes := common.LeftPadBytes(big.NewInt(validatorSlot).Bytes(), 32) // Left-pad to 32 bytes
-	hashInput := append(validatorIDBytes, validatorSlotBytes...)
+	// Create the hash input using cached padded values
+	hashInput := CreateHashInput(validatorID, validatorSlot)
 
 	// Calculate the hash - add gas cost for hashing
-	hash := crypto.Keccak256(hashInput)
+	hash := CachedKeccak256(hashInput)
 	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
@@ -628,22 +606,18 @@ func getWithdrawalRequestSlot(delegator common.Address, toValidatorID *big.Int, 
 	// For a mapping(address => mapping(uint256 => mapping(uint256 => WithdrawalRequest))), we need to calculate the slot in multiple steps
 
 	// Step 1: Calculate keccak256(abi.encode(delegator, withdrawalRequestSlot))
-	delegatorBytes := common.LeftPadBytes(delegator.Bytes(), 32)                                     // Left-pad to 32 bytes
-	withdrawalRequestSlotBytes := common.LeftPadBytes(big.NewInt(withdrawalRequestSlot).Bytes(), 32) // Left-pad to 32 bytes
-	innerHashInput1 := append(delegatorBytes, withdrawalRequestSlotBytes...)
-	innerHash1 := crypto.Keccak256(innerHashInput1)
+	innerHashInput1 := CreateAddressHashInput(delegator, withdrawalRequestSlot)
+	innerHash1 := CachedKeccak256(innerHashInput1)
 	gasUsed += HashGasCost
 
 	// Step 2: Calculate keccak256(abi.encode(toValidatorID, innerHash1))
-	toValidatorIDBytes := common.LeftPadBytes(toValidatorID.Bytes(), 32) // Left-pad to 32 bytes
-	innerHashInput2 := append(toValidatorIDBytes, innerHash1...)
-	innerHash2 := crypto.Keccak256(innerHashInput2)
+	innerHashInput2 := CreateNestedHashInput(toValidatorID, innerHash1)
+	innerHash2 := CachedKeccak256(innerHashInput2)
 	gasUsed += HashGasCost
 
 	// Step 3: Calculate keccak256(abi.encode(wrID, innerHash2))
-	wrIDBytes := common.LeftPadBytes(wrID.Bytes(), 32) // Left-pad to 32 bytes
-	outerHashInput := append(wrIDBytes, innerHash2...)
-	outerHash := crypto.Keccak256(outerHashInput)
+	outerHashInput := CreateNestedHashInput(wrID, innerHash2) // We can reuse the nested hash input function for any uint256
+	outerHash := CachedKeccak256(outerHashInput)
 	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
@@ -702,13 +676,11 @@ func getValidatorIDSlot(addr common.Address) (*big.Int, uint64) {
 	// For a mapping(address => uint256), the slot is calculated as:
 	// keccak256(abi.encode(addr, validatorIDSlot))
 
-	// Create the hash input: abi.encode(addr, validatorIDSlot)
-	addrBytes := common.LeftPadBytes(addr.Bytes(), 32)                                   // Left-pad to 32 bytes
-	validatorIDSlotBytes := common.LeftPadBytes(big.NewInt(validatorIDSlot).Bytes(), 32) // Left-pad to 32 bytes
-	hashInput := append(addrBytes, validatorIDSlotBytes...)
+	// Create the hash input using cached padded values
+	hashInput := CreateAddressHashInput(addr, validatorIDSlot)
 
 	// Calculate the hash - add gas cost for hashing
-	hash := crypto.Keccak256(hashInput)
+	hash := CachedKeccak256(hashInput)
 	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
@@ -724,21 +696,18 @@ func getLockedStakeSlot(delegator common.Address, toValidatorID *big.Int) (*big.
 	// For a mapping(address => mapping(uint256 => LockedDelegation)), first we need to get the slot for the LockedDelegation struct
 	// keccak256(abi.encode(toValidatorID, keccak256(abi.encode(delegator, lockupInfoSlot))))
 
-	// Create the inner hash input: abi.encode(delegator, lockupInfoSlot)
-	delegatorBytes := common.LeftPadBytes(delegator.Bytes(), 32)                       // Left-pad to 32 bytes
-	lockupInfoSlotBytes := common.LeftPadBytes(big.NewInt(lockupInfoSlot).Bytes(), 32) // Left-pad to 32 bytes
-	innerHashInput := append(delegatorBytes, lockupInfoSlotBytes...)
+	// Create the inner hash input using cached padded values
+	innerHashInput := CreateAddressHashInput(delegator, lockupInfoSlot)
 
 	// Calculate the inner hash - add gas cost for hashing
-	innerHash := crypto.Keccak256(innerHashInput)
+	innerHash := CachedKeccak256(innerHashInput)
 	gasUsed += HashGasCost
 
-	// Create the outer hash input: abi.encode(toValidatorID, innerHash)
-	toValidatorIDBytes := common.LeftPadBytes(toValidatorID.Bytes(), 32) // Left-pad to 32 bytes
-	outerHashInput := append(toValidatorIDBytes, innerHash...)
+	// Create the outer hash input using cached nested hash input
+	outerHashInput := CreateNestedHashInput(toValidatorID, innerHash)
 
 	// Calculate the outer hash - add gas cost for hashing
-	outerHash := crypto.Keccak256(outerHashInput)
+	outerHash := CachedKeccak256(outerHashInput)
 	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
@@ -815,21 +784,18 @@ func getRewardsStashSlot(delegator common.Address, toValidatorID *big.Int) (*big
 	// For a mapping(address => mapping(uint256 => Rewards)), first we need to get the slot for the Rewards struct
 	// keccak256(abi.encode(toValidatorID, keccak256(abi.encode(delegator, rewardsStashSlot))))
 
-	// Create the inner hash input: abi.encode(delegator, rewardsStashSlot)
-	delegatorBytes := common.LeftPadBytes(delegator.Bytes(), 32)                           // Left-pad to 32 bytes
-	rewardsStashSlotBytes := common.LeftPadBytes(big.NewInt(rewardsStashSlot).Bytes(), 32) // Left-pad to 32 bytes
-	innerHashInput := append(delegatorBytes, rewardsStashSlotBytes...)
+	// Create the inner hash input using cached padded values
+	innerHashInput := CreateAddressHashInput(delegator, rewardsStashSlot)
 
 	// Calculate the inner hash - add gas cost for hashing
-	innerHash := crypto.Keccak256(innerHashInput)
+	innerHash := CachedKeccak256(innerHashInput)
 	gasUsed += HashGasCost
 
-	// Create the outer hash input: abi.encode(toValidatorID, innerHash)
-	toValidatorIDBytes := common.LeftPadBytes(toValidatorID.Bytes(), 32) // Left-pad to 32 bytes
-	outerHashInput := append(toValidatorIDBytes, innerHash...)
+	// Create the outer hash input using cached nested hash input
+	outerHashInput := CreateNestedHashInput(toValidatorID, innerHash)
 
 	// Calculate the outer hash - add gas cost for hashing
-	outerHash := crypto.Keccak256(outerHashInput)
+	outerHash := CachedKeccak256(outerHashInput)
 	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
@@ -845,21 +811,18 @@ func getStashedLockupRewardsSlot(delegator common.Address, toValidatorID *big.In
 	// For a mapping(address => mapping(uint256 => uint256)), the slot is calculated as:
 	// keccak256(abi.encode(toValidatorID, keccak256(abi.encode(delegator, stashedLockupRewardsSlot))))
 
-	// Create the inner hash input: abi.encode(delegator, stashedLockupRewardsSlot)
-	delegatorBytes := common.LeftPadBytes(delegator.Bytes(), 32)                                           // Left-pad to 32 bytes
-	stashedLockupRewardsSlotBytes := common.LeftPadBytes(big.NewInt(stashedLockupRewardsSlot).Bytes(), 32) // Left-pad to 32 bytes
-	innerHashInput := append(delegatorBytes, stashedLockupRewardsSlotBytes...)
+	// Create the inner hash input using cached padded values
+	innerHashInput := CreateAddressHashInput(delegator, stashedLockupRewardsSlot)
 
 	// Calculate the inner hash - add gas cost for hashing
-	innerHash := crypto.Keccak256(innerHashInput)
+	innerHash := CachedKeccak256(innerHashInput)
 	gasUsed += HashGasCost
 
-	// Create the outer hash input: abi.encode(toValidatorID, innerHash)
-	toValidatorIDBytes := common.LeftPadBytes(toValidatorID.Bytes(), 32) // Left-pad to 32 bytes
-	outerHashInput := append(toValidatorIDBytes, innerHash...)
+	// Create the outer hash input using cached nested hash input
+	outerHashInput := CreateNestedHashInput(toValidatorID, innerHash)
 
 	// Calculate the outer hash - add gas cost for hashing
-	outerHash := crypto.Keccak256(outerHashInput)
+	outerHash := CachedKeccak256(outerHashInput)
 	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
@@ -875,21 +838,18 @@ func getStashedRewardsUntilEpochSlot(delegator common.Address, toValidatorID *bi
 	// For a mapping(address => mapping(uint256 => uint256)), the slot is calculated as:
 	// keccak256(abi.encode(toValidatorID, keccak256(abi.encode(delegator, stashedRewardsUntilEpochSlot))))
 
-	// Create the inner hash input: abi.encode(delegator, stashedRewardsUntilEpochSlot)
-	delegatorBytes := common.LeftPadBytes(delegator.Bytes(), 32)                                                   // Left-pad to 32 bytes
-	stashedRewardsUntilEpochSlotBytes := common.LeftPadBytes(big.NewInt(stashedRewardsUntilEpochSlot).Bytes(), 32) // Left-pad to 32 bytes
-	innerHashInput := append(delegatorBytes, stashedRewardsUntilEpochSlotBytes...)
+	// Create the inner hash input using cached padded values
+	innerHashInput := CreateAddressHashInput(delegator, stashedRewardsUntilEpochSlot)
 
 	// Calculate the inner hash - add gas cost for hashing
-	innerHash := crypto.Keccak256(innerHashInput)
+	innerHash := CachedKeccak256(innerHashInput)
 	gasUsed += HashGasCost
 
-	// Create the outer hash input: abi.encode(toValidatorID, innerHash)
-	toValidatorIDBytes := common.LeftPadBytes(toValidatorID.Bytes(), 32) // Left-pad to 32 bytes
-	outerHashInput := append(toValidatorIDBytes, innerHash...)
+	// Create the outer hash input using cached nested hash input
+	outerHashInput := CreateNestedHashInput(toValidatorID, innerHash)
 
 	// Calculate the outer hash - add gas cost for hashing
-	outerHash := crypto.Keccak256(outerHashInput)
+	outerHash := CachedKeccak256(outerHashInput)
 	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
@@ -958,6 +918,12 @@ func getCurrentEpoch(evm *vm.EVM) (*big.Int, uint64, error) {
 
 // getEpochSnapshotSlot calculates the storage slot for an epoch snapshot
 func getEpochSnapshotSlot(epoch *big.Int) (*big.Int, uint64) {
+	// Check if the result is in the cache
+	key := epoch.String()
+	if slot, found := sfcCache.EpochSlot[key]; found {
+		return slot, HashGasCost // Still account for gas even though we're using the cache
+	}
+
 	// Initialize gas used
 	var gasUsed uint64 = 0
 
@@ -970,12 +936,16 @@ func getEpochSnapshotSlot(epoch *big.Int) (*big.Int, uint64) {
 	hashInput := append(epochBytes, epochSnapshotSlotBytes...)
 
 	// Calculate the hash - add gas cost for hashing
-	hash := crypto.Keccak256(hashInput)
+	hash := CachedKeccak256(hashInput)
 	gasUsed += HashGasCost
 	log.Trace("SFC: Epoch Snapshot Slot", "hashslot", common.Bytes2Hex(hash))
 
 	// Convert the hash to a big.Int
 	slot := new(big.Int).SetBytes(hash)
+
+	// Store in cache
+	sfcCache.EpochSlot[key] = slot
+
 	return slot, gasUsed
 }
 
@@ -1232,13 +1202,13 @@ func getEpochValidatorOfflineTimeSlot(epoch *big.Int, validatorID *big.Int) (*bi
 	// Add the offset for the offlineTime mapping within the struct
 	mappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(offlineTimeOffset))
 
-	// Calculate the final slot for the specific key: keccak256(validatorID . mappingSlot)
-	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32) // Left-pad to 32 bytes
-	mappingSlotBytes := common.LeftPadBytes(mappingSlot.Bytes(), 32) // Left-pad to 32 bytes
+	// Calculate the final slot for the specific key using cached padded values
+	validatorIDBytes := GetPaddedValidatorID(validatorID)
+	mappingSlotBytes := common.LeftPadBytes(mappingSlot.Bytes(), 32) // This is a computed value, not a constant
 	hashInput := append(validatorIDBytes, mappingSlotBytes...)
 
 	// Calculate the hash - add gas cost for hashing
-	hash := crypto.Keccak256(hashInput)
+	hash := CachedKeccak256(hashInput)
 	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
@@ -1264,13 +1234,13 @@ func getEpochValidatorOfflineBlocksSlot(epoch *big.Int, validatorID *big.Int) (*
 	// Add the offset for the offlineBlocks mapping within the struct
 	mappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(offlineBlocksOffset))
 
-	// Calculate the final slot for the specific key: keccak256(validatorID . mappingSlot)
-	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32) // Left-pad to 32 bytes
-	mappingSlotBytes := common.LeftPadBytes(mappingSlot.Bytes(), 32) // Left-pad to 32 bytes
+	// Calculate the final slot for the specific key using cached padded values
+	validatorIDBytes := GetPaddedValidatorID(validatorID)
+	mappingSlotBytes := common.LeftPadBytes(mappingSlot.Bytes(), 32) // This is a computed value, not a constant
 	hashInput := append(validatorIDBytes, mappingSlotBytes...)
 
 	// Calculate the hash - add gas cost for hashing
-	hash := crypto.Keccak256(hashInput)
+	hash := CachedKeccak256(hashInput)
 	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
@@ -1302,7 +1272,7 @@ func getEpochValidatorAccumulatedRewardPerTokenSlot(epoch *big.Int, validatorID 
 	hashInput := append(validatorIDBytes, mappingSlotBytes...)
 
 	// Calculate the hash - add gas cost for hashing
-	hash := crypto.Keccak256(hashInput)
+	hash := CachedKeccak256(hashInput)
 	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
@@ -1334,7 +1304,7 @@ func getEpochValidatorAccumulatedUptimeSlot(epoch *big.Int, validatorID *big.Int
 	hashInput := append(validatorIDBytes, mappingSlotBytes...)
 
 	// Calculate the hash - add gas cost for hashing
-	hash := crypto.Keccak256(hashInput)
+	hash := CachedKeccak256(hashInput)
 	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
@@ -1366,7 +1336,7 @@ func getEpochValidatorAccumulatedOriginatedTxsFeeSlot(epoch *big.Int, validatorI
 	hashInput := append(validatorIDBytes, mappingSlotBytes...)
 
 	// Calculate the hash - add gas cost for hashing
-	hash := crypto.Keccak256(hashInput)
+	hash := CachedKeccak256(hashInput)
 	gasUsed += HashGasCost
 
 	// Convert the hash to a big.Int
@@ -1380,10 +1350,8 @@ func getEpochValidatorReceivedStakeSlot(epoch *big.Int, validatorID *big.Int) (*
 	var gasUsed uint64 = 0
 
 	// Step 1: Calculate the slot for getEpochSnapshot[epoch]
-	epochBytes := common.LeftPadBytes(epoch.Bytes(), 32)
-	epochSnapshotSlotBytes := common.LeftPadBytes(big.NewInt(epochSnapshotSlot).Bytes(), 32)
-	epochHashInput := append(epochBytes, epochSnapshotSlotBytes...)
-	epochHash := crypto.Keccak256(epochHashInput)
+	hashInput := CreateHashInput(epoch, epochSnapshotSlot)
+	epochHash := CachedKeccak256(hashInput)
 	gasUsed += HashGasCost
 
 	// Step 2: Add the offset for receivedStake within the struct
@@ -1392,10 +1360,10 @@ func getEpochValidatorReceivedStakeSlot(epoch *big.Int, validatorID *big.Int) (*
 	mappingSlot := new(big.Int).Add(structSlot, big.NewInt(receiveStakeOffset))
 
 	// Step 3: Calculate the final slot for receivedStake[validatorID]
-	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)
-	mappingSlotBytes := common.LeftPadBytes(mappingSlot.Bytes(), 32)
+	validatorIDBytes := GetPaddedValidatorID(validatorID)
+	mappingSlotBytes := common.LeftPadBytes(mappingSlot.Bytes(), 32) // This is a computed value, not a constant
 	finalHashInput := append(validatorIDBytes, mappingSlotBytes...)
-	finalHash := crypto.Keccak256(finalHashInput)
+	finalHash := CachedKeccak256(finalHashInput)
 	gasUsed += HashGasCost
 
 	return new(big.Int).SetBytes(finalHash), gasUsed

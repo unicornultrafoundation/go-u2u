@@ -1398,16 +1398,20 @@ func handleWithdraw(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 func handleCurrentEpoch(evm *vm.EVM) ([]byte, uint64, error) {
 	var gasUsed uint64 = 0
 	// Get the current epoch using the utility function
-	currentEpochBigInt, _, err := getCurrentEpoch(evm)
+	currentEpochBigInt, epochGasUsed, err := getCurrentEpoch(evm)
+	gasUsed += epochGasUsed
 	if err != nil {
 		return nil, 0, err
 	}
 
-	// Pack the result
-	result, err := SfcAbi.Methods["currentEpoch"].Outputs.Pack(currentEpochBigInt)
+	// Pack the result using the cached ABI packing function
+	result, err := CachedAbiPack(SfcAbiType, "currentEpoch", currentEpochBigInt)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}
+
+	// Return the big.Int to the pool
+	PutBigInt(currentEpochBigInt)
 
 	return result, gasUsed, nil
 }

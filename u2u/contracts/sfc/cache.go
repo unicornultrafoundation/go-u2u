@@ -2,6 +2,7 @@
 package sfc
 
 import (
+	"fmt"
 	"math/big"
 	"strconv"
 
@@ -87,16 +88,13 @@ type SFCCache struct {
 	ValidatorSlot map[string]*big.Int
 	EpochSlot     map[string]*big.Int
 
-	// Padding caches
-	PaddedValidatorIDs map[string][]byte // Cache for padded validator IDs
-	PaddedAddresses    map[string][]byte // Cache for padded addresses
-
-	// Pre-computed padded slot constants
-	PaddedSlots map[int64][]byte // Cache for padded slot constants
-
 	// Hash input caches
 	HashInputs      map[string][]byte // Cache for hash inputs (validatorID + slot)
 	AddressHashInputs map[string][]byte // Cache for address hash inputs (address + slot)
+	NestedHashInputs map[string][]byte // Cache for nested hash inputs
+
+	// Unified ABI encoding cache
+	AbiPackCache map[string][]byte // Cache for all ABI packed results
 }
 
 // NewSFCCache creates a new SFC cache
@@ -106,15 +104,11 @@ func NewSFCCache() *SFCCache {
 		Slot:              NewSlotCache(),
 		ValidatorSlot:     make(map[string]*big.Int),
 		EpochSlot:         make(map[string]*big.Int),
-		PaddedValidatorIDs: make(map[string][]byte),
-		PaddedAddresses:    make(map[string][]byte),
-		PaddedSlots:        make(map[int64][]byte),
 		HashInputs:         make(map[string][]byte),
 		AddressHashInputs:  make(map[string][]byte),
+		NestedHashInputs:   make(map[string][]byte),
+		AbiPackCache:       make(map[string][]byte),
 	}
-
-	// Initialize padded slot constants
-	cache.initPaddedSlots()
 
 	return cache
 }
@@ -178,62 +172,7 @@ func ClearCache() {
 	sfcCache = NewSFCCache()
 }
 
-// initPaddedSlots initializes the padded slot constants
-func (c *SFCCache) initPaddedSlots() {
-	// Pre-compute padded bytes for common slot constants
-	c.PaddedSlots[validatorSlot] = common.LeftPadBytes(big.NewInt(validatorSlot).Bytes(), 32)
-	c.PaddedSlots[validatorCommissionSlot] = common.LeftPadBytes(big.NewInt(validatorCommissionSlot).Bytes(), 32)
-	c.PaddedSlots[validatorPubkeySlot] = common.LeftPadBytes(big.NewInt(validatorPubkeySlot).Bytes(), 32)
-	c.PaddedSlots[stakeSlot] = common.LeftPadBytes(big.NewInt(stakeSlot).Bytes(), 32)
-	c.PaddedSlots[lockupInfoSlot] = common.LeftPadBytes(big.NewInt(lockupInfoSlot).Bytes(), 32)
-	c.PaddedSlots[rewardsStashSlot] = common.LeftPadBytes(big.NewInt(rewardsStashSlot).Bytes(), 32)
-	c.PaddedSlots[stashedLockupRewardsSlot] = common.LeftPadBytes(big.NewInt(stashedLockupRewardsSlot).Bytes(), 32)
-	c.PaddedSlots[stashedRewardsUntilEpochSlot] = common.LeftPadBytes(big.NewInt(stashedRewardsUntilEpochSlot).Bytes(), 32)
-	c.PaddedSlots[withdrawalRequestSlot] = common.LeftPadBytes(big.NewInt(withdrawalRequestSlot).Bytes(), 32)
-	c.PaddedSlots[validatorIDSlot] = common.LeftPadBytes(big.NewInt(validatorIDSlot).Bytes(), 32)
-	c.PaddedSlots[epochSnapshotSlot] = common.LeftPadBytes(big.NewInt(epochSnapshotSlot).Bytes(), 32)
-}
 
-// GetPaddedValidatorID returns the padded bytes for a validator ID
-func GetPaddedValidatorID(validatorID *big.Int) []byte {
-	key := validatorID.String()
-
-	if padded, found := sfcCache.PaddedValidatorIDs[key]; found {
-		return padded
-	}
-
-	padded := common.LeftPadBytes(validatorID.Bytes(), 32)
-	sfcCache.PaddedValidatorIDs[key] = padded
-
-	return padded
-}
-
-// GetPaddedAddress returns the padded bytes for an address
-func GetPaddedAddress(addr common.Address) []byte {
-	key := addr.String()
-
-	if padded, found := sfcCache.PaddedAddresses[key]; found {
-		return padded
-	}
-
-	padded := common.LeftPadBytes(addr.Bytes(), 32)
-	sfcCache.PaddedAddresses[key] = padded
-
-	return padded
-}
-
-// GetPaddedSlot returns the padded bytes for a slot constant
-func GetPaddedSlot(slot int64) []byte {
-	if padded, found := sfcCache.PaddedSlots[slot]; found {
-		return padded
-	}
-
-	// If not pre-computed, compute and store it
-	padded := common.LeftPadBytes(big.NewInt(slot).Bytes(), 32)
-	sfcCache.PaddedSlots[slot] = padded
-
-	return padded
-}
 
 // CreateHashInput creates a hash input from a validator ID and slot constant
 func CreateHashInput(validatorID *big.Int, slotConstant int64) []byte {
@@ -245,10 +184,20 @@ func CreateHashInput(validatorID *big.Int, slotConstant int64) []byte {
 		return hashInput
 	}
 
-	// If not in cache, create the hash input
-	validatorIDBytes := GetPaddedValidatorID(validatorID)
-	slotBytes := GetPaddedSlot(slotConstant)
-	hashInput := append(validatorIDBytes, slotBytes...)
+	// If not in cache, create the hash input directly
+	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)
+	slotBytes := common.LeftPadBytes(big.NewInt(slotConstant).Bytes(), 32)
+
+	// Use the byte slice pool for the result
+	hashInput := GetByteSlice()
+	if cap(hashInput) < len(validatorIDBytes)+len(slotBytes) {
+		// If the slice from the pool is too small, allocate a new one
+		hashInput = make([]byte, 0, len(validatorIDBytes)+len(slotBytes))
+	}
+
+	// Combine the bytes
+	hashInput = append(hashInput, validatorIDBytes...)
+	hashInput = append(hashInput, slotBytes...)
 
 	// Store in cache
 	sfcCache.HashInputs[cacheKey] = hashInput
@@ -266,10 +215,20 @@ func CreateAddressHashInput(addr common.Address, slotConstant int64) []byte {
 		return hashInput
 	}
 
-	// If not in cache, create the hash input
-	addrBytes := GetPaddedAddress(addr)
-	slotBytes := GetPaddedSlot(slotConstant)
-	hashInput := append(addrBytes, slotBytes...)
+	// If not in cache, create the hash input directly
+	addrBytes := common.LeftPadBytes(addr.Bytes(), 32)
+	slotBytes := common.LeftPadBytes(big.NewInt(slotConstant).Bytes(), 32)
+
+	// Use the byte slice pool for the result
+	hashInput := GetByteSlice()
+	if cap(hashInput) < len(addrBytes)+len(slotBytes) {
+		// If the slice from the pool is too small, allocate a new one
+		hashInput = make([]byte, 0, len(addrBytes)+len(slotBytes))
+	}
+
+	// Combine the bytes
+	hashInput = append(hashInput, addrBytes...)
+	hashInput = append(hashInput, slotBytes...)
 
 	// Store in cache
 	sfcCache.AddressHashInputs[cacheKey] = hashInput
@@ -283,16 +242,26 @@ func CreateNestedHashInput(validatorID *big.Int, hash []byte) []byte {
 	cacheKey := validatorID.String() + "_" + common.Bytes2Hex(hash)
 
 	// Check if the hash input is already cached
-	if hashInput, found := sfcCache.HashInputs[cacheKey]; found {
+	if hashInput, found := sfcCache.NestedHashInputs[cacheKey]; found {
 		return hashInput
 	}
 
-	// If not in cache, create the hash input
-	validatorIDBytes := GetPaddedValidatorID(validatorID)
-	hashInput := append(validatorIDBytes, hash...)
+	// If not in cache, create the hash input directly
+	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)
+
+	// Use the byte slice pool for the result
+	hashInput := GetByteSlice()
+	if cap(hashInput) < len(validatorIDBytes)+len(hash) {
+		// If the slice from the pool is too small, allocate a new one
+		hashInput = make([]byte, 0, len(validatorIDBytes)+len(hash))
+	}
+
+	// Combine the bytes
+	hashInput = append(hashInput, validatorIDBytes...)
+	hashInput = append(hashInput, hash...)
 
 	// Store in cache
-	sfcCache.HashInputs[cacheKey] = hashInput
+	sfcCache.NestedHashInputs[cacheKey] = hashInput
 
 	return hashInput
 }
@@ -303,16 +272,71 @@ func CreateNestedAddressHashInput(addr common.Address, hash []byte) []byte {
 	cacheKey := addr.String() + "_" + common.Bytes2Hex(hash)
 
 	// Check if the hash input is already cached
-	if hashInput, found := sfcCache.AddressHashInputs[cacheKey]; found {
+	if hashInput, found := sfcCache.NestedHashInputs[cacheKey]; found {
 		return hashInput
 	}
 
-	// If not in cache, create the hash input
-	addrBytes := GetPaddedAddress(addr)
-	hashInput := append(addrBytes, hash...)
+	// If not in cache, create the hash input directly
+	addrBytes := common.LeftPadBytes(addr.Bytes(), 32)
+
+	// Use the byte slice pool for the result
+	hashInput := GetByteSlice()
+	if cap(hashInput) < len(addrBytes)+len(hash) {
+		// If the slice from the pool is too small, allocate a new one
+		hashInput = make([]byte, 0, len(addrBytes)+len(hash))
+	}
+
+	// Combine the bytes
+	hashInput = append(hashInput, addrBytes...)
+	hashInput = append(hashInput, hash...)
 
 	// Store in cache
-	sfcCache.AddressHashInputs[cacheKey] = hashInput
+	sfcCache.NestedHashInputs[cacheKey] = hashInput
 
 	return hashInput
+}
+
+// ABI type constants for identifying which ABI to use
+const (
+	SfcAbiType            = "sfc"
+	CMAbiType             = "cm"
+	NodeDriverAbiType     = "nodedriver"
+	NodeDriverAuthAbiType = "nodedriverauth"
+)
+
+// CachedAbiPack packs arguments using the specified ABI and caches the result
+func CachedAbiPack(abiType, method string, args ...interface{}) ([]byte, error) {
+	// Create a cache key from the ABI type, method and args
+	key := abiType + ":" + method + ":" + fmt.Sprint(args...)
+
+	// Check if the result is already cached
+	if packed, ok := sfcCache.AbiPackCache[key]; ok {
+		return packed, nil
+	}
+
+	// Not in cache, pack it
+	var packed []byte
+	var err error
+
+	switch abiType {
+	case SfcAbiType:
+		packed, err = SfcAbi.Methods[method].Outputs.Pack(args...)
+	case CMAbiType:
+		packed, err = CMAbi.Methods[method].Outputs.Pack(args...)
+	case NodeDriverAbiType:
+		packed, err = NodeDriverAbi.Methods[method].Outputs.Pack(args...)
+	case NodeDriverAuthAbiType:
+		packed, err = NodeDriverAuthAbi.Methods[method].Outputs.Pack(args...)
+	default:
+		return nil, fmt.Errorf("unknown ABI type: %s", abiType)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Store in cache
+	sfcCache.AbiPackCache[key] = packed
+
+	return packed, nil
 }

@@ -301,16 +301,39 @@ func checkZeroAddress(addr common.Address, methodName string, message string) ([
 
 // encodeRevertReason encodes a revert reason as an ABI-encoded error
 func encodeRevertReason(methodName string, reason string) ([]byte, error) {
+	// Create a cache key for this error message
+	errorMessage := methodName + ": " + reason
+	cacheKey := "Error:" + errorMessage
+
+	// Check if we have this error message cached
+	if cachedData, ok := sfcCache.AbiPackCache[cacheKey]; ok {
+		return cachedData, nil
+	}
+
 	// Prepend the error signature: bytes4(keccak256("Error(string)"))
 	errorSig := []byte{0x08, 0xc3, 0x79, 0xa0}
+
 	// Pack the revert reason
 	packedReason, err := abi.Arguments{{Type: abi.Type{T: abi.StringTy}}}.Pack(reason)
 	if err != nil {
 		return nil, err
 	}
+
+	// Use the byte slice pool for the result
+	result := GetByteSlice()
+	if cap(result) < len(errorSig)+len(packedReason) {
+		// If the slice from the pool is too small, allocate a new one
+		result = make([]byte, 0, len(errorSig)+len(packedReason))
+	}
+
 	// Combine the error signature and packed reason
-	revertData := append(errorSig, packedReason...)
-	return revertData, nil
+	result = append(result, errorSig...)
+	result = append(result, packedReason...)
+
+	// Cache the result
+	sfcCache.AbiPackCache[cacheKey] = result
+
+	return result, nil
 }
 
 // Helper functions for calculating validator storage slots
@@ -339,8 +362,8 @@ func getValidatorStatusSlot(validatorID *big.Int) (*big.Int, uint64) {
 	hash := CachedKeccak256(hashInput)
 	gasUsed += HashGasCost
 
-	// Convert the hash to a big.Int
-	slot := new(big.Int).SetBytes(hash)
+	// Convert the hash to a big.Int using the pool
+	slot := GetBigInt().SetBytes(hash)
 
 	// The status field is at slot + 0
 	return slot, gasUsed
@@ -370,11 +393,17 @@ func getValidatorCreatedEpochSlot(validatorID *big.Int) (*big.Int, uint64) {
 	hash := CachedKeccak256(hashInput)
 	gasUsed += HashGasCost
 
-	// Convert the hash to a big.Int
-	slot := new(big.Int).SetBytes(hash)
+	// Convert the hash to a big.Int using the pool
+	slot := GetBigInt().SetBytes(hash)
 
 	// The createdEpoch field is at slot + 4
-	return new(big.Int).Add(slot, big.NewInt(4)), gasUsed
+	// Use the pool for the result as well
+	result := GetBigInt().Add(slot, big.NewInt(4))
+
+	// Return the slot to the pool
+	PutBigInt(slot)
+
+	return result, gasUsed
 }
 
 // getValidatorCreatedTimeSlot calculates the storage slot for a validator's created time
@@ -905,13 +934,21 @@ func getCurrentEpoch(evm *vm.EVM) (*big.Int, uint64, error) {
 	// Initialize gas used
 	var gasUsed uint64 = 0
 
-	// Get the current sealed epoch (SLOAD operation)
-	currentSealedEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(currentSealedEpochSlot)))
-	gasUsed += SloadGasCost // Add gas for SLOAD
-	currentSealedEpochBigInt := new(big.Int).SetBytes(currentSealedEpoch.Bytes())
+	// Get the current sealed epoch slot using a cached constant
+	currentSealedEpochSlotHash := common.BigToHash(big.NewInt(currentSealedEpochSlot))
 
-	// Calculate current epoch as currentSealedEpoch + 1
-	currentEpochBigInt := new(big.Int).Add(currentSealedEpochBigInt, big.NewInt(1))
+	// Get the current sealed epoch (SLOAD operation)
+	currentSealedEpoch := evm.SfcStateDB.GetState(ContractAddress, currentSealedEpochSlotHash)
+	gasUsed += SloadGasCost // Add gas for SLOAD
+
+	// Use the big.Int pool
+	currentSealedEpochBigInt := GetBigInt().SetBytes(currentSealedEpoch.Bytes())
+
+	// Calculate current epoch as currentSealedEpoch + 1 using the pool
+	currentEpochBigInt := GetBigInt().Add(currentSealedEpochBigInt, big.NewInt(1))
+
+	// Return the sealed epoch to the pool
+	PutBigInt(currentSealedEpochBigInt)
 
 	return currentEpochBigInt, gasUsed, nil
 }
@@ -1202,10 +1239,20 @@ func getEpochValidatorOfflineTimeSlot(epoch *big.Int, validatorID *big.Int) (*bi
 	// Add the offset for the offlineTime mapping within the struct
 	mappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(offlineTimeOffset))
 
-	// Calculate the final slot for the specific key using cached padded values
-	validatorIDBytes := GetPaddedValidatorID(validatorID)
+	// Calculate the final slot for the specific key directly
+	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)
 	mappingSlotBytes := common.LeftPadBytes(mappingSlot.Bytes(), 32) // This is a computed value, not a constant
-	hashInput := append(validatorIDBytes, mappingSlotBytes...)
+
+	// Use the byte slice pool for the result
+	hashInput := GetByteSlice()
+	if cap(hashInput) < len(validatorIDBytes)+len(mappingSlotBytes) {
+		// If the slice from the pool is too small, allocate a new one
+		hashInput = make([]byte, 0, len(validatorIDBytes)+len(mappingSlotBytes))
+	}
+
+	// Combine the bytes
+	hashInput = append(hashInput, validatorIDBytes...)
+	hashInput = append(hashInput, mappingSlotBytes...)
 
 	// Calculate the hash - add gas cost for hashing
 	hash := CachedKeccak256(hashInput)
@@ -1234,10 +1281,20 @@ func getEpochValidatorOfflineBlocksSlot(epoch *big.Int, validatorID *big.Int) (*
 	// Add the offset for the offlineBlocks mapping within the struct
 	mappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(offlineBlocksOffset))
 
-	// Calculate the final slot for the specific key using cached padded values
-	validatorIDBytes := GetPaddedValidatorID(validatorID)
+	// Calculate the final slot for the specific key directly
+	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)
 	mappingSlotBytes := common.LeftPadBytes(mappingSlot.Bytes(), 32) // This is a computed value, not a constant
-	hashInput := append(validatorIDBytes, mappingSlotBytes...)
+
+	// Use the byte slice pool for the result
+	hashInput := GetByteSlice()
+	if cap(hashInput) < len(validatorIDBytes)+len(mappingSlotBytes) {
+		// If the slice from the pool is too small, allocate a new one
+		hashInput = make([]byte, 0, len(validatorIDBytes)+len(mappingSlotBytes))
+	}
+
+	// Combine the bytes
+	hashInput = append(hashInput, validatorIDBytes...)
+	hashInput = append(hashInput, mappingSlotBytes...)
 
 	// Calculate the hash - add gas cost for hashing
 	hash := CachedKeccak256(hashInput)
@@ -1360,9 +1417,19 @@ func getEpochValidatorReceivedStakeSlot(epoch *big.Int, validatorID *big.Int) (*
 	mappingSlot := new(big.Int).Add(structSlot, big.NewInt(receiveStakeOffset))
 
 	// Step 3: Calculate the final slot for receivedStake[validatorID]
-	validatorIDBytes := GetPaddedValidatorID(validatorID)
+	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)
 	mappingSlotBytes := common.LeftPadBytes(mappingSlot.Bytes(), 32) // This is a computed value, not a constant
-	finalHashInput := append(validatorIDBytes, mappingSlotBytes...)
+
+	// Use the byte slice pool for the result
+	finalHashInput := GetByteSlice()
+	if cap(finalHashInput) < len(validatorIDBytes)+len(mappingSlotBytes) {
+		// If the slice from the pool is too small, allocate a new one
+		finalHashInput = make([]byte, 0, len(validatorIDBytes)+len(mappingSlotBytes))
+	}
+
+	// Combine the bytes
+	finalHashInput = append(finalHashInput, validatorIDBytes...)
+	finalHashInput = append(finalHashInput, mappingSlotBytes...)
 	finalHash := CachedKeccak256(finalHashInput)
 	gasUsed += HashGasCost
 

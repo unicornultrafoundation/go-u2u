@@ -338,7 +338,7 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		result, gasUsed, err = handleFallback(evm, args, input)
 
 	default:
-		log.Debug("SFC Precompiled: Unknown function", "function", method.Name)
+		log.Error("SFC Precompiled: Unknown function", "function", method.Name)
 		return nil, 0, vm.ErrSfcFunctionNotImplemented
 	}
 	if err != nil {

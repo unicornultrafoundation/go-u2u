@@ -133,7 +133,7 @@ func (p *DriverPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte,
 		result, gasUsed, err = handleFallback(evm, caller, args, input)
 
 	default:
-		log.Debug("Driver Precompiled: Unknown function", "function", method.Name)
+		log.Error("Driver Precompiled: Unknown function", "function", method.Name)
 		return nil, 0, vm.ErrSfcFunctionNotImplemented
 	}
 	if err != nil {

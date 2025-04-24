@@ -154,7 +154,7 @@ func (c *ConstantManagerPrecompile) Run(evm *vm.EVM, caller common.Address, inpu
 		result, gasUsed, err = handleFallback(evm, args, input)
 
 	default:
-		log.Debug("CM Precompiled: Unknown function", "function", method.Name)
+		log.Error("CM Precompiled: Unknown function", "function", method.Name)
 		return nil, 0, vm.ErrSfcFunctionNotImplemented
 	}
 	if err != nil {

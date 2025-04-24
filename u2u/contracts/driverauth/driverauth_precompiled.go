@@ -164,7 +164,7 @@ func (c *DriverAuthPrecompile) Run(evm *vm.EVM, caller common.Address, input []b
 		result, gasUsed, err = handleFallback(evm, caller, args, input)
 
 	default:
-		log.Debug("DriverAuth Precompiled: Unknown function", "function", method.Name)
+		log.Error("DriverAuth Precompiled: Unknown function", "function", method.Name)
 		return nil, 0, vm.ErrSfcFunctionNotImplemented
 	}
 	if err != nil {

@@ -398,6 +398,46 @@ func CreateAddressParamsHashInput(addr common.Address, params ...[]byte) []byte 
 	return hashInput
 }
 
+// CreateOffsetSlotHashInput creates a hash input from an offset and a slot
+func CreateOffsetSlotHashInput(offset int64, slot *big.Int) []byte {
+	// Create a cache key from offset and slot
+	cacheKey := strconv.FormatInt(offset, 10) + "_slot_" + slot.String()
+
+	// Check if the hash input is already cached
+	if hashInput, found := sfcCache.HashInputs[cacheKey]; found {
+		return hashInput
+	}
+
+	// If not in cache, create the hash input directly
+	offsetBytes := common.LeftPadBytes(big.NewInt(offset).Bytes(), 32)
+	slotBytes := common.LeftPadBytes(slot.Bytes(), 32)
+
+	// Use the byte slice pool for the result
+	hashInput := GetByteSlice()
+	if cap(hashInput) < len(offsetBytes)+len(slotBytes) {
+		// If the slice from the pool is too small, allocate a new one
+		hashInput = make([]byte, 0, len(offsetBytes)+len(slotBytes))
+	}
+
+	// Combine the bytes
+	hashInput = append(hashInput, offsetBytes...)
+	hashInput = append(hashInput, slotBytes...)
+
+	// Store in cache
+	sfcCache.HashInputs[cacheKey] = hashInput
+
+	return hashInput
+}
+
+// CreateAndHashOffsetSlot creates a hash input from an offset and a slot, then hashes it
+func CreateAndHashOffsetSlot(offset int64, slot *big.Int) []byte {
+	// Get the hash input
+	hashInput := CreateOffsetSlotHashInput(offset, slot)
+
+	// Use cached hash calculation
+	return CachedKeccak256(hashInput)
+}
+
 // ABI type constants for identifying which ABI to use
 const (
 	SfcAbiType            = "sfc"

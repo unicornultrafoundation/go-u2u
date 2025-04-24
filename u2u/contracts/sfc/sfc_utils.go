@@ -332,7 +332,7 @@ func encodeRevertReason(methodName string, reason string) ([]byte, error) {
 
 	// Cache the result
 	sfcCache.AbiPackCache[cacheKey] = result
-
+	log.Debug("SFC: Revert", "message", errorMessage)
 	return result, nil
 }
 
@@ -1239,20 +1239,8 @@ func getEpochValidatorOfflineTimeSlot(epoch *big.Int, validatorID *big.Int) (*bi
 	// Add the offset for the offlineTime mapping within the struct
 	mappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(offlineTimeOffset))
 
-	// Calculate the final slot for the specific key directly
-	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)
-	mappingSlotBytes := common.LeftPadBytes(mappingSlot.Bytes(), 32) // This is a computed value, not a constant
-
-	// Use the byte slice pool for the result
-	hashInput := GetByteSlice()
-	if cap(hashInput) < len(validatorIDBytes)+len(mappingSlotBytes) {
-		// If the slice from the pool is too small, allocate a new one
-		hashInput = make([]byte, 0, len(validatorIDBytes)+len(mappingSlotBytes))
-	}
-
-	// Combine the bytes
-	hashInput = append(hashInput, validatorIDBytes...)
-	hashInput = append(hashInput, mappingSlotBytes...)
+	// Use our helper function to create and hash the input
+	hashInput := CreateValidatorMappingHashInput(validatorID, mappingSlot)
 
 	// Calculate the hash - add gas cost for hashing
 	hash := CachedKeccak256(hashInput)
@@ -1281,20 +1269,8 @@ func getEpochValidatorOfflineBlocksSlot(epoch *big.Int, validatorID *big.Int) (*
 	// Add the offset for the offlineBlocks mapping within the struct
 	mappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(offlineBlocksOffset))
 
-	// Calculate the final slot for the specific key directly
-	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)
-	mappingSlotBytes := common.LeftPadBytes(mappingSlot.Bytes(), 32) // This is a computed value, not a constant
-
-	// Use the byte slice pool for the result
-	hashInput := GetByteSlice()
-	if cap(hashInput) < len(validatorIDBytes)+len(mappingSlotBytes) {
-		// If the slice from the pool is too small, allocate a new one
-		hashInput = make([]byte, 0, len(validatorIDBytes)+len(mappingSlotBytes))
-	}
-
-	// Combine the bytes
-	hashInput = append(hashInput, validatorIDBytes...)
-	hashInput = append(hashInput, mappingSlotBytes...)
+	// Use our helper function to create and hash the input
+	hashInput := CreateValidatorMappingHashInput(validatorID, mappingSlot)
 
 	// Calculate the hash - add gas cost for hashing
 	hash := CachedKeccak256(hashInput)
@@ -1323,10 +1299,8 @@ func getEpochValidatorAccumulatedRewardPerTokenSlot(epoch *big.Int, validatorID 
 	// Add the offset for the accumulatedRewardPerToken mapping within the struct
 	mappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(accumulatedRewardPerTokenOffset))
 
-	// Calculate the final slot for the specific key: keccak256(validatorID . mappingSlot)
-	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32) // Left-pad to 32 bytes
-	mappingSlotBytes := common.LeftPadBytes(mappingSlot.Bytes(), 32) // Left-pad to 32 bytes
-	hashInput := append(validatorIDBytes, mappingSlotBytes...)
+	// Use our helper function to create and hash the input
+	hashInput := CreateValidatorMappingHashInput(validatorID, mappingSlot)
 
 	// Calculate the hash - add gas cost for hashing
 	hash := CachedKeccak256(hashInput)
@@ -1355,10 +1329,8 @@ func getEpochValidatorAccumulatedUptimeSlot(epoch *big.Int, validatorID *big.Int
 	// Add the offset for the accumulatedUptime mapping within the struct
 	mappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(accumulatedUptimeOffset))
 
-	// Calculate the final slot for the specific key: keccak256(validatorID . mappingSlot)
-	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32) // Left-pad to 32 bytes
-	mappingSlotBytes := common.LeftPadBytes(mappingSlot.Bytes(), 32) // Left-pad to 32 bytes
-	hashInput := append(validatorIDBytes, mappingSlotBytes...)
+	// Use our helper function to create and hash the input
+	hashInput := CreateValidatorMappingHashInput(validatorID, mappingSlot)
 
 	// Calculate the hash - add gas cost for hashing
 	hash := CachedKeccak256(hashInput)
@@ -1387,10 +1359,8 @@ func getEpochValidatorAccumulatedOriginatedTxsFeeSlot(epoch *big.Int, validatorI
 	// Add the offset for the accumulatedOriginatedTxsFee mapping within the struct
 	mappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(accumulatedOriginatedTxsFeeOffset))
 
-	// Calculate the final slot for the specific key: keccak256(validatorID . mappingSlot)
-	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32) // Left-pad to 32 bytes
-	mappingSlotBytes := common.LeftPadBytes(mappingSlot.Bytes(), 32) // Left-pad to 32 bytes
-	hashInput := append(validatorIDBytes, mappingSlotBytes...)
+	// Use our helper function to create and hash the input
+	hashInput := CreateValidatorMappingHashInput(validatorID, mappingSlot)
 
 	// Calculate the hash - add gas cost for hashing
 	hash := CachedKeccak256(hashInput)

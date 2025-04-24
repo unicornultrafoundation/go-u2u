@@ -6,7 +6,6 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
-	"github.com/unicornultrafoundation/go-u2u/crypto"
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/params"
 )
@@ -126,11 +125,11 @@ func _sealEpoch_offline(evm *vm.EVM, validatorIDs []*big.Int, offlineTimes []*bi
 		// Add the offset for the offlineTime mapping within the struct
 		mappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(offlineTimeOffset))
 
-		// Then, calculate the slot for the specific key: keccak256(validatorID . mappingSlot)
-		validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)
-		mappingSlotBytes := common.LeftPadBytes(mappingSlot.Bytes(), 32)
-		outerHashInput := append(validatorIDBytes, mappingSlotBytes...)
-		offlineTimeSlotHash := crypto.Keccak256Hash(outerHashInput)
+		// Then, calculate the slot for the specific key using our helper function
+		// Use CreateValidatorMappingHashInput to create the hash input
+		outerHashInput := CreateValidatorMappingHashInput(validatorID, mappingSlot)
+		// Use cached hash calculation
+		offlineTimeSlotHash := CachedKeccak256Hash(outerHashInput)
 		offlineTimeSlot := new(big.Int).SetBytes(offlineTimeSlotHash.Bytes())
 		gasUsed += HashGasCost
 
@@ -144,10 +143,11 @@ func _sealEpoch_offline(evm *vm.EVM, validatorIDs []*big.Int, offlineTimes []*bi
 		// Add the offset for the offlineBlocks mapping within the struct
 		blocksMappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(offlineBlocksOffset))
 
-		// Then, calculate the slot for the specific key: keccak256(validatorID . blocksMappingSlot)
-		blocksMappingSlotBytes := common.LeftPadBytes(blocksMappingSlot.Bytes(), 32)
-		blockHashInput := append(validatorIDBytes, blocksMappingSlotBytes...)
-		offlineBlocksSlotHash := crypto.Keccak256Hash(blockHashInput)
+		// Then, calculate the slot for the specific key using our helper function
+		// Use CreateValidatorMappingHashInput to create the hash input
+		blockHashInput := CreateValidatorMappingHashInput(validatorID, blocksMappingSlot)
+		// Use cached hash calculation
+		offlineBlocksSlotHash := CachedKeccak256Hash(blockHashInput)
 		offlineBlocksSlot := new(big.Int).SetBytes(offlineBlocksSlotHash.Bytes())
 		gasUsed += HashGasCost
 
@@ -166,12 +166,7 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 	var gasUsed uint64 = 0
 
 	// Declare variables to avoid redeclaration issues
-	var accumulatedOriginatedTxsFeeOffsetBytes []byte
-	var currentEpochSnapshotSlotBytes []byte
-	var prevEpochSnapshotSlotBytes []byte
-	var innerHashInput []byte
 	var innerHash []byte
-	var validatorIDBytes []byte
 	var outerHashInput []byte
 	var outerHash []byte
 
@@ -194,15 +189,14 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		// Get previous accumulated originated txs fee
 		// For a mapping within a struct, we need to calculate the slot as:
 		// keccak256(abi.encode(validatorID, keccak256(abi.encode(accumulatedOriginatedTxsFeeOffset, prevEpochSnapshotSlot))))
-		accumulatedOriginatedTxsFeeOffsetBytes = common.LeftPadBytes(big.NewInt(accumulatedOriginatedTxsFeeOffset).Bytes(), 32)
-		prevEpochSnapshotSlotBytes = common.LeftPadBytes(prevEpochSnapshotSlot.Bytes(), 32)
-		innerHashInput = append(accumulatedOriginatedTxsFeeOffsetBytes, prevEpochSnapshotSlotBytes...)
-		innerHash = crypto.Keccak256(innerHashInput)
+		// Use our helper function to create the hash input from offset and slot
+		innerHash = CreateAndHashOffsetSlot(accumulatedOriginatedTxsFeeOffset, prevEpochSnapshotSlot)
 		gasUsed += HashGasCost
 
-		validatorIDBytes = common.LeftPadBytes(validatorID.Bytes(), 32)
-		outerHashInput = append(validatorIDBytes, innerHash...)
-		outerHash = crypto.Keccak256(outerHashInput)
+		// Use our helper function to create a nested hash input
+		outerHashInput = CreateNestedHashInput(validatorID, innerHash)
+		// Use cached hash calculation
+		outerHash = CachedKeccak256(outerHashInput)
 		gasUsed += HashGasCost
 
 		prevAccumulatedTxsFeeSlot := new(big.Int).SetBytes(outerHash)
@@ -519,38 +513,15 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		gasUsed += SstoreGasCost
 
 		// Update accumulated originated txs fee (snapshot.accumulatedOriginatedTxsFee[validatorID] = accumulatedOriginatedTxsFee[i])
-		// Use the byte slice pool for the inner hash input
-		innerHashInput := GetByteSlice()
-		accumulatedOriginatedTxsFeeOffsetBytes = common.LeftPadBytes(big.NewInt(accumulatedOriginatedTxsFeeOffset).Bytes(), 32)
-		currentEpochSnapshotSlotBytes = common.LeftPadBytes(currentEpochSnapshotSlot.Bytes(), 32)
-		if cap(innerHashInput) < len(accumulatedOriginatedTxsFeeOffsetBytes)+len(currentEpochSnapshotSlotBytes) {
-			// If the slice from the pool is too small, allocate a new one
-			innerHashInput = make([]byte, 0, len(accumulatedOriginatedTxsFeeOffsetBytes)+len(currentEpochSnapshotSlotBytes))
-		}
-		// Combine the bytes
-		innerHashInput = append(innerHashInput, accumulatedOriginatedTxsFeeOffsetBytes...)
-		innerHashInput = append(innerHashInput, currentEpochSnapshotSlotBytes...)
-		// Use cached hash calculation
-		innerHash = CachedKeccak256(innerHashInput)
+		// Use our helper function to create the hash input from offset and slot
+		innerHash = CreateAndHashOffsetSlot(accumulatedOriginatedTxsFeeOffset, currentEpochSnapshotSlot)
 		gasUsed += HashGasCost
-		// Return the byte slice to the pool
-		PutByteSlice(innerHashInput)
 
-		// Use the byte slice pool for the outer hash input
-		outerHashInput = GetByteSlice()
-		validatorIDBytes = common.LeftPadBytes(validatorID.Bytes(), 32)
-		if cap(outerHashInput) < len(validatorIDBytes)+len(innerHash) {
-			// If the slice from the pool is too small, allocate a new one
-			outerHashInput = make([]byte, 0, len(validatorIDBytes)+len(innerHash))
-		}
-		// Combine the bytes
-		outerHashInput = append(outerHashInput, validatorIDBytes...)
-		outerHashInput = append(outerHashInput, innerHash...)
+		// Use our helper function to create a nested hash input
+		outerHashInput = CreateNestedHashInput(validatorID, innerHash)
 		// Use cached hash calculation
 		outerHash = CachedKeccak256(outerHashInput)
 		gasUsed += HashGasCost
-		// Return the byte slice to the pool
-		PutByteSlice(outerHashInput)
 
 		// Update accumulated originated txs fee (snapshot.accumulatedOriginatedTxsFee[validatorID] = accumulatedOriginatedTxsFee[i])
 		// For a mapping within a struct, we need to calculate the slot as:

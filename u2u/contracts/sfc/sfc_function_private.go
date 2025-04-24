@@ -487,11 +487,12 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		// Add the offset for the accumulatedRewardPerToken mapping within the struct
 		mappingSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(accumulatedRewardPerTokenOffset))
 
-		// Then, calculate the slot for the specific key: keccak256(validatorID . mappingSlot)
-		validatorIDBytes = common.LeftPadBytes(validatorID.Bytes(), 32)
-		mappingSlotBytes := common.LeftPadBytes(mappingSlot.Bytes(), 32)
-		outerHashInput = append(validatorIDBytes, mappingSlotBytes...)
-		accumulatedRewardPerTokenSlotHash := crypto.Keccak256Hash(outerHashInput)
+		// Then, calculate the slot for the specific key using our helper function
+		// Use CreateValidatorMappingHashInput to create the hash input
+		// Declare outerHashInput at the beginning of the function
+		outerHashInput := CreateValidatorMappingHashInput(validatorID, mappingSlot)
+		// Use cached hash calculation
+		accumulatedRewardPerTokenSlotHash := CachedKeccak256Hash(outerHashInput)
 		accumulatedRewardPerTokenSlot := new(big.Int).SetBytes(accumulatedRewardPerTokenSlotHash.Bytes())
 		gasUsed += HashGasCost
 
@@ -501,11 +502,11 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		// Add the offset for the accumulatedRewardPerToken mapping within the struct
 		prevMappingSlot := new(big.Int).Add(prevEpochSnapshotSlot, big.NewInt(accumulatedRewardPerTokenOffset))
 
-		// Then, calculate the slot for the specific key: keccak256(validatorID . prevMappingSlot)
-		validatorIDBytes = common.LeftPadBytes(validatorID.Bytes(), 32)
-		prevMappingSlotBytes := common.LeftPadBytes(prevMappingSlot.Bytes(), 32)
-		outerHashInput = append(validatorIDBytes, prevMappingSlotBytes...)
-		prevAccumulatedRewardPerTokenSlotHash := crypto.Keccak256Hash(outerHashInput)
+		// Then, calculate the slot for the specific key using our helper function
+		// Use CreateValidatorMappingHashInput to create the hash input
+		outerHashInput = CreateValidatorMappingHashInput(validatorID, prevMappingSlot)
+		// Use cached hash calculation
+		prevAccumulatedRewardPerTokenSlotHash := CachedKeccak256Hash(outerHashInput)
 		prevAccumulatedRewardPerTokenSlot := new(big.Int).SetBytes(prevAccumulatedRewardPerTokenSlotHash.Bytes())
 		gasUsed += HashGasCost
 
@@ -518,16 +519,38 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		gasUsed += SstoreGasCost
 
 		// Update accumulated originated txs fee (snapshot.accumulatedOriginatedTxsFee[validatorID] = accumulatedOriginatedTxsFee[i])
+		// Use the byte slice pool for the inner hash input
+		innerHashInput := GetByteSlice()
 		accumulatedOriginatedTxsFeeOffsetBytes = common.LeftPadBytes(big.NewInt(accumulatedOriginatedTxsFeeOffset).Bytes(), 32)
 		currentEpochSnapshotSlotBytes = common.LeftPadBytes(currentEpochSnapshotSlot.Bytes(), 32)
-		innerHashInput = append(accumulatedOriginatedTxsFeeOffsetBytes, currentEpochSnapshotSlotBytes...)
-		innerHash = crypto.Keccak256(innerHashInput)
+		if cap(innerHashInput) < len(accumulatedOriginatedTxsFeeOffsetBytes)+len(currentEpochSnapshotSlotBytes) {
+			// If the slice from the pool is too small, allocate a new one
+			innerHashInput = make([]byte, 0, len(accumulatedOriginatedTxsFeeOffsetBytes)+len(currentEpochSnapshotSlotBytes))
+		}
+		// Combine the bytes
+		innerHashInput = append(innerHashInput, accumulatedOriginatedTxsFeeOffsetBytes...)
+		innerHashInput = append(innerHashInput, currentEpochSnapshotSlotBytes...)
+		// Use cached hash calculation
+		innerHash = CachedKeccak256(innerHashInput)
 		gasUsed += HashGasCost
+		// Return the byte slice to the pool
+		PutByteSlice(innerHashInput)
 
+		// Use the byte slice pool for the outer hash input
+		outerHashInput = GetByteSlice()
 		validatorIDBytes = common.LeftPadBytes(validatorID.Bytes(), 32)
-		outerHashInput = append(validatorIDBytes, innerHash...)
-		outerHash = crypto.Keccak256(outerHashInput)
+		if cap(outerHashInput) < len(validatorIDBytes)+len(innerHash) {
+			// If the slice from the pool is too small, allocate a new one
+			outerHashInput = make([]byte, 0, len(validatorIDBytes)+len(innerHash))
+		}
+		// Combine the bytes
+		outerHashInput = append(outerHashInput, validatorIDBytes...)
+		outerHashInput = append(outerHashInput, innerHash...)
+		// Use cached hash calculation
+		outerHash = CachedKeccak256(outerHashInput)
 		gasUsed += HashGasCost
+		// Return the byte slice to the pool
+		PutByteSlice(outerHashInput)
 
 		// Update accumulated originated txs fee (snapshot.accumulatedOriginatedTxsFee[validatorID] = accumulatedOriginatedTxsFee[i])
 		// For a mapping within a struct, we need to calculate the slot as:
@@ -535,11 +558,11 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		// Add the offset for the accumulatedOriginatedTxsFee mapping within the struct
 		originatedTxsFeeSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(accumulatedOriginatedTxsFeeOffset))
 
-		// Then, calculate the slot for the specific key: keccak256(validatorID . originatedTxsFeeSlot)
-		validatorIDBytes = common.LeftPadBytes(validatorID.Bytes(), 32)
-		originatedTxsFeeSlotBytes := common.LeftPadBytes(originatedTxsFeeSlot.Bytes(), 32)
-		outerHashInput = append(validatorIDBytes, originatedTxsFeeSlotBytes...)
-		accumulatedOriginatedTxsFeeSlotHash := crypto.Keccak256Hash(outerHashInput)
+		// Then, calculate the slot for the specific key using our helper function
+		// Use CreateValidatorMappingHashInput to create the hash input
+		outerHashInput = CreateValidatorMappingHashInput(validatorID, originatedTxsFeeSlot)
+		// Use cached hash calculation
+		accumulatedOriginatedTxsFeeSlotHash := CachedKeccak256Hash(outerHashInput)
 		accumulatedOriginatedTxsFeeSlot := new(big.Int).SetBytes(accumulatedOriginatedTxsFeeSlotHash.Bytes())
 		gasUsed += HashGasCost
 
@@ -553,11 +576,11 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		// Add the offset for the accumulatedUptime mapping within the struct
 		uptimeMappingSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(accumulatedUptimeOffset))
 
-		// Then, calculate the slot for the specific key: keccak256(validatorID . uptimeMappingSlot)
-		validatorIDBytes = common.LeftPadBytes(validatorID.Bytes(), 32)
-		uptimeMappingSlotBytes := common.LeftPadBytes(uptimeMappingSlot.Bytes(), 32)
-		outerHashInput = append(validatorIDBytes, uptimeMappingSlotBytes...)
-		accumulatedUptimeSlotHash := crypto.Keccak256Hash(outerHashInput)
+		// Then, calculate the slot for the specific key using our helper function
+		// Use CreateValidatorMappingHashInput to create the hash input
+		outerHashInput = CreateValidatorMappingHashInput(validatorID, uptimeMappingSlot)
+		// Use cached hash calculation
+		accumulatedUptimeSlotHash := CachedKeccak256Hash(outerHashInput)
 		accumulatedUptimeSlot := new(big.Int).SetBytes(accumulatedUptimeSlotHash.Bytes())
 		gasUsed += HashGasCost
 
@@ -567,11 +590,11 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		// Add the offset for the accumulatedUptime mapping within the struct
 		prevUptimeMappingSlot := new(big.Int).Add(prevEpochSnapshotSlot, big.NewInt(accumulatedUptimeOffset))
 
-		// Then, calculate the slot for the specific key: keccak256(validatorID . prevUptimeMappingSlot)
-		validatorIDBytes = common.LeftPadBytes(validatorID.Bytes(), 32)
-		prevUptimeMappingSlotBytes := common.LeftPadBytes(prevUptimeMappingSlot.Bytes(), 32)
-		outerHashInput = append(validatorIDBytes, prevUptimeMappingSlotBytes...)
-		prevAccumulatedUptimeSlotHash := crypto.Keccak256Hash(outerHashInput)
+		// Then, calculate the slot for the specific key using our helper function
+		// Use CreateValidatorMappingHashInput to create the hash input
+		outerHashInput = CreateValidatorMappingHashInput(validatorID, prevUptimeMappingSlot)
+		// Use cached hash calculation
+		prevAccumulatedUptimeSlotHash := CachedKeccak256Hash(outerHashInput)
 		prevAccumulatedUptimeSlot := new(big.Int).SetBytes(prevAccumulatedUptimeSlotHash.Bytes())
 		gasUsed += HashGasCost
 
@@ -820,7 +843,7 @@ func handle_scaleLockupReward(evm *vm.EVM, args []interface{}) ([]byte, uint64, 
 		return nil, gasUsed, err
 	}
 
-	// Pack the result
+	// Don't use cache for ABI packing with parameters
 	result, err := SfcAbi.Methods["_scaleLockupReward"].Outputs.Pack(
 		reward.LockupBaseReward,
 		reward.LockupExtraReward,
@@ -907,7 +930,7 @@ func handleGetUnlockedStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, er
 		unlockedStake = big.NewInt(0)
 	}
 
-	// Pack the result
+	// Don't use cache for ABI packing with parameters
 	result, err := SfcAbi.Methods["getUnlockedStake"].Outputs.Pack(unlockedStake)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
@@ -963,13 +986,22 @@ func handleCheckAllowedToWithdraw(evm *vm.EVM, delegator common.Address, toValid
 
 	// Pack the function call data for allowedToWithdrawStake(address,uint256)
 	methodID := []byte{0x4d, 0x31, 0x52, 0x9d} // keccak256("allowedToWithdrawStake(address,uint256)")[:4]
-	data := methodID
 
-	// Encode the parameters
-	// address delegator
-	data = append(data, common.LeftPadBytes(delegator.Bytes(), 32)...)
-	// uint256 toValidatorID
-	data = append(data, common.LeftPadBytes(toValidatorID.Bytes(), 32)...)
+	// Use our helper function to create the hash input with parameters
+	delegatorBytes := common.LeftPadBytes(delegator.Bytes(), 32)
+	toValidatorIDBytes := common.LeftPadBytes(toValidatorID.Bytes(), 32)
+
+	// Use the byte slice pool for the result
+	data := GetByteSlice()
+	if cap(data) < len(methodID)+len(delegatorBytes)+len(toValidatorIDBytes) {
+		// If the slice from the pool is too small, allocate a new one
+		data = make([]byte, 0, len(methodID)+len(delegatorBytes)+len(toValidatorIDBytes))
+	}
+
+	// Combine the bytes
+	data = append(data, methodID...)
+	data = append(data, delegatorBytes...)
+	data = append(data, toValidatorIDBytes...)
 
 	// Make the call to the StakeTokenizer contract
 	result, _, err := evm.Call(vm.AccountRef(ContractAddress), stakeTokenizerAddr, data, defaultGasLimit, big.NewInt(0))
@@ -1001,6 +1033,7 @@ func handleCheckDelegatedStakeLimit(evm *vm.EVM, validatorID *big.Int) (bool, er
 	}
 
 	// Unpack the result
+	// Note: We don't cache unpacking operations as they're more complex and less frequent
 	selfStakeValues, err := SfcAbi.Methods["getSelfStake"].Outputs.Unpack(result)
 	if err != nil {
 		return false, vm.ErrExecutionReverted
@@ -1241,13 +1274,22 @@ func handleRecountVotes(evm *vm.EVM, delegator common.Address, validatorAuth com
 	if !isZeroAddress {
 		// Pack the function call data for recountVotes(address,address)
 		methodID := []byte{0x71, 0x7a, 0x68, 0x5d} // keccak256("recountVotes(address,address)")[:4]
-		data := methodID
 
-		// Encode the parameters
-		// address delegator
-		data = append(data, common.LeftPadBytes(delegator.Bytes(), 32)...)
-		// address validatorAuth
-		data = append(data, common.LeftPadBytes(validatorAuth.Bytes(), 32)...)
+		// Use our helper function to create the hash input with parameters
+		delegatorBytes := common.LeftPadBytes(delegator.Bytes(), 32)
+		validatorAuthBytes := common.LeftPadBytes(validatorAuth.Bytes(), 32)
+
+		// Use the byte slice pool for the result
+		data := GetByteSlice()
+		if cap(data) < len(methodID)+len(delegatorBytes)+len(validatorAuthBytes) {
+			// If the slice from the pool is too small, allocate a new one
+			data = make([]byte, 0, len(methodID)+len(delegatorBytes)+len(validatorAuthBytes))
+		}
+
+		// Combine the bytes
+		data = append(data, methodID...)
+		data = append(data, delegatorBytes...)
+		data = append(data, validatorAuthBytes...)
 
 		// Make the call to the voteBook contract with gas limit of 8000000
 		voteBookAddr := common.BytesToAddress(voteBookAddressBytes)
@@ -1292,6 +1334,7 @@ func callSFCLibDelegate(evm *vm.EVM, delegator common.Address, toValidatorID *bi
 
 // handleGetSelfStake returns the self-stake of a validator
 func handleGetSelfStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
+	var gasUsed uint64 = 0
 	// Get the arguments
 	if len(args) != 1 {
 		return nil, 0, vm.ErrExecutionReverted
@@ -1302,22 +1345,31 @@ func handleGetSelfStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, error)
 	}
 
 	// Get the validator auth
-	validatorAuthSlot, _ := getValidatorAuthSlot(validatorID)
+	validatorAuthSlot, slotGasUsed := getValidatorAuthSlot(validatorID)
+	gasUsed += slotGasUsed
 	validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorAuthSlot))
+	gasUsed += SloadGasCost
 	validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
 
 	// Get the self-stake
-	stakeSlot, _ := getStakeSlot(validatorAuthAddr, validatorID)
+	stakeSlot, slotGasUsed := getStakeSlot(validatorAuthAddr, validatorID)
+	gasUsed += slotGasUsed
 	stake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stakeSlot))
-	stakeBigInt := new(big.Int).SetBytes(stake.Bytes())
+	gasUsed += SloadGasCost
 
-	// Pack the result
+	// Use the big.Int pool
+	stakeBigInt := GetBigInt().SetBytes(stake.Bytes())
+
+	// Don't use cache for ABI packing with parameters
 	result, err := SfcAbi.Methods["getSelfStake"].Outputs.Pack(stakeBigInt)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
-	return result, 0, nil
+	// Return the big.Int to the pool
+	PutBigInt(stakeBigInt)
+
+	return result, gasUsed, nil
 }
 
 // handleStashRewards stashes the rewards for a delegator

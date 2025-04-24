@@ -29,8 +29,7 @@ func handleCurrentSealedEpoch(evm *vm.EVM) ([]byte, uint64, error) {
 	// Use the big.Int pool
 	currentSealedEpochBigInt := GetBigInt().SetBytes(val.Bytes())
 
-	// Pack the result using the cached ABI packing function
-	result, err := CachedAbiPack(SfcAbiType, "currentSealedEpoch", currentSealedEpochBigInt)
+	result, err := SfcAbi.Methods["currentSealedEpoch"].Outputs.Pack(currentSealedEpochBigInt)
 
 	// Return the big.Int to the pool
 	PutBigInt(currentSealedEpochBigInt)
@@ -73,8 +72,7 @@ func handleTotalStake(evm *vm.EVM) ([]byte, uint64, error) {
 	// Use the big.Int pool
 	totalStakeBigInt := GetBigInt().SetBytes(val.Bytes())
 
-	// Pack the result using the cached ABI packing function
-	result, err := CachedAbiPack(SfcAbiType, "totalStake", totalStakeBigInt)
+	result, err := SfcAbi.Methods["totalStake"].Outputs.Pack(totalStakeBigInt)
 
 	// Return the big.Int to the pool
 	PutBigInt(totalStakeBigInt)
@@ -139,8 +137,8 @@ func handleGetValidator(evm *vm.EVM, args []interface{}) ([]byte, uint64, error)
 	val := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slotBigInt))
 	gasUsed += SloadGasCost
 
-	// Use the cached ABI packing function with the SFC ABI type
-	result, err := CachedAbiPack(SfcAbiType, "getValidator", val.Big())
+	// Don't use cache for ABI packing with parameters
+	result, err := SfcAbi.Methods["getValidator"].Outputs.Pack(val.Big())
 	return result, gasUsed, err
 }
 
@@ -159,8 +157,8 @@ func handleGetValidatorID(evm *vm.EVM, args []interface{}) ([]byte, uint64, erro
 	val := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slotBigInt))
 	gasUsed += SloadGasCost
 
-	// Use the cached ABI packing function with the SFC ABI type
-	result, err := CachedAbiPack(SfcAbiType, "getValidatorID", val.Big())
+	// Don't use cache for ABI packing with parameters
+	result, err := SfcAbi.Methods["getValidatorID"].Outputs.Pack(val.Big())
 	return result, gasUsed, err
 }
 
@@ -179,8 +177,8 @@ func handleGetValidatorPubkey(evm *vm.EVM, args []interface{}) ([]byte, uint64, 
 	val := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slotBigInt))
 	gasUsed += SloadGasCost
 
-	// Use the cached ABI packing function with the SFC ABI type
-	result, err := CachedAbiPack(SfcAbiType, "getValidatorPubkey", val.Bytes())
+	// Don't use cache for ABI packing with parameters
+	result, err := SfcAbi.Methods["getValidatorPubkey"].Outputs.Pack(val.Bytes())
 	return result, gasUsed, err
 }
 
@@ -200,8 +198,8 @@ func handleStashedRewardsUntilEpoch(evm *vm.EVM, args []interface{}) ([]byte, ui
 	val := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slotBigInt))
 	gasUsed += SloadGasCost
 
-	// Use the cached ABI packing function with the SFC ABI type
-	result, err := CachedAbiPack(SfcAbiType, "stashedRewardsUntilEpoch", val.Big())
+	// Don't use cache for ABI packing with parameters
+	result, err := SfcAbi.Methods["stashedRewardsUntilEpoch"].Outputs.Pack(val.Big())
 	return result, gasUsed, err
 }
 
@@ -239,8 +237,8 @@ func handleGetWithdrawalRequest(evm *vm.EVM, args []interface{}) ([]byte, uint64
 	PutBigInt(slot1)
 	PutBigInt(slot2)
 
-	// Use the cached ABI packing function with the SFC ABI type
-	result, err := CachedAbiPack(SfcAbiType, "getWithdrawalRequest",
+	// Don't use cache for ABI packing with parameters
+	result, err := SfcAbi.Methods["getWithdrawalRequest"].Outputs.Pack(
 		epoch.Big(),
 		time.Big(),
 		amount.Big(),
@@ -264,8 +262,8 @@ func handleGetStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	val := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slotBigInt))
 	gasUsed += SloadGasCost
 
-	// Use the cached ABI packing function with the SFC ABI type
-	result, err := CachedAbiPack(SfcAbiType, "getStake", val.Big())
+	// Don't use cache for ABI packing with parameters
+	result, err := SfcAbi.Methods["getStake"].Outputs.Pack(val.Big())
 	return result, gasUsed, err
 }
 
@@ -309,8 +307,8 @@ func handleGetLockupInfo(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 	PutBigInt(slot2)
 	PutBigInt(slot3)
 
-	// Use the cached ABI packing function with the SFC ABI type
-	result, err := CachedAbiPack(SfcAbiType, "getLockupInfo",
+	// Don't use cache for ABI packing with parameters
+	result, err := SfcAbi.Methods["getLockupInfo"].Outputs.Pack(
 		lockedStake.Big(),
 		fromEpoch.Big(),
 		endTime.Big(),
@@ -352,8 +350,8 @@ func handleGetStashedLockupRewards(evm *vm.EVM, args []interface{}) ([]byte, uin
 	PutBigInt(slot1)
 	PutBigInt(slot2)
 
-	// Use the cached ABI packing function with the SFC ABI type
-	result, err := CachedAbiPack(SfcAbiType, "getStashedLockupRewards",
+	// Don't use cache for ABI packing with parameters
+	result, err := SfcAbi.Methods["getStashedLockupRewards"].Outputs.Pack(
 		lockupBaseReward.Big(),
 		lockupExtraReward.Big(),
 		unlockedReward.Big(),
@@ -382,8 +380,8 @@ func handleSlashingRefundRatio(evm *vm.EVM, args []interface{}) ([]byte, uint64,
 	val := evm.SfcStateDB.GetState(ContractAddress, slot)
 	gasUsed += SloadGasCost
 
-	// Use the cached ABI packing function with the SFC ABI type
-	result, err := CachedAbiPack(SfcAbiType, "slashingRefundRatio", val.Big())
+	// Don't use cache for ABI packing with parameters
+	result, err := SfcAbi.Methods["slashingRefundRatio"].Outputs.Pack(val.Big())
 	return result, gasUsed, err
 }
 
@@ -456,8 +454,8 @@ func handleGetEpochSnapshot(evm *vm.EVM, args []interface{}) ([]byte, uint64, er
 	PutBigInt(offsetBigInt)
 	PutBigInt(slotWithOffset)
 
-	// Use the cached ABI packing function with the SFC ABI type
-	result, err := CachedAbiPack(SfcAbiType, "getEpochSnapshot",
+	// Don't use cache for ABI packing with parameters
+	result, err := SfcAbi.Methods["getEpochSnapshot"].Outputs.Pack(
 		endTime.Big(),
 		epochFee.Big(),
 		totalBaseRewardWeight.Big(),

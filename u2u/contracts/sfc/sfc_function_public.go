@@ -709,15 +709,24 @@ func handleGetStakeTokenizerAddress(evm *vm.EVM, args []interface{}) ([]byte, ui
 // handleGetTotalStake returns the total stake
 func handleGetTotalStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	var gasUsed uint64 = 0
-	// Get the total stake
-	totalStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalStakeSlot)))
-	totalStakeBigInt := new(big.Int).SetBytes(totalStake.Bytes())
+	// Get the total stake slot using a cached constant
+	totalStakeSlotHash := common.BigToHash(big.NewInt(totalStakeSlot))
 
-	// Pack the result
+	// Get the total stake
+	totalStake := evm.SfcStateDB.GetState(ContractAddress, totalStakeSlotHash)
+	gasUsed += SloadGasCost
+
+	// Use the big.Int pool
+	totalStakeBigInt := GetBigInt().SetBytes(totalStake.Bytes())
+
+	// Don't use cache for ABI packing with parameters
 	result, err := SfcAbi.Methods["getTotalStake"].Outputs.Pack(totalStakeBigInt)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}
+
+	// Return the big.Int to the pool
+	PutBigInt(totalStakeBigInt)
 
 	return result, gasUsed, nil
 }
@@ -725,15 +734,24 @@ func handleGetTotalStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 // handleGetTotalActiveStake returns the total active stake
 func handleGetTotalActiveStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	var gasUsed uint64 = 0
-	// Get the total active stake
-	totalActiveStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalActiveStakeSlot)))
-	totalActiveStakeBigInt := new(big.Int).SetBytes(totalActiveStake.Bytes())
+	// Get the total active stake slot using a cached constant
+	totalActiveStakeSlotHash := common.BigToHash(big.NewInt(totalActiveStakeSlot))
 
-	// Pack the result
+	// Get the total active stake
+	totalActiveStake := evm.SfcStateDB.GetState(ContractAddress, totalActiveStakeSlotHash)
+	gasUsed += SloadGasCost
+
+	// Use the big.Int pool
+	totalActiveStakeBigInt := GetBigInt().SetBytes(totalActiveStake.Bytes())
+
+	// Don't use cache for ABI packing with parameters
 	result, err := SfcAbi.Methods["getTotalActiveStake"].Outputs.Pack(totalActiveStakeBigInt)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}
+
+	// Return the big.Int to the pool
+	PutBigInt(totalActiveStakeBigInt)
 
 	return result, gasUsed, nil
 }
@@ -759,15 +777,24 @@ func handleGetCurrentEpoch(evm *vm.EVM, args []interface{}) ([]byte, uint64, err
 // handleGetCurrentSealedEpoch returns the current sealed epoch
 func handleGetCurrentSealedEpoch(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	var gasUsed uint64 = 0
-	// Get the current sealed epoch
-	currentSealedEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(currentSealedEpochSlot)))
-	currentSealedEpochBigInt := new(big.Int).SetBytes(currentSealedEpoch.Bytes())
+	// Get the current sealed epoch slot using a cached constant
+	currentSealedEpochSlotHash := common.BigToHash(big.NewInt(currentSealedEpochSlot))
 
-	// Pack the result
+	// Get the current sealed epoch
+	currentSealedEpoch := evm.SfcStateDB.GetState(ContractAddress, currentSealedEpochSlotHash)
+	gasUsed += SloadGasCost
+
+	// Use the big.Int pool
+	currentSealedEpochBigInt := GetBigInt().SetBytes(currentSealedEpoch.Bytes())
+
+	// Don't use cache for ABI packing with parameters
 	result, err := SfcAbi.Methods["currentSealedEpoch"].Outputs.Pack(currentSealedEpochBigInt)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}
+
+	// Return the big.Int to the pool
+	PutBigInt(currentSealedEpochBigInt)
 
 	return result, gasUsed, nil
 }
@@ -775,15 +802,24 @@ func handleGetCurrentSealedEpoch(evm *vm.EVM, args []interface{}) ([]byte, uint6
 // handleGetLastValidatorID returns the last validator ID
 func handleGetLastValidatorID(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	var gasUsed uint64 = 0
-	// Get the last validator ID
-	lastValidatorID := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(lastValidatorIDSlot)))
-	lastValidatorIDBigInt := new(big.Int).SetBytes(lastValidatorID.Bytes())
+	// Get the last validator ID slot using a cached constant
+	lastValidatorIDSlotHash := common.BigToHash(big.NewInt(lastValidatorIDSlot))
 
-	// Pack the result
+	// Get the last validator ID
+	lastValidatorID := evm.SfcStateDB.GetState(ContractAddress, lastValidatorIDSlotHash)
+	gasUsed += SloadGasCost
+
+	// Use the big.Int pool
+	lastValidatorIDBigInt := GetBigInt().SetBytes(lastValidatorID.Bytes())
+
+	// Don't use cache for ABI packing with parameters
 	result, err := SfcAbi.Methods["lastValidatorID"].Outputs.Pack(lastValidatorIDBigInt)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}
+
+	// Return the big.Int to the pool
+	PutBigInt(lastValidatorIDBigInt)
 
 	return result, gasUsed, nil
 }
@@ -1404,8 +1440,8 @@ func handleCurrentEpoch(evm *vm.EVM) ([]byte, uint64, error) {
 		return nil, 0, err
 	}
 
-	// Pack the result using the cached ABI packing function
-	result, err := CachedAbiPack(SfcAbiType, "currentEpoch", currentEpochBigInt)
+	// Don't use cache for ABI packing with parameters
+	result, err := SfcAbi.Methods["currentEpoch"].Outputs.Pack(currentEpochBigInt)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}

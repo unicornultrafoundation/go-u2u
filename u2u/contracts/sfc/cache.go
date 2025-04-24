@@ -296,6 +296,108 @@ func CreateNestedAddressHashInput(addr common.Address, hash []byte) []byte {
 	return hashInput
 }
 
+// CreateValidatorMappingHashInput creates a hash input from a validator ID and a mapping slot
+func CreateValidatorMappingHashInput(validatorID *big.Int, mappingSlot *big.Int) []byte {
+	// Create a cache key from validatorID and mappingSlot
+	cacheKey := validatorID.String() + "_mapping_" + mappingSlot.String()
+
+	// Check if the hash input is already cached
+	if hashInput, found := sfcCache.HashInputs[cacheKey]; found {
+		return hashInput
+	}
+
+	// If not in cache, create the hash input directly
+	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)
+	mappingSlotBytes := common.LeftPadBytes(mappingSlot.Bytes(), 32)
+
+	// Use the byte slice pool for the result
+	hashInput := GetByteSlice()
+	if cap(hashInput) < len(validatorIDBytes)+len(mappingSlotBytes) {
+		// If the slice from the pool is too small, allocate a new one
+		hashInput = make([]byte, 0, len(validatorIDBytes)+len(mappingSlotBytes))
+	}
+
+	// Combine the bytes
+	hashInput = append(hashInput, validatorIDBytes...)
+	hashInput = append(hashInput, mappingSlotBytes...)
+
+	// Store in cache
+	sfcCache.HashInputs[cacheKey] = hashInput
+
+	return hashInput
+}
+
+// CreateAddressMethodHashInput creates a hash input from an address and a method ID
+func CreateAddressMethodHashInput(addr common.Address, methodID []byte) []byte {
+	// Create a cache key from address and methodID
+	cacheKey := addr.String() + "_method_" + common.Bytes2Hex(methodID)
+
+	// Check if the hash input is already cached
+	if hashInput, found := sfcCache.AddressHashInputs[cacheKey]; found {
+		return hashInput
+	}
+
+	// If not in cache, create the hash input directly
+	addrBytes := common.LeftPadBytes(addr.Bytes(), 32)
+
+	// Use the byte slice pool for the result
+	hashInput := GetByteSlice()
+	if cap(hashInput) < len(addrBytes)+len(methodID) {
+		// If the slice from the pool is too small, allocate a new one
+		hashInput = make([]byte, 0, len(addrBytes)+len(methodID))
+	}
+
+	// Combine the bytes
+	hashInput = append(hashInput, addrBytes...)
+	hashInput = append(hashInput, methodID...)
+
+	// Store in cache
+	sfcCache.AddressHashInputs[cacheKey] = hashInput
+
+	return hashInput
+}
+
+// CreateAddressParamsHashInput creates a hash input from an address and multiple parameters
+func CreateAddressParamsHashInput(addr common.Address, params ...[]byte) []byte {
+	// Create a cache key from address and params
+	cacheKey := addr.String()
+	for _, param := range params {
+		cacheKey += "_param_" + common.Bytes2Hex(param)
+	}
+
+	// Check if the hash input is already cached
+	if hashInput, found := sfcCache.AddressHashInputs[cacheKey]; found {
+		return hashInput
+	}
+
+	// If not in cache, create the hash input directly
+	addrBytes := common.LeftPadBytes(addr.Bytes(), 32)
+
+	// Calculate total length needed
+	totalLength := len(addrBytes)
+	for _, param := range params {
+		totalLength += len(param)
+	}
+
+	// Use the byte slice pool for the result
+	hashInput := GetByteSlice()
+	if cap(hashInput) < totalLength {
+		// If the slice from the pool is too small, allocate a new one
+		hashInput = make([]byte, 0, totalLength)
+	}
+
+	// Combine the bytes
+	hashInput = append(hashInput, addrBytes...)
+	for _, param := range params {
+		hashInput = append(hashInput, param...)
+	}
+
+	// Store in cache
+	sfcCache.AddressHashInputs[cacheKey] = hashInput
+
+	return hashInput
+}
+
 // ABI type constants for identifying which ABI to use
 const (
 	SfcAbiType            = "sfc"
@@ -305,16 +407,46 @@ const (
 )
 
 // CachedAbiPack packs arguments using the specified ABI and caches the result
+// Only caches results for calls without parameters to avoid cache bloat
 func CachedAbiPack(abiType, method string, args ...interface{}) ([]byte, error) {
-	// Create a cache key from the ABI type, method and args
-	key := abiType + ":" + method + ":" + fmt.Sprint(args...)
+	// Only cache if there are no arguments
+	if len(args) == 0 {
+		// Create a cache key from just the ABI type and method
+		key := abiType + ":" + method
 
-	// Check if the result is already cached
-	if packed, ok := sfcCache.AbiPackCache[key]; ok {
+		// Check if the result is already cached
+		if packed, ok := sfcCache.AbiPackCache[key]; ok {
+			return packed, nil
+		}
+
+		// Not in cache, pack it
+		var packed []byte
+		var err error
+
+		switch abiType {
+		case SfcAbiType:
+			packed, err = SfcAbi.Methods[method].Outputs.Pack()
+		case CMAbiType:
+			packed, err = CMAbi.Methods[method].Outputs.Pack()
+		case NodeDriverAbiType:
+			packed, err = NodeDriverAbi.Methods[method].Outputs.Pack()
+		case NodeDriverAuthAbiType:
+			packed, err = NodeDriverAuthAbi.Methods[method].Outputs.Pack()
+		default:
+			return nil, fmt.Errorf("unknown ABI type: %s", abiType)
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		// Store in cache
+		sfcCache.AbiPackCache[key] = packed
+
 		return packed, nil
 	}
 
-	// Not in cache, pack it
+	// For calls with parameters, don't use cache
 	var packed []byte
 	var err error
 
@@ -331,12 +463,5 @@ func CachedAbiPack(abiType, method string, args ...interface{}) ([]byte, error) 
 		return nil, fmt.Errorf("unknown ABI type: %s", abiType)
 	}
 
-	if err != nil {
-		return nil, err
-	}
-
-	// Store in cache
-	sfcCache.AbiPackCache[key] = packed
-
-	return packed, nil
+	return packed, err
 }

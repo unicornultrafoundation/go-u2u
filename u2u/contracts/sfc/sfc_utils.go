@@ -53,6 +53,28 @@ const (
 	CHEATER_MASK   uint64 = DOUBLESIGN_BIT
 )
 
+// Cached values for gas price ratio limits
+var (
+	// gasMaxRatio represents 105% of the decimal unit (1.05e18)
+	gasMaxRatio *big.Int
+	// gasMinRatio represents 95% of the decimal unit (0.95e18)
+	gasMinRatio *big.Int
+)
+
+// init calculates and caches the gas price ratio limits
+func init() {
+	// Get the decimal unit
+	unit := getDecimalUnit()
+
+	// Calculate 105% of unit
+	gasMaxRatio = new(big.Int).Mul(unit, big.NewInt(105))
+	gasMaxRatio = new(big.Int).Div(gasMaxRatio, big.NewInt(100))
+
+	// Calculate 95% of unit
+	gasMinRatio = new(big.Int).Mul(unit, big.NewInt(95))
+	gasMinRatio = new(big.Int).Div(gasMinRatio, big.NewInt(100))
+}
+
 // checkOnlyOwner checks if the caller is the owner of the contract
 // Returns nil if the caller is the owner, otherwise returns an ABI-encoded revert reason
 func checkOnlyOwner(evm *vm.EVM, caller common.Address, methodName string) ([]byte, uint64, error) {
@@ -1415,25 +1437,14 @@ func getDecimalUnit() *big.Int {
 // trimGasPriceChangeRatio limits the gas price change ratio to be between 95% and 105%
 // This is a port of the GP.trimGasPriceChangeRatio function from GasPriceConstants.sol
 func trimGasPriceChangeRatio(x *big.Int) *big.Int {
-	// Get the decimal unit
-	unit := getDecimalUnit()
-
-	// Calculate 105% of unit
-	maxRatio := new(big.Int).Mul(unit, big.NewInt(105))
-	maxRatio = new(big.Int).Div(maxRatio, big.NewInt(100))
-
-	// Calculate 95% of unit
-	minRatio := new(big.Int).Mul(unit, big.NewInt(95))
-	minRatio = new(big.Int).Div(minRatio, big.NewInt(100))
-
 	// Check if x is greater than 105% of unit
-	if x.Cmp(maxRatio) > 0 {
-		return maxRatio
+	if x.Cmp(gasMaxRatio) > 0 {
+		return gasMaxRatio
 	}
 
 	// Check if x is less than 95% of unit
-	if x.Cmp(minRatio) < 0 {
-		return minRatio
+	if x.Cmp(gasMinRatio) < 0 {
+		return gasMinRatio
 	}
 
 	// Return x unchanged if it's within the allowed range

@@ -262,6 +262,7 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		result, gasUsed, err = handleBurnU2U(evm, args)
 
 	case "sealEpoch":
+		log.Info("SFC precompiled handleSealEpoch", "input", common.Bytes2Hex(input))
 		result, gasUsed, err = handleSealEpoch(evm, caller, args)
 
 	case "sealEpochValidators":

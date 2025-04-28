@@ -62,12 +62,12 @@ type ChainConfig struct {
 	BerlinBlock         *big.Int `json:"berlinBlock,omitempty"`         // Berlin switch block (nil = no fork, 0 = already on berlin)
 	LondonBlock         *big.Int `json:"londonBlock,omitempty"`         // London switch block (nil = no fork, 0 = already on london)
 
-	cancunBlock *big.Int `json:"cancunBlock,omitempty"` // Cancun switch block (nil = no fork, 0 = already on cancun)
+	CancunBlock *big.Int `json:"cancunBlock,omitempty"` // Cancun switch block (nil = no fork, 0 = already on cancun)
 }
 
 // String implements the fmt.Stringer interface.
 func (c *ChainConfig) String() string {
-	return fmt.Sprintf("{ChainID: %v Homestead: %v DAO: %v DAOSupport: %v EIP150: %v EIP155: %v EIP158: %v Byzantium: %v Constantinople: %v Petersburg: %v Istanbul: %v, Muir Glacier: %v, Berlin: %v, London: %v}",
+	return fmt.Sprintf("{ChainID: %v Homestead: %v DAO: %v DAOSupport: %v EIP150: %v EIP155: %v EIP158: %v Byzantium: %v Constantinople: %v Petersburg: %v Istanbul: %v, Muir Glacier: %v, Berlin: %v, London: %v, Cancun: %v}",
 		c.ChainID,
 		c.HomesteadBlock,
 		c.DAOForkBlock,
@@ -82,6 +82,7 @@ func (c *ChainConfig) String() string {
 		c.MuirGlacierBlock,
 		c.BerlinBlock,
 		c.LondonBlock,
+		c.CancunBlock,
 	)
 }
 
@@ -149,7 +150,7 @@ func (c *ChainConfig) IsLondon(num *big.Int) bool {
 
 // IsCancun returns whether num is either equal to the Merge fork block or greater.
 func (c *ChainConfig) IsCancun(num *big.Int) bool {
-	return isForked(c.cancunBlock, num)
+	return isForked(c.CancunBlock, num)
 }
 
 // CheckCompatible checks whether scheduled fork transitions have been imported

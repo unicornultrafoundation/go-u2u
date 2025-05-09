@@ -33,8 +33,9 @@ import (
 type GenesisBuilder struct {
 	dbs u2udb.DBProducer
 
-	tmpEvmStore *evmstore.Store
-	tmpStateDB  *state.StateDB
+	tmpEvmStore   *evmstore.Store
+	tmpStateDB    *state.StateDB
+	tmpSfcStateDB *state.StateDB
 
 	totalSupply *big.Int
 
@@ -112,11 +113,13 @@ func (b *GenesisBuilder) CurrentHash() hash.Hash {
 func NewGenesisBuilder(dbs u2udb.DBProducer) *GenesisBuilder {
 	tmpEvmStore := evmstore.NewStore(dbs, evmstore.LiteStoreConfig())
 	statedb, _ := tmpEvmStore.StateDB(hash.Zero)
+	sfcStatedb, _ := tmpEvmStore.SfcStateDB(hash.Zero)
 	return &GenesisBuilder{
-		dbs:         dbs,
-		tmpEvmStore: tmpEvmStore,
-		tmpStateDB:  statedb,
-		totalSupply: new(big.Int),
+		dbs:           dbs,
+		tmpEvmStore:   tmpEvmStore,
+		tmpStateDB:    statedb,
+		tmpSfcStateDB: sfcStatedb,
+		totalSupply:   new(big.Int),
 	}
 }
 
@@ -139,7 +142,7 @@ func (b *GenesisBuilder) ExecuteGenesisTxs(blockProc BlockProc, genesisTxs types
 	sealer := blockProc.SealerModule.Start(blockCtx, bs, es)
 	sealing := true
 	txListener := blockProc.TxListenerModule.Start(blockCtx, bs, es, b.tmpStateDB)
-	evmProcessor := blockProc.EVMModule.Start(blockCtx, b.tmpStateDB, dummyHeaderReturner{}, func(l *types.Log) {
+	evmProcessor := blockProc.EVMModule.Start(blockCtx, b.tmpStateDB, b.tmpSfcStateDB, dummyHeaderReturner{}, func(l *types.Log) {
 		txListener.OnNewLog(l)
 	}, es.Rules, es.Rules.EvmChainConfig([]u2u.UpgradeHeight{
 		{

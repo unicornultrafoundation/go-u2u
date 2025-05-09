@@ -53,8 +53,8 @@ type Options struct {
 func Estimate(ctx context.Context, call *types.Message, opts *Options, gasCap uint64) (uint64, []byte, error) {
 	// Binary search the gas limit, as it may need to be higher than the amount used
 	var (
-		lo uint64 // lowest-known gas limit where tx execution fails
-		hi uint64 // lowest-known gas limit where tx execution succeeds
+		lo uint64 = params.TxGas - 1 // lowest-known gas limit where tx execution fails
+		hi uint64                    // lowest-known gas limit where tx execution succeeds
 	)
 	// Determine the highest gas limit can be used during the estimation.
 	hi = opts.Header.GasLimit
@@ -123,12 +123,6 @@ func Estimate(ctx context.Context, call *types.Message, opts *Options, gasCap ui
 		}
 		return 0, nil, fmt.Errorf("gas required exceeds allowance (%d)", hi)
 	}
-	// For almost any transaction, the gas consumed by the unconstrained execution
-	// above lower-bounds the gas limit required for it to succeed. One exception
-	// is those that explicitly check gas remaining in order to execute within a
-	// given limit, but we probably don't want to return the lowest possible gas
-	// limit for these cases anyway.
-	lo = result.UsedGas - 1
 
 	// There's a fairly high chance for the transaction to execute successfully
 	// with gasLimit set to the first execution's usedGas + gasRefund. Explicitly

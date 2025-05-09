@@ -7,16 +7,23 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
-	"github.com/unicornultrafoundation/go-u2u/log"
-	"github.com/unicornultrafoundation/go-u2u/params"
-
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip/blockproc"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/params"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/utils"
 )
+
+var SfcPrecompiles = []common.Address{
+	common.HexToAddress("0xFC00FACE00000000000000000000000000000000"),
+	common.HexToAddress("0xD100ae0000000000000000000000000000000000"),
+	common.HexToAddress("0xd100A01E00000000000000000000000000000000"),
+	common.HexToAddress("0x6CA548f6DF5B540E72262E935b6Fe3e72cDd68C9"),
+	common.HexToAddress("0xFC01fACE00000000000000000000000000000000"), // SFCLib
+}
 
 type EVMModule struct{}
 
@@ -24,12 +31,13 @@ func New() *EVMModule {
 	return &EVMModule{}
 }
 
-func (p *EVMModule) Start(block iblockproc.BlockCtx, statedb *state.StateDB, reader evmcore.DummyChain, onNewLog func(*types.Log), net u2u.Rules, evmCfg *params.ChainConfig) blockproc.EVMProcessor {
+func (p *EVMModule) Start(block iblockproc.BlockCtx, statedb *state.StateDB, sfcStatedb *state.StateDB, reader evmcore.DummyChain,
+	onNewLog func(*types.Log), net u2u.Rules, evmCfg *params.ChainConfig) blockproc.EVMProcessor {
 	var prevBlockHash common.Hash
 	if block.Idx != 0 {
 		prevBlockHash = reader.GetHeader(common.Hash{}, uint64(block.Idx-1)).Hash
 	}
-	return &U2UEVMProcessor{
+	processor := &U2UEVMProcessor{
 		block:         block,
 		reader:        reader,
 		statedb:       statedb,
@@ -39,6 +47,10 @@ func (p *EVMModule) Start(block iblockproc.BlockCtx, statedb *state.StateDB, rea
 		blockIdx:      utils.U64toBig(uint64(block.Idx)),
 		prevBlockHash: prevBlockHash,
 	}
+	if !common.IsNilInterface(sfcStatedb) {
+		processor.sfcStateDb = sfcStatedb
+	}
+	return processor
 }
 
 type U2UEVMProcessor struct {
@@ -121,17 +133,34 @@ func (p *U2UEVMProcessor) Finalize() (evmBlock *evmcore.EvmBlock, skippedTxs []u
 	receipts = p.receipts
 
 	// Get state root
+	log.Trace("U2UEVMProcessor.Finalize after block", "block", p.block.Idx)
 	newStateHash, err := p.statedb.Commit(true)
 	if err != nil {
 		log.Crit("Failed to commit state", "err", err)
 	}
 	evmBlock.Root = newStateHash
 	if p.sfcStateDb != nil {
+		log.Trace("Separate two commit logs when U2UEVMProcessor.Finalize after block")
 		newSfcStateHash, err := p.sfcStateDb.Commit(true)
 		if err != nil {
 			log.Crit("Failed to commit sfc state", "err", err)
 		}
 		evmBlock.SfcStateRoot = newSfcStateHash
+
+		// extra dual state verification
+		if newSfcStateHash.Cmp(types.EmptyRootHash) == 0 {
+			log.Error("SFC state is empty now", "block", p.block.Idx)
+		} else {
+			log.Info("SFC state is healthy", "block", p.block.Idx, "root", newSfcStateHash.Hex())
+		}
+		for _, addr := range SfcPrecompiles {
+			original := p.statedb.GetStorageRoot(addr)
+			sfc := p.sfcStateDb.GetStorageRoot(addr)
+			if original.Cmp(sfc) != 0 {
+				log.Error("U2UEVMProcessor.Finalize: SFC corrupted after applying block", "addr", addr,
+					"original", original.Hex(), "sfc", sfc.Hex())
+			}
+		}
 	}
 	return
 }

@@ -967,7 +967,7 @@ func getCurrentEpoch(evm *vm.EVM) (*big.Int, uint64, error) {
 	currentSealedEpochBigInt := GetBigInt().SetBytes(currentSealedEpoch.Bytes())
 
 	// Calculate current epoch as currentSealedEpoch + 1 using the pool
-	currentEpochBigInt := GetBigInt().Add(currentSealedEpochBigInt, big.NewInt(1))
+	currentEpochBigInt := new(big.Int).Add(currentSealedEpochBigInt, big.NewInt(1))
 
 	// Return the sealed epoch to the pool
 	PutBigInt(currentSealedEpochBigInt)
@@ -977,12 +977,6 @@ func getCurrentEpoch(evm *vm.EVM) (*big.Int, uint64, error) {
 
 // getEpochSnapshotSlot calculates the storage slot for an epoch snapshot
 func getEpochSnapshotSlot(epoch *big.Int) (*big.Int, uint64) {
-	// Check if the result is in the cache
-	key := epoch.String()
-	if slot, found := sfcCache.EpochSlot[key]; found {
-		return slot, HashGasCost // Still account for gas even though we're using the cache
-	}
-
 	// Initialize gas used
 	var gasUsed uint64 = 0
 
@@ -1001,10 +995,7 @@ func getEpochSnapshotSlot(epoch *big.Int) (*big.Int, uint64) {
 
 	// Convert the hash to a big.Int
 	slot := new(big.Int).SetBytes(hash)
-
-	// Store in cache
-	sfcCache.EpochSlot[key] = slot
-
+	
 	return slot, gasUsed
 }
 

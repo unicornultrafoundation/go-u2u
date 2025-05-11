@@ -5,13 +5,13 @@ go 1.23.0
 toolchain go1.23.4
 
 require (
-	github.com/Microsoft/go-winio v0.6.1
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2
 	github.com/cespare/cp v1.1.1
 	github.com/davecgh/go-spew v1.1.1
 	github.com/deckarep/golang-set v1.8.0
 	github.com/docker/docker v27.4.1+incompatible
 	github.com/dvyukov/go-fuzz v0.0.0-20230614170735-95bc4d742dfa
+	github.com/ethereum/go-ethereum v1.10.26
 	github.com/evalphobia/logrus_sentry v0.8.2
 	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.4
@@ -36,20 +36,19 @@ require (
 	github.com/unicornultrafoundation/go-helios v1.0.1
 	golang.org/x/crypto v0.37.0
 	golang.org/x/sys v0.32.0
+	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce
 	gopkg.in/urfave/cli.v1 v1.20.0
 )
 
 require (
-	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/pprof v0.0.0-20230207041349-798e818bf904 // indirect
-	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.13 // indirect
 	github.com/tklauser/numcpus v0.7.0 // indirect
-	golang.org/x/mod v0.17.0 // indirect
-	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
 	google.golang.org/protobuf v1.36.1 // indirect
 )
 

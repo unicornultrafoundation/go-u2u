@@ -150,7 +150,7 @@ func (s *Service) SwitchEpochTo(newEpoch idx.Epoch) error {
 	if newEpoch == s.store.GetEpoch() {
 		return errSameEpoch
 	}
-	s.store.evm.RebuildEvmSnapshot(common.Hash(bs.FinalizedStateRoot), common.Hash(bs.SfcStateRoot))
+	s.store.evm.RebuildEvmSnapshot(common.Hash(bs.FinalizedStateRoot))
 	err := s.engine.Reset(newEpoch, es.Validators)
 	if err != nil {
 		return err
@@ -172,10 +172,6 @@ func (s *Service) PauseEvmSnapshot() {
 
 func (s *Service) EvmSnapshotGeneration() bool {
 	gen, _ := s.store.evm.Snaps.Generating()
-	if s.store.evm.SfcSnaps != nil {
-		sfcGen, _ := s.store.evm.SfcSnaps.Generating()
-		gen = gen && sfcGen
-	}
 	return gen
 }
 
@@ -223,13 +219,6 @@ func (s *Service) processEvent(e *native.EventPayload) error {
 		// never allow fullsync while EVM snap is still generating, as it may lead to a race condition
 		s.Log.Warn("EVM snapshot is not ready during event processing", "gen", gen, "err", err)
 		return errDirtyEvmSnap
-	}
-	if s.store.cfg.EVM.SfcEnabled {
-		if gen, err := s.store.evm.SfcSnaps.Generating(); gen || err != nil {
-			// never allow fullsync while SFC snap is still generating, as it may lead to a race condition
-			s.Log.Warn("SFC snapshot is not ready during event processing", "gen", gen, "err", err)
-			return errDirtyEvmSnap
-		}
 	}
 	atomic.StoreUint32(&s.eventBusyFlag, 1)
 	defer atomic.StoreUint32(&s.eventBusyFlag, 0)

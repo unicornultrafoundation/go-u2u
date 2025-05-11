@@ -64,7 +64,7 @@ web3._extend({
 			call: 'admin_importChain',
 			params: 1
 		}),
-		new web3._extend.Method({
+ 		new web3._extend.Method({
 			name: 'sleepBlocks',
 			call: 'admin_sleepBlocks',
 			params: 2

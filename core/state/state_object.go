@@ -19,7 +19,6 @@ package state
 import (
 	"bytes"
 	"fmt"
-	"github.com/unicornultrafoundation/go-u2u/log"
 	"io"
 	"math/big"
 	"time"
@@ -91,6 +90,8 @@ type stateObject struct {
 	dirtyCode bool // true if the code was updated
 	suicided  bool
 	deleted   bool
+	// Flag whether the object was created in the current transaction
+	created bool
 }
 
 // empty returns whether the account is considered empty.
@@ -126,6 +127,7 @@ func newObject(db *StateDB, address common.Address, data Account) *stateObject {
 		originStorage:  make(Storage),
 		pendingStorage: make(Storage),
 		dirtyStorage:   make(Storage),
+		created:        true,
 	}
 }
 
@@ -311,13 +313,9 @@ func (s *stateObject) setState(key, value common.Hash) {
 // finalise moves all dirty storage slots into the pending area to be hashed or
 // committed later. It is invoked at the end of every transaction.
 func (s *stateObject) finalise(prefetch bool) {
-	var isHeavyLog = s.address.Cmp(common.HexToAddress("0xfc00face00000000000000000000000000000000")) == 0
 	slotsToPrefetch := make([][]byte, 0, len(s.dirtyStorage))
 	for key, value := range s.dirtyStorage {
 		s.pendingStorage[key] = value
-		if isHeavyLog {
-			log.Trace("stateObject.finalise: stateObject to pending storage", "key", key.Hex(), "value", value.Hex())
-		}
 		if value != s.originStorage[key] {
 			slotsToPrefetch = append(slotsToPrefetch, common.CopyBytes(key[:])) // Copy needed for closure
 		}
@@ -550,10 +548,6 @@ func (s *stateObject) Balance() *big.Int {
 
 func (s *stateObject) Nonce() uint64 {
 	return s.data.Nonce
-}
-
-func (s *stateObject) Root() common.Hash {
-	return s.data.Root
 }
 
 // Never called, but must be present to allow stateObject to be used

@@ -11,7 +11,6 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/log"
-	"github.com/unicornultrafoundation/go-u2u/native/ibr"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 )
 
@@ -46,8 +45,7 @@ func dumpSfcStorage(ctx *cli.Context) error {
 	stateRoot := evms.GetSfcStateRoot(latestBlockIndex, latestBlockHash.Bytes())
 	if stateRoot != nil && evms.HasSfcStateDB(hash.Hash(*stateRoot)) {
 		log.Info("Already dump SFC contract's storage at this block", "block", latestBlockIndex, "stateRoot", stateRoot.Hex())
-		// TODO(trinhdn97): must prevent re-dumping the SFC contracts' storage after completely removed the EVM version
-		// return nil
+		return nil
 	}
 
 	currentBlock := gdb.GetBlock(latestBlockIndex)
@@ -68,29 +66,12 @@ func dumpSfcStorage(ctx *cli.Context) error {
 	}
 
 	if isDumpStorageHashValid(stateDb, sfcStateDb) {
-		// Save dumped SFC contract's storage to disk
-		if err := evms.CommitSfcState(latestBlockIndex, hash.Hash(sfcStateTrieHash), false); err != nil {
-			panic(err)
-		}
+		// Save dump SFC contract's storage to disk
+		evms.CommitSfcState(latestBlockIndex, hash.Hash(sfcStateTrieHash), false)
 		evms.CapSfcState()
 
-		// Save the sfcStateTrieHash for future use (include into the native block header)
+		// Save the stateTrieHash for future use (include into the block header)
 		evms.SetSfcStateRoot(latestBlockIndex, latestBlockHash.Bytes(), sfcStateTrieHash)
-		evms.SetLatestSfcStateRoot(sfcStateTrieHash)
-
-		latestBlock := gdb.GetBlock(latestBlockIndex)
-		latestBlock.SfcStateRoot = hash.Hash(sfcStateTrieHash)
-		gdb.SetBlock(latestBlockIndex, latestBlock)
-		bs, es := gdb.GetBlockEpochState()
-		bs.SfcStateRoot = hash.Hash(sfcStateTrieHash)
-		gdb.SetBlockEpochState(bs, es)
-		gdb.FlushBlockEpochState()
-		br := gdb.GetFullBlockRecord(latestBlockIndex)
-		br.SfcStateRoot = hash.Hash(sfcStateTrieHash)
-		gdb.WriteFullBlockRecord(ibr.LlrIdxFullBlockRecord{
-			LlrFullBlockRecord: *br,
-			Idx:                latestBlockIndex,
-		})
 
 		log.Info("Dump SFC contract's storage successfully at", "block", latestBlockIndex, "stateTrieHash", sfcStateTrieHash.Hex())
 	}
@@ -100,10 +81,6 @@ func dumpSfcStorage(ctx *cli.Context) error {
 
 func dumpSfcStorageByStateDb(stateDb *state.StateDB, sfcStateDb *state.StateDB) (common.Hash, error) {
 	for sfcAddress := range u2u.DefaultVMConfig.SfcPrecompiles {
-		// Warming up the state object to persist later
-		sfcStateDb.AddBalance(sfcAddress, stateDb.GetBalance(sfcAddress))
-		sfcStateDb.SetNonce(sfcAddress, stateDb.GetNonce(sfcAddress))
-		sfcStateDb.SetCode(sfcAddress, stateDb.GetCode(sfcAddress))
 		stateDb.ForEachStorage(sfcAddress, func(key, value common.Hash) bool {
 			log.Debug("Looping on storage trie", "Contract", sfcAddress, "Key", key.Hex(), "Value", value.Hex())
 			sfcStateDb.SetState(sfcAddress, key, value)

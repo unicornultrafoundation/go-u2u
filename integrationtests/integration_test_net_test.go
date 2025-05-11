@@ -1,6 +1,3 @@
-//go:build !windows
-// +build !windows
-
 package integrationtests
 
 import (
@@ -9,7 +6,7 @@ import (
 	"testing"
 
 	"golang.org/x/net/nettest"
-
+	
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/integrationtests/contracts/counter"
@@ -20,7 +17,7 @@ func TestIntegrationTestNet_CanStartAndStopIntegrationTestNet(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	net, err := StartIntegrationTestNet(dataDir, false)
+	net, err := StartIntegrationTestNet(dataDir)
 	if err != nil {
 		t.Fatalf("Failed to start the fake network: %v", err)
 	}
@@ -32,7 +29,7 @@ func TestIntegrationTestNet_CanStartMultipleConsecutiveInstances(t *testing.T) {
 		if err != nil {
 			t.Fatalf(err.Error())
 		}
-		net, err := StartIntegrationTestNet(dataDir, false)
+		net, err := StartIntegrationTestNet(dataDir)
 		if err != nil {
 			t.Fatalf("Failed to start the fake network: %v", err)
 		}
@@ -44,7 +41,7 @@ func TestIntegrationTestNet_CanFetchInformationFromTheNetwork(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	net, err := StartIntegrationTestNet(dataDir, false)
+	net, err := StartIntegrationTestNet(dataDir)
 	if err != nil {
 		t.Fatalf("Failed to start the fake network: %v", err)
 	}
@@ -67,7 +64,7 @@ func TestIntegrationTestNet_CanEndowAccountsWithTokens(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	net, err := StartIntegrationTestNet(dataDir, false)
+	net, err := StartIntegrationTestNet(dataDir)
 	if err != nil {
 		t.Fatalf("Failed to start the fake network: %v", err)
 	}
@@ -102,7 +99,7 @@ func TestIntegrationTestNet_CanDeployContracts(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	net, err := StartIntegrationTestNet(dataDir, false)
+	net, err := StartIntegrationTestNet(dataDir)
 	if err != nil {
 		t.Fatalf("Failed to start the fake network: %v", err)
 	}
@@ -120,7 +117,7 @@ func TestIntegrationTestNet_CanInteractWithContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	net, err := StartIntegrationTestNet(dataDir, false)
+	net, err := StartIntegrationTestNet(dataDir)
 	if err != nil {
 		t.Fatalf("Failed to start the fake network: %v", err)
 	}

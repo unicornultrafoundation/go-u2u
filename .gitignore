@@ -2,4 +2,3 @@
 .DS_Store
 .vscode
 /build
-/u2u/contracts/sfc/contracts/*

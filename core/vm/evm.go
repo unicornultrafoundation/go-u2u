@@ -256,16 +256,16 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			evm.Context.Transfer(evm.SfcStateDB, caller.Address(), addr, value)
 			// Run SFC precompiled
 			start := time.Now()
-			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+			_, _, sfcErr := sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
 			// TODO(trinhdn97): compared sfc state precompiled gas used/output/error with the correct execution from smc
 			// as well for call code, delegate and static calls.
 			sfcExecutionElapsed = time.Since(start)
 
 			// When an error was returned by the SFC precompiles or when setting the creation code
 			// above, we revert to the snapshot and consume any gas remaining.
-			if err != nil {
+			if sfcErr != nil {
 				evm.SfcStateDB.RevertToSnapshot(snapshot)
-				if !errors.Is(err, ErrExecutionReverted) {
+				if !errors.Is(sfcErr, ErrExecutionReverted) {
 					// TODO(trinhdn97): try to consume all remaining gas here, in case this is a valid revert.
 				}
 			}
@@ -353,11 +353,11 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 		if isSfcPrecompile && evm.SfcStateDB != nil {
 			snapshot := evm.SfcStateDB.Snapshot()
 			start := time.Now()
-			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+			_, _, sfcErr := sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
 			sfcExecutionElapsed = time.Since(start)
-			if err != nil {
+			if sfcErr != nil {
 				evm.SfcStateDB.RevertToSnapshot(snapshot)
-				if !errors.Is(err, ErrExecutionReverted) {
+				if !errors.Is(sfcErr, ErrExecutionReverted) {
 				}
 			}
 		}
@@ -422,11 +422,11 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 		if isSfcPrecompile && evm.SfcStateDB != nil {
 			snapshot := evm.SfcStateDB.Snapshot()
 			start := time.Now()
-			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+			_, _, sfcErr := sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
 			sfcExecutionElapsed = time.Since(start)
-			if err != nil {
+			if sfcErr != nil {
 				evm.SfcStateDB.RevertToSnapshot(snapshot)
-				if !errors.Is(err, ErrExecutionReverted) {
+				if !errors.Is(sfcErr, ErrExecutionReverted) {
 				}
 			}
 		}
@@ -500,11 +500,11 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 			snapshot := evm.SfcStateDB.Snapshot()
 			evm.SfcStateDB.AddBalance(addr, big0)
 			start := time.Now()
-			ret, _, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+			_, _, sfcErr := sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
 			sfcExecutionElapsed = time.Since(start)
-			if err != nil {
+			if sfcErr != nil {
 				evm.SfcStateDB.RevertToSnapshot(snapshot)
-				if !errors.Is(err, ErrExecutionReverted) {
+				if !errors.Is(sfcErr, ErrExecutionReverted) {
 				}
 			}
 		}

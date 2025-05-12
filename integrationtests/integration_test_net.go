@@ -9,7 +9,6 @@ import (
 	"math/rand/v2"
 	"net"
 	"os"
-	"syscall"
 	"time"
 
 	go_u2u "github.com/unicornultrafoundation/go-u2u"
@@ -111,7 +110,7 @@ func StartIntegrationTestNet(directory string) (*IntegrationTestNet, error) {
 
 			// http-client option
 			"--http", "--http.addr", "0.0.0.0", "--http.port", fmt.Sprint(httpClientPort),
-			"--http.api", "admin,eth,web3,net,txpool,ftm,trace,debug",
+			"--http.api", "admin,eth,web3,net,txpool,trace,debug,sfc",
 
 			// websocket-client options
 			"--ws", "--ws.addr", "0.0.0.0", "--ws.port", fmt.Sprint(wsPort),
@@ -121,6 +120,7 @@ func StartIntegrationTestNet(directory string) (*IntegrationTestNet, error) {
 			"--port", fmt.Sprint(netPort),
 			"--nat", "none",
 			"--nodiscover",
+			"--ipcpath", getIPCPath(),
 			"--cache", "8192",
 		}
 		err := u2u.Run()
@@ -157,13 +157,6 @@ func StartIntegrationTestNet(directory string) (*IntegrationTestNet, error) {
 		return result, nil
 	}
 	return nil, fmt.Errorf("failed to successfully start up a test network within %d", timeout)
-}
-
-// Stop shuts the underlying network down.
-func (n *IntegrationTestNet) Stop() {
-	syscall.Kill(syscall.Getpid(), syscall.SIGINT)
-	<-n.done
-	n.done = nil
 }
 
 // EndowAccount sends a requested amount of tokens to the given account. This is

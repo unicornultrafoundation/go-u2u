@@ -1,3 +1,6 @@
+//go:build !windows
+// +build !windows
+
 package integrationtests
 
 import (
@@ -6,7 +9,7 @@ import (
 	"testing"
 
 	"golang.org/x/net/nettest"
-	
+
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/integrationtests/contracts/counter"

@@ -173,7 +173,8 @@ func Estimate(ctx context.Context, call *types.Message, opts *Options, gasCap ui
 			hi = mid
 		}
 	}
-	return hi, nil, nil
+	// Bump the estimated output by 25% for now.
+	return hi + hi/4, nil, nil
 }
 
 // execute is a helper that executes the transaction under a given gas limit and

@@ -246,6 +246,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		sfcExecutionElapsed time.Duration
 		evmExecutionElapsed time.Duration
 		sfcRet              []byte
+		sfcErr              error
 	)
 	if isPrecompile {
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
@@ -267,18 +268,16 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 				"caller", caller.Address().Hex(),
 				"to", addr.Hex())
 			start := time.Now()
-			sfcRet, _, err = sp.Run(evm, caller.Address(), input, gas)
+			sfcRet, _, sfcErr = sp.Run(evm, caller.Address(), input, gas)
 			// TODO(trinhdn97): compared sfc state precompiled gas used/output/error with the correct execution from smc
 			// as well for call code, delegate and static calls.
 			sfcExecutionElapsed = time.Since(start)
 
 			// When an error was returned by the SFC precompiles or when setting the creation code
 			// above, we revert to the snapshot and consume any gas remaining.
-			if err != nil {
-				log.Error("SFC precompiled error: Reverting to snapshot", "action", "call",
-					"from", caller.Address().Hex(), "to", addr.Hex(), "err", err)
+			if sfcErr != nil {
 				evm.SfcStateDB.RevertToSnapshot(snapshot)
-				if !errors.Is(err, ErrExecutionReverted) {
+				if !errors.Is(sfcErr, ErrExecutionReverted) {
 					// TODO(trinhdn97): try to consume all remaining gas here, in case this is a valid revert.
 				}
 			}
@@ -376,11 +375,11 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 			log.Debug("SFC precompiled calling", "action", "callcode", "height", evm.Context.BlockNumber,
 				"caller", caller.Address().Hex(), "to", addr.Hex())
 			start := time.Now()
-			ret, _, err = sp.Run(evm, caller.Address(), input, gas)
+			_, _, sfcErr := sp.Run(evm, caller.Address(), input, gas)
 			sfcExecutionElapsed = time.Since(start)
-			if err != nil {
+			if sfcErr != nil {
 				evm.SfcStateDB.RevertToSnapshot(snapshot)
-				if !errors.Is(err, ErrExecutionReverted) {
+				if !errors.Is(sfcErr, ErrExecutionReverted) {
 				}
 			}
 		}
@@ -446,11 +445,11 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 			log.Debug("SFC precompiled calling", "action", "delegatecall", "height", evm.Context.BlockNumber,
 				"caller", caller.Address().Hex(), "to", addr.Hex())
 			start := time.Now()
-			ret, _, err = sp.Run(evm, caller.Address(), input, gas)
+			_, _, sfcErr := sp.Run(evm, caller.Address(), input, gas)
 			sfcExecutionElapsed = time.Since(start)
-			if err != nil {
+			if sfcErr != nil {
 				evm.SfcStateDB.RevertToSnapshot(snapshot)
-				if !errors.Is(err, ErrExecutionReverted) {
+				if !errors.Is(sfcErr, ErrExecutionReverted) {
 				}
 			}
 		}
@@ -525,12 +524,11 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 				"caller", caller.Address().Hex(),
 				"to", addr.Hex())
 			start := time.Now()
-			ret, _, err = sp.Run(evm, caller.Address(), input, gas)
+			_, _, sfcErr := sp.Run(evm, caller.Address(), input, gas)
 			sfcExecutionElapsed = time.Since(start)
-			if err != nil {
-				log.Error("SFC precompiled error: Reverting to snapshot", "action", "staticcall", "err", err)
+			if sfcErr != nil {
 				evm.SfcStateDB.RevertToSnapshot(snapshot)
-				if !errors.Is(err, ErrExecutionReverted) {
+				if !errors.Is(sfcErr, ErrExecutionReverted) {
 				}
 			}
 		}

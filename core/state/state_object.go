@@ -90,6 +90,8 @@ type stateObject struct {
 	dirtyCode bool // true if the code was updated
 	suicided  bool
 	deleted   bool
+	// Flag whether the object was created in the current transaction
+	created bool
 }
 
 // empty returns whether the account is considered empty.
@@ -125,6 +127,7 @@ func newObject(db *StateDB, address common.Address, data Account) *stateObject {
 		originStorage:  make(Storage),
 		pendingStorage: make(Storage),
 		dirtyStorage:   make(Storage),
+		created:        true,
 	}
 }
 
@@ -545,10 +548,6 @@ func (s *stateObject) Balance() *big.Int {
 
 func (s *stateObject) Nonce() uint64 {
 	return s.data.Nonce
-}
-
-func (s *stateObject) Root() common.Hash {
-	return s.data.Root
 }
 
 // Never called, but must be present to allow stateObject to be used

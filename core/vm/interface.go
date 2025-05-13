@@ -46,11 +46,14 @@ type StateDB interface {
 	GetCommittedState(common.Address, common.Hash) common.Hash
 	GetState(common.Address, common.Hash) common.Hash
 	SetState(common.Address, common.Hash, common.Hash)
-	GetStorageRoot(addr common.Address) common.Hash
+
+	GetTransientState(addr common.Address, key common.Hash) common.Hash
+	SetTransientState(addr common.Address, key, value common.Hash)
 
 	Suicide(common.Address) bool
 	HasSuicided(common.Address) bool
 
+	Selfdestruct(common.Address)
 	// Exist reports whether the given account exists in state.
 	// Notably this should also return true for suicided accounts.
 	Exist(common.Address) bool

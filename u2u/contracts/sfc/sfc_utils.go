@@ -59,13 +59,14 @@ var (
 	gasMaxRatio *big.Int
 	// gasMinRatio represents 95% of the decimal unit (0.95e18)
 	gasMinRatio *big.Int
+
+	unit             = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	constMinGasPrice = new(big.Int).Mul(big.NewInt(1), big.NewInt(1000000000))
+	constMaxGasPrice = new(big.Int).Mul(big.NewInt(1000000), big.NewInt(1000000000))
 )
 
 // init calculates and caches the gas price ratio limits
 func init() {
-	// Get the decimal unit
-	unit := getDecimalUnit()
-
 	// Calculate 105% of unit
 	gasMaxRatio = new(big.Int).Mul(unit, big.NewInt(105))
 	gasMaxRatio = new(big.Int).Div(gasMaxRatio, big.NewInt(100))
@@ -917,11 +918,6 @@ func callConstantManagerMethod(evm *vm.EVM, methodName string, args ...interface
 	// Initialize gas used
 	var gasUsed uint64 = 0
 
-	// Get the ConstantsManager contract address (SLOAD operation)
-	constantsManager := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(constantsManagerSlot)))
-	gasUsed += SloadGasCost // Add gas for SLOAD
-	constantsManagerAddr := common.BytesToAddress(constantsManager.Bytes())
-
 	// Pack the function call data
 	data, err := CMAbi.Pack(methodName, args...)
 	if err != nil {
@@ -930,7 +926,7 @@ func callConstantManagerMethod(evm *vm.EVM, methodName string, args ...interface
 	}
 
 	// Make the call to the ConstantsManager contract
-	result, leftOverGas, err := evm.Call(vm.AccountRef(ContractAddress), constantsManagerAddr, data, defaultGasLimit, big.NewInt(0))
+	result, leftOverGas, err := evm.Call(vm.AccountRef(ContractAddress), CMAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		reason, _ := abi.UnpackRevert(result)
 		log.Error("SFC: Error calling ConstantsManager method", "method", methodName, "err", err, "reason", reason)
@@ -938,7 +934,7 @@ func callConstantManagerMethod(evm *vm.EVM, methodName string, args ...interface
 	}
 
 	// Add the gas used by the call
-	gasUsed += (defaultGasLimit - leftOverGas)
+	gasUsed += defaultGasLimit - leftOverGas
 
 	// Unpack the result
 	values, err := CMAbi.Methods[methodName].Outputs.Unpack(result)
@@ -995,7 +991,7 @@ func getEpochSnapshotSlot(epoch *big.Int) (*big.Int, uint64) {
 
 	// Convert the hash to a big.Int
 	slot := new(big.Int).SetBytes(hash)
-	
+
 	return slot, gasUsed
 }
 
@@ -1422,7 +1418,7 @@ func getEpochValidatorReceivedStakeSlot(epoch *big.Int, validatorID *big.Int) (*
 // getDecimalUnit returns the decimal unit value (1e18) used for decimal calculations
 func getDecimalUnit() *big.Int {
 	// This is a pure function that returns 1e18, as defined in Decimal.sol
-	return new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	return unit
 }
 
 // trimGasPriceChangeRatio limits the gas price change ratio to be between 95% and 105%
@@ -1445,20 +1441,14 @@ func trimGasPriceChangeRatio(x *big.Int) *big.Int {
 // trimMinGasPrice limits the minimum gas price to be between 1 gwei and 1000000 gwei
 // This is a port of the GP.trimMinGasPrice function from GasPriceConstants.sol
 func trimMinGasPrice(x *big.Int) *big.Int {
-	// Calculate 1 gwei (1e9)
-	minGasPrice := new(big.Int).Mul(big.NewInt(1), big.NewInt(1000000000))
-
-	// Calculate 1000000 gwei (1e15)
-	maxGasPrice := new(big.Int).Mul(big.NewInt(1000000), big.NewInt(1000000000))
-
 	// Check if x is greater than 1000000 gwei
-	if x.Cmp(maxGasPrice) > 0 {
-		return maxGasPrice
+	if x.Cmp(constMaxGasPrice) > 0 {
+		return constMaxGasPrice
 	}
 
 	// Check if x is less than 1 gwei
-	if x.Cmp(minGasPrice) < 0 {
-		return minGasPrice
+	if x.Cmp(constMinGasPrice) < 0 {
+		return constMinGasPrice
 	}
 
 	// Return x unchanged if it's within the allowed range

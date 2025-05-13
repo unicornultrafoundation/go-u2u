@@ -101,7 +101,7 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	}
 
 	// Call _sealEpoch_offline
-	offlineGasUsed, err := _sealEpoch_offline(evm, validatorIDs, offlineTimes, offlineBlocks, currentEpochBigInt)
+	offlineGasUsed, err := _sealEpoch_offline(evm, validatorIDs, offlineTimes, offlineBlocks, currentEpochSnapshotSlot)
 	gasUsed += offlineGasUsed
 	if err != nil {
 		return nil, gasUsed, err
@@ -127,9 +127,9 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	prevEndTimeBigInt := GetBigInt().SetBytes(prevEndTime.Bytes())
 
 	// Calculate epoch duration
-	epochDuration := big.NewInt(1) // Default to 1 if current time <= prevEndTime
+	epochDuration := GetBigInt().SetInt64(1) // Default to 1 if current time <= prevEndTime
 	if evm.Context.Time.Cmp(prevEndTimeBigInt) > 0 {
-		epochDuration = new(big.Int).Sub(evm.Context.Time, prevEndTimeBigInt)
+		epochDuration = epochDuration.Sub(evm.Context.Time, prevEndTimeBigInt)
 	}
 	PutBigInt(prevEndTimeBigInt)
 
@@ -160,7 +160,7 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	PutBigInt(endTimeOffsetBig)
 	PutBigInt(endTimeSlot)
 
-	// Get the base reward per second from constants manager
+	// Get the base reward per second from the constants manager
 	baseRewardPerSecond, cmGasUsed, err := callConstantManagerMethod(evm, "baseRewardPerSecond")
 	gasUsed += cmGasUsed
 	if err != nil || len(baseRewardPerSecond) == 0 {
@@ -194,6 +194,7 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	PutBigInt(totalSupplySlotBig)
 	PutBigInt(totalSupplyOffsetBig)
 	PutBigInt(totalSupplySnapshotSlot)
+	PutBigInt(epochDuration)
 
 	return nil, gasUsed, nil
 }
@@ -318,13 +319,9 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 }
 
 // _sealEpoch_offline is an internal function to seal offline validators in an epoch
-func _sealEpoch_offline(evm *vm.EVM, validatorIDs []*big.Int, offlineTimes []*big.Int, offlineBlocks []*big.Int, currentEpoch *big.Int) (uint64, error) {
+func _sealEpoch_offline(evm *vm.EVM, validatorIDs []*big.Int, offlineTimes []*big.Int, offlineBlocks []*big.Int, currentEpochSnapshotSlot *big.Int) (uint64, error) {
 	// Initialize gas used
 	var gasUsed uint64 = 0
-
-	// Get the epoch snapshot slot (not used directly in this function but needed for gas calculation)
-	_, slotGasUsed := getEpochSnapshotSlot(currentEpoch)
-	gasUsed += slotGasUsed
 
 	// Get the offline penalty thresholds from the constants manager
 	offlinePenaltyThresholdBlocksNum, thresholdGasUsed, err := getOfflinePenaltyThresholdBlocksNum(evm)
@@ -358,15 +355,8 @@ func _sealEpoch_offline(evm *vm.EVM, validatorIDs []*big.Int, offlineTimes []*bi
 			}
 		}
 
-		// Store offline time in the epoch snapshot (snapshot.offlineTime[validatorID] = offlineTimes[i])
-		// For a mapping within a struct, we need to calculate the slot as:
-		// keccak256(key . (struct_slot + offset))
-		// First, get the base slot for the struct
-		epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(currentEpoch)
-		gasUsed += slotGasUsed
-
 		// Add the offset for the offlineTime mapping within the struct
-		mappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(offlineTimeOffset))
+		mappingSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(offlineTimeOffset))
 
 		// Then, calculate the slot for the specific key using our helper function
 		// Use CreateValidatorMappingHashInput to create the hash input
@@ -384,7 +374,7 @@ func _sealEpoch_offline(evm *vm.EVM, validatorIDs []*big.Int, offlineTimes []*bi
 		// For a mapping within a struct, we need to calculate the slot as:
 		// keccak256(key . (struct_slot + offset))
 		// Add the offset for the offlineBlocks mapping within the struct
-		blocksMappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(offlineBlocksOffset))
+		blocksMappingSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(offlineBlocksOffset))
 
 		// Then, calculate the slot for the specific key using our helper function
 		// Use CreateValidatorMappingHashInput to create the hash input
@@ -531,8 +521,6 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		return gasUsed, vm.ErrExecutionReverted
 	}
 
-	// Get the decimal unit (1e18) using the helper function
-	decimalUnitBigInt := getDecimalUnit()
 	// Calculate rewards for each validator
 	for i, validatorID := range validatorIDs {
 		// Calculate raw base reward
@@ -552,10 +540,10 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 
 			// Subtract burnt and treasury shares
 			shareToSubtract := new(big.Int).Add(burntFeeShareBigInt, treasuryFeeShareBigInt)
-			shareToKeep := new(big.Int).Sub(decimalUnitBigInt, shareToSubtract)
+			shareToKeep := new(big.Int).Sub(unit, shareToSubtract)
 
 			rawTxReward = new(big.Int).Mul(txReward, shareToKeep)
-			rawTxReward = new(big.Int).Div(rawTxReward, decimalUnitBigInt)
+			rawTxReward = new(big.Int).Div(rawTxReward, unit)
 		}
 
 		// Calculate total raw reward
@@ -571,7 +559,7 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 
 		// Calculate validator's commission
 		commissionRewardFull := new(big.Int).Mul(rawReward, validatorCommissionBigInt)
-		commissionRewardFull = new(big.Int).Div(commissionRewardFull, decimalUnitBigInt)
+		commissionRewardFull = new(big.Int).Div(commissionRewardFull, unit)
 
 		// Get validator's self-stake
 		selfStakeSlot, slotGasUsed := getStakeSlot(validatorAuthAddr, validatorID)
@@ -714,7 +702,7 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		// Calculate reward per token
 		rewardPerToken := big.NewInt(0)
 		if receivedStakeBigInt.Cmp(big.NewInt(0)) != 0 {
-			rewardPerToken = new(big.Int).Mul(delegatorsReward, decimalUnitBigInt)
+			rewardPerToken = new(big.Int).Mul(delegatorsReward, unit)
 			rewardPerToken = new(big.Int).Div(rewardPerToken, receivedStakeBigInt)
 		}
 
@@ -862,7 +850,7 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 	if treasuryAddr.Cmp(emptyAddr) != 0 {
 		// Calculate fee share
 		feeShare := new(big.Int).Mul(epochFee, treasuryFeeShareBigInt)
-		feeShare = new(big.Int).Div(feeShare, decimalUnitBigInt)
+		feeShare = new(big.Int).Div(feeShare, unit)
 
 		// First mint native token to the contract itself
 		// This matches the Solidity code: _mintNativeToken(feeShare);

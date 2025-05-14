@@ -125,7 +125,7 @@ func handle_mintNativeToken(evm *vm.EVM, args []interface{}) ([]byte, uint64, er
 	}
 
 	// Call the node driver
-	result, _, err := evm.Call(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, defaultGasLimit, big.NewInt(0))
+	result, _, err := evm.CallSFC(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		reason, _ := abi.UnpackRevert(result)
 		log.Error("SFC: Error calling NodeDriverAuth method", "method", "incBalance", "err", err, "reason", reason)
@@ -333,7 +333,7 @@ func handleCheckAllowedToWithdraw(evm *vm.EVM, delegator common.Address, toValid
 	data = append(data, toValidatorIDBytes...)
 
 	// Make the call to the StakeTokenizer contract
-	result, _, err := evm.Call(vm.AccountRef(ContractAddress), stakeTokenizerAddr, data, defaultGasLimit, big.NewInt(0))
+	result, _, err := evm.CallSFC(vm.AccountRef(ContractAddress), stakeTokenizerAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return false, err
 	}
@@ -384,10 +384,7 @@ func handleCheckDelegatedStakeLimit(evm *vm.EVM, validatorID *big.Int) (bool, er
 	receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
 
 	// Get the max delegated ratio
-	maxDelegatedRatioBigInt, _, err := getMaxDelegatedRatio(evm)
-	if err != nil {
-		return false, err
-	}
+	maxDelegatedRatioBigInt := getConstantsManagerVariable("maxDelegatedRatio")
 
 	// Calculate the delegated stake
 	delegatedStake := new(big.Int).Sub(receivedStakeBigInt, selfStake)
@@ -545,11 +542,7 @@ func handleRawUndelegate(evm *vm.EVM, delegator common.Address, toValidatorID *b
 		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorStatusSlot), common.BigToHash(big.NewInt(1))) // WITHDRAWN_BIT
 	} else if validatorStatusBigInt.Cmp(big.NewInt(0)) == 0 { // OK_STATUS
 		// Check that the self-stake is at least the minimum self-stake
-		minSelfStakeBigInt, minSelfStakeGas, err := getMinSelfStake(evm)
-		if err != nil {
-			return nil, gasUsed + minSelfStakeGas, err
-		}
-		gasUsed += minSelfStakeGas
+		minSelfStakeBigInt := getConstantsManagerVariable("minSelfStake")
 		if selfStake.Cmp(minSelfStakeBigInt) < 0 {
 			// Set the validator as deactivated
 			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorStatusSlot), common.BigToHash(big.NewInt(1))) // WITHDRAWN_BIT
@@ -622,7 +615,7 @@ func handleRecountVotes(evm *vm.EVM, delegator common.Address, validatorAuth com
 
 		// Make the call to the voteBook contract with gas limit of 8000000
 		voteBookAddr := common.BytesToAddress(voteBookAddressBytes)
-		_, leftOverGas, err := evm.Call(vm.AccountRef(ContractAddress), voteBookAddr, data, 8000000, big.NewInt(0))
+		_, leftOverGas, err := evm.CallSFC(vm.AccountRef(ContractAddress), voteBookAddr, data, 8000000, big.NewInt(0))
 
 		// Check if the call was successful
 		if err != nil && strict {
@@ -653,7 +646,7 @@ func callSFCLibDelegate(evm *vm.EVM, delegator common.Address, toValidatorID *bi
 	data = append(data, common.LeftPadBytes(amount.Bytes(), 32)...)
 
 	// Make the call to the SFCLib contract
-	result, leftOverGas, err := evm.Call(vm.AccountRef(ContractAddress), sfcLibAddress, data, defaultGasLimit, big.NewInt(0))
+	result, leftOverGas, err := evm.CallSFC(vm.AccountRef(ContractAddress), sfcLibAddress, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, defaultGasLimit - leftOverGas, err
 	}
@@ -856,10 +849,7 @@ func handleSyncValidator(evm *vm.EVM, validatorID *big.Int) ([]byte, uint64, err
 	}
 
 	// Get the minimum self-stake
-	minSelfStakeBigInt, _, err := getMinSelfStake(evm)
-	if err != nil {
-		return nil, 0, err
-	}
+	minSelfStakeBigInt := getConstantsManagerVariable("minSelfStake")
 
 	// Check if the self-stake is at least the minimum self-stake
 	hasSelfStake := selfStake.Cmp(big.NewInt(0)) > 0

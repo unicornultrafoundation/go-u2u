@@ -135,9 +135,6 @@ func (p *StateProcessor) Process(
 				"evm", vm.TotalEvmExecutionElapsed,
 				"sfc", vm.TotalSfcExecutionElapsed,
 				"txHash", tx.Hash().Hex())
-
-			vm.TotalEvmExecutionElapsed = 0
-			vm.TotalSfcExecutionElapsed = 0
 		}
 	}
 	return

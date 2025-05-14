@@ -189,23 +189,9 @@ func handleCreateValidator(evm *vm.EVM, caller common.Address, args []interface{
 	}
 
 	// Call the minSelfStake method on the ConstantsManager contract
-	minSelfStakeValues, _, err := callConstantManagerMethod(evm, "minSelfStake")
-	if err != nil {
-		return nil, 0, err
-	}
-
-	// The result should be a single *big.Int value
-	if len(minSelfStakeValues) != 1 {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	minSelfStakeBigInt, ok := minSelfStakeValues[0].(*big.Int)
-	if !ok {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-
+	minSelfStake := getConstantsManagerVariable("minSelfStake")
 	// Check that the value is at least the minimum self-stake
-	if value.Cmp(minSelfStakeBigInt) < 0 {
+	if value.Cmp(minSelfStake) < 0 {
 		revertData, err := encodeRevertReason("createValidator", "insufficient self-stake")
 		if err != nil {
 			return nil, 0, vm.ErrExecutionReverted
@@ -1120,15 +1106,8 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	}
 
 	// Check that the lockup duration is valid
-	minLockupDurationBigInt, _, err := getMinLockupDuration(evm)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	maxLockupDurationBigInt, _, err := getMaxLockupDuration(evm)
-	if err != nil {
-		return nil, 0, err
-	}
+	minLockupDurationBigInt := getConstantsManagerVariable("minLockupDuration")
+	maxLockupDurationBigInt := getConstantsManagerVariable("maxLockupDuration")
 
 	if lockupDuration.Cmp(minLockupDurationBigInt) < 0 || lockupDuration.Cmp(maxLockupDurationBigInt) > 0 {
 		revertData, err := encodeRevertReason("lockStake", "incorrect duration")
@@ -1325,10 +1304,7 @@ func handleWithdraw(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 	}
 
 	// Check that enough time has passed
-	withdrawalPeriodTimeBigInt, _, err := getWithdrawalPeriodTime(evm)
-	if err != nil {
-		return nil, 0, err
-	}
+	withdrawalPeriodTimeBigInt := getConstantsManagerVariable("withdrawalPeriodTime")
 
 	if evm.Context.Time.Cmp(new(big.Int).Add(requestTime, withdrawalPeriodTimeBigInt)) < 0 {
 		revertData, err := encodeRevertReason("withdraw", "not enough time passed")
@@ -1339,10 +1315,7 @@ func handleWithdraw(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 	}
 
 	// Check that enough epochs have passed
-	withdrawalPeriodEpochsBigInt, _, err := getWithdrawalPeriodEpochs(evm)
-	if err != nil {
-		return nil, 0, err
-	}
+	withdrawalPeriodEpochsBigInt := getConstantsManagerVariable("withdrawalPeriodEpochs")
 
 	currentEpochBigInt, _, err := getCurrentEpoch(evm)
 	if err != nil {

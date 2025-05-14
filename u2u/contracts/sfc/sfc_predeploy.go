@@ -15,8 +15,9 @@ func GetContractBin() []byte {
 
 var (
 	// ContractAddress is the SFC contract address
-	ContractAddress = common.HexToAddress("0xfc00face00000000000000000000000000000000")
-	CMAddr          = common.HexToAddress("0x6CA548f6DF5B540E72262E935b6Fe3e72cDd68C9")
+	ContractAddress    = common.HexToAddress("0xfc00face00000000000000000000000000000000")
+	CMAddr             = common.HexToAddress("0x6CA548f6DF5B540E72262E935b6Fe3e72cDd68C9")
+	NodeDriverAuthAddr = common.HexToAddress("0xd100ae0000000000000000000000000000000000")
 )
 
 const (

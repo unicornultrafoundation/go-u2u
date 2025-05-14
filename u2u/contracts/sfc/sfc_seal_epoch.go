@@ -300,7 +300,7 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 	}
 
 	// Call the node driver
-	result, _, err := evm.Call(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, 50000, big.NewInt(0))
+	result, _, err := evm.CallSFC(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, 50000, big.NewInt(0))
 	if err != nil {
 		reason, _ := abi.UnpackRevert(result)
 		log.Error("SFC: Error calling NodeDriverAuth method", "method", "updateMinGasPrice", "err", err, "reason", reason)
@@ -316,17 +316,8 @@ func _sealEpoch_offline(evm *vm.EVM, validatorIDs []*big.Int, offlineTimes []*bi
 	var gasUsed uint64 = 0
 
 	// Get the offline penalty thresholds from the constants manager
-	offlinePenaltyThresholdBlocksNum, thresholdGasUsed, err := getOfflinePenaltyThresholdBlocksNum(evm)
-	gasUsed += thresholdGasUsed
-	if err != nil {
-		return gasUsed, err
-	}
-
-	offlinePenaltyThresholdTime, thresholdGasUsed, err := getOfflinePenaltyThresholdTime(evm)
-	gasUsed += thresholdGasUsed
-	if err != nil {
-		return gasUsed, err
-	}
+	offlinePenaltyThresholdBlocksNum := getConstantsManagerVariable("offlinePenaltyThresholdBlocksNum")
+	offlinePenaltyThresholdTime := getConstantsManagerVariable("offlinePenaltyThresholdTime")
 
 	// Iterate through validators
 	for i, validatorID := range validatorIDs {
@@ -814,9 +805,9 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		}
 
 		// Then make a call to transfer the tokens to the treasury address
-		// This simulates the Solidity code: treasuryAddress.call.value(feeShare)("");
+		// This simulates the Solidity code: treasuryAddress.CallSFC.value(feeShare)("");
 		callData := []byte{} // Empty call data
-		_, _, err = evm.Call(
+		_, _, err = evm.CallSFC(
 			vm.AccountRef(ContractAddress), // Caller
 			treasuryAddr,                   // Target address
 			callData,                       // Call data (empty)

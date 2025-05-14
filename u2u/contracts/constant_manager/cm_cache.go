@@ -25,7 +25,8 @@ type CMCache struct {
 
 // Package-level cache instance
 var cmCache = &CMCache{
-	Values: make(map[string]*big.Int),
+	Values:           make(map[string]*big.Int),
+	NeedInvalidating: true,
 }
 
 // GetCMCache returns the ConstantManager cache instance
@@ -33,9 +34,9 @@ func GetCMCache() *CMCache {
 	return cmCache
 }
 
-// InitCache initializes the cache with values from the contract
-func InitCache(evm *vm.EVM) {
-	log.Info("Initializing ConstantManager cache")
+// InvalidateCmCache invalidates the cache with the correct values from CM contract
+func InvalidateCmCache(evm *vm.EVM) {
+	log.Info("Invalidating ConstantsManager cache...")
 	cmCache.mutex.Lock()
 	defer cmCache.mutex.Unlock()
 
@@ -94,7 +95,7 @@ func InitCache(evm *vm.EVM) {
 	cmCache.Owner = common.BytesToAddress(val.Bytes())
 
 	cmCache.NeedInvalidating = false
-	log.Info("ConstantManager cache initialized successfully")
+	log.Info("ConstantsManager cache invalidated successfully")
 }
 
 // UpdateCacheValue updates a specific value in the cache
@@ -158,91 +159,13 @@ func (c *CMCache) GetValue(key string) *big.Int {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
-	if c.Values == nil {
-		return big.NewInt(0)
-	}
-
 	value, exists := c.Values[key]
 	if !exists || value == nil {
+		log.Warn("ConstantsManager cache is nil", "key", key)
 		return big.NewInt(0)
 	}
 
 	return new(big.Int).Set(value)
-}
-
-// GetMinSelfStake returns the cached minimum amount of stake for a validator
-func (c *CMCache) GetMinSelfStake() *big.Int {
-	return c.GetValue(MinSelfStakeKey)
-}
-
-// GetMaxDelegatedRatio returns the cached maximum ratio of delegations a validator can have
-func (c *CMCache) GetMaxDelegatedRatio() *big.Int {
-	return c.GetValue(MaxDelegatedRatioKey)
-}
-
-// GetValidatorCommission returns the cached commission fee percentage a validator gets from delegations
-func (c *CMCache) GetValidatorCommission() *big.Int {
-	return c.GetValue(ValidatorCommissionKey)
-}
-
-// GetBurntFeeShare returns the cached percentage of fees to burn
-func (c *CMCache) GetBurntFeeShare() *big.Int {
-	return c.GetValue(BurntFeeShareKey)
-}
-
-// GetTreasuryFeeShare returns the cached percentage of fees to transfer to treasury
-func (c *CMCache) GetTreasuryFeeShare() *big.Int {
-	return c.GetValue(TreasuryFeeShareKey)
-}
-
-// GetUnlockedRewardRatio returns the cached ratio of reward rate at base rate (no lock)
-func (c *CMCache) GetUnlockedRewardRatio() *big.Int {
-	return c.GetValue(UnlockedRewardRatioKey)
-}
-
-// GetMinLockupDuration returns the cached minimum duration of stake/delegation lockup
-func (c *CMCache) GetMinLockupDuration() *big.Int {
-	return c.GetValue(MinLockupDurationKey)
-}
-
-// GetMaxLockupDuration returns the cached maximum duration of stake/delegation lockup
-func (c *CMCache) GetMaxLockupDuration() *big.Int {
-	return c.GetValue(MaxLockupDurationKey)
-}
-
-// GetWithdrawalPeriodEpochs returns the cached number of epochs undelegated stake is locked for
-func (c *CMCache) GetWithdrawalPeriodEpochs() *big.Int {
-	return c.GetValue(WithdrawalPeriodEpochsKey)
-}
-
-// GetWithdrawalPeriodTime returns the cached number of seconds undelegated stake is locked for
-func (c *CMCache) GetWithdrawalPeriodTime() *big.Int {
-	return c.GetValue(WithdrawalPeriodTimeKey)
-}
-
-// GetBaseRewardPerSecond returns the cached base reward per second
-func (c *CMCache) GetBaseRewardPerSecond() *big.Int {
-	return c.GetValue(BaseRewardPerSecondKey)
-}
-
-// GetOfflinePenaltyThresholdBlocksNum returns the cached threshold for offline penalty in blocks
-func (c *CMCache) GetOfflinePenaltyThresholdBlocksNum() *big.Int {
-	return c.GetValue(OfflinePenaltyThresholdBlocksNumKey)
-}
-
-// GetOfflinePenaltyThresholdTime returns the cached threshold for offline penalty in time
-func (c *CMCache) GetOfflinePenaltyThresholdTime() *big.Int {
-	return c.GetValue(OfflinePenaltyThresholdTimeKey)
-}
-
-// GetTargetGasPowerPerSecond returns the cached target gas power per second
-func (c *CMCache) GetTargetGasPowerPerSecond() *big.Int {
-	return c.GetValue(TargetGasPowerPerSecondKey)
-}
-
-// GetGasPriceBalancingCounterweight returns the cached gas price balancing counterweight
-func (c *CMCache) GetGasPriceBalancingCounterweight() *big.Int {
-	return c.GetValue(GasPriceBalancingCounterweightKey)
 }
 
 // GetOwner returns the cached owner of the contract

@@ -71,7 +71,7 @@ func handleSetGenesisValidator(evm *vm.EVM, caller common.Address, args []interf
 	}
 
 	// Call the backend contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), backendAddr, data, defaultGasLimit, big.NewInt(0))
+	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), backendAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -138,7 +138,7 @@ func handleSetGenesisDelegation(evm *vm.EVM, caller common.Address, args []inter
 	}
 
 	// Call the backend contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), backendAddr, data, defaultGasLimit, big.NewInt(0))
+	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), backendAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -177,7 +177,7 @@ func handleDeactivateValidator(evm *vm.EVM, caller common.Address, args []interf
 	}
 
 	// Call the backend contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), backendAddr, data, defaultGasLimit, big.NewInt(0))
+	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), backendAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -218,7 +218,7 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 	}
 
 	// Call the backend contract
-	result, _, err := evm.Call(vm.AccountRef(ContractAddress), backendAddr, data, defaultGasLimit, big.NewInt(0))
+	result, _, err := evm.CallSFC(vm.AccountRef(ContractAddress), backendAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		reason, _ := abi.UnpackRevert(result)
 		log.Error("Driver SealEpochValidators: Error calling DriverAuth", "error", err, "reason", reason)
@@ -268,7 +268,7 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	}
 
 	// Call the backend contract
-	result, _, err := evm.Call(vm.AccountRef(ContractAddress), backendAddr, data, defaultGasLimit, big.NewInt(0))
+	result, _, err := evm.CallSFC(vm.AccountRef(ContractAddress), backendAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		reason, _ := abi.UnpackRevert(result)
 		log.Error("Driver Precompiled: Error calling backend contract", "error", err, "reason", reason)
@@ -321,7 +321,7 @@ func handleSealEpochV1(evm *vm.EVM, caller common.Address, args []interface{}) (
 	}
 
 	// Call the backend contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), backendAddr, data, defaultGasLimit, big.NewInt(0))
+	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), backendAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}

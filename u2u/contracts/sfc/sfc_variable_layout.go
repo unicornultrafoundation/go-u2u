@@ -28,7 +28,7 @@ const (
 	slashingRefundRatioSlot   = 20 + offset // mapping(uint256 => uint256) public slashingRefundRatio
 	stakeTokenizerAddressSlot = 21 + offset // address public stakeTokenizerAddress
 	// uint256 private erased3                      - slot 22
-	validatorCommissionSlot    = 23 + offset // mapping(uint256 => uint256) public validatorCommission
+	validatorCommissionSlot = 23 + offset // mapping(uint256 => uint256) public validatorCommission
 	// uint256 private erased4                      - slot 23
 	minGasPriceSlot      = 24 + offset // uint256 public minGasPrice
 	treasuryAddressSlot  = 25 + offset // address public treasuryAddress

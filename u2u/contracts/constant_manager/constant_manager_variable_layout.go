@@ -22,3 +22,22 @@ const (
 	gasPriceBalancingCounterweightSlot         = offset + 14
 	// address private secondaryOwner_erased		- slot 15
 )
+
+// Variable name constants for cache keys
+const (
+	MinSelfStakeKey                   = "minSelfStake"
+	MaxDelegatedRatioKey              = "maxDelegatedRatio"
+	ValidatorCommissionKey            = "validatorCommission"
+	BurntFeeShareKey                  = "burntFeeShare"
+	TreasuryFeeShareKey               = "treasuryFeeShare"
+	UnlockedRewardRatioKey            = "unlockedRewardRatio"
+	MinLockupDurationKey              = "minLockupDuration"
+	MaxLockupDurationKey              = "maxLockupDuration"
+	WithdrawalPeriodEpochsKey         = "withdrawalPeriodEpochs"
+	WithdrawalPeriodTimeKey           = "withdrawalPeriodTime"
+	BaseRewardPerSecondKey            = "baseRewardPerSecond"
+	OfflinePenaltyThresholdBlocksNumKey = "offlinePenaltyThresholdBlocksNum"
+	OfflinePenaltyThresholdTimeKey    = "offlinePenaltyThresholdTime"
+	TargetGasPowerPerSecondKey        = "targetGasPowerPerSecond"
+	GasPriceBalancingCounterweightKey = "gasPriceBalancingCounterweight"
+)

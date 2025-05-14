@@ -133,7 +133,7 @@ func handleSetBalance(evm *vm.EVM, caller common.Address, args []interface{}) ([
 	}
 
 	// Call the EVMWriter contract
-	result, _, err := evm.Call(vm.AccountRef(ContractAddress), evmWriterAddr, data, defaultGasLimit, big.NewInt(0))
+	result, _, err := evm.CallSFC(vm.AccountRef(ContractAddress), evmWriterAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		reason, _ := abi.UnpackRevert(result)
 		log.Error("Driver SetBalance: Error calling EVMWriter", "error", err, "method", "setBalance", "reason", reason)
@@ -174,7 +174,7 @@ func handleCopyCode(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 	}
 
 	// Call the EVMWriter contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), evmWriterAddr, data, defaultGasLimit, big.NewInt(0))
+	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), evmWriterAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -213,7 +213,7 @@ func handleSwapCode(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 	}
 
 	// Call the EVMWriter contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), evmWriterAddr, data, defaultGasLimit, big.NewInt(0))
+	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), evmWriterAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -256,7 +256,7 @@ func handleSetStorage(evm *vm.EVM, caller common.Address, args []interface{}) ([
 	}
 
 	// Call the EVMWriter contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), evmWriterAddr, data, defaultGasLimit, big.NewInt(0))
+	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), evmWriterAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -295,7 +295,7 @@ func handleIncNonce(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 	}
 
 	// Call the EVMWriter contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), evmWriterAddr, data, defaultGasLimit, big.NewInt(0))
+	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), evmWriterAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}

@@ -3,3 +3,7 @@
 .vscode
 /build
 /u2u/contracts/sfc/contracts/*
+/profiles/*
+/benchmarks/profiles/*
+/benchmarks/test_node.datadir/*
+*.pprof

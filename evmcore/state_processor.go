@@ -19,6 +19,7 @@ package evmcore
 import (
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/state"
@@ -84,6 +85,10 @@ func (p *StateProcessor) Process(
 	)
 	// Iterate over and process the individual transactions
 	for i, tx := range block.Transactions {
+		// reset timer
+		vm.TotalEvmExecutionElapsed = time.Duration(0)
+		vm.TotalSfcExecutionElapsed = time.Duration(0)
+
 		msg, err := TxAsMessage(tx, signer, header.BaseFee)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("could not apply tx %d [%v]: %w", i, tx.Hash().Hex(), err)
@@ -130,9 +135,6 @@ func (p *StateProcessor) Process(
 				"evm", vm.TotalEvmExecutionElapsed,
 				"sfc", vm.TotalSfcExecutionElapsed,
 				"txHash", tx.Hash().Hex())
-
-			vm.TotalEvmExecutionElapsed = 0
-			vm.TotalSfcExecutionElapsed = 0
 		}
 	}
 	return

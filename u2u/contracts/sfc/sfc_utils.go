@@ -8,6 +8,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/constant_manager"
 )
 
 // Gas costs and limits
@@ -59,13 +60,14 @@ var (
 	gasMaxRatio *big.Int
 	// gasMinRatio represents 95% of the decimal unit (0.95e18)
 	gasMinRatio *big.Int
+
+	unit             = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	constMinGasPrice = new(big.Int).Mul(big.NewInt(1), big.NewInt(1000000000))
+	constMaxGasPrice = new(big.Int).Mul(big.NewInt(1000000), big.NewInt(1000000000))
 )
 
 // init calculates and caches the gas price ratio limits
 func init() {
-	// Get the decimal unit
-	unit := getDecimalUnit()
-
 	// Calculate 105% of unit
 	gasMaxRatio = new(big.Int).Mul(unit, big.NewInt(105))
 	gasMaxRatio = new(big.Int).Div(gasMaxRatio, big.NewInt(100))
@@ -101,20 +103,14 @@ func checkOnlyOwner(evm *vm.EVM, caller common.Address, methodName string) ([]by
 // Returns nil if the caller is the NodeDriverAuth, otherwise returns an ABI-encoded revert reason
 func checkOnlyDriver(evm *vm.EVM, caller common.Address, methodName string) ([]byte, uint64, error) {
 	var gasUsed uint64 = 0
-
-	// Get NodeDriverAuth address (SLOAD operation)
-	node := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(nodeDriverAuthSlot)))
-	gasUsed += SloadGasCost
-
-	nodeAddr := common.BytesToAddress(node.Bytes())
-	if caller.Cmp(nodeAddr) != 0 {
+	if caller.Cmp(NodeDriverAuthAddr) != 0 {
 		// Return ABI-encoded revert reason: "caller is not the NodeDriverAuth contract"
-		revertReason := "caller is not the NodeDriverAuth contract"
-		revertData, err := encodeRevertReason(methodName, revertReason)
+		revertData, err := encodeRevertReason(methodName, "caller is not the NodeDriverAuth contract")
 		if err != nil {
 			return nil, gasUsed, vm.ErrExecutionReverted
 		}
-		log.Error("SFC: Caller is not the NodeDriverAuth contract", "caller", caller, "nodeDriverAuth", nodeAddr)
+		log.Error("SFC: Caller is not the NodeDriverAuth contract",
+			"caller", caller.Hex(), "nodeDriverAuth", NodeDriverAuthAddr.Hex())
 		return revertData, gasUsed, vm.ErrExecutionReverted
 	}
 	return nil, gasUsed, nil
@@ -917,11 +913,6 @@ func callConstantManagerMethod(evm *vm.EVM, methodName string, args ...interface
 	// Initialize gas used
 	var gasUsed uint64 = 0
 
-	// Get the ConstantsManager contract address (SLOAD operation)
-	constantsManager := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(constantsManagerSlot)))
-	gasUsed += SloadGasCost // Add gas for SLOAD
-	constantsManagerAddr := common.BytesToAddress(constantsManager.Bytes())
-
 	// Pack the function call data
 	data, err := CMAbi.Pack(methodName, args...)
 	if err != nil {
@@ -930,7 +921,7 @@ func callConstantManagerMethod(evm *vm.EVM, methodName string, args ...interface
 	}
 
 	// Make the call to the ConstantsManager contract
-	result, leftOverGas, err := evm.Call(vm.AccountRef(ContractAddress), constantsManagerAddr, data, defaultGasLimit, big.NewInt(0))
+	result, leftOverGas, err := evm.CallSFC(vm.AccountRef(ContractAddress), CMAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		reason, _ := abi.UnpackRevert(result)
 		log.Error("SFC: Error calling ConstantsManager method", "method", methodName, "err", err, "reason", reason)
@@ -938,7 +929,7 @@ func callConstantManagerMethod(evm *vm.EVM, methodName string, args ...interface
 	}
 
 	// Add the gas used by the call
-	gasUsed += (defaultGasLimit - leftOverGas)
+	gasUsed += defaultGasLimit - leftOverGas
 
 	// Unpack the result
 	values, err := CMAbi.Methods[methodName].Outputs.Unpack(result)
@@ -948,6 +939,10 @@ func callConstantManagerMethod(evm *vm.EVM, methodName string, args ...interface
 	}
 
 	return values, gasUsed, nil
+}
+
+func getConstantsManagerVariable(methodName string) *big.Int {
+	return constant_manager.GetCMCache().GetValue(methodName)
 }
 
 // getCurrentEpoch returns the current epoch value (currentSealedEpoch + 1)
@@ -967,7 +962,7 @@ func getCurrentEpoch(evm *vm.EVM) (*big.Int, uint64, error) {
 	currentSealedEpochBigInt := GetBigInt().SetBytes(currentSealedEpoch.Bytes())
 
 	// Calculate current epoch as currentSealedEpoch + 1 using the pool
-	currentEpochBigInt := GetBigInt().Add(currentSealedEpochBigInt, big.NewInt(1))
+	currentEpochBigInt := new(big.Int).Add(currentSealedEpochBigInt, big.NewInt(1))
 
 	// Return the sealed epoch to the pool
 	PutBigInt(currentSealedEpochBigInt)
@@ -977,12 +972,6 @@ func getCurrentEpoch(evm *vm.EVM) (*big.Int, uint64, error) {
 
 // getEpochSnapshotSlot calculates the storage slot for an epoch snapshot
 func getEpochSnapshotSlot(epoch *big.Int) (*big.Int, uint64) {
-	// Check if the result is in the cache
-	key := epoch.String()
-	if slot, found := sfcCache.EpochSlot[key]; found {
-		return slot, HashGasCost // Still account for gas even though we're using the cache
-	}
-
 	// Initialize gas used
 	var gasUsed uint64 = 0
 
@@ -1002,9 +991,6 @@ func getEpochSnapshotSlot(epoch *big.Int) (*big.Int, uint64) {
 	// Convert the hash to a big.Int
 	slot := new(big.Int).SetBytes(hash)
 
-	// Store in cache
-	sfcCache.EpochSlot[key] = slot
-
 	return slot, gasUsed
 }
 
@@ -1021,38 +1007,6 @@ func getEpochSnapshotFieldSlot(epoch *big.Int, fieldOffset int64) (*big.Int, uin
 	fieldSlot := new(big.Int).Add(baseSlot, big.NewInt(fieldOffset))
 
 	return fieldSlot, gasUsed
-}
-
-// getOfflinePenaltyThresholdBlocksNum gets the offline penalty threshold blocks number from the constants manager
-func getOfflinePenaltyThresholdBlocksNum(evm *vm.EVM) (*big.Int, uint64, error) {
-	result, gasUsed, err := callConstantManagerMethod(evm, "offlinePenaltyThresholdBlocksNum")
-	if err != nil || len(result) == 0 {
-		log.Error("SFC: Error getting offline penalty threshold blocks number from ConstantsManager", "err", err)
-		return nil, gasUsed, err
-	}
-
-	threshold, ok := result[0].(*big.Int)
-	if !ok {
-		log.Error("SFC: Error typecasting offline penalty threshold blocks number from ConstantsManager")
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	return threshold, gasUsed, nil
-}
-
-// getOfflinePenaltyThresholdTime gets the offline penalty threshold time from the constants manager
-func getOfflinePenaltyThresholdTime(evm *vm.EVM) (*big.Int, uint64, error) {
-	result, gasUsed, err := callConstantManagerMethod(evm, "offlinePenaltyThresholdTime")
-	if err != nil || len(result) == 0 {
-		return nil, gasUsed, err
-	}
-
-	threshold, ok := result[0].(*big.Int)
-	if !ok {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	return threshold, gasUsed, nil
 }
 
 // getValidatorStatusSlotByID calculates the storage slot for a validator's status by ID
@@ -1214,7 +1168,7 @@ func _syncValidator(evm *vm.EVM, validatorID *big.Int, syncPubkey bool) (uint64,
 	}
 
 	// Call the node driver
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, defaultGasLimit, big.NewInt(0))
+	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return gasUsed, err
 	}
@@ -1235,7 +1189,7 @@ func _syncValidator(evm *vm.EVM, validatorID *big.Int, syncPubkey bool) (uint64,
 		}
 
 		// Call the node driver
-		_, _, err = evm.Call(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, defaultGasLimit, big.NewInt(0))
+		_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, defaultGasLimit, big.NewInt(0))
 		if err != nil {
 			return gasUsed, err
 		}
@@ -1431,7 +1385,7 @@ func getEpochValidatorReceivedStakeSlot(epoch *big.Int, validatorID *big.Int) (*
 // getDecimalUnit returns the decimal unit value (1e18) used for decimal calculations
 func getDecimalUnit() *big.Int {
 	// This is a pure function that returns 1e18, as defined in Decimal.sol
-	return new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	return unit
 }
 
 // trimGasPriceChangeRatio limits the gas price change ratio to be between 95% and 105%
@@ -1454,20 +1408,14 @@ func trimGasPriceChangeRatio(x *big.Int) *big.Int {
 // trimMinGasPrice limits the minimum gas price to be between 1 gwei and 1000000 gwei
 // This is a port of the GP.trimMinGasPrice function from GasPriceConstants.sol
 func trimMinGasPrice(x *big.Int) *big.Int {
-	// Calculate 1 gwei (1e9)
-	minGasPrice := new(big.Int).Mul(big.NewInt(1), big.NewInt(1000000000))
-
-	// Calculate 1000000 gwei (1e15)
-	maxGasPrice := new(big.Int).Mul(big.NewInt(1000000), big.NewInt(1000000000))
-
 	// Check if x is greater than 1000000 gwei
-	if x.Cmp(maxGasPrice) > 0 {
-		return maxGasPrice
+	if x.Cmp(constMaxGasPrice) > 0 {
+		return constMaxGasPrice
 	}
 
 	// Check if x is less than 1 gwei
-	if x.Cmp(minGasPrice) < 0 {
-		return minGasPrice
+	if x.Cmp(constMinGasPrice) < 0 {
+		return constMinGasPrice
 	}
 
 	// Return x unchanged if it's within the allowed range
@@ -1523,15 +1471,7 @@ func _scaleLockupReward(evm *vm.EVM, fullReward *big.Int, lockupDuration *big.In
 	}
 
 	// Get the unlockedRewardRatio from the constants manager
-	unlockedRewardRatio, cmGasUsed, err := callConstantManagerMethod(evm, "unlockedRewardRatio")
-	gasUsed += cmGasUsed
-	if err != nil || len(unlockedRewardRatio) == 0 {
-		return reward, gasUsed, err
-	}
-	unlockedRewardRatioBigInt, ok := unlockedRewardRatio[0].(*big.Int)
-	if !ok {
-		return reward, gasUsed, vm.ErrExecutionReverted
-	}
+	unlockedRewardRatioBigInt := getConstantsManagerVariable("unlockedRewardRatio")
 
 	// Check if lockupDuration is not zero
 	if lockupDuration.Cmp(big.NewInt(0)) != 0 {
@@ -1542,15 +1482,7 @@ func _scaleLockupReward(evm *vm.EVM, fullReward *big.Int, lockupDuration *big.In
 		maxLockupExtraRatio := new(big.Int).Sub(decimalUnit, unlockedRewardRatioBigInt)
 
 		// Get the maxLockupDuration from the constants manager
-		maxLockupDuration, cmGasUsed, err := callConstantManagerMethod(evm, "maxLockupDuration")
-		gasUsed += cmGasUsed
-		if err != nil || len(maxLockupDuration) == 0 {
-			return reward, gasUsed, err
-		}
-		maxLockupDurationBigInt, ok := maxLockupDuration[0].(*big.Int)
-		if !ok {
-			return reward, gasUsed, vm.ErrExecutionReverted
-		}
+		maxLockupDurationBigInt := getConstantsManagerVariable("maxLockupDuration")
 
 		// Calculate lockupExtraRatio = maxLockupExtraRatio * lockupDuration / maxLockupDuration
 		lockupExtraRatio := new(big.Int).Mul(maxLockupExtraRatio, lockupDuration)
@@ -1574,130 +1506,4 @@ func _scaleLockupReward(evm *vm.EVM, fullReward *big.Int, lockupDuration *big.In
 	}
 
 	return reward, gasUsed, nil
-}
-
-// getMinSelfStake returns the minimum self-stake value from the ConstantManager contract
-func getMinSelfStake(evm *vm.EVM) (*big.Int, uint64, error) {
-	// Call the minSelfStake method on the ConstantManager contract
-	values, gasUsed, err := callConstantManagerMethod(evm, "minSelfStake")
-	if err != nil {
-		return nil, gasUsed, err
-	}
-
-	// The result should be a single *big.Int value
-	if len(values) != 1 {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	minSelfStakeBigInt, ok := values[0].(*big.Int)
-	if !ok {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	return minSelfStakeBigInt, gasUsed, nil
-}
-
-// getMaxDelegatedRatio returns the maximum delegated ratio value from the ConstantManager contract
-func getMaxDelegatedRatio(evm *vm.EVM) (*big.Int, uint64, error) {
-	// Call the maxDelegatedRatio method on the ConstantManager contract
-	values, gasUsed, err := callConstantManagerMethod(evm, "maxDelegatedRatio")
-	if err != nil {
-		return nil, gasUsed, err
-	}
-
-	// The result should be a single *big.Int value
-	if len(values) != 1 {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	maxDelegatedRatioBigInt, ok := values[0].(*big.Int)
-	if !ok {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	return maxDelegatedRatioBigInt, gasUsed, nil
-}
-
-// getWithdrawalPeriodEpochs returns the withdrawal period epochs value from the ConstantManager contract
-func getWithdrawalPeriodEpochs(evm *vm.EVM) (*big.Int, uint64, error) {
-	// Call the withdrawalPeriodEpochs method on the ConstantManager contract
-	values, gasUsed, err := callConstantManagerMethod(evm, "withdrawalPeriodEpochs")
-	if err != nil {
-		return nil, gasUsed, err
-	}
-
-	// The result should be a single *big.Int value
-	if len(values) != 1 {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	withdrawalPeriodEpochsBigInt, ok := values[0].(*big.Int)
-	if !ok {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	return withdrawalPeriodEpochsBigInt, gasUsed, nil
-}
-
-// getMinLockupDuration returns the minimum lockup duration value from the ConstantManager contract
-func getMinLockupDuration(evm *vm.EVM) (*big.Int, uint64, error) {
-	// Call the minLockupDuration method on the ConstantManager contract
-	values, gasUsed, err := callConstantManagerMethod(evm, "minLockupDuration")
-	if err != nil {
-		return nil, gasUsed, err
-	}
-
-	// The result should be a single *big.Int value
-	if len(values) != 1 {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	minLockupDurationBigInt, ok := values[0].(*big.Int)
-	if !ok {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	return minLockupDurationBigInt, gasUsed, nil
-}
-
-// getMaxLockupDuration returns the maximum lockup duration value from the ConstantManager contract
-func getMaxLockupDuration(evm *vm.EVM) (*big.Int, uint64, error) {
-	// Call the maxLockupDuration method on the ConstantManager contract
-	values, gasUsed, err := callConstantManagerMethod(evm, "maxLockupDuration")
-	if err != nil {
-		return nil, gasUsed, err
-	}
-
-	// The result should be a single *big.Int value
-	if len(values) != 1 {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	maxLockupDurationBigInt, ok := values[0].(*big.Int)
-	if !ok {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	return maxLockupDurationBigInt, gasUsed, nil
-}
-
-// getWithdrawalPeriodTime returns the withdrawal period time value from the ConstantManager contract
-func getWithdrawalPeriodTime(evm *vm.EVM) (*big.Int, uint64, error) {
-	// Call the withdrawalPeriodTime method on the ConstantManager contract
-	values, gasUsed, err := callConstantManagerMethod(evm, "withdrawalPeriodTime")
-	if err != nil {
-		return nil, gasUsed, err
-	}
-
-	// The result should be a single *big.Int value
-	if len(values) != 1 {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	withdrawalPeriodTimeBigInt, ok := values[0].(*big.Int)
-	if !ok {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	return withdrawalPeriodTimeBigInt, gasUsed, nil
 }

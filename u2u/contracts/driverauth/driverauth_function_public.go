@@ -89,7 +89,7 @@ func handleMigrateTo(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	}
 
 	// Call the driver contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
+	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -175,7 +175,7 @@ func handleMutExecute(evm *vm.EVM, caller common.Address, args []interface{}) ([
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), executable, execData, defaultGasLimit, big.NewInt(0))
+	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), executable, execData, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -248,7 +248,7 @@ func handleIncBalance(evm *vm.EVM, caller common.Address, args []interface{}) ([
 	}
 
 	// Call the driver contract
-	result, _, err := evm.Call(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
+	result, _, err := evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		reason, _ := abi.UnpackRevert(result)
 		log.Error("DriverAuth Precompiled: Error calling driver contract", "error", err, "method", "incBalance", "reason", reason)
@@ -294,7 +294,7 @@ func handleUpgradeCode(evm *vm.EVM, caller common.Address, args []interface{}) (
 	}
 
 	// Call the driver contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
+	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -333,7 +333,7 @@ func handleCopyCode(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 	}
 
 	// Call the driver contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
+	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -372,7 +372,7 @@ func handleIncNonce(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 	}
 
 	// Call the driver contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
+	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -407,7 +407,7 @@ func handleUpdateNetworkRules(evm *vm.EVM, caller common.Address, args []interfa
 	}
 
 	// Call the driver contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
+	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -445,7 +445,7 @@ func handleUpdateMinGasPrice(evm *vm.EVM, caller common.Address, args []interfac
 	}
 
 	// Call the driver contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
+	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -480,7 +480,7 @@ func handleUpdateNetworkVersion(evm *vm.EVM, caller common.Address, args []inter
 	}
 
 	// Call the driver contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
+	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -515,7 +515,7 @@ func handleAdvanceEpochs(evm *vm.EVM, caller common.Address, args []interface{})
 	}
 
 	// Call the driver contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
+	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -554,7 +554,7 @@ func handleUpdateValidatorWeight(evm *vm.EVM, caller common.Address, args []inte
 	}
 
 	// Call the driver contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
+	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -593,7 +593,7 @@ func handleUpdateValidatorPubkey(evm *vm.EVM, caller common.Address, args []inte
 	}
 
 	// Call the driver contract
-	_, _, err = evm.Call(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
+	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return nil, 0, err
 	}

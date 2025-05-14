@@ -674,3 +674,9 @@ func (evm *EVM) Create2(caller ContractRef, code []byte, gas uint64, endowment *
 
 // ChainConfig returns the environment's chain configuration
 func (evm *EVM) ChainConfig() *params.ChainConfig { return evm.chainConfig }
+
+func ResetSFCMetrics() {
+	sfcDiffCallMeter.Mark(int64(TotalEvmExecutionElapsed - TotalSfcExecutionElapsed))
+	TotalEvmExecutionElapsed = time.Duration(0)
+	TotalSfcExecutionElapsed = time.Duration(0)
+}

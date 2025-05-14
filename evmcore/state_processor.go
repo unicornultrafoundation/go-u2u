@@ -18,9 +18,6 @@ package evmcore
 
 import (
 	"fmt"
-	"math/big"
-	"time"
-
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
@@ -31,6 +28,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/params"
 	"github.com/unicornultrafoundation/go-u2u/utils/signers/gsignercache"
 	"github.com/unicornultrafoundation/go-u2u/utils/signers/internaltx"
+	"math/big"
 )
 
 var SfcPrecompiles = []common.Address{
@@ -85,10 +83,6 @@ func (p *StateProcessor) Process(
 	)
 	// Iterate over and process the individual transactions
 	for i, tx := range block.Transactions {
-		// reset timer
-		vm.TotalEvmExecutionElapsed = time.Duration(0)
-		vm.TotalSfcExecutionElapsed = time.Duration(0)
-
 		msg, err := TxAsMessage(tx, signer, header.BaseFee)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("could not apply tx %d [%v]: %w", i, tx.Hash().Hex(), err)
@@ -133,6 +127,7 @@ func (p *StateProcessor) Process(
 					"evm", vm.TotalEvmExecutionElapsed,
 					"sfc", vm.TotalSfcExecutionElapsed,
 					"txHash", tx.Hash().Hex())
+				vm.ResetSFCMetrics()
 			}
 		}
 	}

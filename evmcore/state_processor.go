@@ -110,7 +110,7 @@ func (p *StateProcessor) Process(
 		receipts = append(receipts, receipt)
 		allLogs = append(allLogs, receipt.Logs...)
 
-		// extra dual state verification
+		// extra dual state verification and benchmark
 		if sfcStatedb != nil {
 			for _, addr := range SfcPrecompiles {
 				original := statedb.GetStorageRoot(addr)
@@ -120,21 +120,20 @@ func (p *StateProcessor) Process(
 						"tx", tx.Hash().Hex(), "original", original.Hex(), "sfc", sfc.Hex())
 				}
 			}
-		}
+			// Benchmark execution time difference of SFC precompiled related txs
+			if _, ok := vmenv.SfcPrecompile(*tx.To()); ok {
+				// Calculate percentage difference: ((sfc - evm) / evm) * 100
+				var percentDiff float64
+				if vm.TotalEvmExecutionElapsed > 0 {
+					percentDiff = (float64(vm.TotalSfcExecutionElapsed-vm.TotalEvmExecutionElapsed) / float64(vm.TotalEvmExecutionElapsed)) * 100
+				}
 
-		// Benchmark execution time difference of SFC precompiled related txs
-		if _, ok := vmenv.SfcPrecompile(*tx.To()); ok {
-			// Calculate percentage difference: ((sfc - evm) / evm) * 100
-			var percentDiff float64
-			if vm.TotalEvmExecutionElapsed > 0 {
-				percentDiff = (float64(vm.TotalSfcExecutionElapsed-vm.TotalEvmExecutionElapsed) / float64(vm.TotalEvmExecutionElapsed)) * 100
+				log.Info("SFC execution time comparison",
+					"diff", fmt.Sprintf("%.2f%%", percentDiff),
+					"evm", vm.TotalEvmExecutionElapsed,
+					"sfc", vm.TotalSfcExecutionElapsed,
+					"txHash", tx.Hash().Hex())
 			}
-
-			log.Info("SFC execution time comparison",
-				"diff", fmt.Sprintf("%.2f%%", percentDiff),
-				"evm", vm.TotalEvmExecutionElapsed,
-				"sfc", vm.TotalSfcExecutionElapsed,
-				"txHash", tx.Hash().Hex())
 		}
 	}
 	return

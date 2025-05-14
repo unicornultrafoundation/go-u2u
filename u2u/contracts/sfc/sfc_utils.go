@@ -8,6 +8,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/constant_manager"
 )
 
 // Gas costs and limits
@@ -944,6 +945,10 @@ func callConstantManagerMethod(evm *vm.EVM, methodName string, args ...interface
 	}
 
 	return values, gasUsed, nil
+}
+
+func getConstantsManagerVariable(methodName string) *big.Int {
+	return constant_manager.GetCMCache().GetValue(methodName)
 }
 
 // getCurrentEpoch returns the current epoch value (currentSealedEpoch + 1)

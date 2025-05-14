@@ -161,20 +161,12 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	PutBigInt(endTimeSlot)
 
 	// Get the base reward per second from the constants manager
-	baseRewardPerSecond, cmGasUsed, err := callConstantManagerMethod(evm, "baseRewardPerSecond")
-	gasUsed += cmGasUsed
-	if err != nil || len(baseRewardPerSecond) == 0 {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-	baseRewardPerSecondBigInt, ok := baseRewardPerSecond[0].(*big.Int)
-	if !ok {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
+	baseRewardPerSecond := getConstantsManagerVariable("baseRewardPerSecond")
 
 	// Update epoch snapshot base reward per second (snapshot.baseRewardPerSecond = c.baseRewardPerSecond() in Solidity)
 	baseRewardPerSecondOffsetBig := GetBigInt().SetInt64(baseRewardPerSecondOffset)
 	baseRewardPerSecondSlot := GetBigInt().Add(currentEpochSnapshotSlot, baseRewardPerSecondOffsetBig)
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(baseRewardPerSecondSlot), common.BigToHash(baseRewardPerSecondBigInt))
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(baseRewardPerSecondSlot), common.BigToHash(baseRewardPerSecond))
 	gasUsed += SstoreGasCost
 	PutBigInt(baseRewardPerSecondOffsetBig)
 	PutBigInt(baseRewardPerSecondSlot)
@@ -477,56 +469,17 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		totalBaseRewardWeight = new(big.Int).Add(totalBaseRewardWeight, baseRewardWeight)
 	}
 
-	// Get the base reward per second from the constants manager
-	baseRewardPerSecond, cmGasUsed, err := callConstantManagerMethod(evm, "baseRewardPerSecond")
-	gasUsed += cmGasUsed
-	if err != nil || len(baseRewardPerSecond) == 0 {
-		return gasUsed, err
-	}
-	baseRewardPerSecondBigInt, ok := baseRewardPerSecond[0].(*big.Int)
-	if !ok {
-		return gasUsed, vm.ErrExecutionReverted
-	}
-
-	// Get the validator commission from the constants manager
-	validatorCommission, cmGasUsed, err := callConstantManagerMethod(evm, "validatorCommission")
-	gasUsed += cmGasUsed
-	if err != nil || len(validatorCommission) == 0 {
-		return gasUsed, err
-	}
-	validatorCommissionBigInt, ok := validatorCommission[0].(*big.Int)
-	if !ok {
-		return gasUsed, vm.ErrExecutionReverted
-	}
-
-	// Get the burnt fee share from the constants manager
-	burntFeeShare, cmGasUsed, err := callConstantManagerMethod(evm, "burntFeeShare")
-	gasUsed += cmGasUsed
-	if err != nil || len(burntFeeShare) == 0 {
-		return gasUsed, err
-	}
-	burntFeeShareBigInt, ok := burntFeeShare[0].(*big.Int)
-	if !ok {
-		return gasUsed, vm.ErrExecutionReverted
-	}
-
-	// Get the treasury fee share from the constants manager
-	treasuryFeeShare, cmGasUsed, err := callConstantManagerMethod(evm, "treasuryFeeShare")
-	gasUsed += cmGasUsed
-	if err != nil || len(treasuryFeeShare) == 0 {
-		return gasUsed, err
-	}
-	treasuryFeeShareBigInt, ok := treasuryFeeShare[0].(*big.Int)
-	if !ok {
-		return gasUsed, vm.ErrExecutionReverted
-	}
+	baseRewardPerSecond := getConstantsManagerVariable("baseRewardPerSecond")
+	validatorCommission := getConstantsManagerVariable("validatorCommission")
+	burntFeeShare := getConstantsManagerVariable("burntFeeShare")
+	treasuryFeeShare := getConstantsManagerVariable("treasuryFeeShare")
 
 	// Calculate rewards for each validator
 	for i, validatorID := range validatorIDs {
 		// Calculate raw base reward
 		rawBaseReward := big.NewInt(0)
 		if baseRewardWeights[i].Cmp(big.NewInt(0)) > 0 {
-			totalReward := new(big.Int).Mul(epochDuration, baseRewardPerSecondBigInt)
+			totalReward := new(big.Int).Mul(epochDuration, baseRewardPerSecond)
 			rawBaseReward = new(big.Int).Mul(totalReward, baseRewardWeights[i])
 			rawBaseReward = new(big.Int).Div(rawBaseReward, totalBaseRewardWeight)
 		}
@@ -539,7 +492,7 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 			txReward = new(big.Int).Div(txReward, totalTxRewardWeight)
 
 			// Subtract burnt and treasury shares
-			shareToSubtract := new(big.Int).Add(burntFeeShareBigInt, treasuryFeeShareBigInt)
+			shareToSubtract := new(big.Int).Add(burntFeeShare, treasuryFeeShare)
 			shareToKeep := new(big.Int).Sub(unit, shareToSubtract)
 
 			rawTxReward = new(big.Int).Mul(txReward, shareToKeep)
@@ -558,7 +511,7 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
 
 		// Calculate validator's commission
-		commissionRewardFull := new(big.Int).Mul(rawReward, validatorCommissionBigInt)
+		commissionRewardFull := new(big.Int).Mul(rawReward, validatorCommission)
 		commissionRewardFull = new(big.Int).Div(commissionRewardFull, unit)
 
 		// Get validator's self-stake
@@ -849,7 +802,7 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 	treasuryAddr := common.BytesToAddress(treasuryAddressBytes)
 	if treasuryAddr.Cmp(emptyAddr) != 0 {
 		// Calculate fee share
-		feeShare := new(big.Int).Mul(epochFee, treasuryFeeShareBigInt)
+		feeShare := new(big.Int).Mul(epochFee, treasuryFeeShare)
 		feeShare = new(big.Int).Div(feeShare, unit)
 
 		// First mint native token to the contract itself
@@ -885,44 +838,28 @@ func _sealEpoch_minGasPrice(evm *vm.EVM, epochDuration *big.Int, epochGas *big.I
 	var gasUsed uint64 = 0
 
 	// Get the target gas power per second from the constants manager
-	targetGasPowerPerSecond, cmGasUsed, err := callConstantManagerMethod(evm, "targetGasPowerPerSecond")
-	gasUsed += cmGasUsed
-	if err != nil || len(targetGasPowerPerSecond) == 0 {
-		return gasUsed, err
-	}
-	targetGasPowerPerSecondBigInt, ok := targetGasPowerPerSecond[0].(*big.Int)
-	if !ok {
-		return gasUsed, vm.ErrExecutionReverted
-	}
+	targetGasPowerPerSecond := getConstantsManagerVariable("targetGasPowerPerSecond")
 
 	// Calculate target epoch gas
-	targetEpochGas := new(big.Int).Mul(epochDuration, targetGasPowerPerSecondBigInt)
-	targetEpochGas = new(big.Int).Add(targetEpochGas, big.NewInt(1)) // Add 1 to avoid division by zero
+	targetEpochGas := new(big.Int).Mul(epochDuration, targetGasPowerPerSecond)
+	targetEpochGas.Add(targetEpochGas, big.NewInt(1)) // Add 1 to avoid division by zero
 
 	// Get the decimal unit (1e18) using the helper function
 	decimalUnitBigInt := getDecimalUnit()
 
 	// Calculate gas price delta ratio
 	gasPriceDeltaRatio := new(big.Int).Mul(epochGas, decimalUnitBigInt)
-	gasPriceDeltaRatio = new(big.Int).Div(gasPriceDeltaRatio, targetEpochGas)
+	gasPriceDeltaRatio.Div(gasPriceDeltaRatio, targetEpochGas)
 
 	// Get the gas price balancing counterweight from the constants manager
-	counterweight, cmGasUsed, err := callConstantManagerMethod(evm, "gasPriceBalancingCounterweight")
-	gasUsed += cmGasUsed
-	if err != nil || len(counterweight) == 0 {
-		return gasUsed, err
-	}
-	counterweightBigInt, ok := counterweight[0].(*big.Int)
-	if !ok {
-		return gasUsed, vm.ErrExecutionReverted
-	}
+	counterweight := getConstantsManagerVariable("gasPriceBalancingCounterweight")
 
 	// Scale down the change speed
 	// gasPriceDeltaRatio = (epochDuration * gasPriceDeltaRatio + counterweight * Decimal.unit()) / (epochDuration + counterweight)
 	term1 := new(big.Int).Mul(epochDuration, gasPriceDeltaRatio)
-	term2 := new(big.Int).Mul(counterweightBigInt, decimalUnitBigInt)
+	term2 := new(big.Int).Mul(counterweight, decimalUnitBigInt)
 	numerator := new(big.Int).Add(term1, term2)
-	denominator := new(big.Int).Add(epochDuration, counterweightBigInt)
+	denominator := new(big.Int).Add(epochDuration, counterweight)
 	gasPriceDeltaRatio = new(big.Int).Div(numerator, denominator)
 
 	// Limit the max/min possible delta in one epoch using the trimGasPriceChangeRatio helper function
@@ -935,7 +872,7 @@ func _sealEpoch_minGasPrice(evm *vm.EVM, epochDuration *big.Int, epochGas *big.I
 
 	// Apply the ratio
 	newMinGasPrice := new(big.Int).Mul(minGasPriceBigInt, gasPriceDeltaRatio)
-	newMinGasPrice = new(big.Int).Div(newMinGasPrice, decimalUnitBigInt)
+	newMinGasPrice.Div(newMinGasPrice, decimalUnitBigInt)
 
 	// Limit the max/min possible minGasPrice using the trimMinGasPrice helper function
 	newMinGasPrice = trimMinGasPrice(newMinGasPrice)

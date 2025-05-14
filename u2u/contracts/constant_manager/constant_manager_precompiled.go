@@ -62,6 +62,10 @@ type ConstantManagerPrecompile struct{}
 
 // Run runs the precompiled contract
 func (c *ConstantManagerPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, suppliedGas uint64) ([]byte, uint64, error) {
+	// Initialize/Invalidate the cache
+	if cmCache.NeedInvalidating || cmCache.Values == nil || len(cmCache.Values) == 0 {
+		InitCache(evm)
+	}
 	// Parse the input to get method and arguments
 	method, args, err := parseABIInput(input)
 	if err != nil {

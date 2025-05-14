@@ -75,8 +75,7 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		gasUsed uint64
 	)
 
-	log.Debug("SFC Precompiled: Calling function", "function", method.Name, "caller", caller.Hex(),
-		"args", args, "input", common.Bytes2Hex(input))
+	log.Info("SFC Precompiled: Calling function", "function", method.Name, "caller", caller.Hex())
 
 	switch method.Name {
 	case "owner":

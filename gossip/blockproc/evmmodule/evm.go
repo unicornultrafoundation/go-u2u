@@ -133,32 +133,31 @@ func (p *U2UEVMProcessor) Finalize() (evmBlock *evmcore.EvmBlock, skippedTxs []u
 	receipts = p.receipts
 
 	// Get state root
-	log.Trace("U2UEVMProcessor.Finalize after block", "block", p.block.Idx)
+	log.Info("U2UEVMProcessor.Finalize after block", "block", p.block.Idx)
 	newStateHash, err := p.statedb.Commit(true)
 	if err != nil {
 		log.Crit("Failed to commit state", "err", err)
 	}
 	evmBlock.Root = newStateHash
 	if p.sfcStateDb != nil {
-		log.Trace("Separate two commit logs when U2UEVMProcessor.Finalize after block")
+		log.Info("Separate two commit logs when U2UEVMProcessor.Finalize after block")
 		newSfcStateHash, err := p.sfcStateDb.Commit(true)
 		if err != nil {
 			log.Crit("Failed to commit sfc state", "err", err)
 		}
 		evmBlock.SfcStateRoot = newSfcStateHash
 
-		// extra dual state verification
+		// extra dual-state verification
 		if newSfcStateHash.Cmp(types.EmptyRootHash) == 0 {
 			log.Error("SFC state is empty now", "block", p.block.Idx)
-		} else {
-			log.Info("SFC state is healthy", "block", p.block.Idx, "root", newSfcStateHash.Hex())
 		}
 		for _, addr := range SfcPrecompiles {
 			original := p.statedb.GetStorageRoot(addr)
 			sfc := p.sfcStateDb.GetStorageRoot(addr)
 			if original.Cmp(sfc) != 0 {
-				log.Error("U2UEVMProcessor.Finalize: SFC corrupted after applying block", "addr", addr,
-					"original", original.Hex(), "sfc", sfc.Hex())
+				log.Error("U2UEVMProcessor.Finalize: SFC corrupted after applying block", "height", p.block.Idx,
+					"addr", addr, "original", original.Hex(), "sfc", sfc.Hex())
+				common.SendInterrupt()
 			}
 		}
 	}

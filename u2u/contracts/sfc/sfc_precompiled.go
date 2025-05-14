@@ -352,7 +352,6 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		log.Error("SFC Precompiled: Out of gas", "function", method.Name, "suppliedGas", suppliedGas, "gasUsed", gasUsed)
 		return nil, 0, vm.ErrOutOfGas
 	}
-	log.Debug("SFC Precompiled: Success", "function", method.Name)
 
 	return result, gasUsed, nil
 }

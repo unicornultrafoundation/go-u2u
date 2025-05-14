@@ -172,7 +172,6 @@ func (c *ConstantManagerPrecompile) Run(evm *vm.EVM, caller common.Address, inpu
 		log.Error("CM Precompiled: Out of gas", "function", method.Name)
 		return nil, 0, vm.ErrOutOfGas
 	}
-	log.Debug("CM Precompiled: Success", "function", method.Name)
 
 	return result, gasUsed, nil
 }

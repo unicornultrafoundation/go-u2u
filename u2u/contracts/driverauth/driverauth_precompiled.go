@@ -178,7 +178,6 @@ func (c *DriverAuthPrecompile) Run(evm *vm.EVM, caller common.Address, input []b
 		log.Error("DriverAuth Precompiled: Out of gas", "function", method.Name)
 		return nil, 0, vm.ErrOutOfGas
 	}
-	log.Debug("DriverAuth Precompiled: Success", "function", method.Name)
 
 	return result, gasUsed, nil
 }

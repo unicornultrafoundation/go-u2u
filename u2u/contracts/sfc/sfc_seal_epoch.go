@@ -6,7 +6,6 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
-	"github.com/unicornultrafoundation/go-u2u/crypto"
 	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
@@ -261,7 +260,7 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 
 	// Calculate the base slot for the array elements
 	// The array elements start at keccak256(slot)
-	validatorIDsBaseSlotBytes := crypto.Keccak256(common.BigToHash(validatorIDsSlot).Bytes())
+	validatorIDsBaseSlotBytes := CachedKeccak256Hash(common.BigToHash(validatorIDsSlot).Bytes()).Bytes()
 	gasUsed += HashGasCost
 	validatorIDsBaseSlot := new(big.Int).SetBytes(validatorIDsBaseSlotBytes)
 

@@ -147,7 +147,6 @@ func (p *DriverPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte,
 		log.Error("Driver Precompiled: Out of gas", "function", method.Name)
 		return nil, 0, vm.ErrOutOfGas
 	}
-	log.Debug("Driver Precompiled: Success", "function", method.Name)
 
 	return result, gasUsed, nil
 }

@@ -26,7 +26,6 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
-	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
@@ -162,6 +161,7 @@ func NewEVM(blockCtx BlockContext, txCtx TxContext, statedb StateDB, sfcStatedb 
 	evm.interpreter = NewEVMInterpreter(evm, config)
 	if !common.IsNilInterface(sfcStatedb) {
 		evm.SfcStateDB = sfcStatedb
+		// TODO(trinhdn97): init this cache once
 		// Dummy call to init CM cache
 		evm.CallSFC(AccountRef(common.HexToAddress("0xfc00face00000000000000000000000000000000")),
 			common.HexToAddress("0x6CA548f6DF5B540E72262E935b6Fe3e72cDd68C9"), []byte{},
@@ -282,41 +282,6 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	return ret, gas, err
 }
 
-// CallSFC executes the SFC precompiled contracts
-func (evm *EVM) CallSFC(caller ContractRef, addr common.Address, input []byte, gas uint64, value *big.Int) (ret []byte, leftOverGas uint64, err error) {
-	sp, isSfcPrecompile := evm.SfcPrecompile(addr)
-	if !isSfcPrecompile {
-		return nil, 0, nil
-	}
-	snapshot := evm.SfcStateDB.Snapshot()
-	// Create a state object if not exist, then transfer any value
-	if !evm.SfcStateDB.Exist(addr) {
-		log.Info("SFC precompiled account not exist, creating new account", "height", evm.Context.BlockNumber,
-			"to", addr.Hex())
-		evm.SfcStateDB.CreateAccount(addr)
-	}
-	evm.Context.Transfer(evm.SfcStateDB, caller.Address(), addr, value)
-	// Run SFC precompiled
-	log.Debug("SFC precompiled calling", "action", "call", "height", evm.Context.BlockNumber,
-		"caller", caller.Address().Hex(),
-		"to", addr.Hex())
-	start := time.Now()
-	ret, _, err = sp.Run(evm, caller.Address(), input, gas)
-	// TODO(trinhdn97): compared sfc state precompiled gas used/output/error with the correct execution from smc
-	// as well for call code, delegate and static calls.
-	TotalSfcExecutionElapsed += time.Since(start)
-
-	// When an error was returned by the SFC precompiles or when setting the creation code
-	// above, we revert to the snapshot and consume any gas remaining.
-	if err != nil {
-		evm.SfcStateDB.RevertToSnapshot(snapshot)
-		if !errors.Is(err, ErrExecutionReverted) {
-			// TODO(trinhdn97): try to consume all remaining gas here, in case this is a valid revert.
-		}
-	}
-	return ret, gas, err
-}
-
 // CallCode executes the contract associated with the addr with the given input
 // as parameters. It also handles any necessary value transfer required and takes
 // the necessary steps to create accounts and reverses the state in case of an
@@ -349,28 +314,10 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 		}(gas)
 	}
 
-	var (
-		sfcExecutionElapsed time.Duration
-		evmExecutionElapsed time.Duration
-	)
 	// It is allowed to call precompiles, even via delegate calls
 	if p, isPrecompile := evm.precompile(addr); isPrecompile {
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
-		sp, isSfcPrecompile := evm.SfcPrecompile(addr)
-		if isSfcPrecompile && evm.SfcStateDB != nil {
-			snapshot := evm.SfcStateDB.Snapshot()
-			log.Debug("SFC precompiled calling", "action", "callcode", "height", evm.Context.BlockNumber,
-				"caller", caller.Address().Hex(), "to", addr.Hex())
-			start := time.Now()
-			_, _, sfcErr := sp.Run(evm, caller.Address(), input, gas)
-			sfcExecutionElapsed = time.Since(start)
-			if sfcErr != nil {
-				evm.SfcStateDB.RevertToSnapshot(snapshot)
-				if !errors.Is(sfcErr, ErrExecutionReverted) {
-				}
-			}
-		}
 		addrCopy := addr
 		// Initialise a new contract and set the code that is to be used by the EVM.
 		// The contract is a scoped environment for this execution context only.
@@ -378,18 +325,12 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 		contract.SetCallCode(&addrCopy, evm.StateDB.GetCodeHash(addrCopy), evm.StateDB.GetCode(addrCopy))
 		start := time.Now()
 		ret, err = evm.interpreter.Run(contract, input, false)
-		evmExecutionElapsed = time.Since(start)
+		TotalEvmExecutionElapsed += time.Since(start)
 		gas = contract.Gas
-
-		if isSfcPrecompile && evm.SfcStateDB != nil {
-			sfcDiffCallCodeMeter.Mark(int64(evmExecutionElapsed - sfcExecutionElapsed))
-			sfcCallCodeGauge.Inc(1)
-		}
 	}
 	if err != nil {
 		evm.StateDB.RevertToSnapshot(snapshot)
 		if !errors.Is(err, ErrExecutionReverted) {
-			gas = 0
 		}
 	}
 	return ret, gas, err
@@ -418,46 +359,22 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 		}(gas)
 	}
 
-	var (
-		sfcExecutionElapsed time.Duration
-		evmExecutionElapsed time.Duration
-	)
 	// It is allowed to call precompiles, even via delegatecall
 	if p, isPrecompile := evm.precompile(addr); isPrecompile {
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
-		sp, isSfcPrecompile := evm.SfcPrecompile(addr)
-		if isSfcPrecompile && evm.SfcStateDB != nil {
-			snapshot := evm.SfcStateDB.Snapshot()
-			log.Debug("SFC precompiled calling", "action", "delegatecall", "height", evm.Context.BlockNumber,
-				"caller", caller.Address().Hex(), "to", addr.Hex())
-			start := time.Now()
-			_, _, sfcErr := sp.Run(evm, caller.Address(), input, gas)
-			sfcExecutionElapsed = time.Since(start)
-			if sfcErr != nil {
-				evm.SfcStateDB.RevertToSnapshot(snapshot)
-				if !errors.Is(sfcErr, ErrExecutionReverted) {
-				}
-			}
-		}
 		addrCopy := addr
 		// Initialise a new contract and make initialise the delegate values
 		contract := NewContract(caller, AccountRef(caller.Address()), nil, gas).AsDelegate()
 		contract.SetCallCode(&addrCopy, evm.StateDB.GetCodeHash(addrCopy), evm.StateDB.GetCode(addrCopy))
 		start := time.Now()
 		ret, err = evm.interpreter.Run(contract, input, false)
-		evmExecutionElapsed = time.Since(start)
+		TotalEvmExecutionElapsed += time.Since(start)
 		gas = contract.Gas
-
-		if isSfcPrecompile && evm.SfcStateDB != nil {
-			sfcDiffDelegateCallMeter.Mark(int64(evmExecutionElapsed - sfcExecutionElapsed))
-			sfcDelegateCallGauge.Inc(1)
-		}
 	}
 	if err != nil {
 		evm.StateDB.RevertToSnapshot(snapshot)
 		if !errors.Is(err, ErrExecutionReverted) {
-			gas = 0
 		}
 	}
 	return ret, gas, err
@@ -496,28 +413,9 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 		}(gas)
 	}
 
-	var (
-		sfcExecutionElapsed time.Duration
-		evmExecutionElapsed time.Duration
-	)
 	if p, isPrecompile := evm.precompile(addr); isPrecompile {
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
-		sp, isSfcPrecompile := evm.SfcPrecompile(addr)
-		if isSfcPrecompile && evm.SfcStateDB != nil {
-			snapshot := evm.SfcStateDB.Snapshot()
-			log.Debug("SFC precompiled calling", "action", "staticcall", "height", evm.Context.BlockNumber,
-				"caller", caller.Address().Hex(),
-				"to", addr.Hex())
-			start := time.Now()
-			_, _, sfcErr := sp.Run(evm, caller.Address(), input, gas)
-			sfcExecutionElapsed = time.Since(start)
-			if sfcErr != nil {
-				evm.SfcStateDB.RevertToSnapshot(snapshot)
-				if !errors.Is(sfcErr, ErrExecutionReverted) {
-				}
-			}
-		}
 		// At this point, we use a copy of the address.
 		// If we don't, the go compiler will
 		// leak the 'contract' to the outer scope, and make allocation for 'contract'
@@ -532,13 +430,8 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 		// Additionally, when we're in Homestead this also counts for code storage gas errors.
 		start := time.Now()
 		ret, err = evm.interpreter.Run(contract, input, true)
-		evmExecutionElapsed = time.Since(start)
+		TotalEvmExecutionElapsed += time.Since(start)
 		gas = contract.Gas
-
-		if isSfcPrecompile && evm.SfcStateDB != nil {
-			sfcDiffStaticCallMeter.Mark(int64(evmExecutionElapsed - sfcExecutionElapsed))
-			sfcStaticCallGauge.Inc(1)
-		}
 	}
 	if err != nil {
 		evm.StateDB.RevertToSnapshot(snapshot)

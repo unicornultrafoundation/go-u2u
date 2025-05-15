@@ -104,6 +104,9 @@ func ValidateTransaction(tx *types.Transaction, head *EvmHeader, signer types.Si
 	if tx.Gas() < intrGas {
 		return fmt.Errorf("%w: gas %v, minimum needed %v", ErrIntrinsicGas, tx.Gas(), intrGas)
 	}
+	if tx.Type() == types.BlobTxType {
+		return fmt.Errorf("%w: type %d rejected, not implemented", ErrTxTypeNotSupported, tx.Type())
+	}
 	return nil
 }
 

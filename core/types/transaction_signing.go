@@ -177,7 +177,7 @@ type Signer interface {
 
 type cancunSigner struct{ londonSigner }
 
-// - EIP-4844 blob transaction
+// - EIP-4844 blob transaction (not implemented)
 // - EIP-1559 dynamic fee transactions
 // - EIP-2930 access list transactions,
 // - EIP-155 replay protected transactions, and

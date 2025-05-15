@@ -86,6 +86,7 @@ func (args *TransactionArgs) setDefaults(ctx context.Context, b Backend) error {
 	// need to consult the chain for defaults. It's definitely a London tx.
 	if args.MaxPriorityFeePerGas == nil || args.MaxFeePerGas == nil {
 		// In this clause, user left some fields unspecified.
+		// EIP-4844 not implemented
 		if b.ChainConfig().IsLondon(head.Number) && args.GasPrice == nil {
 			if args.MaxPriorityFeePerGas == nil {
 				tip := b.SuggestGasTipCap(ctx, gasprice.AsDefaultCertainty)

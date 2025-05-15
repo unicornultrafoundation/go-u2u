@@ -17,13 +17,13 @@ func (evm *EVM) CallSFC(caller ContractRef, addr common.Address, input []byte, g
 	snapshot := evm.SfcStateDB.Snapshot()
 	// Create a state object if not exist, then transfer any value
 	if !evm.SfcStateDB.Exist(addr) {
-		log.Info("SFC precompiled account not exist, creating new account", "height", evm.Context.BlockNumber,
+		log.Debug("SFC precompiled account not exist, creating new account", "height", evm.Context.BlockNumber,
 			"to", addr.Hex())
 		evm.SfcStateDB.CreateAccount(addr)
 	}
 	evm.Context.Transfer(evm.SfcStateDB, caller.Address(), addr, value)
 	// Run SFC precompiled
-	log.Info("SFC precompiled calling", "action", "call", "height", evm.Context.BlockNumber,
+	log.Debug("SFC precompiled calling", "action", "call", "height", evm.Context.BlockNumber,
 		"caller", caller.Address().Hex(),
 		"to", addr.Hex())
 	start := time.Now()

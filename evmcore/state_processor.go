@@ -92,7 +92,9 @@ func (p *StateProcessor) Process(
 		if sfcStatedb != nil {
 			sfcStatedb.Prepare(tx.Hash(), i)
 		}
+		log.Trace("StateProcessor.Process before", "tx", tx.Hash().Hex())
 		receipt, _, skip, err = ApplyTransaction(msg, p.config, gp, statedb, sfcStatedb, blockNumber, blockHash, tx, usedGas, vmenv, cfg, onNewLog)
+		log.Trace("StateProcessor.Process after", "tx", tx.Hash().Hex())
 		if skip {
 			skipped = append(skipped, uint32(i))
 			err = nil
@@ -110,8 +112,9 @@ func (p *StateProcessor) Process(
 				original := statedb.GetStorageRoot(addr)
 				sfc := sfcStatedb.GetStorageRoot(addr)
 				if original.Cmp(sfc) != 0 {
-					log.Error("StateProcessor.Process: SFC corrupted after applying tx", "addr", addr,
-						"tx", tx.Hash().Hex(), "original", original.Hex(), "sfc", sfc.Hex())
+					log.Error("StateProcessor.Process: SFC corrupted after applying tx", "tx", tx.Hash().Hex(),
+						"addr", addr, "tx", tx.Hash().Hex(), "original", original.Hex(), "sfc", sfc.Hex())
+					common.SendInterrupt()
 				}
 			}
 			// Benchmark execution time difference of SFC precompiled related txs

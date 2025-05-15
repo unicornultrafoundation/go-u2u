@@ -89,9 +89,9 @@ type SFCCache struct {
 	EpochSlot     map[string]*big.Int
 
 	// Hash input caches
-	HashInputs      map[string][]byte // Cache for hash inputs (validatorID + slot)
+	HashInputs        map[string][]byte // Cache for hash inputs (validatorID + slot)
 	AddressHashInputs map[string][]byte // Cache for address hash inputs (address + slot)
-	NestedHashInputs map[string][]byte // Cache for nested hash inputs
+	NestedHashInputs  map[string][]byte // Cache for nested hash inputs
 
 	// Unified ABI encoding cache
 	AbiPackCache map[string][]byte // Cache for all ABI packed results
@@ -104,10 +104,10 @@ func NewSFCCache() *SFCCache {
 		Slot:              NewSlotCache(),
 		ValidatorSlot:     make(map[string]*big.Int),
 		EpochSlot:         make(map[string]*big.Int),
-		HashInputs:         make(map[string][]byte),
-		AddressHashInputs:  make(map[string][]byte),
-		NestedHashInputs:   make(map[string][]byte),
-		AbiPackCache:       make(map[string][]byte),
+		HashInputs:        make(map[string][]byte),
+		AddressHashInputs: make(map[string][]byte),
+		NestedHashInputs:  make(map[string][]byte),
+		AbiPackCache:      make(map[string][]byte),
 	}
 
 	return cache
@@ -171,8 +171,6 @@ func GetCachedEpochSnapshotSlot(epoch *big.Int) (*big.Int, uint64) {
 func ClearCache() {
 	sfcCache = NewSFCCache()
 }
-
-
 
 // CreateHashInput creates a hash input from a validator ID and slot constant
 func CreateHashInput(validatorID *big.Int, slotConstant int64) []byte {
@@ -238,15 +236,6 @@ func CreateAddressHashInput(addr common.Address, slotConstant int64) []byte {
 
 // CreateNestedHashInput creates a hash input from a validator ID and a hash
 func CreateNestedHashInput(validatorID *big.Int, hash []byte) []byte {
-	// Create a cache key from validatorID and hash
-	cacheKey := validatorID.String() + "_" + common.Bytes2Hex(hash)
-
-	// Check if the hash input is already cached
-	if hashInput, found := sfcCache.NestedHashInputs[cacheKey]; found {
-		return hashInput
-	}
-
-	// If not in cache, create the hash input directly
 	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)
 
 	// Use the byte slice pool for the result
@@ -259,9 +248,6 @@ func CreateNestedHashInput(validatorID *big.Int, hash []byte) []byte {
 	// Combine the bytes
 	hashInput = append(hashInput, validatorIDBytes...)
 	hashInput = append(hashInput, hash...)
-
-	// Store in cache
-	sfcCache.NestedHashInputs[cacheKey] = hashInput
 
 	return hashInput
 }

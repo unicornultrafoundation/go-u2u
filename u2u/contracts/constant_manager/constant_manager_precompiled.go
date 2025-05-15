@@ -77,7 +77,7 @@ func (c *ConstantManagerPrecompile) Run(evm *vm.EVM, caller common.Address, inpu
 		gasUsed uint64
 	)
 
-	log.Info("ConstantsManager Precompiled: Calling function", "function", method.Name, "caller", caller.Hex())
+	log.Debug("ConstantsManager Precompiled: Calling function", "function", method.Name, "caller", caller.Hex())
 
 	// Dispatch to the appropriate handler based on the method name
 	switch method.Name {

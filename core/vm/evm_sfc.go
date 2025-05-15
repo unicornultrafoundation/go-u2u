@@ -23,7 +23,7 @@ func (evm *EVM) CallSFC(caller ContractRef, addr common.Address, input []byte, g
 	}
 	evm.Context.Transfer(evm.SfcStateDB, caller.Address(), addr, value)
 	// Run SFC precompiled
-	log.Info("SFC precompiled calling", "action", "call", "height", evm.Context.BlockNumber,
+	log.Debug("SFC precompiled calling", "action", "call", "height", evm.Context.BlockNumber,
 		"caller", caller.Address().Hex(),
 		"to", addr.Hex())
 	start := time.Now()

@@ -25,31 +25,27 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	if len(args) != 5 {
 		return nil, gasUsed, vm.ErrExecutionReverted
 	}
-
 	offlineTimes, ok := args[0].([]*big.Int)
 	if !ok {
 		return nil, gasUsed, vm.ErrExecutionReverted
 	}
-
 	offlineBlocks, ok := args[1].([]*big.Int)
 	if !ok {
 		return nil, gasUsed, vm.ErrExecutionReverted
 	}
-
 	uptimes, ok := args[2].([]*big.Int)
 	if !ok {
 		return nil, gasUsed, vm.ErrExecutionReverted
 	}
-
 	originatedTxsFee, ok := args[3].([]*big.Int)
 	if !ok {
 		return nil, gasUsed, vm.ErrExecutionReverted
 	}
-
 	epochGas, ok := args[4].(*big.Int)
 	if !ok {
 		return nil, gasUsed, vm.ErrExecutionReverted
 	}
+
 	// Get the current epoch (corresponds to snapshot in Solidity)
 	currentEpochBigInt, epochGasUsed, err := getCurrentEpoch(evm)
 	gasUsed += epochGasUsed
@@ -403,13 +399,9 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 	for i, validatorID := range validatorIDs {
 		// Get previous accumulated originated txs fee
 		// For a mapping within a struct, we need to calculate the slot as:
-		// keccak256(abi.encode(validatorID, keccak256(abi.encode(accumulatedOriginatedTxsFeeOffset, prevEpochSnapshotSlot))))
-		// Use our helper function to create the hash input from offset and slot
-		innerHash = CreateAndHashOffsetSlot(accumulatedOriginatedTxsFeeOffset, prevEpochSnapshotSlot)
-		gasUsed += HashGasCost
-
-		// Use our helper function to create a nested hash input
-		outerHashInput = CreateNestedHashInput(validatorID, innerHash)
+		// keccak256(abi.encode(validatorID, abi.encode(prevEpochSnapshotSlot + accumulatedOriginatedTxsFeeOffset)))
+		mappingSlot := new(big.Int).Add(prevEpochSnapshotSlot, big.NewInt(accumulatedOriginatedTxsFeeOffset))
+		outerHashInput = CreateNestedHashInput(validatorID, mappingSlot.Bytes())
 		// Use cached hash calculation
 		outerHash = CachedKeccak256(outerHashInput)
 		gasUsed += HashGasCost
@@ -425,6 +417,9 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		if accumulatedOriginatedTxsFee[i].Cmp(prevAccumulatedTxsFeeBigInt) > 0 {
 			originatedTxsFee = new(big.Int).Sub(accumulatedOriginatedTxsFee[i], prevAccumulatedTxsFeeBigInt)
 		}
+		log.Trace("SFC: Calculating originatedTxsFee of ", "validatorID", validatorID,
+			"accumulatedOriginatedTxsFee", accumulatedOriginatedTxsFee[i],
+			"prevAccumulatedTxsFee", prevAccumulatedTxsFeeBigInt)
 
 		// Calculate tx reward weight: originatedTxsFee * uptime / epochDuration
 		txRewardWeight := new(big.Int).Mul(originatedTxsFee, uptimes[i])

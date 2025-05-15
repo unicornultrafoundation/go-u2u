@@ -26,6 +26,7 @@ const (
 	berlinBit              = 1 << 0
 	londonBit              = 1 << 1
 	llrBit                 = 1 << 2
+	cancunBit              = 1 << 3
 )
 
 var DefaultVMConfig = vm.Config{
@@ -125,6 +126,7 @@ type Upgrades struct {
 	Berlin bool
 	London bool
 	Llr    bool
+	Cancun bool
 }
 
 type UpgradeHeight struct {
@@ -138,6 +140,7 @@ func (r Rules) EvmChainConfig(hh []UpgradeHeight) *ethparams.ChainConfig {
 	cfg.ChainID = new(big.Int).SetUint64(r.NetworkID)
 	cfg.BerlinBlock = nil
 	cfg.LondonBlock = nil
+	cfg.CancunBlock = nil
 	for i, h := range hh {
 		height := new(big.Int)
 		if i > 0 {
@@ -155,6 +158,13 @@ func (r Rules) EvmChainConfig(hh []UpgradeHeight) *ethparams.ChainConfig {
 		}
 		if !h.Upgrades.London {
 			cfg.LondonBlock = nil
+		}
+
+		if cfg.CancunBlock == nil && h.Upgrades.Cancun {
+			cfg.CancunBlock = height
+		}
+		if !h.Upgrades.Cancun {
+			cfg.CancunBlock = nil
 		}
 	}
 	return &cfg
@@ -213,6 +223,7 @@ func FakeNetRules() Rules {
 			Berlin: true,
 			London: true,
 			Llr:    true,
+			Cancun: true,
 		},
 	}
 }

@@ -207,6 +207,11 @@ func (st *StateTransition) buyGas() error {
 
 	st.initialGas = st.msg.Gas()
 	st.state.SubBalance(st.msg.From(), mgval)
+	if st.sfcState != nil {
+		if _, ok := st.evm.SfcPrecompile(st.msg.From()); ok {
+			st.sfcState.SubBalance(st.msg.From(), mgval)
+		}
+	}
 	return nil
 }
 

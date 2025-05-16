@@ -7,6 +7,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/crypto"
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/constant_manager"
 )
@@ -539,29 +540,10 @@ func getValidatorCommissionSlot(validatorID *big.Int) (*big.Int, uint64) {
 
 // getValidatorAuthSlot calculates the storage slot for a validator's auth address
 func getValidatorAuthSlot(validatorID *big.Int) (*big.Int, uint64) {
-	// Initialize gas used
 	var gasUsed uint64 = 0
-	// The Validator struct has the following fields:
-	// uint256 status;
-	// uint256 deactivatedTime;
-	// uint256 deactivatedEpoch;
-	// uint256 receivedStake;
-	// uint256 createdEpoch;
-	// uint256 createdTime;
-	// address auth;
-
-	// For a mapping(uint256 => Validator), the slot is calculated as:
-	// keccak256(abi.encode(validatorID, validatorSlot))
-	// Then, for the auth field (which is the seventh field), we add 6 to the base slot
-
-	// Create the hash input using cached padded values
 	hashInput := CreateHashInput(validatorID, validatorSlot)
-
-	// Calculate the hash - add gas cost for hashing
 	hash := CachedKeccak256(hashInput)
 	gasUsed += HashGasCost
-
-	// Convert the hash to a big.Int
 	slot := new(big.Int).SetBytes(hash)
 
 	// The auth field is at slot + 6
@@ -570,19 +552,10 @@ func getValidatorAuthSlot(validatorID *big.Int) (*big.Int, uint64) {
 
 // getValidatorPubkeySlot calculates the storage slot for a validator's pubkey
 func getValidatorPubkeySlot(validatorID *big.Int) (*big.Int, uint64) {
-	// Initialize gas used
 	var gasUsed uint64 = 0
-	// For a mapping(uint256 => bytes), the slot is calculated as:
-	// keccak256(abi.encode(validatorID, validatorPubkeySlot))
-
-	// Create the hash input using cached padded values
 	hashInput := CreateHashInput(validatorID, validatorPubkeySlot)
-
-	// Calculate the hash - add gas cost for hashing
 	hash := CachedKeccak256(hashInput)
 	gasUsed += HashGasCost
-
-	// Convert the hash to a big.Int
 	slot := new(big.Int).SetBytes(hash)
 
 	return slot, gasUsed
@@ -1354,13 +1327,13 @@ func getEpochValidatorReceivedStakeSlot(epoch *big.Int, validatorID *big.Int) (*
 
 	// Step 1: Calculate the slot for getEpochSnapshot[epoch]
 	hashInput := CreateHashInput(epoch, epochSnapshotSlot)
-	epochHash := CachedKeccak256(hashInput)
+	epochHash := crypto.Keccak256(hashInput)
 	gasUsed += HashGasCost
 
 	// Step 2: Add the offset for receivedStake within the struct
 	// receivedStake is the first mapping in the struct, so its offset is 0
-	structSlot := new(big.Int).SetBytes(epochHash)
-	mappingSlot := new(big.Int).Add(structSlot, big.NewInt(receiveStakeOffset))
+	structSlot := GetBigInt().SetBytes(epochHash)
+	mappingSlot := GetBigInt().Add(structSlot, big.NewInt(receiveStakeOffset))
 
 	// Step 3: Calculate the final slot for receivedStake[validatorID]
 	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)
@@ -1368,18 +1341,30 @@ func getEpochValidatorReceivedStakeSlot(epoch *big.Int, validatorID *big.Int) (*
 
 	// Use the byte slice pool for the result
 	finalHashInput := GetByteSlice()
+	// Reset the slice but keep the capacity
+	finalHashInput = finalHashInput[:0]
+	// Ensure the slice has enough capacity
 	if cap(finalHashInput) < len(validatorIDBytes)+len(mappingSlotBytes) {
-		// If the slice from the pool is too small, allocate a new one
-		finalHashInput = make([]byte, 0, len(validatorIDBytes)+len(mappingSlotBytes))
+		// If the slice from the pool is too small, allocate a new one with extra capacity for future use
+		finalHashInput = make([]byte, 0, len(validatorIDBytes)+len(mappingSlotBytes)+32)
 	}
 
 	// Combine the bytes
 	finalHashInput = append(finalHashInput, validatorIDBytes...)
 	finalHashInput = append(finalHashInput, mappingSlotBytes...)
-	finalHash := CachedKeccak256(finalHashInput)
+	finalHash := crypto.Keccak256(finalHashInput)
 	gasUsed += HashGasCost
 
-	return new(big.Int).SetBytes(finalHash), gasUsed
+	// Don't forget to return the byte slice to the pool
+	PutByteSlice(finalHashInput)
+
+	result := new(big.Int).SetBytes(finalHash)
+
+	// Return the temporary big.Ints to the pool
+	PutBigInt(structSlot)
+	PutBigInt(mappingSlot)
+
+	return result, gasUsed
 }
 
 // getDecimalUnit returns the decimal unit value (1e18) used for decimal calculations

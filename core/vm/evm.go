@@ -118,14 +118,17 @@ type TxContext struct {
 //
 // The EVM should never be reused and is not thread safe.
 type EVM struct {
-	// Context provides auxiliary blockchain related information
+	// Context provides the EVM with auxiliary information. Once provided
+	// it shouldn't be modified.
 	Context BlockContext
 	TxContext
 	// StateDB gives access to the underlying state
 	StateDB StateDB
 	// SfcStateDB gives access to the underlying SFC state
 	SfcStateDB StateDB
-	// Depth is the current call stack
+	// EpochCache provides caching for state values during an epoch
+	EpochCache interface{} // Will be *sfc.EpochStateCache
+	// depth is the current call stack
 	depth int
 
 	// chainConfig contains information about the current chain

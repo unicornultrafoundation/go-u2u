@@ -309,9 +309,10 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		if st.sfcState != nil {
 			st.sfcState.SetNonce(msg.From(), nonce)
 		}
+		originalGas := st.gas
 		ret, st.gas, vmerr = st.evm.Call(sender, st.to(), st.data, st.gas, st.value)
 		if st.sfcState != nil {
-			st.evm.CallSFC(sender, st.to(), st.data, st.gas, st.value)
+			st.evm.CallSFC(sender, st.to(), st.data, originalGas, st.value)
 		}
 	}
 	// use 10% of not used gas

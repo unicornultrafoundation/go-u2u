@@ -22,6 +22,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 	"github.com/unicornultrafoundation/go-u2u/topicsdb"
 	"github.com/unicornultrafoundation/go-u2u/trie"
+	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/sfc"
 	"github.com/unicornultrafoundation/go-u2u/utils/adapters/udb2ethdb"
 	"github.com/unicornultrafoundation/go-u2u/utils/rlpstore"
 )
@@ -50,6 +51,9 @@ type Store struct {
 	EvmLogs  topicsdb.Index
 	Snaps    *snapshot.Tree
 	SfcSnaps *snapshot.Tree
+
+	// Cache for epoch state
+	EpochCache *sfc.EpochStateCache
 
 	cache struct {
 		TxPositions *wlru.Cache `cache:"-"` // store by pointer
@@ -85,6 +89,16 @@ func NewStore(dbs u2udb.DBProducer, cfg StoreConfig) *Store {
 	s.initEVMDB()
 	s.EvmLogs = topicsdb.NewWithThreadPool(dbs)
 	s.initCache()
+
+	// Initialize epoch cache if SFC is enabled
+	if cfg.SfcEnabled {
+		// Get the initial state DB
+		stateDB, err := s.SfcStateDB(hash.Zero)
+		if err != nil {
+			s.Log.Crit("Failed to get initial SFC state", "err", err)
+		}
+		s.EpochCache = sfc.NewEpochStateCache(stateDB)
+	}
 
 	return s
 }

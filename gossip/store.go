@@ -17,6 +17,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"
 	txtracer "github.com/unicornultrafoundation/go-u2u/gossip/txtracer"
 	"github.com/unicornultrafoundation/go-u2u/logger"
+	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/sfc"
 	"github.com/unicornultrafoundation/go-u2u/utils/adapters/snap2udb"
 	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/switchable"
 	"github.com/unicornultrafoundation/go-u2u/utils/eventid"
@@ -99,6 +100,9 @@ type Store struct {
 	rlp rlpstore.Helper
 
 	logger.Instance
+
+	// Cache for epoch state
+	epochCache *sfc.EpochStateCache
 }
 
 // NewMemStore creates store over memory map.
@@ -333,4 +337,12 @@ func (s *Store) makeCache(weight uint, size int) *wlru.Cache {
 		return nil
 	}
 	return cache
+}
+
+func (s *Store) GetEpochCache() *sfc.EpochStateCache {
+	return s.epochCache
+}
+
+func (s *Store) SetEpochCache(cache *sfc.EpochStateCache) {
+	s.epochCache = cache
 }

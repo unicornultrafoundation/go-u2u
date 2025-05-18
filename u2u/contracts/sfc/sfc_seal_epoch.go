@@ -312,7 +312,13 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 	}
 
 	// Call the node driver
-	result, _, err := evm.CallSFC(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, 50000, big.NewInt(0))
+	result, _, err := evm.CallSFC(
+		vm.AccountRef(ContractAddress), // Caller
+		nodeDriverAuthAddr,             // Target address
+		data,                           // Call data (empty)
+		50000,                          // Gas limit for a simple transfer
+		big.NewInt(0),                  // Value to transfer
+	)
 	if err != nil {
 		reason, _ := abi.UnpackRevert(result)
 		log.Error("SFC: Error calling NodeDriverAuth method", "method", "updateMinGasPrice", "err", err, "reason", reason)
@@ -407,10 +413,12 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 	}
 	epochCache = evm.EpochCache.(*EpochStateCache)
 
-	// Declare variables to avoid redeclaration issues
-	var innerHash []byte
-	var outerHashInput []byte
-	var outerHash []byte
+	// Cache frequently used constants
+	baseRewardPerSecond := getConstantsManagerVariable("baseRewardPerSecond")
+	validatorCommission := getConstantsManagerVariable("validatorCommission")
+	burntFeeShare := getConstantsManagerVariable("burntFeeShare")
+	treasuryFeeShare := getConstantsManagerVariable("treasuryFeeShare")
+	decimalUnit := getDecimalUnit()
 
 	// Pre-calculate the epoch snapshot base slots for current and previous epochs
 	currentEpochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(currentEpoch)
@@ -418,6 +426,16 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 
 	prevEpochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(prevEpoch)
 	gasUsed += slotGasUsed
+
+	// Cache validator data to avoid repeated state reads
+	type ValidatorData struct {
+		receivedStake  *big.Int
+		selfStake      *big.Int
+		lockedStake    *big.Int
+		lockupDuration *big.Int
+		authAddress    common.Address
+	}
+	validatorDataCache := make(map[*big.Int]*ValidatorData)
 
 	// Initialize context for rewards calculation
 	baseRewardWeights := make([]*big.Int, len(validatorIDs))
@@ -429,16 +447,12 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 	// Calculate tx reward weights and epoch fee
 	for i, validatorID := range validatorIDs {
 		// Get previous accumulated originated txs fee
-		// For a mapping within a struct, we need to calculate the slot as:
-		// keccak256(abi.encode(validatorID, abi.encode(prevEpochSnapshotSlot + accumulatedOriginatedTxsFeeOffset)))
 		mappingSlot := new(big.Int).Add(prevEpochSnapshotSlot, big.NewInt(accumulatedOriginatedTxsFeeOffset))
-		outerHashInput = CreateNestedHashInput(validatorID, mappingSlot.Bytes())
-		// Use cached hash calculation
-		outerHash = CachedKeccak256(outerHashInput)
+		outerHashInput := CreateNestedHashInput(validatorID, mappingSlot.Bytes())
+		outerHash := CachedKeccak256(outerHashInput)
 		gasUsed += HashGasCost
 
 		prevAccumulatedTxsFeeSlot := new(big.Int).SetBytes(outerHash)
-
 		prevAccumulatedTxsFee := epochCache.GetState(ContractAddress, common.BigToHash(prevAccumulatedTxsFeeSlot))
 		gasUsed += SloadGasCost
 		prevAccumulatedTxsFeeBigInt := new(big.Int).SetBytes(prevAccumulatedTxsFee.Bytes())
@@ -448,9 +462,6 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		if accumulatedOriginatedTxsFee[i].Cmp(prevAccumulatedTxsFeeBigInt) > 0 {
 			originatedTxsFee = new(big.Int).Sub(accumulatedOriginatedTxsFee[i], prevAccumulatedTxsFeeBigInt)
 		}
-		log.Trace("SFC: Calculating originatedTxsFee of ", "validatorID", validatorID,
-			"accumulatedOriginatedTxsFee", accumulatedOriginatedTxsFee[i],
-			"prevAccumulatedTxsFee", prevAccumulatedTxsFeeBigInt)
 
 		// Calculate tx reward weight: originatedTxsFee * uptime / epochDuration
 		txRewardWeight := new(big.Int).Mul(originatedTxsFee, uptimes[i])
@@ -464,18 +475,59 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		epochFee = new(big.Int).Add(epochFee, originatedTxsFee)
 	}
 
-	// Calculate base reward weights
-	for i, validatorID := range validatorIDs {
+	// Pre-fetch and cache validator data
+	for _, validatorID := range validatorIDs {
 		// Get validator's received stake
 		receivedStakeSlot, slotGasUsed := getEpochValidatorReceivedStakeSlot(currentEpoch, validatorID)
 		gasUsed += slotGasUsed
-
 		receivedStake := epochCache.GetState(ContractAddress, common.BigToHash(receivedStakeSlot))
 		gasUsed += SloadGasCost
 		receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
 
+		// Get validator auth address
+		validatorAuthSlot, slotGasUsed := getValidatorAuthSlot(validatorID)
+		gasUsed += slotGasUsed
+		validatorAuth := epochCache.GetState(ContractAddress, common.BigToHash(validatorAuthSlot))
+		gasUsed += SloadGasCost
+		validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
+
+		// Get validator's self-stake
+		selfStakeSlot, slotGasUsed := getStakeSlot(validatorAuthAddr, validatorID)
+		gasUsed += slotGasUsed
+		selfStake := epochCache.GetState(ContractAddress, common.BigToHash(selfStakeSlot))
+		gasUsed += SloadGasCost
+		selfStakeBigInt := new(big.Int).SetBytes(selfStake.Bytes())
+
+		// Get locked stake
+		lockedStakeSlot, slotGasUsed := getLockedStakeSlot(validatorAuthAddr, validatorID)
+		gasUsed += slotGasUsed
+		lockedStake := epochCache.GetState(ContractAddress, common.BigToHash(lockedStakeSlot))
+		gasUsed += SloadGasCost
+		lockedStakeBigInt := new(big.Int).SetBytes(lockedStake.Bytes())
+
+		// Get lockup duration
+		lockupDurationSlot, slotGasUsed := getLockupDurationSlot(validatorAuthAddr, validatorID)
+		gasUsed += slotGasUsed
+		lockupDuration := epochCache.GetState(ContractAddress, common.BigToHash(lockupDurationSlot))
+		gasUsed += SloadGasCost
+		lockupDurationBigInt := new(big.Int).SetBytes(lockupDuration.Bytes())
+
+		// Cache the validator data
+		validatorDataCache[validatorID] = &ValidatorData{
+			receivedStake:  receivedStakeBigInt,
+			selfStake:      selfStakeBigInt,
+			lockedStake:    lockedStakeBigInt,
+			lockupDuration: lockupDurationBigInt,
+			authAddress:    validatorAuthAddr,
+		}
+	}
+
+	// Calculate base reward weights using cached data
+	for i, validatorID := range validatorIDs {
+		validatorData := validatorDataCache[validatorID]
+
 		// Calculate base reward weight: (stake * uptime / epochDuration) * (uptime / epochDuration)
-		term1 := new(big.Int).Mul(receivedStakeBigInt, uptimes[i])
+		term1 := new(big.Int).Mul(validatorData.receivedStake, uptimes[i])
 		term1 = new(big.Int).Div(term1, epochDuration)
 		term2 := new(big.Int).Mul(term1, uptimes[i])
 		baseRewardWeight := new(big.Int).Div(term2, epochDuration)
@@ -485,13 +537,10 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		totalBaseRewardWeight = new(big.Int).Add(totalBaseRewardWeight, baseRewardWeight)
 	}
 
-	baseRewardPerSecond := getConstantsManagerVariable("baseRewardPerSecond")
-	validatorCommission := getConstantsManagerVariable("validatorCommission")
-	burntFeeShare := getConstantsManagerVariable("burntFeeShare")
-	treasuryFeeShare := getConstantsManagerVariable("treasuryFeeShare")
-
-	// Calculate rewards for each validator
+	// Calculate rewards for each validator using cached data
 	for i, validatorID := range validatorIDs {
+		validatorData := validatorDataCache[validatorID]
+
 		// Calculate raw base reward
 		rawBaseReward := big.NewInt(0)
 		if baseRewardWeights[i].Cmp(big.NewInt(0)) > 0 {
@@ -503,68 +552,31 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		// Calculate raw tx reward
 		rawTxReward := big.NewInt(0)
 		if txRewardWeights[i].Cmp(big.NewInt(0)) > 0 {
-			// Calculate fee reward except burntFeeShare and treasuryFeeShare
 			txReward := new(big.Int).Mul(epochFee, txRewardWeights[i])
 			txReward = new(big.Int).Div(txReward, totalTxRewardWeight)
 
-			// Subtract burnt and treasury shares
 			shareToSubtract := new(big.Int).Add(burntFeeShare, treasuryFeeShare)
-			shareToKeep := new(big.Int).Sub(unit, shareToSubtract)
+			shareToKeep := new(big.Int).Sub(decimalUnit, shareToSubtract)
 
 			rawTxReward = new(big.Int).Mul(txReward, shareToKeep)
-			rawTxReward = new(big.Int).Div(rawTxReward, unit)
+			rawTxReward = new(big.Int).Div(rawTxReward, decimalUnit)
 		}
 
 		// Calculate total raw reward
 		rawReward := new(big.Int).Add(rawBaseReward, rawTxReward)
 
-		// Get validator auth address
-		validatorAuthSlot, slotGasUsed := getValidatorAuthSlot(validatorID)
-		gasUsed += slotGasUsed
-
-		validatorAuth := epochCache.GetState(ContractAddress, common.BigToHash(validatorAuthSlot))
-		gasUsed += SloadGasCost
-		validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
-
 		// Calculate validator's commission
 		commissionRewardFull := new(big.Int).Mul(rawReward, validatorCommission)
-		commissionRewardFull = new(big.Int).Div(commissionRewardFull, unit)
-
-		// Get validator's self-stake
-		selfStakeSlot, slotGasUsed := getStakeSlot(validatorAuthAddr, validatorID)
-		gasUsed += slotGasUsed
-
-		selfStake := epochCache.GetState(ContractAddress, common.BigToHash(selfStakeSlot))
-		gasUsed += SloadGasCost
-		selfStakeBigInt := new(big.Int).SetBytes(selfStake.Bytes())
+		commissionRewardFull = new(big.Int).Div(commissionRewardFull, decimalUnit)
 
 		// Process commission reward if self-stake is not zero
-		if selfStakeBigInt.Cmp(big.NewInt(0)) != 0 {
-			// Get locked stake
-			lockedStakeSlot, slotGasUsed := getLockedStakeSlot(validatorAuthAddr, validatorID)
-			gasUsed += slotGasUsed
-
-			lockedStake := epochCache.GetState(ContractAddress, common.BigToHash(lockedStakeSlot))
-			gasUsed += SloadGasCost
-			lockedStakeBigInt := new(big.Int).SetBytes(lockedStake.Bytes())
-
+		if validatorData.selfStake.Cmp(big.NewInt(0)) != 0 {
 			// Calculate locked and unlocked commission rewards
-			lCommissionRewardFull := new(big.Int).Mul(commissionRewardFull, lockedStakeBigInt)
-			lCommissionRewardFull = new(big.Int).Div(lCommissionRewardFull, selfStakeBigInt)
-
-			// Unused in current implementation, but kept for future use
-			_ = new(big.Int).Sub(commissionRewardFull, lCommissionRewardFull)
-
-			// Get lockup duration
-			lockupDurationSlot, slotGasUsed := getLockupDurationSlot(validatorAuthAddr, validatorID)
-			gasUsed += slotGasUsed
-
-			lockupDuration := epochCache.GetState(ContractAddress, common.BigToHash(lockupDurationSlot))
-			gasUsed += SloadGasCost
-			lockupDurationBigInt := new(big.Int).SetBytes(lockupDuration.Bytes())
+			lCommissionRewardFull := new(big.Int).Mul(commissionRewardFull, validatorData.lockedStake)
+			lCommissionRewardFull = new(big.Int).Div(lCommissionRewardFull, validatorData.selfStake)
 
 			// Scale lockup rewards
-			reward, scaleGasUsed, err := _scaleLockupReward(evm, lCommissionRewardFull, lockupDurationBigInt)
+			reward, scaleGasUsed, err := _scaleLockupReward(evm, lCommissionRewardFull, validatorData.lockupDuration)
 			gasUsed += scaleGasUsed
 			if err != nil {
 				return gasUsed, err
@@ -579,27 +591,22 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 			}
 
 			// Get current rewards stash
-			// The Rewards struct has three fields stored at consecutive slots
-			rewardsStashSlot, slotGasUsed := getRewardsStashSlot(validatorAuthAddr, validatorID)
+			rewardsStashSlot, slotGasUsed := getRewardsStashSlot(validatorData.authAddress, validatorID)
 			gasUsed += slotGasUsed
 
-			// Get lockupExtraReward (first field)
-			lockupExtraReward := epochCache.GetState(ContractAddress, common.BigToHash(rewardsStashSlot))
+			// Get rewards stash values
+			rewardsStash := epochCache.GetState(ContractAddress, common.BigToHash(rewardsStashSlot))
 			gasUsed += SloadGasCost
-
-			// Get lockupBaseReward (second field)
 			lockupBaseRewardSlot := new(big.Int).Add(rewardsStashSlot, big.NewInt(1))
 			lockupBaseReward := epochCache.GetState(ContractAddress, common.BigToHash(lockupBaseRewardSlot))
 			gasUsed += SloadGasCost
-
-			// Get unlockedReward (third field)
 			unlockedRewardSlot := new(big.Int).Add(rewardsStashSlot, big.NewInt(2))
 			unlockedReward := epochCache.GetState(ContractAddress, common.BigToHash(unlockedRewardSlot))
 			gasUsed += SloadGasCost
 
 			// Convert the rewards stash to a Rewards struct
 			currentRewardsStash := Rewards{
-				LockupExtraReward: new(big.Int).SetBytes(lockupExtraReward.Bytes()),
+				LockupExtraReward: new(big.Int).SetBytes(rewardsStash.Bytes()),
 				LockupBaseReward:  new(big.Int).SetBytes(lockupBaseReward.Bytes()),
 				UnlockedReward:    new(big.Int).SetBytes(unlockedReward.Bytes()),
 			}
@@ -607,38 +614,35 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 			// Use sumRewards to add the rewards
 			newRewardsStash := sumRewards(currentRewardsStash, reward, uReward)
 
-			// Store each field of the Rewards struct separately
-			epochCache.SetState(ContractAddress, common.BigToHash(rewardsStashSlot), common.BigToHash(newRewardsStash.LockupExtraReward))
-			gasUsed += SstoreGasCost
+			// Batch update rewards stash
+			rewardsUpdates := []struct {
+				slot  common.Hash
+				value common.Hash
+			}{
+				{common.BigToHash(rewardsStashSlot), common.BigToHash(newRewardsStash.LockupExtraReward)},
+				{common.BigToHash(lockupBaseRewardSlot), common.BigToHash(newRewardsStash.LockupBaseReward)},
+				{common.BigToHash(unlockedRewardSlot), common.BigToHash(newRewardsStash.UnlockedReward)},
+			}
+			epochCache.BatchSetState(ContractAddress, rewardsUpdates)
+			gasUsed += SstoreGasCost * 3
 
-			epochCache.SetState(ContractAddress, common.BigToHash(lockupBaseRewardSlot), common.BigToHash(newRewardsStash.LockupBaseReward))
-			gasUsed += SstoreGasCost
-
-			epochCache.SetState(ContractAddress, common.BigToHash(unlockedRewardSlot), common.BigToHash(newRewardsStash.UnlockedReward))
-			gasUsed += SstoreGasCost
-
-			// Update stashed lockup rewards
-			// The Rewards struct has three fields stored at consecutive slots
-			stashedLockupRewardsSlot, slotGasUsed := getStashedLockupRewardsSlot(validatorAuthAddr, validatorID)
+			// Get stashed lockup rewards
+			stashedLockupRewardsSlot, slotGasUsed := getStashedLockupRewardsSlot(validatorData.authAddress, validatorID)
 			gasUsed += slotGasUsed
 
-			// Get lockupExtraReward (first field)
-			stashedLockupExtraReward := epochCache.GetState(ContractAddress, common.BigToHash(stashedLockupRewardsSlot))
+			// Get stashed lockup rewards values
+			stashedLockupRewards := epochCache.GetState(ContractAddress, common.BigToHash(stashedLockupRewardsSlot))
 			gasUsed += SloadGasCost
-
-			// Get lockupBaseReward (second field)
 			stashedLockupBaseRewardSlot := new(big.Int).Add(stashedLockupRewardsSlot, big.NewInt(1))
 			stashedLockupBaseReward := epochCache.GetState(ContractAddress, common.BigToHash(stashedLockupBaseRewardSlot))
 			gasUsed += SloadGasCost
-
-			// Get unlockedReward (third field)
 			stashedUnlockedRewardSlot := new(big.Int).Add(stashedLockupRewardsSlot, big.NewInt(2))
 			stashedUnlockedReward := epochCache.GetState(ContractAddress, common.BigToHash(stashedUnlockedRewardSlot))
 			gasUsed += SloadGasCost
 
 			// Convert the stashed lockup rewards to a Rewards struct
 			currentStashedLockupRewards := Rewards{
-				LockupExtraReward: new(big.Int).SetBytes(stashedLockupExtraReward.Bytes()),
+				LockupExtraReward: new(big.Int).SetBytes(stashedLockupRewards.Bytes()),
 				LockupBaseReward:  new(big.Int).SetBytes(stashedLockupBaseReward.Bytes()),
 				UnlockedReward:    new(big.Int).SetBytes(stashedUnlockedReward.Bytes()),
 			}
@@ -646,60 +650,38 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 			// Use sumRewards to add the rewards
 			newStashedLockupRewards := sumRewards(currentStashedLockupRewards, reward, uReward)
 
-			// Store each field of the Rewards struct separately
-			epochCache.SetState(ContractAddress, common.BigToHash(stashedLockupRewardsSlot), common.BigToHash(newStashedLockupRewards.LockupExtraReward))
-			gasUsed += SstoreGasCost
-
-			epochCache.SetState(ContractAddress, common.BigToHash(stashedLockupBaseRewardSlot), common.BigToHash(newStashedLockupRewards.LockupBaseReward))
-			gasUsed += SstoreGasCost
-
-			epochCache.SetState(ContractAddress, common.BigToHash(stashedUnlockedRewardSlot), common.BigToHash(newStashedLockupRewards.UnlockedReward))
-			gasUsed += SstoreGasCost
+			// Batch update stashed lockup rewards
+			stashedRewardsUpdates := []struct {
+				slot  common.Hash
+				value common.Hash
+			}{
+				{common.BigToHash(stashedLockupRewardsSlot), common.BigToHash(newStashedLockupRewards.LockupExtraReward)},
+				{common.BigToHash(stashedLockupBaseRewardSlot), common.BigToHash(newStashedLockupRewards.LockupBaseReward)},
+				{common.BigToHash(stashedUnlockedRewardSlot), common.BigToHash(newStashedLockupRewards.UnlockedReward)},
+			}
+			epochCache.BatchSetState(ContractAddress, stashedRewardsUpdates)
+			gasUsed += SstoreGasCost * 3
 		}
 
 		// Calculate delegators' reward
 		delegatorsReward := new(big.Int).Sub(rawReward, commissionRewardFull)
 
-		// Get validator's received stake
-		receivedStakeSlot, slotGasUsed := getValidatorReceivedStakeSlot(validatorID)
-		gasUsed += slotGasUsed
-
-		receivedStake := epochCache.GetState(ContractAddress, common.BigToHash(receivedStakeSlot))
-		gasUsed += SloadGasCost
-		receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
-
-		// Calculate reward per token
+		// Calculate reward per token using cached received stake
 		rewardPerToken := big.NewInt(0)
-		if receivedStakeBigInt.Cmp(big.NewInt(0)) != 0 {
-			rewardPerToken = new(big.Int).Mul(delegatorsReward, unit)
-			rewardPerToken = new(big.Int).Div(rewardPerToken, receivedStakeBigInt)
+		if validatorData.receivedStake.Cmp(big.NewInt(0)) != 0 {
+			rewardPerToken = new(big.Int).Mul(delegatorsReward, decimalUnit)
+			rewardPerToken = new(big.Int).Div(rewardPerToken, validatorData.receivedStake)
 		}
 
 		// Update accumulated reward per token
-		// For a mapping within a struct, we need to calculate the slot as:
-		// keccak256(key . (struct_slot + offset))
-		// Add the offset for the accumulatedRewardPerToken mapping within the struct
 		mappingSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(accumulatedRewardPerTokenOffset))
-
-		// Then, calculate the slot for the specific key using our helper function
-		// Use CreateValidatorMappingHashInput to create the hash input
-		// Declare outerHashInput at the beginning of the function
 		outerHashInput := CreateValidatorMappingHashInput(validatorID, mappingSlot)
-		// Use cached hash calculation
 		accumulatedRewardPerTokenSlotHash := CachedKeccak256Hash(outerHashInput)
 		accumulatedRewardPerTokenSlot := new(big.Int).SetBytes(accumulatedRewardPerTokenSlotHash.Bytes())
 		gasUsed += HashGasCost
 
-		// For the previous epoch
-		// For a mapping within a struct, we need to calculate the slot as:
-		// keccak256(key . (struct_slot + offset))
-		// Add the offset for the accumulatedRewardPerToken mapping within the struct
 		prevMappingSlot := new(big.Int).Add(prevEpochSnapshotSlot, big.NewInt(accumulatedRewardPerTokenOffset))
-
-		// Then, calculate the slot for the specific key using our helper function
-		// Use CreateValidatorMappingHashInput to create the hash input
 		outerHashInput = CreateValidatorMappingHashInput(validatorID, prevMappingSlot)
-		// Use cached hash calculation
 		prevAccumulatedRewardPerTokenSlotHash := CachedKeccak256Hash(outerHashInput)
 		prevAccumulatedRewardPerTokenSlot := new(big.Int).SetBytes(prevAccumulatedRewardPerTokenSlotHash.Bytes())
 		gasUsed += HashGasCost
@@ -712,59 +694,25 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		epochCache.SetState(ContractAddress, common.BigToHash(accumulatedRewardPerTokenSlot), common.BigToHash(newAccumulatedRewardPerToken))
 		gasUsed += SstoreGasCost
 
-		// Update accumulated originated txs fee (snapshot.accumulatedOriginatedTxsFee[validatorID] = accumulatedOriginatedTxsFee[i])
-		// Use our helper function to create the hash input from offset and slot
-		innerHash = CreateAndHashOffsetSlot(accumulatedOriginatedTxsFeeOffset, currentEpochSnapshotSlot)
-		gasUsed += HashGasCost
-
-		// Use our helper function to create a nested hash input
-		outerHashInput = CreateNestedHashInput(validatorID, innerHash)
-		// Use cached hash calculation
-		outerHash = CachedKeccak256(outerHashInput)
-		gasUsed += HashGasCost
-
-		// Update accumulated originated txs fee (snapshot.accumulatedOriginatedTxsFee[validatorID] = accumulatedOriginatedTxsFee[i])
-		// For a mapping within a struct, we need to calculate the slot as:
-		// keccak256(key . (struct_slot + offset))
-		// Add the offset for the accumulatedOriginatedTxsFee mapping within the struct
+		// Update accumulated originated txs fee
 		originatedTxsFeeSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(accumulatedOriginatedTxsFeeOffset))
-
-		// Then, calculate the slot for the specific key using our helper function
-		// Use CreateValidatorMappingHashInput to create the hash input
 		outerHashInput = CreateValidatorMappingHashInput(validatorID, originatedTxsFeeSlot)
-		// Use cached hash calculation
 		accumulatedOriginatedTxsFeeSlotHash := CachedKeccak256Hash(outerHashInput)
 		accumulatedOriginatedTxsFeeSlot := new(big.Int).SetBytes(accumulatedOriginatedTxsFeeSlotHash.Bytes())
 		gasUsed += HashGasCost
 
-		// Set the value in the state
 		epochCache.SetState(ContractAddress, common.BigToHash(accumulatedOriginatedTxsFeeSlot), common.BigToHash(accumulatedOriginatedTxsFee[i]))
 		gasUsed += SstoreGasCost
 
 		// Update accumulated uptime
-		// For a mapping within a struct, we need to calculate the slot as:
-		// keccak256(key . (struct_slot + offset))
-		// Add the offset for the accumulatedUptime mapping within the struct
 		uptimeMappingSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(accumulatedUptimeOffset))
-
-		// Then, calculate the slot for the specific key using our helper function
-		// Use CreateValidatorMappingHashInput to create the hash input
 		outerHashInput = CreateValidatorMappingHashInput(validatorID, uptimeMappingSlot)
-		// Use cached hash calculation
 		accumulatedUptimeSlotHash := CachedKeccak256Hash(outerHashInput)
 		accumulatedUptimeSlot := new(big.Int).SetBytes(accumulatedUptimeSlotHash.Bytes())
 		gasUsed += HashGasCost
 
-		// For the previous epoch
-		// For a mapping within a struct, we need to calculate the slot as:
-		// keccak256(key . (struct_slot + offset))
-		// Add the offset for the accumulatedUptime mapping within the struct
 		prevUptimeMappingSlot := new(big.Int).Add(prevEpochSnapshotSlot, big.NewInt(accumulatedUptimeOffset))
-
-		// Then, calculate the slot for the specific key using our helper function
-		// Use CreateValidatorMappingHashInput to create the hash input
 		outerHashInput = CreateValidatorMappingHashInput(validatorID, prevUptimeMappingSlot)
-		// Use cached hash calculation
 		prevAccumulatedUptimeSlotHash := CachedKeccak256Hash(outerHashInput)
 		prevAccumulatedUptimeSlot := new(big.Int).SetBytes(prevAccumulatedUptimeSlotHash.Bytes())
 		gasUsed += HashGasCost
@@ -777,22 +725,13 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		epochCache.SetState(ContractAddress, common.BigToHash(accumulatedUptimeSlot), common.BigToHash(newAccumulatedUptime))
 		gasUsed += SstoreGasCost
 	}
-	// Update epoch fee
+
+	// Calculate slots for epoch summary data
 	epochFeeSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(epochFeeOffset))
-	epochCache.SetState(ContractAddress, common.BigToHash(epochFeeSlot), common.BigToHash(epochFee))
-	gasUsed += SstoreGasCost
-
-	// Update total base reward weight
 	totalBaseRewardSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(totalBaseRewardOffset))
-	epochCache.SetState(ContractAddress, common.BigToHash(totalBaseRewardSlot), common.BigToHash(totalBaseRewardWeight))
-	gasUsed += SstoreGasCost
-
-	// Update total tx reward weight
 	totalTxRewardSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(totalTxRewardOffset))
-	epochCache.SetState(ContractAddress, common.BigToHash(totalTxRewardSlot), common.BigToHash(totalTxRewardWeight))
-	gasUsed += SstoreGasCost
 
-	// Update total supply
+	// Get total supply
 	totalSupply := epochCache.GetState(ContractAddress, common.BigToHash(big.NewInt(totalSupplySlot)))
 	gasUsed += SloadGasCost
 	totalSupplyBigInt := new(big.Int).SetBytes(totalSupply.Bytes())
@@ -804,11 +743,20 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		totalSupplyBigInt = big.NewInt(0)
 	}
 
-	// Update total supply
-	epochCache.SetState(ContractAddress, common.BigToHash(big.NewInt(totalSupplySlot)), common.BigToHash(totalSupplyBigInt))
-	gasUsed += SstoreGasCost
+	// Batch update epoch summary data
+	epochSummaryUpdates := []struct {
+		slot  common.Hash
+		value common.Hash
+	}{
+		{common.BigToHash(epochFeeSlot), common.BigToHash(epochFee)},
+		{common.BigToHash(totalBaseRewardSlot), common.BigToHash(totalBaseRewardWeight)},
+		{common.BigToHash(totalTxRewardSlot), common.BigToHash(totalTxRewardWeight)},
+		{common.BigToHash(big.NewInt(totalSupplySlot)), common.BigToHash(totalSupplyBigInt)},
+	}
+	epochCache.BatchSetState(ContractAddress, epochSummaryUpdates)
+	gasUsed += SstoreGasCost * 4
 
-	// Transfer 10% of fees to treasury if treasury address is set
+	// Transfer fees to treasury if address is set
 	treasuryAddress := epochCache.GetState(ContractAddress, common.BigToHash(big.NewInt(treasuryAddressSlot)))
 	gasUsed += SloadGasCost
 	treasuryAddressBytes := treasuryAddress.Bytes()
@@ -819,10 +767,9 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 	if treasuryAddr.Cmp(emptyAddr) != 0 {
 		// Calculate fee share
 		feeShare := new(big.Int).Mul(epochFee, treasuryFeeShare)
-		feeShare = new(big.Int).Div(feeShare, unit)
+		feeShare = new(big.Int).Div(feeShare, decimalUnit)
 
 		// First mint native token to the contract itself
-		// This matches the Solidity code: _mintNativeToken(feeShare);
 		mintGasUsed, err := _mintNativeToken(evm, ContractAddress, feeShare)
 		gasUsed += mintGasUsed
 		if err != nil {
@@ -830,7 +777,6 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		}
 
 		// Then make a call to transfer the tokens to the treasury address
-		// This simulates the Solidity code: treasuryAddress.CallSFC.value(feeShare)("");
 		callData := []byte{} // Empty call data
 		_, _, err = evm.CallSFC(
 			vm.AccountRef(ContractAddress), // Caller
@@ -849,7 +795,11 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 }
 
 // _sealEpoch_minGasPrice is an internal function to update the minimum gas price
-func _sealEpoch_minGasPrice(evm *vm.EVM, epochDuration *big.Int, epochGas *big.Int) (uint64, error) {
+func _sealEpoch_minGasPrice(
+	evm *vm.EVM,
+	epochDuration *big.Int,
+	epochGas *big.Int,
+) (uint64, error) {
 	// Initialize gas used
 	var gasUsed uint64 = 0
 

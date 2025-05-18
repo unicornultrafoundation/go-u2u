@@ -137,6 +137,11 @@ func (s *Service) switchEpochTo(newEpoch idx.Epoch) {
 		em.OnNewEpoch(s.store.GetValidators(), newEpoch)
 	}
 	s.feed.newEpoch.Send(newEpoch)
+
+	// Initialize epoch cache for the new epoch
+	if s.store.EvmStore().EpochCache != nil {
+		s.store.EvmStore().EpochCache.Initialize(big.NewInt(int64(newEpoch)))
+	}
 }
 
 func (s *Service) SwitchEpochTo(newEpoch idx.Epoch) error {
@@ -150,7 +155,7 @@ func (s *Service) SwitchEpochTo(newEpoch idx.Epoch) error {
 	if newEpoch == s.store.GetEpoch() {
 		return errSameEpoch
 	}
-	s.store.evm.RebuildEvmSnapshot(common.Hash(bs.FinalizedStateRoot), common.Hash(bs.SfcStateRoot))
+	s.store.EvmStore().RebuildEvmSnapshot(common.Hash(bs.FinalizedStateRoot), common.Hash(bs.SfcStateRoot))
 	err := s.engine.Reset(newEpoch, es.Validators)
 	if err != nil {
 		return err
@@ -165,15 +170,15 @@ func (s *Service) PauseEvmSnapshot() {
 	s.engineMu.Lock()
 	defer s.engineMu.Unlock()
 	s.blockProcWg.Wait()
-	if !s.store.evm.IsEvmSnapshotPaused() {
-		s.store.evm.PauseEvmSnapshot()
+	if !s.store.EvmStore().IsEvmSnapshotPaused() {
+		s.store.EvmStore().PauseEvmSnapshot()
 	}
 }
 
 func (s *Service) EvmSnapshotGeneration() bool {
-	gen, _ := s.store.evm.Snaps.Generating()
-	if s.store.evm.SfcSnaps != nil {
-		sfcGen, _ := s.store.evm.SfcSnaps.Generating()
+	gen, _ := s.store.EvmStore().Snaps.Generating()
+	if s.store.EvmStore().SfcSnaps != nil {
+		sfcGen, _ := s.store.EvmStore().SfcSnaps.Generating()
 		gen = gen && sfcGen
 	}
 	return gen
@@ -219,13 +224,13 @@ func (s *Service) processEvent(e *native.EventPayload) error {
 	if err := s.verWatcher.Pause(); err != nil {
 		return err
 	}
-	if gen, err := s.store.evm.Snaps.Generating(); gen || err != nil {
+	if gen, err := s.store.EvmStore().Snaps.Generating(); gen || err != nil {
 		// never allow fullsync while EVM snap is still generating, as it may lead to a race condition
 		s.Log.Warn("EVM snapshot is not ready during event processing", "gen", gen, "err", err)
 		return errDirtyEvmSnap
 	}
-	if s.store.cfg.EVM.SfcEnabled {
-		if gen, err := s.store.evm.SfcSnaps.Generating(); gen || err != nil {
+	if s.store.EvmStore().SfcSnaps != nil {
+		if gen, err := s.store.EvmStore().SfcSnaps.Generating(); gen || err != nil {
 			// never allow fullsync while SFC snap is still generating, as it may lead to a race condition
 			s.Log.Warn("SFC snapshot is not ready during event processing", "gen", gen, "err", err)
 			return errDirtyEvmSnap
@@ -316,7 +321,7 @@ func (s *Service) commit(epochSealing bool) {
 	s.blockProcWg.Wait()
 	// if gcmode is full and snapsync is finalized, clean all the old state trie
 	// and commit the state trie at the current block
-	if !s.store.cfg.EVM.Cache.TrieDirtyDisabled && s.handler.syncStatus.AcceptEvents() {
+	if s.handler.syncStatus.AcceptEvents() {
 		s.store.cleanCommitEVM()
 	}
 	_ = s.store.Commit()

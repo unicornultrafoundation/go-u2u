@@ -81,15 +81,45 @@ func handleTotalStake(evm *vm.EVM) ([]byte, uint64, error) {
 }
 
 func handleTotalActiveStake(evm *vm.EVM) ([]byte, uint64, error) {
-	val := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalActiveStakeSlot)))
-	result, err := SfcAbi.Methods["totalActiveStake"].Outputs.Pack(val.Big())
-	return result, 0, err
+	var gasUsed uint64 = 0
+
+	// Get the total active stake slot using a cached constant
+	totalActiveStakeSlotHash := common.BigToHash(big.NewInt(totalActiveStakeSlot))
+
+	// Get the total active stake
+	val := evm.SfcStateDB.GetState(ContractAddress, totalActiveStakeSlotHash)
+	gasUsed += SloadGasCost
+
+	// Use the big.Int pool
+	totalActiveStakeBigInt := GetBigInt().SetBytes(val.Bytes())
+
+	result, err := SfcAbi.Methods["totalActiveStake"].Outputs.Pack(totalActiveStakeBigInt)
+
+	// Return the big.Int to the pool
+	PutBigInt(totalActiveStakeBigInt)
+
+	return result, gasUsed, err
 }
 
 func handleTotalSlashedStake(evm *vm.EVM) ([]byte, uint64, error) {
-	val := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalSlashedStakeSlot)))
-	result, err := SfcAbi.Methods["totalSlashedStake"].Outputs.Pack(val.Big())
-	return result, 0, err
+	var gasUsed uint64 = 0
+
+	// Get the total slashed stake slot using a cached constant
+	totalSlashedStakeSlotHash := common.BigToHash(big.NewInt(totalSlashedStakeSlot))
+
+	// Get the total slashed stake
+	val := evm.SfcStateDB.GetState(ContractAddress, totalSlashedStakeSlotHash)
+	gasUsed += SloadGasCost
+
+	// Use the big.Int pool
+	totalSlashedStakeBigInt := GetBigInt().SetBytes(val.Bytes())
+
+	result, err := SfcAbi.Methods["totalSlashedStake"].Outputs.Pack(totalSlashedStakeBigInt)
+
+	// Return the big.Int to the pool
+	PutBigInt(totalSlashedStakeBigInt)
+
+	return result, gasUsed, err
 }
 
 func handleTotalSupply(evm *vm.EVM) ([]byte, uint64, error) {
@@ -216,20 +246,18 @@ func handleGetWithdrawalRequest(evm *vm.EVM, args []interface{}) ([]byte, uint64
 	slotBigInt, slotGasUsed := getWithdrawalRequestSlot(addr, validatorID, wrID)
 	gasUsed += slotGasUsed
 
-	// Get the withdrawal request fields
-	epoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slotBigInt))
-	gasUsed += SloadGasCost
+	// Prepare slots for batch read
+	slots := make([]common.Hash, 3)
+	slots[0] = common.BigToHash(slotBigInt)
 
-	// Use the big.Int pool for offset calculations
+	// Calculate additional slots
 	offset1 := GetBigInt().SetInt64(1)
 	slot1 := GetBigInt().Add(slotBigInt, offset1)
-	time := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slot1))
-	gasUsed += SloadGasCost
+	slots[1] = common.BigToHash(slot1)
 
 	offset2 := GetBigInt().SetInt64(2)
 	slot2 := GetBigInt().Add(slotBigInt, offset2)
-	amount := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slot2))
-	gasUsed += SloadGasCost
+	slots[2] = common.BigToHash(slot2)
 
 	// Return temporary big.Ints to the pool
 	PutBigInt(offset1)
@@ -237,11 +265,15 @@ func handleGetWithdrawalRequest(evm *vm.EVM, args []interface{}) ([]byte, uint64
 	PutBigInt(slot1)
 	PutBigInt(slot2)
 
+	// Use BatchGetState to read all values at once
+	values, batchGasUsed := evm.EpochCache.(*EpochStateCache).BatchGetState(ContractAddress, slots)
+	gasUsed += batchGasUsed
+
 	// Don't use cache for ABI packing with parameters
 	result, err := SfcAbi.Methods["getWithdrawalRequest"].Outputs.Pack(
-		epoch.Big(),
-		time.Big(),
-		amount.Big(),
+		values[0].Big(),
+		values[1].Big(),
+		values[2].Big(),
 	)
 	return result, gasUsed, err
 }
@@ -279,25 +311,22 @@ func handleGetLockupInfo(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 	slotBigInt, slotGasUsed := getLockedStakeSlot(addr, validatorID)
 	gasUsed += slotGasUsed
 
-	// Get the lockup info fields
-	lockedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slotBigInt))
-	gasUsed += SloadGasCost
+	// Prepare slots for batch read
+	slots := make([]common.Hash, 4)
+	slots[0] = common.BigToHash(slotBigInt)
 
-	// Use the big.Int pool for offset calculations
+	// Calculate additional slots
 	offset1 := GetBigInt().SetInt64(1)
 	slot1 := GetBigInt().Add(slotBigInt, offset1)
-	fromEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slot1))
-	gasUsed += SloadGasCost
+	slots[1] = common.BigToHash(slot1)
 
 	offset2 := GetBigInt().SetInt64(2)
 	slot2 := GetBigInt().Add(slotBigInt, offset2)
-	endTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slot2))
-	gasUsed += SloadGasCost
+	slots[2] = common.BigToHash(slot2)
 
 	offset3 := GetBigInt().SetInt64(3)
 	slot3 := GetBigInt().Add(slotBigInt, offset3)
-	duration := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slot3))
-	gasUsed += SloadGasCost
+	slots[3] = common.BigToHash(slot3)
 
 	// Return temporary big.Ints to the pool
 	PutBigInt(offset1)
@@ -307,12 +336,16 @@ func handleGetLockupInfo(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 	PutBigInt(slot2)
 	PutBigInt(slot3)
 
+	// Use BatchGetState to read all values at once
+	values, batchGasUsed := evm.EpochCache.(*EpochStateCache).BatchGetState(ContractAddress, slots)
+	gasUsed += batchGasUsed
+
 	// Don't use cache for ABI packing with parameters
 	result, err := SfcAbi.Methods["getLockupInfo"].Outputs.Pack(
-		lockedStake.Big(),
-		fromEpoch.Big(),
-		endTime.Big(),
-		duration.Big(),
+		values[0].Big(),
+		values[1].Big(),
+		values[2].Big(),
+		values[3].Big(),
 	)
 	return result, gasUsed, err
 }
@@ -329,20 +362,18 @@ func handleGetStashedLockupRewards(evm *vm.EVM, args []interface{}) ([]byte, uin
 	slotBigInt, slotGasUsed := getStashedLockupRewardsSlot(addr, validatorID)
 	gasUsed += slotGasUsed
 
-	// Get the stashed lockup rewards
-	lockupBaseReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slotBigInt))
-	gasUsed += SloadGasCost
+	// Prepare slots for batch read
+	slots := make([]common.Hash, 3)
+	slots[0] = common.BigToHash(slotBigInt)
 
-	// Use the big.Int pool for offset calculations
+	// Calculate additional slots
 	offset1 := GetBigInt().SetInt64(1)
 	slot1 := GetBigInt().Add(slotBigInt, offset1)
-	lockupExtraReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slot1))
-	gasUsed += SloadGasCost
+	slots[1] = common.BigToHash(slot1)
 
 	offset2 := GetBigInt().SetInt64(2)
 	slot2 := GetBigInt().Add(slotBigInt, offset2)
-	unlockedReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slot2))
-	gasUsed += SloadGasCost
+	slots[2] = common.BigToHash(slot2)
 
 	// Return temporary big.Ints to the pool
 	PutBigInt(offset1)
@@ -350,11 +381,15 @@ func handleGetStashedLockupRewards(evm *vm.EVM, args []interface{}) ([]byte, uin
 	PutBigInt(slot1)
 	PutBigInt(slot2)
 
+	// Use BatchGetState to read all values at once
+	values, batchGasUsed := evm.EpochCache.(*EpochStateCache).BatchGetState(ContractAddress, slots)
+	gasUsed += batchGasUsed
+
 	// Don't use cache for ABI packing with parameters
 	result, err := SfcAbi.Methods["getStashedLockupRewards"].Outputs.Pack(
-		lockupBaseReward.Big(),
-		lockupExtraReward.Big(),
-		unlockedReward.Big(),
+		values[0].Big(),
+		values[1].Big(),
+		values[2].Big(),
 	)
 	return result, gasUsed, err
 }

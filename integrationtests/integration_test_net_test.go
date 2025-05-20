@@ -81,12 +81,12 @@ func TestIntegrationTestNet_CanEndowAccountsWithTokens(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get balance for account: %v", err)
 	}
+	increment := big.NewInt(1000)
 	for i := 0; i < 10; i++ {
-		increment := int64(1000)
 		if err := net.EndowAccount(address, increment); err != nil {
 			t.Fatalf("Failed to endow account 1: %v", err)
 		}
-		want := balance.Add(balance, big.NewInt(int64(increment)))
+		want := balance.Add(balance, increment)
 		balance, err = client.BalanceAt(context.Background(), address, nil)
 		if err != nil {
 			t.Fatalf("Failed to get balance for account: %v", err)

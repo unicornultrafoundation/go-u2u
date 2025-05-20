@@ -120,3 +120,22 @@ func TestGasRulesLLRCompatibilityRLP(t *testing.T) {
 
 	require.Equal(b2, b1)
 }
+
+func TestRulesCancunRLP(t *testing.T) {
+	rules := MainNetRules()
+	rules.Upgrades.Cancun = true
+	rules.Upgrades.London = true
+	rules.Upgrades.Berlin = true
+	require := require.New(t)
+
+	b, err := rlp.EncodeToBytes(rules)
+	require.NoError(err)
+
+	decodedRules := Rules{}
+	require.NoError(rlp.DecodeBytes(b, &decodedRules))
+
+	require.Equal(rules.String(), decodedRules.String())
+	require.True(decodedRules.Upgrades.Berlin)
+	require.True(decodedRules.Upgrades.London)
+	require.True(decodedRules.Upgrades.Cancun)
+}

@@ -27,6 +27,7 @@ var (
 	errNonExistingEpoch = errors.New("epoch doesn't exist")
 	errSameEpoch        = errors.New("epoch hasn't changed")
 	errDirtyEvmSnap     = errors.New("EVM snapshot is dirty")
+	errDirtySfcSnap     = errors.New("SFC snapshot is dirty")
 )
 
 func (s *Service) buildEvent(e *native.MutableEventPayload, onIndexed func()) error {
@@ -228,7 +229,7 @@ func (s *Service) processEvent(e *native.EventPayload) error {
 		if gen, err := s.store.evm.SfcSnaps.Generating(); gen || err != nil {
 			// never allow fullsync while SFC snap is still generating, as it may lead to a race condition
 			s.Log.Warn("SFC snapshot is not ready during event processing", "gen", gen, "err", err)
-			return errDirtyEvmSnap
+			return errDirtySfcSnap
 		}
 	}
 	atomic.StoreUint32(&s.eventBusyFlag, 1)

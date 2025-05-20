@@ -14,6 +14,9 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	// Initialize gas used
 	var gasUsed uint64 = 0
 
+	// Cache for Sload results
+	storageCache := make(map[common.Hash]common.Hash)
+
 	// Check if caller is the NodeDriverAuth contract (onlyDriver modifier)
 	revertData, checkGasUsed, err := checkOnlyDriver(evm, caller, "sealEpoch")
 	gasUsed += checkGasUsed
@@ -46,7 +49,7 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 		return nil, gasUsed, vm.ErrExecutionReverted
 	}
 
-	// Get the current epoch (corresponds to snapshot in Solidity)
+	// Get the current epoch
 	currentEpochBigInt, epochGasUsed, err := getCurrentEpoch(evm)
 	gasUsed += epochGasUsed
 	if err != nil {
@@ -54,43 +57,51 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	}
 
 	// Get the epoch snapshot slot for the current epoch
-	// This is equivalent to "snapshot" in the Solidity code
 	currentEpochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(currentEpochBigInt)
 	gasUsed += slotGasUsed
 
-	// Get the validator IDs for the current epoch
-	// For a dynamic array in a struct, we first get the length from the slot
+	// Get validator IDs slot
 	validatorIDsOffsetBig := GetBigInt().SetInt64(validatorIDsOffset)
 	validatorIDsSlot := GetBigInt().Add(currentEpochSnapshotSlot, validatorIDsOffsetBig)
+	defer PutBigInt(validatorIDsOffsetBig)
 	defer PutBigInt(validatorIDsSlot)
-	validatorIDsLengthHash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorIDsSlot))
-	gasUsed += SloadGasCost
-	PutBigInt(validatorIDsOffsetBig)
+
+	// Read validator IDs length from storage or cache
+	validatorIDsSlotHash := common.BigToHash(validatorIDsSlot)
+	var validatorIDsLengthHash common.Hash
+	if val, exists := storageCache[validatorIDsSlotHash]; exists {
+		validatorIDsLengthHash = val
+	} else {
+		validatorIDsLengthHash = evm.SfcStateDB.GetState(ContractAddress, validatorIDsSlotHash)
+		storageCache[validatorIDsSlotHash] = validatorIDsLengthHash
+		gasUsed += SloadGasCost
+	}
 
 	// Convert the length hash to a big.Int
 	validatorIDsLengthBig := GetBigInt().SetBytes(validatorIDsLengthHash.Bytes())
 	validatorIDsLength := validatorIDsLengthBig.Uint64()
 	defer PutBigInt(validatorIDsLengthBig)
 
-	// Calculate the base slot for the array elements
-	// The array elements start at keccak256(slot)
-	validatorIDsBaseSlotBytes := CachedKeccak256Hash(common.BigToHash(validatorIDsSlot).Bytes()).Bytes()
+	// Calculate the base slot for validator IDs array
+	validatorIDsBaseSlotBytes := CachedKeccak256Hash(validatorIDsSlotHash.Bytes()).Bytes()
 	gasUsed += HashGasCost
 	validatorIDsBaseSlot := GetBigInt().SetBytes(validatorIDsBaseSlotBytes)
 	defer PutBigInt(validatorIDsBaseSlot)
 
-	// Read each validator ID from storage
+	// Read validator IDs with caching
 	validatorIDs := make([]*big.Int, 0, validatorIDsLength)
 	for i := uint64(0); i < validatorIDsLength; i++ {
-		// Calculate the slot for this array element: baseSlot + i
 		elementSlot := GetBigInt().Add(validatorIDsBaseSlot, big.NewInt(int64(i)))
-
-		// Get the validator ID from storage
-		validatorIDHash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(elementSlot))
-		gasUsed += SloadGasCost
+		elementSlotHash := common.BigToHash(elementSlot)
+		var validatorIDHash common.Hash
+		if val, exists := storageCache[elementSlotHash]; exists {
+			validatorIDHash = val
+		} else {
+			validatorIDHash = evm.SfcStateDB.GetState(ContractAddress, elementSlotHash)
+			storageCache[elementSlotHash] = validatorIDHash
+			gasUsed += SloadGasCost
+		}
 		PutBigInt(elementSlot)
-
-		// Convert the hash to a big.Int and add it to the list
 		validatorID := new(big.Int).SetBytes(validatorIDHash.Bytes())
 		validatorIDs = append(validatorIDs, validatorID)
 	}
@@ -101,11 +112,20 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	if err != nil {
 		return nil, gasUsed, err
 	}
-
 	// Get the previous epoch (corresponds to prevSnapshot in Solidity)
 	// In Solidity, this is "currentSealedEpoch"
-	currentSealedEpochHash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(currentSealedEpochSlot)))
-	gasUsed += SloadGasCost
+
+	// Get the previous epoch
+	currentSealedEpochSlotBig := big.NewInt(currentSealedEpochSlot)
+	currentSealedEpochHashSlot := common.BigToHash(currentSealedEpochSlotBig)
+	var currentSealedEpochHash common.Hash
+	if val, exists := storageCache[currentSealedEpochHashSlot]; exists {
+		currentSealedEpochHash = val
+	} else {
+		currentSealedEpochHash = evm.SfcStateDB.GetState(ContractAddress, currentSealedEpochHashSlot)
+		storageCache[currentSealedEpochHashSlot] = currentSealedEpochHash
+		gasUsed += SloadGasCost
+	}
 	prevEpochBigInt := GetBigInt().SetBytes(currentSealedEpochHash.Bytes())
 	defer PutBigInt(prevEpochBigInt)
 
@@ -116,20 +136,26 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 
 	// Get the end time of the previous epoch
 	prevEndTimeSlot := GetBigInt().Add(prevEpochSnapshotSlot, big.NewInt(endTimeOffset))
-	prevEndTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(prevEndTimeSlot))
-	gasUsed += SloadGasCost
+	prevEndTimeSlotHash := common.BigToHash(prevEndTimeSlot)
+	var prevEndTime common.Hash
+	if val, exists := storageCache[prevEndTimeSlotHash]; exists {
+		prevEndTime = val
+	} else {
+		prevEndTime = evm.SfcStateDB.GetState(ContractAddress, prevEndTimeSlotHash)
+		storageCache[prevEndTimeSlotHash] = prevEndTime
+		gasUsed += SloadGasCost
+	}
 	PutBigInt(prevEndTimeSlot)
 	prevEndTimeBigInt := GetBigInt().SetBytes(prevEndTime.Bytes())
 
 	// Calculate epoch duration
-	epochDuration := GetBigInt().SetInt64(1) // Default to 1 if current time <= prevEndTime
+	epochDuration := GetBigInt().SetInt64(1)
 	if evm.Context.Time.Cmp(prevEndTimeBigInt) > 0 {
-		epochDuration = epochDuration.Sub(evm.Context.Time, prevEndTimeBigInt)
+		epochDuration.Sub(evm.Context.Time, prevEndTimeBigInt)
 	}
 	PutBigInt(prevEndTimeBigInt)
 
 	// Call _sealEpoch_rewards
-	// In Solidity: _sealEpoch_rewards(epochDuration, snapshot, prevSnapshot, validatorIDs, uptimes, originatedTxsFee)
 	rewardsGasUsed, err := _sealEpoch_rewards(evm, epochDuration, currentEpochBigInt, prevEpochBigInt, validatorIDs, uptimes, originatedTxsFee)
 	gasUsed += rewardsGasUsed
 	if err != nil {
@@ -143,45 +169,64 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 		return nil, gasUsed, err
 	}
 
-	// Update currentSealedEpoch
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(currentSealedEpochSlot)), common.BigToHash(currentEpochBigInt))
-	gasUsed += SstoreGasCost
-
-	// Update epoch snapshot end time (snapshot.endTime = _now() in Solidity)
-	endTimeOffsetBig := GetBigInt().SetInt64(endTimeOffset)
-	endTimeSlot := GetBigInt().Add(currentEpochSnapshotSlot, endTimeOffsetBig)
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(endTimeSlot), common.BigToHash(evm.Context.Time))
-	gasUsed += SstoreGasCost
-	PutBigInt(endTimeOffsetBig)
-	PutBigInt(endTimeSlot)
-
-	// Get the base reward per second from the constants manager
+	// Get the base reward per second
 	baseRewardPerSecond := getConstantsManagerVariable("baseRewardPerSecond")
-
-	// Update epoch snapshot base reward per second (snapshot.baseRewardPerSecond = c.baseRewardPerSecond() in Solidity)
-	baseRewardPerSecondOffsetBig := GetBigInt().SetInt64(baseRewardPerSecondOffset)
-	baseRewardPerSecondSlot := GetBigInt().Add(currentEpochSnapshotSlot, baseRewardPerSecondOffsetBig)
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(baseRewardPerSecondSlot), common.BigToHash(baseRewardPerSecond))
-	gasUsed += SstoreGasCost
-	PutBigInt(baseRewardPerSecondOffsetBig)
-	PutBigInt(baseRewardPerSecondSlot)
 
 	// Get the total supply
 	totalSupplySlotBig := GetBigInt().SetInt64(totalSupplySlot)
-	totalSupply := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(totalSupplySlotBig))
-	gasUsed += SloadGasCost
+	totalSupplySlotHash := common.BigToHash(totalSupplySlotBig)
+	var totalSupply common.Hash
+	if val, exists := storageCache[totalSupplySlotHash]; exists {
+		totalSupply = val
+	} else {
+		totalSupply = evm.SfcStateDB.GetState(ContractAddress, totalSupplySlotHash)
+		storageCache[totalSupplySlotHash] = totalSupply
+		gasUsed += SloadGasCost
+	}
 	totalSupplyBigInt := GetBigInt().SetBytes(totalSupply.Bytes())
-
-	// Update epoch snapshot total supply (snapshot.totalSupply = totalSupply in Solidity)
-	totalSupplyOffsetBig := GetBigInt().SetInt64(totalSupplyOffset)
-	totalSupplySnapshotSlot := GetBigInt().Add(currentEpochSnapshotSlot, totalSupplyOffsetBig)
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(totalSupplySnapshotSlot), common.BigToHash(totalSupplyBigInt))
-	gasUsed += SstoreGasCost
-	PutBigInt(totalSupplyBigInt)
 	PutBigInt(totalSupplySlotBig)
-	PutBigInt(totalSupplyOffsetBig)
-	PutBigInt(totalSupplySnapshotSlot)
+
+	// Collect Sstore operations
+	type storageWrite struct {
+		slot  common.Hash
+		value common.Hash
+	}
+	writes := []storageWrite{
+		{
+			slot:  common.BigToHash(currentSealedEpochSlotBig),
+			value: common.BigToHash(currentEpochBigInt),
+		},
+		{
+			slot:  common.BigToHash(GetBigInt().Add(currentEpochSnapshotSlot, GetBigInt().SetInt64(endTimeOffset))),
+			value: common.BigToHash(evm.Context.Time),
+		},
+		{
+			slot:  common.BigToHash(GetBigInt().Add(currentEpochSnapshotSlot, GetBigInt().SetInt64(baseRewardPerSecondOffset))),
+			value: common.BigToHash(baseRewardPerSecond),
+		},
+		{
+			slot:  common.BigToHash(GetBigInt().Add(currentEpochSnapshotSlot, GetBigInt().SetInt64(totalSupplyOffset))),
+			value: common.BigToHash(totalSupplyBigInt),
+		},
+	}
+
+	// Execute deferred Sstore operations
+	for _, write := range writes {
+		// Check if the value has changed to avoid unnecessary Sstore
+		currentValue := evm.SfcStateDB.GetState(ContractAddress, write.slot)
+		if currentValue != write.value {
+			evm.SfcStateDB.SetState(ContractAddress, write.slot, write.value)
+			gasUsed += SstoreGasCost
+		}
+	}
+
+	// Clean up big.Int instances
+	PutBigInt(totalSupplyBigInt)
 	PutBigInt(epochDuration)
+	for _, write := range writes[1:] { // Skip first write as it doesn't use pooled big.Int
+		PutBigInt(new(big.Int).SetBytes(write.slot.Bytes()))
+		PutBigInt(new(big.Int).SetBytes(write.slot.Bytes())) // For offset big.Int
+	}
 
 	return nil, gasUsed, nil
 }

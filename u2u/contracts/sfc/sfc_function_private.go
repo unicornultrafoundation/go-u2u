@@ -3,10 +3,8 @@ package sfc
 import (
 	"math/big"
 
-	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
-	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
@@ -90,59 +88,6 @@ func handle_calcRawValidatorEpochTxReward(evm *vm.EVM, args []interface{}) ([]by
 func handle_calcValidatorCommission(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	// TODO: Implement _calcValidatorCommission handler
 	return nil, 0, vm.ErrSfcFunctionNotImplemented
-}
-
-// _mintNativeToken is an internal function to mint native tokens
-func handle_mintNativeToken(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// Initialize gas used
-	var gasUsed uint64 = 0
-
-	// Get the arguments
-	if len(args) != 2 {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	receiver, ok := args[0].(common.Address)
-	if !ok {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	amount, ok := args[1].(*big.Int)
-	if !ok {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	// Implement the _mintNativeToken logic
-	// 1. Call node.incBalance to increase the balance of the receiver
-	nodeDriverAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(nodeDriverAuthSlot)))
-	gasUsed += SloadGasCost
-	nodeDriverAuthAddr := common.BytesToAddress(nodeDriverAuth.Bytes())
-
-	// Pack the function call data for incBalance
-	data, err := NodeDriverAuthAbi.Pack("incBalance", receiver, amount)
-	if err != nil {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	// Call the node driver
-	result, _, err := evm.CallSFC(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, defaultGasLimit, big.NewInt(0))
-	if err != nil {
-		reason, _ := abi.UnpackRevert(result)
-		log.Error("SFC: Error calling NodeDriverAuth method", "method", "incBalance", "err", err, "reason", reason)
-		return nil, gasUsed, err
-	}
-
-	// 2. Update the total supply
-	totalSupply := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalSupplySlot)))
-	gasUsed += SloadGasCost
-	totalSupplyBigInt := new(big.Int).SetBytes(totalSupply.Bytes())
-
-	// Add the amount to the total supply
-	newTotalSupply := new(big.Int).Add(totalSupplyBigInt, amount)
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalSupplySlot)), common.BigToHash(newTotalSupply))
-	gasUsed += SstoreGasCost
-
-	return nil, gasUsed, nil
 }
 
 // _scaleLockupReward is an internal function to scale lockup reward

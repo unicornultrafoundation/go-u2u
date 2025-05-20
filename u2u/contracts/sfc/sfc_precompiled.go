@@ -257,7 +257,7 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		result, gasUsed, err = handleUpdateSlashingRefundRatio(evm, args)
 
 	case "mintU2U":
-		result, gasUsed, err = handleMintU2U(evm, args)
+		result, gasUsed, err = handleMintU2U(evm, caller, args)
 
 	case "burnU2U":
 		result, gasUsed, err = handleBurnU2U(evm, args)

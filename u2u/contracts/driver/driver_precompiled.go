@@ -1,6 +1,7 @@
 package driver
 
 import (
+	"math/big"
 	"strings"
 
 	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
@@ -68,7 +69,7 @@ func parseABIInput(input []byte) (*abi.Method, []interface{}, error) {
 type DriverPrecompile struct{}
 
 // Run runs the precompiled contract
-func (p *DriverPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, suppliedGas uint64) ([]byte, uint64, error) {
+func (p *DriverPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, suppliedGas uint64, value *big.Int) ([]byte, uint64, error) {
 	// Parse the input to get method and arguments
 	method, args, err := parseABIInput(input)
 	if err != nil {

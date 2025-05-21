@@ -48,7 +48,7 @@ type PrecompiledStateContract interface {
 
 // PrecompiledSfcContract is an interface for SFC precompiled contracts that need access to the EVM instance
 type PrecompiledSfcContract interface {
-	Run(evm *EVM, caller common.Address, input []byte, suppliedGas uint64) ([]byte, uint64, error) // Run runs the precompiled contract with EVM access
+	Run(evm *EVM, caller common.Address, input []byte, suppliedGas uint64, value *big.Int) ([]byte, uint64, error) // Run runs the precompiled contract with EVM access
 }
 
 // PrecompiledContractsHomestead contains the default set of pre-compiled Ethereum

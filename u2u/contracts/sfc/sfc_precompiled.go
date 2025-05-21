@@ -68,7 +68,7 @@ func parseABIInput(input []byte) (*abi.Method, []interface{}, error) {
 }
 
 // Run runs the precompiled contract
-func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, suppliedGas uint64) ([]byte, uint64, error) {
+func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, suppliedGas uint64, value *big.Int) ([]byte, uint64, error) {
 	// We'll use evm.SfcStateDB directly in the handler functions
 	// Parse the input to get method and arguments
 	method, args, err := parseABIInput(input)
@@ -232,9 +232,7 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		result, gasUsed, err = handleCreateValidator(evm, caller, args, big.NewInt(0))
 
 	case "delegate":
-		// For delegate, we need to pass a value, but we don't have direct access to it
-		// Use a zero value for now, this should be fixed in a future update
-		result, gasUsed, err = handleDelegate(evm, caller, args, big.NewInt(0))
+		result, gasUsed, err = handleDelegate(evm, caller, args, value)
 
 	case "undelegate":
 		result, gasUsed, err = handleUndelegate(evm, caller, args)
@@ -295,10 +293,6 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 
 	case "sumRewards":
 		result, gasUsed, err = handleSumRewards(evm, args)
-
-	// Private function handlers
-	case "_delegate":
-		result, gasUsed, err = handle_delegate(evm, args, input)
 
 	// These internal functions are now implemented directly in the handleSealEpoch function
 	// and are no longer called separately

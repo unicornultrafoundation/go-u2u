@@ -112,21 +112,21 @@ func (p *StateProcessor) Process(
 				original := statedb.GetStorageRoot(addr)
 				sfc := sfcStatedb.GetStorageRoot(addr)
 				if original.Cmp(sfc) != 0 {
-					log.Error("U2UEVMProcessor.Finalize: SFC storage corrupted after applying block",
+					log.Error("U2UEVMProcessor.Process: SFC storage corrupted after applying block",
 						"tx", tx.Hash().Hex(), "addr", addr, "original", original.Hex(), "sfc", sfc.Hex())
 					common.SendInterrupt()
 				}
 				originalBalance := statedb.GetBalance(addr)
 				sfcBalance := sfcStatedb.GetBalance(addr)
 				if originalBalance.Cmp(sfcBalance) != 0 {
-					log.Error("U2UEVMProcessor.Finalize: SFC balance mismatched after applying block",
+					log.Error("U2UEVMProcessor.Process: SFC balance mismatched after applying block",
 						"tx", tx.Hash().Hex(), "addr", addr, "original", originalBalance, "sfc", sfcBalance)
 					common.SendInterrupt()
 				}
 				originalNonce := statedb.GetNonce(addr)
 				sfcNonce := sfcStatedb.GetNonce(addr)
 				if originalNonce != sfcNonce {
-					log.Error("U2UEVMProcessor.Finalize: SFC nonce mismatched after applying block",
+					log.Error("U2UEVMProcessor.Process: SFC nonce mismatched after applying block",
 						"tx", tx.Hash().Hex(), "addr", addr, "original", originalNonce, "sfc", sfcNonce)
 					common.SendInterrupt()
 				}

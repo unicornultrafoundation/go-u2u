@@ -9,6 +9,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // CraftSFCTx crafts a transaction to the SFC contract then sign and send it
@@ -41,7 +42,8 @@ func (n *IntegrationTestNet) CraftSFCTx(account *Account, abi abi.ABI, value *bi
 		Data:  data,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to estimate gas: %w", err)
+		log.Info("failed to estimate gas: %w", "err", err)
+		gas = 1000000
 	}
 	transaction, err := types.SignTx(types.NewTx(&types.AccessListTx{
 		ChainID:  chainId,

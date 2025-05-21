@@ -6,6 +6,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // handleClaimRewards claims the rewards for a delegator
@@ -17,13 +18,6 @@ func handleClaimRewards(evm *vm.EVM, caller common.Address, args []interface{}) 
 	toValidatorID, ok := args[0].(*big.Int)
 	if !ok {
 		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	// Check that the validator exists
-	revertData, checkGasUsed, err := checkValidatorExists(evm, toValidatorID, "claimRewards")
-	gasUsed = checkGasUsed
-	if err != nil {
-		return revertData, gasUsed, err
 	}
 
 	// Check that the delegator is allowed to withdraw
@@ -43,71 +37,78 @@ func handleClaimRewards(evm *vm.EVM, caller common.Address, args []interface{}) 
 	// Create arguments for handleStashRewards
 	stashRewardsArgs := []interface{}{caller, toValidatorID}
 	// Call handleStashRewards
-	_, _, err = handleStashRewards(evm, stashRewardsArgs)
+	_, stashGasUsed, err := handleStashRewards(evm, stashRewardsArgs)
+	gasUsed += stashGasUsed
 	if err != nil {
-		return nil, 0, vm.ErrExecutionReverted
+		return nil, gasUsed, vm.ErrExecutionReverted
 	}
 
-	// Get the rewards
+	// Get the rewards from the stash
+	// In the storage, rewards are stored as a struct with three fields
 	rewardsStashSlot, getGasUsed := getRewardsStashSlot(caller, toValidatorID)
 	gasUsed += getGasUsed
-	rewardsStash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(rewardsStashSlot))
-	rewardsStashBigInt := new(big.Int).SetBytes(rewardsStash.Bytes())
 
-	// Check that the rewards are not zero
-	if rewardsStashBigInt.Cmp(big.NewInt(0)) == 0 {
-		revertData, err := encodeRevertReason("claimRewards", "zero rewards")
-		if err != nil {
-			return nil, 0, vm.ErrExecutionReverted
-		}
-		return revertData, 0, vm.ErrExecutionReverted
+	// Get lockupExtraReward
+	lockupExtraRewardSlot := rewardsStashSlot
+	lockupExtraReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupExtraRewardSlot))
+	lockupExtraRewardBigInt := new(big.Int).SetBytes(lockupExtraReward.Bytes())
+	gasUsed += SloadGasCost
+
+	// Get lockupBaseReward
+	lockupBaseRewardSlot := new(big.Int).Add(rewardsStashSlot, big.NewInt(1))
+	lockupBaseReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupBaseRewardSlot))
+	lockupBaseRewardBigInt := new(big.Int).SetBytes(lockupBaseReward.Bytes())
+	gasUsed += SloadGasCost
+
+	// Get unlockedReward
+	unlockedRewardSlot := new(big.Int).Add(rewardsStashSlot, big.NewInt(2))
+	unlockedReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(unlockedRewardSlot))
+	unlockedRewardBigInt := new(big.Int).SetBytes(unlockedReward.Bytes())
+	gasUsed += SloadGasCost
+
+	// Create the rewards struct
+	rewards := Rewards{
+		LockupExtraReward: lockupExtraRewardBigInt,
+		LockupBaseReward:  lockupBaseRewardBigInt,
+		UnlockedReward:    unlockedRewardBigInt,
 	}
 
-	// Clear the rewards stash
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(rewardsStashSlot), common.BigToHash(big.NewInt(0)))
+	// Calculate total reward
+	totalReward := new(big.Int).Add(rewards.UnlockedReward, new(big.Int).Add(rewards.LockupBaseReward, rewards.LockupExtraReward))
 
-	// Mint the native token
-	result, mintGasUsed, err := handle_mintNativeToken(evm, args)
+	// Check that the rewards are not zero
+	if totalReward.Cmp(big.NewInt(0)) == 0 {
+		revertData, err := encodeRevertReason("claimRewards", "zero rewards")
+		if err != nil {
+			return nil, gasUsed, vm.ErrExecutionReverted
+		}
+		return revertData, gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Clear the rewards stash (delete _rewardsStash[delegator][toValidatorID])
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(lockupExtraRewardSlot), common.Hash{})
+	gasUsed += SstoreGasCost
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(lockupBaseRewardSlot), common.Hash{})
+	gasUsed += SstoreGasCost
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(unlockedRewardSlot), common.Hash{})
+	gasUsed += SstoreGasCost
+
+	// Mint the native token to the contract itself
+	// It's important that we mint after erasing (protection against Re-Entrancy)
+	mintArgs := []interface{}{
+		ContractAddress, // Mint to the contract itself
+		totalReward,     // Mint the total reward amount
+	}
+	_, mintGasUsed, err := handle_mintNativeToken(evm, mintArgs)
 	gasUsed += mintGasUsed
 	if err != nil {
-		return result, gasUsed, err
+		return nil, gasUsed, err
 	}
 
 	// Transfer the rewards to the delegator
-	evm.SfcStateDB.AddBalance(caller, rewardsStashBigInt)
-	evm.SfcStateDB.SubBalance(ContractAddress, rewardsStashBigInt)
-
-	// Get the lockup duration for the delegation
-	lockedStakeSlot, getGasUsed := getLockedStakeSlot(caller, toValidatorID)
-	gasUsed += getGasUsed
-	lockedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockedStakeSlot))
-	lockedStakeBigInt := new(big.Int).SetBytes(lockedStake.Bytes())
-
-	// Get the lockup duration
-	lockupDurationSlot, getGasUsed := getLockupDurationSlot(caller, toValidatorID)
-	gasUsed += getGasUsed
-	lockupDuration := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupDurationSlot))
-	lockupDurationBigInt := new(big.Int).SetBytes(lockupDuration.Bytes())
-
-	// Scale the rewards based on the lockup duration
-	var scaledRewards Rewards
-	if lockedStakeBigInt.Cmp(big.NewInt(0)) > 0 {
-		// If there's locked stake, use the lockup duration to scale the rewards
-		var scaleGasUsed uint64
-		var err error
-		scaledRewards, scaleGasUsed, err = _scaleLockupReward(evm, rewardsStashBigInt, lockupDurationBigInt)
-		gasUsed += scaleGasUsed
-		if err != nil {
-			return nil, 0, vm.ErrExecutionReverted
-		}
-	} else {
-		// If there's no locked stake, all rewards are unlocked
-		scaledRewards = Rewards{
-			LockupExtraReward: big.NewInt(0),
-			LockupBaseReward:  big.NewInt(0),
-			UnlockedReward:    rewardsStashBigInt,
-		}
-	}
+	// It's important that we transfer after erasing (protection against Re-Entrancy)
+	evm.SfcStateDB.AddBalance(caller, totalReward)
+	evm.SfcStateDB.SubBalance(ContractAddress, totalReward)
 
 	// Emit ClaimedRewards event
 	topics := []common.Hash{
@@ -115,21 +116,39 @@ func handleClaimRewards(evm *vm.EVM, caller common.Address, args []interface{}) 
 		common.BytesToHash(common.LeftPadBytes(caller.Bytes(), 32)), // indexed parameter (delegator)
 		common.BigToHash(toValidatorID),                             // indexed parameter (toValidatorID)
 	}
-	data, err := SfcAbi.Events["ClaimedRewards"].Inputs.NonIndexed().Pack(
-		scaledRewards.LockupExtraReward, // lockupExtraReward
-		scaledRewards.LockupBaseReward,  // lockupBaseReward
-		scaledRewards.UnlockedReward,    // unlockedReward
-	)
+
+	// Pack the non-indexed parameters manually
+	// The event definition is:
+	// event ClaimedRewards(address indexed delegator, uint256 indexed toValidatorID, uint256 lockupExtraReward, uint256 lockupBaseReward, uint256 unlockedReward)
+
+	// Create a buffer to hold the packed data
+	data := make([]byte, 0, 96) // 3 * 32 bytes for the three uint256 values
+
+	// Pack each uint256 value (32 bytes each)
+	lockupExtraRewardBytes := common.BigToHash(rewards.LockupExtraReward).Bytes()
+	lockupBaseRewardBytes := common.BigToHash(rewards.LockupBaseReward).Bytes()
+	unlockedRewardBytes := common.BigToHash(rewards.UnlockedReward).Bytes()
+
+	// Append all bytes to the data buffer
+	data = append(data, lockupExtraRewardBytes...)
+	data = append(data, lockupBaseRewardBytes...)
+	data = append(data, unlockedRewardBytes...)
+
+	// No error can occur with this manual packing
+	err = error(nil)
+
 	if err != nil {
-		return nil, 0, vm.ErrExecutionReverted
+		log.Error("SFC: Error packing ClaimedRewards event data", "err", err)
+		return nil, gasUsed, vm.ErrExecutionReverted
 	}
+
 	evm.SfcStateDB.AddLog(&types.Log{
 		Address: ContractAddress,
 		Topics:  topics,
 		Data:    data,
 	})
 
-	return nil, 0, nil
+	return nil, gasUsed, nil
 }
 
 // handleRestakeRewards restakes the rewards for a delegator
@@ -142,13 +161,6 @@ func handleRestakeRewards(evm *vm.EVM, caller common.Address, args []interface{}
 	toValidatorID, ok := args[0].(*big.Int)
 	if !ok {
 		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	// Check that the validator exists
-	revertData, checkGasUsed, err := checkValidatorExists(evm, toValidatorID, "restakeRewards")
-	gasUsed = checkGasUsed
-	if err != nil {
-		return revertData, gasUsed, err
 	}
 
 	// Check that the delegator is allowed to withdraw
@@ -173,26 +185,59 @@ func handleRestakeRewards(evm *vm.EVM, caller common.Address, args []interface{}
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
-	// Get the rewards
+	// Get the rewards from the stash
+	// In the storage, rewards are stored as a struct with three fields
 	rewardsStashSlot, getGasUsed := getRewardsStashSlot(caller, toValidatorID)
 	gasUsed += getGasUsed
-	rewardsStash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(rewardsStashSlot))
-	rewardsStashBigInt := new(big.Int).SetBytes(rewardsStash.Bytes())
 
-	// Check that the rewards are not zero
-	if rewardsStashBigInt.Cmp(big.NewInt(0)) == 0 {
-		revertData, err := encodeRevertReason("restakeRewards", "zero rewards")
-		if err != nil {
-			return nil, 0, vm.ErrExecutionReverted
-		}
-		return revertData, 0, vm.ErrExecutionReverted
+	// Get lockupExtraReward
+	lockupExtraRewardSlot := rewardsStashSlot
+	lockupExtraReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupExtraRewardSlot))
+	lockupExtraRewardBigInt := new(big.Int).SetBytes(lockupExtraReward.Bytes())
+	gasUsed += SloadGasCost
+
+	// Get lockupBaseReward
+	lockupBaseRewardSlot := new(big.Int).Add(rewardsStashSlot, big.NewInt(1))
+	lockupBaseReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupBaseRewardSlot))
+	lockupBaseRewardBigInt := new(big.Int).SetBytes(lockupBaseReward.Bytes())
+	gasUsed += SloadGasCost
+
+	// Get unlockedReward
+	unlockedRewardSlot := new(big.Int).Add(rewardsStashSlot, big.NewInt(2))
+	unlockedReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(unlockedRewardSlot))
+	unlockedRewardBigInt := new(big.Int).SetBytes(unlockedReward.Bytes())
+	gasUsed += SloadGasCost
+
+	// Create the rewards struct
+	rewards := Rewards{
+		LockupExtraReward: lockupExtraRewardBigInt,
+		LockupBaseReward:  lockupBaseRewardBigInt,
+		UnlockedReward:    unlockedRewardBigInt,
 	}
 
-	// Clear the rewards stash
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(rewardsStashSlot), common.BigToHash(big.NewInt(0)))
+	// Calculate total reward
+	totalReward := new(big.Int).Add(rewards.UnlockedReward, new(big.Int).Add(rewards.LockupBaseReward, rewards.LockupExtraReward))
 
-	// Mint the native token
-	mintGasUsed, err := _mintNativeToken(evm, ContractAddress, rewardsStashBigInt)
+	// Check that the rewards are not zero
+	if totalReward.Cmp(big.NewInt(0)) == 0 {
+		revertData, err := encodeRevertReason("restakeRewards", "zero rewards")
+		if err != nil {
+			return nil, gasUsed, vm.ErrExecutionReverted
+		}
+		return revertData, gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Clear the rewards stash (delete _rewardsStash[delegator][toValidatorID])
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(lockupExtraRewardSlot), common.Hash{})
+	gasUsed += SstoreGasCost
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(lockupBaseRewardSlot), common.Hash{})
+	gasUsed += SstoreGasCost
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(unlockedRewardSlot), common.Hash{})
+	gasUsed += SstoreGasCost
+
+	// Mint the native token to the contract itself
+	// It's important that we mint after erasing (protection against Re-Entrancy)
+	mintGasUsed, err := _mintNativeToken(evm, ContractAddress, totalReward)
 	gasUsed += mintGasUsed
 	if err != nil {
 		return nil, gasUsed, err
@@ -206,7 +251,7 @@ func handleRestakeRewards(evm *vm.EVM, caller common.Address, args []interface{}
 	stakeBigInt := new(big.Int).SetBytes(stake.Bytes())
 
 	// Update the stake
-	newStake := new(big.Int).Add(stakeBigInt, rewardsStashBigInt)
+	newStake := new(big.Int).Add(stakeBigInt, totalReward)
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stakeSlot), common.BigToHash(newStake))
 
 	// Update the validator's received stake
@@ -214,13 +259,13 @@ func handleRestakeRewards(evm *vm.EVM, caller common.Address, args []interface{}
 	gasUsed += getGasUsed
 	receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorReceivedStakeSlot))
 	receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
-	newReceivedStake := new(big.Int).Add(receivedStakeBigInt, rewardsStashBigInt)
+	newReceivedStake := new(big.Int).Add(receivedStakeBigInt, totalReward)
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorReceivedStakeSlot), common.BigToHash(newReceivedStake))
 
 	// Update the total stake
 	totalStakeState := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalStakeSlot)))
 	totalStakeBigInt := new(big.Int).SetBytes(totalStakeState.Bytes())
-	newTotalStake := new(big.Int).Add(totalStakeBigInt, rewardsStashBigInt)
+	newTotalStake := new(big.Int).Add(totalStakeBigInt, totalReward)
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalStakeSlot)), common.BigToHash(newTotalStake))
 
 	// Update the total active stake if the validator is active
@@ -231,7 +276,7 @@ func handleRestakeRewards(evm *vm.EVM, caller common.Address, args []interface{}
 	if validatorStatusBigInt.Cmp(big.NewInt(0)) == 0 { // OK_STATUS
 		totalActiveStakeState := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalActiveStakeSlot)))
 		totalActiveStakeBigInt := new(big.Int).SetBytes(totalActiveStakeState.Bytes())
-		newTotalActiveStake := new(big.Int).Add(totalActiveStakeBigInt, rewardsStashBigInt)
+		newTotalActiveStake := new(big.Int).Add(totalActiveStakeBigInt, totalReward)
 		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalActiveStakeSlot)), common.BigToHash(newTotalActiveStake))
 	}
 
@@ -241,34 +286,8 @@ func handleRestakeRewards(evm *vm.EVM, caller common.Address, args []interface{}
 	lockedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockedStakeSlot))
 	lockedStakeBigInt := new(big.Int).SetBytes(lockedStake.Bytes())
 
-	// Get the lockup duration
-	lockupDurationSlot, getGasUsed := getLockupDurationSlot(caller, toValidatorID)
-	gasUsed += getGasUsed
-	lockupDuration := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupDurationSlot))
-	lockupDurationBigInt := new(big.Int).SetBytes(lockupDuration.Bytes())
-
-	// Scale the rewards based on the lockup duration
-	var scaledRewards Rewards
-	if lockedStakeBigInt.Cmp(big.NewInt(0)) > 0 {
-		// If there's locked stake, use the lockup duration to scale the rewards
-		var scaleGasUsed uint64
-		var err error
-		scaledRewards, scaleGasUsed, err = _scaleLockupReward(evm, rewardsStashBigInt, lockupDurationBigInt)
-		gasUsed += scaleGasUsed
-		if err != nil {
-			return nil, gasUsed, vm.ErrExecutionReverted
-		}
-	} else {
-		// If there's no locked stake, all rewards are unlocked
-		scaledRewards = Rewards{
-			LockupExtraReward: big.NewInt(0),
-			LockupBaseReward:  big.NewInt(0),
-			UnlockedReward:    rewardsStashBigInt,
-		}
-	}
-
 	// Calculate the lockup reward (sum of lockupExtraReward and lockupBaseReward)
-	lockupReward := new(big.Int).Add(scaledRewards.LockupExtraReward, scaledRewards.LockupBaseReward)
+	lockupReward := new(big.Int).Add(rewards.LockupExtraReward, rewards.LockupBaseReward)
 
 	// Update the locked stake with the lockup reward
 	newLockedStake := new(big.Int).Add(lockedStakeBigInt, lockupReward)
@@ -280,14 +299,24 @@ func handleRestakeRewards(evm *vm.EVM, caller common.Address, args []interface{}
 		common.BytesToHash(common.LeftPadBytes(caller.Bytes(), 32)), // indexed parameter (delegator)
 		common.BigToHash(toValidatorID),                             // indexed parameter (toValidatorID)
 	}
-	data, err := SfcAbi.Events["RestakedRewards"].Inputs.NonIndexed().Pack(
-		scaledRewards.LockupExtraReward, // lockupExtraReward
-		scaledRewards.LockupBaseReward,  // lockupBaseReward
-		scaledRewards.UnlockedReward,    // unlockedReward
-	)
-	if err != nil {
-		return nil, 0, vm.ErrExecutionReverted
-	}
+
+	// Pack the non-indexed parameters manually
+	// The event definition is:
+	// event RestakedRewards(address indexed delegator, uint256 indexed toValidatorID, uint256 lockupExtraReward, uint256 lockupBaseReward, uint256 unlockedReward)
+
+	// Create a buffer to hold the packed data
+	data := make([]byte, 0, 96) // 3 * 32 bytes for the three uint256 values
+
+	// Pack each uint256 value (32 bytes each)
+	lockupExtraRewardBytes := common.BigToHash(rewards.LockupExtraReward).Bytes()
+	lockupBaseRewardBytes := common.BigToHash(rewards.LockupBaseReward).Bytes()
+	unlockedRewardBytes := common.BigToHash(rewards.UnlockedReward).Bytes()
+
+	// Append all bytes to the data buffer
+	data = append(data, lockupExtraRewardBytes...)
+	data = append(data, lockupBaseRewardBytes...)
+	data = append(data, unlockedRewardBytes...)
+
 	evm.SfcStateDB.AddLog(&types.Log{
 		Address: ContractAddress,
 		Topics:  topics,

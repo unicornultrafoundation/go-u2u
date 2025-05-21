@@ -130,13 +130,17 @@ func TestSFCStore_CanDelegateToValidator(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to start the fake network: %v", err)
 	}
+	time.Sleep(5 * time.Second)
 	defer testnet.Stop()
 
 	// try to delegate to validator
 	if good, err := testnet.CheckIntegrity(nil); !good || err != nil {
 		t.Fatalf("sfc state is corrupted before delegating: %v", err)
+	} else {
+		t.Logf("sfc state is not corrupted before delegating")
 	}
-	if err := testnet.CraftSFCTx(testAccounts[0], SfcLibAbi, new(big.Int).Mul(big.NewInt(1000), ether), "delegate", big.NewInt(1)); err != nil {
+	if err := testnet.CraftSFCTx(testAccounts[0], SfcLibAbi, new(big.Int).Mul(big.NewInt(1000), ether),
+		"delegate", big.NewInt(0)); err != nil {
 		t.Fatalf("failed to delegate to validator: %v", err)
 	}
 	if good, err := testnet.CheckIntegrity(nil); !good || err != nil {

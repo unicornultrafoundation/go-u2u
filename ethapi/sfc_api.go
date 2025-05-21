@@ -52,6 +52,16 @@ func (s *PublicSfcAPI) CheckIntegrity(ctx context.Context, blockNr rpc.BlockNumb
 		if original.Cmp(sfc) != 0 {
 			return false, nil
 		}
+		originalBalance := state.GetBalance(addr)
+		sfcBalance := sfcState.GetBalance(addr)
+		if originalBalance.Cmp(sfcBalance) != 0 {
+			return false, nil
+		}
+		originalNonce := state.GetNonce(addr)
+		sfcNonce := sfcState.GetNonce(addr)
+		if originalNonce != sfcNonce {
+			return false, nil
+		}
 	}
 	return true, nil
 }

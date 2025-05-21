@@ -41,7 +41,7 @@ func handleDelegate(evm *vm.EVM, caller common.Address, args []interface{}, valu
 		common.BytesToHash(common.LeftPadBytes(caller.Bytes(), 32)), // indexed parameter (delegator)
 		common.BigToHash(toValidatorID),                             // indexed parameter (toValidatorID)
 	}
-	data, err := SfcAbi.Events["Delegated"].Inputs.NonIndexed().Pack(
+	data, err := SfcLibAbi.Events["Delegated"].Inputs.NonIndexed().Pack(
 		value,
 	)
 	if err != nil {

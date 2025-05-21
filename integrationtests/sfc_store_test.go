@@ -119,7 +119,6 @@ func TestSFCStore_CanDumpSFCStorageAndThenSyncAgain(t *testing.T) {
 }
 
 func TestSFCStore_CanDelegateToValidator(t *testing.T) {
-	t.Skip()
 	if err := setup(); err != nil {
 		t.Fatal(err)
 	}

@@ -247,7 +247,7 @@ func handleCheckDelegatedStakeLimit(evm *vm.EVM, validatorID *big.Int) (bool, er
 
 	// Unpack the result
 	// Note: We don't cache unpacking operations as they're more complex and less frequent
-	selfStakeValues, err := SfcAbi.Methods["getSelfStake"].Outputs.Unpack(result)
+	selfStakeValues, err := SfcLibAbi.Methods["getSelfStake"].Outputs.Unpack(result)
 	if err != nil {
 		return false, vm.ErrExecutionReverted
 	}
@@ -389,7 +389,7 @@ func handleGetSelfStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, error)
 	stakeBigInt := GetBigInt().SetBytes(stake.Bytes())
 
 	// Don't use cache for ABI packing with parameters
-	result, err := SfcAbi.Methods["getSelfStake"].Outputs.Pack(stakeBigInt)
+	result, err := SfcLibAbi.Methods["getSelfStake"].Outputs.Pack(stakeBigInt)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}
@@ -647,7 +647,7 @@ func handleSyncValidator(evm *vm.EVM, validatorID *big.Int, isZeroOrig ...bool) 
 	}
 
 	// Unpack the result
-	selfStakeValues, err := SfcAbi.Methods["getSelfStake"].Outputs.Unpack(result)
+	selfStakeValues, err := SfcLibAbi.Methods["getSelfStake"].Outputs.Unpack(result)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}

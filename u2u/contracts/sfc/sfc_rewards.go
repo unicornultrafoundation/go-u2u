@@ -75,6 +75,7 @@ func handleClaimRewards(evm *vm.EVM, caller common.Address, args []interface{}) 
 
 	// Transfer the rewards to the delegator
 	evm.SfcStateDB.AddBalance(caller, rewardsStashBigInt)
+	evm.SfcStateDB.SubBalance(ContractAddress, rewardsStashBigInt)
 
 	// Get the lockup duration for the delegation
 	lockedStakeSlot, getGasUsed := getLockedStakeSlot(caller, toValidatorID)

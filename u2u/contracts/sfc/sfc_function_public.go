@@ -1499,15 +1499,39 @@ func handleSumRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 
 // Fallback is the payable fallback function that delegates calls to the library
 func handleFallback(evm *vm.EVM, args []interface{}, input []byte) ([]byte, uint64, error) {
-	// TODO: Implement fallback function handler
-	// For empty input (pure native token transfer), we should reject the transaction
-	// For non-empty input, we should delegate the call to libAddress
-
-	// In the SFC contract, the fallback function requires msg.data to be non-empty:
-	// function() payable external {
-	//     require(msg.data.length != 0, "transfers not allowed");
-	//     _delegate(libAddress);
-	// }
+	//var gasUsed uint64 = 0
+	//
+	//// Check if input data is empty (pure native token transfer)
+	//if len(input) == 0 {
+	//	// Return ABI-encoded revert reason: "transfers not allowed"
+	//	revertReason := "transfers not allowed"
+	//	revertData, err := encodeRevertReason("fallback", revertReason)
+	//	if err != nil {
+	//		return nil, gasUsed, vm.ErrExecutionReverted
+	//	}
+	//	return revertData, gasUsed, vm.ErrExecutionReverted
+	//}
+	//
+	//// Create a contract reference for the caller
+	//callerRef := vm.AccountRef(evm.TxContext.Origin)
+	//
+	//// Make the delegate call to the libAddress
+	//// This simulates the Solidity _delegate function
+	//gas := defaultGasLimit // Use a fixed gas amount for now
+	//ret, leftOverGas, err := evm.DelegateCallSFC(callerRef, SfcLibAddr, input, gas)
+	//
+	//// Calculate gas used
+	//gasUsed += gas - leftOverGas
+	//
+	//// Handle errors similar to the Solidity assembly code:
+	//// switch result
+	//// case 0 { revert(0, returndatasize) }
+	//// default { return (0, returndatasize) }
+	//if err != nil {
+	//	return ret, gasUsed, err
+	//}
+	//
+	//return ret, gasUsed, nil
 
 	return nil, 0, vm.ErrSfcFunctionNotImplemented
 }

@@ -8,11 +8,13 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/gossip/contract/sfc100"
+	"github.com/unicornultrafoundation/go-u2u/gossip/contract/sfclib100"
 	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 var (
 	SfcAbi            abi.ABI
+	SfcLibAbi         abi.ABI
 	CMAbi             abi.ABI
 	NodeDriverAbi     abi.ABI
 	NodeDriverAuthAbi abi.ABI
@@ -20,6 +22,7 @@ var (
 
 func init() {
 	SfcAbi, _ = abi.JSON(strings.NewReader(sfc100.ContractMetaData.ABI))
+	SfcLibAbi, _ = abi.JSON(strings.NewReader(sfclib100.ContractMetaData.ABI))
 	CMAbi, _ = abi.JSON(strings.NewReader(ConstantManagerABIStr))
 	NodeDriverAbi, _ = abi.JSON(strings.NewReader(NodeDriverABIStr))
 	NodeDriverAuthAbi, _ = abi.JSON(strings.NewReader(NodeDriverAuthABIStr))
@@ -45,11 +48,14 @@ func parseABIInput(input []byte) (*abi.Method, []interface{}, error) {
 		return nil, nil, vm.ErrExecutionReverted
 	}
 
-	// Get function signature from first 4 bytes
+	// Get function signature from the first 4 bytes
 	methodID := input[:4]
 	method, err := SfcAbi.MethodById(methodID)
 	if err != nil {
-		return nil, nil, vm.ErrExecutionReverted
+		method, err = SfcLibAbi.MethodById(methodID)
+		if err != nil {
+			return nil, nil, vm.ErrExecutionReverted
+		}
 	}
 
 	// Parse input arguments
@@ -67,6 +73,7 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 	// Parse the input to get method and arguments
 	method, args, err := parseABIInput(input)
 	if err != nil {
+		log.Error("SFCPrecompile.Run: Error parsing input", "err", err)
 		return nil, 0, err
 	}
 

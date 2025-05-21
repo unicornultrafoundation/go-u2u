@@ -1,6 +1,7 @@
 package u2u
 
 import (
+	"encoding/json"
 	"math/big"
 	"testing"
 
@@ -124,8 +125,6 @@ func TestGasRulesLLRCompatibilityRLP(t *testing.T) {
 func TestRulesCancunRLP(t *testing.T) {
 	rules := MainNetRules()
 	rules.Upgrades.Cancun = true
-	rules.Upgrades.London = true
-	rules.Upgrades.Berlin = true
 	require := require.New(t)
 
 	b, err := rlp.EncodeToBytes(rules)
@@ -135,7 +134,43 @@ func TestRulesCancunRLP(t *testing.T) {
 	require.NoError(rlp.DecodeBytes(b, &decodedRules))
 
 	require.Equal(rules.String(), decodedRules.String())
-	require.True(decodedRules.Upgrades.Berlin)
-	require.True(decodedRules.Upgrades.London)
 	require.True(decodedRules.Upgrades.Cancun)
+}
+
+func TestRulesCancunCompatibilityRLP(t *testing.T) {
+	require := require.New(t)
+
+	rules := Rules{Upgrades: FakeNetRules().Upgrades}
+	//b, err := rlp.EncodeToBytes(rules)
+	//require.NoError(err)
+	//t.Logf("rules.rlp = %x", b)
+
+	b, err := json.Marshal(map[string]Upgrades{"Upgrades": rules.Upgrades})
+	require.NoError(err)
+
+	t.Logf("rules = %s", rules)
+	t.Logf("rules.json = %s", b)
+
+	rules = MainNetRules()
+	updated, err := UpdateRules(rules, b)
+	require.NoError(err)
+
+	rules.Upgrades.Cancun = true
+	require.True(updated.Upgrades.Cancun)
+	require.Equal(rules.String(), updated.String())
+
+	b, err = json.Marshal(map[string]map[string]bool{"Upgrades": {"Cancun": true}})
+	require.NoError(err)
+
+	t.Logf("rules = %s", rules)
+	t.Logf("rules.json = %s", b)
+
+	rules = MainNetRules()
+	updated, err = UpdateRules(rules, b)
+	require.NoError(err)
+
+	rules.Upgrades.Cancun = true
+	require.True(updated.Upgrades.Llr)
+	require.True(updated.Upgrades.Cancun)
+	require.Equal(rules.String(), updated.String())
 }

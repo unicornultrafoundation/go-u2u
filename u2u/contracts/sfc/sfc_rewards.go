@@ -34,10 +34,10 @@ func handleClaimRewards(evm *vm.EVM, caller common.Address, args []interface{}) 
 	}
 
 	// Stash the rewards
-	// Create arguments for handleStashRewards
+	// Create arguments for handle_stashRewards
 	stashRewardsArgs := []interface{}{caller, toValidatorID}
-	// Call handleStashRewards
-	_, stashGasUsed, err := handleStashRewards(evm, stashRewardsArgs)
+	// Call handle_stashRewards
+	_, stashGasUsed, err := handle_stashRewards(evm, stashRewardsArgs)
 	gasUsed += stashGasUsed
 	if err != nil {
 		return nil, gasUsed, vm.ErrExecutionReverted
@@ -177,10 +177,10 @@ func handleRestakeRewards(evm *vm.EVM, caller common.Address, args []interface{}
 	}
 
 	// Stash the rewards
-	// Create arguments for handleStashRewards
+	// Create arguments for handle_stashRewards
 	stashRewardsArgs := []interface{}{caller, toValidatorID}
-	// Call handleStashRewards
-	_, _, err = handleStashRewards(evm, stashRewardsArgs)
+	// Call handle_stashRewards
+	_, _, err = handle_stashRewards(evm, stashRewardsArgs)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}

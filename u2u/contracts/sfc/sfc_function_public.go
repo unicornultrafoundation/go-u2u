@@ -291,275 +291,6 @@ func handleCreateValidator(evm *vm.EVM, caller common.Address, args []interface{
 	return nil, gasUsed, nil
 }
 
-// handleDelegate delegates stake to a validator
-func handleDelegate(evm *vm.EVM, caller common.Address, args []interface{}, value *big.Int) ([]byte, uint64, error) {
-	// Initialize gas used
-	var gasUsed uint64 = 0
-	// Get the arguments
-	if len(args) != 1 {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-	toValidatorID, ok := args[0].(*big.Int)
-	if !ok {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	// Stash rewards
-	// Create arguments for handleStashRewards
-	stashRewardsArgs := []interface{}{caller, toValidatorID}
-	// Call handleStashRewards
-	result, stashGasUsed, err := handleStashRewards(evm, stashRewardsArgs)
-	if err != nil {
-		return result, gasUsed + stashGasUsed, err
-	}
-
-	// Add the gas used by handleStashRewards
-	gasUsed += stashGasUsed
-
-	// Call the internal _delegate function
-	result, delegateGasUsed, err := handleInternalDelegate(evm, caller, toValidatorID, value)
-	if err != nil {
-		return result, gasUsed + delegateGasUsed, err
-	}
-
-	// Add the gas used by handleInternalDelegate
-	gasUsed += delegateGasUsed
-
-	// Sync validator
-	result, syncGasUsed, err := handleSyncValidator(evm, toValidatorID)
-	if err != nil {
-		return result, gasUsed + syncGasUsed, err
-	}
-
-	// Add the gas used by handleSyncValidator
-	gasUsed += syncGasUsed
-
-	// Emit Delegated event
-	topics := []common.Hash{
-		SfcAbi.Events["Delegated"].ID,
-		common.BytesToHash(common.LeftPadBytes(caller.Bytes(), 32)), // indexed parameter (delegator)
-		common.BigToHash(toValidatorID),                             // indexed parameter (toValidatorID)
-	}
-	data, err := SfcAbi.Events["Delegated"].Inputs.NonIndexed().Pack(
-		value,
-	)
-	if err != nil {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
-	})
-
-	// Recount votes
-	// Get the validator auth address
-	validatorAuthSlot, _ := getValidatorAuthSlot(toValidatorID)
-	validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorAuthSlot))
-	validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
-
-	// Call handleRecountVotes with strict=false
-	result, recountGasUsed, err := handleRecountVotes(evm, caller, validatorAuthAddr, false)
-	if err != nil {
-		// We don't return an error here because recountVotes is not critical
-		// and we don't want to revert the transaction if it fails
-	}
-
-	// Add the gas used by handleRecountVotes
-	gasUsed += recountGasUsed
-
-	return nil, gasUsed, nil
-}
-
-// handleUndelegate undelegates stake from a validator
-func handleUndelegate(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
-	// Initialize gas used
-	var gasUsed uint64 = 0
-	// Get the arguments
-	if len(args) != 3 {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-	toValidatorID, ok := args[0].(*big.Int)
-	if !ok {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-	wrID, ok := args[1].(*big.Int)
-	if !ok {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-	amount, ok := args[2].(*big.Int)
-	if !ok {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	// Check that the validator exists
-	revertData, checkGasUsed, err := checkValidatorExists(evm, toValidatorID, "undelegate")
-	gasUsed += checkGasUsed
-	if err != nil {
-		return revertData, gasUsed, err
-	}
-
-	// Check that the delegation exists
-	revertData, checkGasUsed, err = checkDelegationExists(evm, caller, toValidatorID, "undelegate")
-	gasUsed += checkGasUsed
-	if err != nil {
-		return revertData, gasUsed, err
-	}
-
-	// Stash rewards
-	// Create arguments for handleStashRewards
-	stashRewardsArgs := []interface{}{caller, toValidatorID}
-	// Call handleStashRewards
-	result, stashGasUsed, err := handleStashRewards(evm, stashRewardsArgs)
-	if err != nil {
-		return result, gasUsed + stashGasUsed, err
-	}
-
-	// Add the gas used by handleStashRewards
-	gasUsed += stashGasUsed
-
-	// Check that the amount is greater than 0
-	if amount.Cmp(big.NewInt(0)) <= 0 {
-		revertData, err := encodeRevertReason("undelegate", "zero amount")
-		if err != nil {
-			return nil, 0, vm.ErrExecutionReverted
-		}
-		return revertData, 0, vm.ErrExecutionReverted
-	}
-
-	// Check that the amount is less than or equal to the unlocked stake
-	// Create arguments for handleGetUnlockedStake
-	getUnlockedStakeArgs := []interface{}{caller, toValidatorID}
-	// Call handleGetUnlockedStake
-	unlockedStakeResult, unlockGasUsed, err := handleGetUnlockedStake(evm, getUnlockedStakeArgs)
-	if err != nil {
-		return unlockedStakeResult, gasUsed + unlockGasUsed, err
-	}
-
-	// Add the gas used by handleGetUnlockedStake
-	gasUsed += unlockGasUsed
-
-	// Unpack the result
-	unlockedStakeValues, err := SfcAbi.Methods["getUnlockedStake"].Outputs.Unpack(unlockedStakeResult)
-	if err != nil {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	// The result should be a single *big.Int value
-	if len(unlockedStakeValues) != 1 {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	unlockedStake, ok := unlockedStakeValues[0].(*big.Int)
-	if !ok {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-	if amount.Cmp(unlockedStake) > 0 {
-		revertData, err := encodeRevertReason("undelegate", "not enough unlocked stake")
-		if err != nil {
-			return nil, 0, vm.ErrExecutionReverted
-		}
-		return revertData, 0, vm.ErrExecutionReverted
-	}
-
-	// Check that the delegator is allowed to withdraw
-	allowed, err := handleCheckAllowedToWithdraw(evm, caller, toValidatorID)
-	if err != nil {
-		// This is a direct call, not through a handler, so we don't have a revert reason
-		return nil, gasUsed, err
-	}
-	if !allowed {
-		revertData, err := encodeRevertReason("undelegate", "outstanding sU2U balance")
-		if err != nil {
-			return nil, 0, vm.ErrExecutionReverted
-		}
-		return revertData, 0, vm.ErrExecutionReverted
-	}
-
-	// Check that the withdrawal request ID doesn't already exist
-	withdrawalRequestSlot, _ := getWithdrawalRequestSlot(caller, toValidatorID, wrID)
-	withdrawalRequest := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(withdrawalRequestSlot))
-	withdrawalRequestAmount := new(big.Int).SetBytes(withdrawalRequest.Bytes())
-	if withdrawalRequestAmount.Cmp(big.NewInt(0)) != 0 {
-		revertData, err := encodeRevertReason("undelegate", "wrID already exists")
-		if err != nil {
-			return nil, 0, vm.ErrExecutionReverted
-		}
-		return revertData, 0, vm.ErrExecutionReverted
-	}
-
-	// Raw undelegate
-	result, rawGasUsed, err := handleRawUndelegate(evm, caller, toValidatorID, amount, true)
-	if err != nil {
-		return result, gasUsed + rawGasUsed, err
-	}
-
-	// Add the gas used by handleRawUndelegate
-	gasUsed += rawGasUsed
-
-	// Set the withdrawal request
-	withdrawalRequestAmountSlot, slotGasUsed := getWithdrawalRequestAmountSlot(caller, toValidatorID, wrID)
-	gasUsed += slotGasUsed
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(withdrawalRequestAmountSlot), common.BigToHash(amount))
-
-	withdrawalRequestEpochSlot, epochSlotGasUsed := getWithdrawalRequestEpochSlot(caller, toValidatorID, wrID)
-	gasUsed += epochSlotGasUsed
-	currentEpochBigInt, _, err := getCurrentEpoch(evm)
-	if err != nil {
-		return nil, 0, err
-	}
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(withdrawalRequestEpochSlot), common.BigToHash(currentEpochBigInt))
-
-	withdrawalRequestTimeSlot, timeSlotGasUsed := getWithdrawalRequestTimeSlot(caller, toValidatorID, wrID)
-	gasUsed += timeSlotGasUsed
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(withdrawalRequestTimeSlot), common.BigToHash(evm.Context.Time))
-
-	// Sync validator
-	result, syncGasUsed, err := handleSyncValidator(evm, toValidatorID)
-	if err != nil {
-		return result, gasUsed + syncGasUsed, err
-	}
-
-	// Add the gas used by handleSyncValidator
-	gasUsed += syncGasUsed
-
-	// Emit Undelegated event
-	topics := []common.Hash{
-		SfcAbi.Events["Undelegated"].ID,
-		common.BytesToHash(common.LeftPadBytes(caller.Bytes(), 32)), // indexed parameter (delegator)
-		common.BigToHash(toValidatorID),                             // indexed parameter (toValidatorID)
-		common.BigToHash(wrID),                                      // indexed parameter (wrID)
-	}
-	data, err := SfcAbi.Events["Undelegated"].Inputs.NonIndexed().Pack(
-		amount,
-	)
-	if err != nil {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
-	})
-
-	// Recount votes
-	// Get the validator auth address
-	validatorAuthSlot, _ := getValidatorAuthSlot(toValidatorID)
-	validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorAuthSlot))
-	validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
-
-	// Call handleRecountVotes with strict=true
-	result, recountGasUsed, err := handleRecountVotes(evm, caller, validatorAuthAddr, true)
-	if err != nil {
-		return result, gasUsed + recountGasUsed, err
-	}
-
-	// Add the gas used by handleRecountVotes
-	gasUsed += recountGasUsed
-
-	return nil, gasUsed, nil
-}
-
 // handleIsOwner returns whether the given address is the owner of the contract
 func handleIsOwner(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	var gasUsed uint64 = 0
@@ -921,10 +652,10 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	}
 
 	// Stash rewards
-	// Create arguments for handleStashRewards
+	// Create arguments for handle_stashRewards
 	stashRewardsArgs := []interface{}{caller, toValidatorID}
-	// Call handleStashRewards
-	_, _, err = handleStashRewards(evm, stashRewardsArgs)
+	// Call handle_stashRewards
+	_, _, err = handle_stashRewards(evm, stashRewardsArgs)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}
@@ -1274,6 +1005,12 @@ func handlePendingRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, erro
 	return nil, 0, vm.ErrSfcFunctionNotImplemented
 }
 
+// handleStashRewards stashes the rewards for a delegator
+func handleStashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
+	// TODO: Implement handleStashRewards handler
+	return nil, 0, vm.ErrSfcFunctionNotImplemented
+}
+
 // IsLockedUp returns whether a delegator's stake is locked up for a validator
 func handleIsLockedUp(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	// TODO: Implement isLockedUp handler
@@ -1413,10 +1150,10 @@ func handleUnlockStake(evm *vm.EVM, caller common.Address, args []interface{}) (
 	}
 
 	// Stash rewards
-	// Create arguments for handleStashRewards
+	// Create arguments for handle_stashRewards
 	stashRewardsArgs := []interface{}{caller, toValidatorID}
-	// Call handleStashRewards
-	_, _, err = handleStashRewards(evm, stashRewardsArgs)
+	// Call handle_stashRewards
+	_, _, err = handle_stashRewards(evm, stashRewardsArgs)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}

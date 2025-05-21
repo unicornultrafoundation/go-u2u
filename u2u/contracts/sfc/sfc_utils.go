@@ -122,44 +122,19 @@ func checkOnlyDriver(evm *vm.EVM, caller common.Address, methodName string) ([]b
 func checkValidatorExists(evm *vm.EVM, validatorID *big.Int, methodName string) ([]byte, uint64, error) {
 	var gasUsed uint64 = 0
 
-	// Calculate validator status slot
-	statusSlot, slotGasUsed := getValidatorStatusSlot(validatorID)
+	// Calculate validator createdTime slot - this matches the _validatorExists function in SFCBase.sol
+	// which checks if getValidator[validatorID].createdTime != 0
+	createdTimeSlot, slotGasUsed := getValidatorCreatedTimeSlot(validatorID)
 	gasUsed += slotGasUsed
 
 	// Check if validator exists (SLOAD operation)
-	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(statusSlot))
+	validatorCreatedTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(createdTimeSlot))
 	gasUsed += SloadGasCost
 
-	emptyHash := common.Hash{}
-	if validatorStatus.Cmp(emptyHash) == 0 {
+	// Check if createdTime is zero
+	if validatorCreatedTime.Big().Cmp(big.NewInt(0)) == 0 {
 		// Return ABI-encoded revert reason: "validator doesn't exist"
 		revertReason := "validator doesn't exist"
-		revertData, err := encodeRevertReason(methodName, revertReason)
-		if err != nil {
-			return nil, gasUsed, vm.ErrExecutionReverted
-		}
-		return revertData, gasUsed, vm.ErrExecutionReverted
-	}
-	return nil, gasUsed, nil
-}
-
-// checkValidatorNotExists checks if a validator with the given ID does not exist
-// Returns nil if the validator does not exist, otherwise returns an ABI-encoded revert reason
-func checkValidatorNotExists(evm *vm.EVM, validatorID *big.Int, methodName string) ([]byte, uint64, error) {
-	var gasUsed uint64 = 0
-
-	// Calculate validator status slot
-	statusSlot, slotGasUsed := getValidatorStatusSlot(validatorID)
-	gasUsed += slotGasUsed
-
-	// Check if validator doesn't exist (SLOAD operation)
-	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(statusSlot))
-	gasUsed += SloadGasCost
-
-	emptyHash := common.Hash{}
-	if validatorStatus.Cmp(emptyHash) != 0 {
-		// Return ABI-encoded revert reason: "validator already exists"
-		revertReason := "validator already exists"
 		revertData, err := encodeRevertReason(methodName, revertReason)
 		if err != nil {
 			return nil, gasUsed, vm.ErrExecutionReverted
@@ -326,6 +301,7 @@ func encodeRevertReason(methodName string, reason string) ([]byte, error) {
 
 	// Check if we have this error message cached
 	if cachedData, ok := sfcCache.AbiPackCache[cacheKey]; ok {
+		log.Info("SFC: Revert", "message", errorMessage)
 		return cachedData, nil
 	}
 
@@ -351,7 +327,7 @@ func encodeRevertReason(methodName string, reason string) ([]byte, error) {
 
 	// Cache the result
 	sfcCache.AbiPackCache[cacheKey] = result
-	log.Debug("SFC: Revert", "message", errorMessage)
+	log.Info("SFC: Revert", "message", errorMessage)
 	return result, nil
 }
 
@@ -1440,6 +1416,347 @@ type Rewards struct {
 	LockupExtraReward *big.Int
 	LockupBaseReward  *big.Int
 	UnlockedReward    *big.Int
+}
+
+// _highestPayableEpoch returns the highest epoch for which rewards can be paid
+// This is a port of the _highestPayableEpoch function from SFCLib.sol
+func _highestPayableEpoch(evm *vm.EVM, validatorID *big.Int) (*big.Int, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Get the validator's deactivated epoch
+	validatorDeactivatedEpochSlot, slotGasUsed := getValidatorDeactivatedEpochSlot(validatorID)
+	gasUsed += slotGasUsed
+	validatorDeactivatedEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorDeactivatedEpochSlot))
+	gasUsed += SloadGasCost
+	validatorDeactivatedEpochBigInt := new(big.Int).SetBytes(validatorDeactivatedEpoch.Bytes())
+
+	// Get the current sealed epoch
+	currentSealedEpochSlot := common.BigToHash(big.NewInt(currentSealedEpochSlot))
+	currentSealedEpoch := evm.SfcStateDB.GetState(ContractAddress, currentSealedEpochSlot)
+	gasUsed += SloadGasCost
+	currentSealedEpochBigInt := new(big.Int).SetBytes(currentSealedEpoch.Bytes())
+
+	// If the validator is deactivated and the deactivated epoch is less than the current sealed epoch,
+	// return the deactivated epoch, otherwise return the current sealed epoch
+	if validatorDeactivatedEpochBigInt.Cmp(big.NewInt(0)) != 0 {
+		if currentSealedEpochBigInt.Cmp(validatorDeactivatedEpochBigInt) < 0 {
+			return currentSealedEpochBigInt, gasUsed, nil
+		}
+		return validatorDeactivatedEpochBigInt, gasUsed, nil
+	}
+
+	return currentSealedEpochBigInt, gasUsed, nil
+}
+
+// _isLockedUpAtEpoch checks if a delegation is locked up at a specific epoch
+// This is a port of the _isLockedUpAtEpoch function from SFCLib.sol
+func _isLockedUpAtEpoch(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int, epoch *big.Int) (bool, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Get the lockup from epoch
+	lockupFromEpochSlot, slotGasUsed := getLockupFromEpochSlot(delegator, toValidatorID)
+	gasUsed += slotGasUsed
+	lockupFromEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupFromEpochSlot))
+	gasUsed += SloadGasCost
+	lockupFromEpochBigInt := new(big.Int).SetBytes(lockupFromEpoch.Bytes())
+
+	// Get the lockup end time
+	lockupEndTimeSlot, slotGasUsed := getLockupEndTimeSlot(delegator, toValidatorID)
+	gasUsed += slotGasUsed
+	lockupEndTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupEndTimeSlot))
+	gasUsed += SloadGasCost
+	lockupEndTimeBigInt := new(big.Int).SetBytes(lockupEndTime.Bytes())
+
+	// Get the epoch end time
+	epochEndTimeSlot, slotGasUsed := getEpochEndTimeSlot(epoch)
+	gasUsed += slotGasUsed
+	epochEndTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(epochEndTimeSlot))
+	gasUsed += SloadGasCost
+	epochEndTimeBigInt := new(big.Int).SetBytes(epochEndTime.Bytes())
+
+	// Check if the delegation is locked up at the specified epoch
+	// lockupFromEpoch <= epoch && epochEndTime <= lockupEndTime
+	return lockupFromEpochBigInt.Cmp(epoch) <= 0 && epochEndTimeBigInt.Cmp(lockupEndTimeBigInt) <= 0, gasUsed, nil
+}
+
+// _highestLockupEpoch returns the highest epoch for which a delegation is locked up
+// This is a port of the _highestLockupEpoch function from SFCLib.sol
+func _highestLockupEpoch(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) (*big.Int, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Get the lockup from epoch
+	lockupFromEpochSlot, slotGasUsed := getLockupFromEpochSlot(delegator, toValidatorID)
+	gasUsed += slotGasUsed
+	lockupFromEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupFromEpochSlot))
+	gasUsed += SloadGasCost
+	lockupFromEpochBigInt := new(big.Int).SetBytes(lockupFromEpoch.Bytes())
+
+	// Get the current sealed epoch
+	currentSealedEpochSlot := common.BigToHash(big.NewInt(currentSealedEpochSlot))
+	currentSealedEpoch := evm.SfcStateDB.GetState(ContractAddress, currentSealedEpochSlot)
+	gasUsed += SloadGasCost
+	currentSealedEpochBigInt := new(big.Int).SetBytes(currentSealedEpoch.Bytes())
+
+	// Check if the delegation is locked up at the current sealed epoch
+	isLockedAtCurrentEpoch, lockedGasUsed, err := _isLockedUpAtEpoch(evm, delegator, toValidatorID, currentSealedEpochBigInt)
+	if err != nil {
+		return nil, gasUsed, err
+	}
+	gasUsed += lockedGasUsed
+
+	if isLockedAtCurrentEpoch {
+		return currentSealedEpochBigInt, gasUsed, nil
+	}
+
+	// Check if the delegation is locked up at the from epoch
+	isLockedAtFromEpoch, lockedGasUsed, err := _isLockedUpAtEpoch(evm, delegator, toValidatorID, lockupFromEpochBigInt)
+	if err != nil {
+		return nil, gasUsed, err
+	}
+	gasUsed += lockedGasUsed
+
+	if !isLockedAtFromEpoch {
+		return big.NewInt(0), gasUsed, nil
+	}
+
+	// Binary search to find the highest epoch for which the delegation is locked up
+	l := lockupFromEpochBigInt
+	r := currentSealedEpochBigInt
+
+	if l.Cmp(r) > 0 {
+		return big.NewInt(0), gasUsed, nil
+	}
+
+	for l.Cmp(r) < 0 {
+		m := new(big.Int).Add(l, r)
+		m = m.Div(m, big.NewInt(2))
+
+		isLockedAtM, lockedGasUsed, err := _isLockedUpAtEpoch(evm, delegator, toValidatorID, m)
+		if err != nil {
+			return nil, gasUsed, err
+		}
+		gasUsed += lockedGasUsed
+
+		if isLockedAtM {
+			l = new(big.Int).Add(m, big.NewInt(1))
+		} else {
+			r = m
+		}
+	}
+
+	if r.Cmp(big.NewInt(0)) == 0 {
+		return big.NewInt(0), gasUsed, nil
+	}
+
+	return new(big.Int).Sub(r, big.NewInt(1)), gasUsed, nil
+}
+
+// _newRewardsOf calculates the new rewards for a delegation between two epochs
+// This is a port of the _newRewardsOf function from SFCLib.sol
+func _newRewardsOf(evm *vm.EVM, stakeAmount *big.Int, toValidatorID *big.Int, fromEpoch *big.Int, toEpoch *big.Int) (*big.Int, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// If fromEpoch >= toEpoch, return 0
+	if fromEpoch.Cmp(toEpoch) >= 0 {
+		return big.NewInt(0), gasUsed, nil
+	}
+
+	// Get the stashed rate
+	stashedRateSlot, slotGasUsed := getEpochAccumulatedRewardPerTokenSlot(fromEpoch, toValidatorID)
+	gasUsed += slotGasUsed
+	stashedRate := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stashedRateSlot))
+	gasUsed += SloadGasCost
+	stashedRateBigInt := new(big.Int).SetBytes(stashedRate.Bytes())
+
+	// Get the current rate
+	currentRateSlot, slotGasUsed := getEpochAccumulatedRewardPerTokenSlot(toEpoch, toValidatorID)
+	gasUsed += slotGasUsed
+	currentRate := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(currentRateSlot))
+	gasUsed += SloadGasCost
+	currentRateBigInt := new(big.Int).SetBytes(currentRate.Bytes())
+
+	// Calculate the reward
+	// return currentRate.sub(stashedRate).mul(stakeAmount).div(Decimal.unit());
+	reward := new(big.Int).Sub(currentRateBigInt, stashedRateBigInt)
+	reward = new(big.Int).Mul(reward, stakeAmount)
+	reward = new(big.Int).Div(reward, getDecimalUnit())
+
+	return reward, gasUsed, nil
+}
+
+// _newRewards calculates the new rewards for a delegation
+// This is a port of the _newRewards function from SFCLib.sol
+func _newRewards(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) (Rewards, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Get the stashed rewards until epoch
+	stashedRewardsUntilEpochSlot, slotGasUsed := getStashedRewardsUntilEpochSlot(delegator, toValidatorID)
+	gasUsed += slotGasUsed
+	stashedRewardsUntilEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stashedRewardsUntilEpochSlot))
+	gasUsed += SloadGasCost
+	stashedUntil := new(big.Int).SetBytes(stashedRewardsUntilEpoch.Bytes())
+
+	// Get the highest payable epoch
+	payableUntil, epochGasUsed, err := _highestPayableEpoch(evm, toValidatorID)
+	if err != nil {
+		return Rewards{}, gasUsed, err
+	}
+	gasUsed += epochGasUsed
+
+	// Get the highest lockup epoch
+	lockedUntil, lockupGasUsed, err := _highestLockupEpoch(evm, delegator, toValidatorID)
+	if err != nil {
+		return Rewards{}, gasUsed, err
+	}
+	gasUsed += lockupGasUsed
+
+	// Adjust lockedUntil if necessary
+	if lockedUntil.Cmp(payableUntil) > 0 {
+		lockedUntil = payableUntil
+	}
+	if lockedUntil.Cmp(stashedUntil) < 0 {
+		lockedUntil = stashedUntil
+	}
+
+	// Get the locked delegation info
+	lockedStakeSlot, slotGasUsed := getLockedStakeSlot(delegator, toValidatorID)
+	gasUsed += slotGasUsed
+	lockedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockedStakeSlot))
+	gasUsed += SloadGasCost
+	lockedStakeBigInt := new(big.Int).SetBytes(lockedStake.Bytes())
+
+	// Get the lockup duration
+	lockupDurationSlot, slotGasUsed := getLockupDurationSlot(delegator, toValidatorID)
+	gasUsed += slotGasUsed
+	lockupDuration := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupDurationSlot))
+	gasUsed += SloadGasCost
+	lockupDurationBigInt := new(big.Int).SetBytes(lockupDuration.Bytes())
+
+	// Get the whole stake
+	stakeSlot, slotGasUsed := getStakeSlot(delegator, toValidatorID)
+	gasUsed += slotGasUsed
+	stake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stakeSlot))
+	gasUsed += SloadGasCost
+	wholeStake := new(big.Int).SetBytes(stake.Bytes())
+
+	// Calculate the unlocked stake
+	unlockedStake := new(big.Int).Sub(wholeStake, lockedStakeBigInt)
+	if unlockedStake.Cmp(big.NewInt(0)) < 0 {
+		unlockedStake = big.NewInt(0)
+	}
+
+	// Calculate rewards for locked stake during lockup epochs
+	fullReward, rewardsGasUsed, err := _newRewardsOf(evm, lockedStakeBigInt, toValidatorID, stashedUntil, lockedUntil)
+	if err != nil {
+		return Rewards{}, gasUsed, err
+	}
+	gasUsed += rewardsGasUsed
+
+	plReward, scaleGasUsed, err := _scaleLockupReward(evm, fullReward, lockupDurationBigInt)
+	if err != nil {
+		return Rewards{}, gasUsed, err
+	}
+	gasUsed += scaleGasUsed
+
+	// Calculate rewards for unlocked stake during lockup epochs
+	fullReward, rewardsGasUsed, err = _newRewardsOf(evm, unlockedStake, toValidatorID, stashedUntil, lockedUntil)
+	if err != nil {
+		return Rewards{}, gasUsed, err
+	}
+	gasUsed += rewardsGasUsed
+
+	puReward, scaleGasUsed, err := _scaleLockupReward(evm, fullReward, big.NewInt(0))
+	if err != nil {
+		return Rewards{}, gasUsed, err
+	}
+	gasUsed += scaleGasUsed
+
+	// Calculate rewards for whole stake during unlocked epochs
+	fullReward, rewardsGasUsed, err = _newRewardsOf(evm, wholeStake, toValidatorID, lockedUntil, payableUntil)
+	if err != nil {
+		return Rewards{}, gasUsed, err
+	}
+	gasUsed += rewardsGasUsed
+
+	wuReward, scaleGasUsed, err := _scaleLockupReward(evm, fullReward, big.NewInt(0))
+	if err != nil {
+		return Rewards{}, gasUsed, err
+	}
+	gasUsed += scaleGasUsed
+
+	// Sum the rewards
+	return sumRewards(plReward, puReward, wuReward), gasUsed, nil
+}
+
+// isLockedUp checks if a delegation is locked up
+// This is a port of the isLockedUp function from SFCLib.sol
+func isLockedUp(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) (bool, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Get the lockup end time
+	lockupEndTimeSlot, slotGasUsed := getLockupEndTimeSlot(delegator, toValidatorID)
+	gasUsed += slotGasUsed
+	lockupEndTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupEndTimeSlot))
+	gasUsed += SloadGasCost
+	lockupEndTimeBigInt := new(big.Int).SetBytes(lockupEndTime.Bytes())
+
+	// Check if the delegation is locked up
+	return lockupEndTimeBigInt.Cmp(evm.Context.Time) > 0, gasUsed, nil
+}
+
+// getEpochEndTimeSlot returns the storage slot for an epoch's end time
+func getEpochEndTimeSlot(epoch *big.Int) (*big.Int, uint64) {
+	// Initialize gas used
+	var gasUsed uint64 = 0
+	// For a mapping(uint256 => EpochSnapshot), first we need to get the slot for the EpochSnapshot struct
+	// keccak256(abi.encode(epoch, epochSnapshotSlot))
+	// Then we need to add the offset for the endTime field (7)
+
+	// Create the hash input using cached padded values
+	hashInput := CreateHashInput(epoch, epochSnapshotSlot)
+
+	// Calculate the hash - add gas cost for hashing
+	hash := CachedKeccak256(hashInput)
+	gasUsed += HashGasCost
+
+	// Convert the hash to a big.Int and add the offset for the endTime field
+	slot := new(big.Int).SetBytes(hash)
+	slot = new(big.Int).Add(slot, big.NewInt(endTimeOffset))
+
+	return slot, gasUsed
+}
+
+// getEpochAccumulatedRewardPerTokenSlot returns the storage slot for an epoch's accumulated reward per token
+func getEpochAccumulatedRewardPerTokenSlot(epoch *big.Int, validatorID *big.Int) (*big.Int, uint64) {
+	// Initialize gas used
+	var gasUsed uint64 = 0
+	// For a mapping(uint256 => EpochSnapshot), first we need to get the slot for the EpochSnapshot struct
+	// keccak256(abi.encode(epoch, epochSnapshotSlot))
+	// Then we need to get the slot for the accumulatedRewardPerToken mapping
+	// keccak256(abi.encode(validatorID, keccak256(abi.encode(epoch, epochSnapshotSlot)) + accumulatedRewardPerTokenOffset))
+
+	// Create the inner hash input using cached padded values
+	innerHashInput := CreateHashInput(epoch, epochSnapshotSlot)
+
+	// Calculate the inner hash - add gas cost for hashing
+	innerHash := CachedKeccak256(innerHashInput)
+	gasUsed += HashGasCost
+
+	// Convert the inner hash to a big.Int and add the offset for the accumulatedRewardPerToken mapping
+	innerSlot := new(big.Int).SetBytes(innerHash)
+	innerSlot = new(big.Int).Add(innerSlot, big.NewInt(accumulatedRewardPerTokenOffset))
+
+	// Create the outer hash input using cached nested hash input
+	outerHashInput := CreateNestedHashInput(validatorID, innerSlot.Bytes())
+
+	// Calculate the outer hash - add gas cost for hashing
+	outerHash := CachedKeccak256(outerHashInput)
+	gasUsed += HashGasCost
+
+	// Convert the hash to a big.Int
+	slot := new(big.Int).SetBytes(outerHash)
+
+	return slot, gasUsed
 }
 
 // _scaleLockupReward scales the reward based on the lockup duration

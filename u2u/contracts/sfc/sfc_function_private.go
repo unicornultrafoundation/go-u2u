@@ -3,7 +3,6 @@ package sfc
 import (
 	"math/big"
 
-	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/log"
@@ -11,68 +10,6 @@ import (
 )
 
 // Handler functions for SFC contract internal and private functions
-
-// _delegate is an internal function to delegate calls to an implementation address
-// This is a Go implementation of the Solidity function:
-//
-//	function _delegate(address implementation) internal {
-//	    assembly {
-//	        calldatacopy(0, 0, calldatasize())
-//	        let result := delegatecall(gas(), implementation, 0, calldatasize(), 0, 0)
-//	        returndatacopy(0, 0, returndatasize())
-//	        switch result
-//	        case 0 { revert(0, returndatasize()) }
-//	        default { return(0, returndatasize()) }
-//	    }
-//	}
-func handle_delegate(evm *vm.EVM, args []interface{}, input []byte) ([]byte, uint64, error) {
-	if len(args) != 1 {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	// Get the implementation address from args
-	implementation, ok := args[0].(common.Address)
-	if !ok {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	// The original calldata is available in the input parameter
-	// For the _delegate function, we need to skip the method selector (first 4 bytes)
-	// This simulates the Solidity assembly code: calldatacopy(0, 0, calldatasize())
-	originalInput := input
-
-	// If the input starts with the _delegate method selector, skip it
-	if len(originalInput) >= 4 {
-		// Check if the first 4 bytes match the _delegate method selector
-		if method, err := SfcAbi.MethodById(originalInput[:4]); err == nil && method.Name == "_delegate" {
-			// Skip the method selector and the ABI-encoded implementation address
-			// The implementation address is already extracted from args, so we don't need it in the input
-			originalInput = []byte{}
-		}
-	}
-
-	// Create a contract reference for the caller
-	callerRef := vm.AccountRef(evm.TxContext.Origin)
-
-	// Make the delegate call
-	// This simulates the Solidity assembly code: let result := delegatecall(gas, implementation, 0, calldatasize, 0, 0)
-	// Use a fixed gas amount for now
-	gas := uint64(1000000)
-	ret, leftOverGas, err := evm.DelegateCall(callerRef, implementation, originalInput, gas)
-
-	// Calculate gas used
-	gasUsed := gas - leftOverGas
-
-	// Handle errors similar to the Solidity assembly code:
-	// switch result
-	// case 0 { revert(0, returndatasize) }
-	// default { return (0, returndatasize) }
-	if err != nil {
-		return nil, gasUsed, err
-	}
-
-	return ret, gasUsed, nil
-}
 
 // _calcRawValidatorEpochBaseReward is an internal function to calculate raw validator epoch base reward
 func handle_calcRawValidatorEpochBaseReward(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
@@ -90,59 +27,6 @@ func handle_calcRawValidatorEpochTxReward(evm *vm.EVM, args []interface{}) ([]by
 func handle_calcValidatorCommission(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	// TODO: Implement _calcValidatorCommission handler
 	return nil, 0, vm.ErrSfcFunctionNotImplemented
-}
-
-// _mintNativeToken is an internal function to mint native tokens
-func handle_mintNativeToken(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// Initialize gas used
-	var gasUsed uint64 = 0
-
-	// Get the arguments
-	if len(args) != 2 {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	receiver, ok := args[0].(common.Address)
-	if !ok {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	amount, ok := args[1].(*big.Int)
-	if !ok {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	// Implement the _mintNativeToken logic
-	// 1. Call node.incBalance to increase the balance of the receiver
-	nodeDriverAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(nodeDriverAuthSlot)))
-	gasUsed += SloadGasCost
-	nodeDriverAuthAddr := common.BytesToAddress(nodeDriverAuth.Bytes())
-
-	// Pack the function call data for incBalance
-	data, err := NodeDriverAuthAbi.Pack("incBalance", receiver, amount)
-	if err != nil {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	// Call the node driver
-	result, _, err := evm.CallSFC(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, defaultGasLimit, big.NewInt(0))
-	if err != nil {
-		reason, _ := abi.UnpackRevert(result)
-		log.Error("SFC: Error calling NodeDriverAuth method", "method", "incBalance", "err", err, "reason", reason)
-		return nil, gasUsed, err
-	}
-
-	// 2. Update the total supply
-	totalSupply := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalSupplySlot)))
-	gasUsed += SloadGasCost
-	totalSupplyBigInt := new(big.Int).SetBytes(totalSupply.Bytes())
-
-	// Add the amount to the total supply
-	newTotalSupply := new(big.Int).Add(totalSupplyBigInt, amount)
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalSupplySlot)), common.BigToHash(newTotalSupply))
-	gasUsed += SstoreGasCost
-
-	return nil, gasUsed, nil
 }
 
 // _scaleLockupReward is an internal function to scale lockup reward
@@ -363,7 +247,7 @@ func handleCheckDelegatedStakeLimit(evm *vm.EVM, validatorID *big.Int) (bool, er
 
 	// Unpack the result
 	// Note: We don't cache unpacking operations as they're more complex and less frequent
-	selfStakeValues, err := SfcAbi.Methods["getSelfStake"].Outputs.Unpack(result)
+	selfStakeValues, err := SfcLibAbi.Methods["getSelfStake"].Outputs.Unpack(result)
 	if err != nil {
 		return false, vm.ErrExecutionReverted
 	}
@@ -398,184 +282,6 @@ func handleCheckDelegatedStakeLimit(evm *vm.EVM, validatorID *big.Int) (bool, er
 
 	// Check if the delegated stake is within the limit
 	return delegatedStake.Cmp(maxDelegatedStake) <= 0, nil
-}
-
-// handleInternalDelegate implements the internal _delegate function logic
-func handleInternalDelegate(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int, amount *big.Int) ([]byte, uint64, error) {
-	// Initialize gas used
-	var gasUsed uint64 = 0
-	// This function can either handle the delegation logic directly or call the SFCLib contract
-	// For this implementation, we'll handle it directly, but we could also call the SFCLib contract
-	// return callSFCLibDelegate(evm, delegator, toValidatorID, amount)
-
-	// Check that the validator exists
-	revertData, checkGasUsed, err := checkValidatorExists(evm, toValidatorID, "_delegate")
-	gasUsed += checkGasUsed
-	if err != nil {
-		return revertData, gasUsed, err
-	}
-
-	// Check that the validator is active
-	revertData, checkGasUsed, err = checkValidatorActive(evm, toValidatorID, "_delegate")
-	gasUsed += checkGasUsed
-	if err != nil {
-		return revertData, gasUsed, err
-	}
-
-	// Check that the amount is greater than 0
-	if amount.Cmp(big.NewInt(0)) <= 0 {
-		revertData, err := encodeRevertReason("_delegate", "zero amount")
-		if err != nil {
-			return nil, 0, vm.ErrExecutionReverted
-		}
-		return revertData, 0, vm.ErrExecutionReverted
-	}
-
-	// Update the stake
-	stakeSlot, _ := getStakeSlot(delegator, toValidatorID)
-	stake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stakeSlot))
-	stakeBigInt := new(big.Int).SetBytes(stake.Bytes())
-	newStake := new(big.Int).Add(stakeBigInt, amount)
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stakeSlot), common.BigToHash(newStake))
-
-	// Update the validator's received stake
-	validatorReceivedStakeSlot, _ := getValidatorReceivedStakeSlot(toValidatorID)
-	receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorReceivedStakeSlot))
-	receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
-	newReceivedStake := new(big.Int).Add(receivedStakeBigInt, amount)
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorReceivedStakeSlot), common.BigToHash(newReceivedStake))
-
-	// Update the total stake
-	totalStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalStakeSlot)))
-	totalStakeBigInt := new(big.Int).SetBytes(totalStake.Bytes())
-	newTotalStake := new(big.Int).Add(totalStakeBigInt, amount)
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalStakeSlot)), common.BigToHash(newTotalStake))
-
-	// Update the total active stake if the validator is active
-	validatorStatusSlot, slotGasUsed := getValidatorStatusSlot(toValidatorID)
-	gasUsed += slotGasUsed
-	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorStatusSlot))
-	gasUsed += params.ColdSloadCostEIP2929 // Add gas for SLOAD
-	validatorStatusBigInt := new(big.Int).SetBytes(validatorStatus.Bytes())
-	if validatorStatusBigInt.Cmp(big.NewInt(0)) == 0 { // OK_STATUS
-		totalActiveStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalActiveStakeSlot)))
-		totalActiveStakeBigInt := new(big.Int).SetBytes(totalActiveStake.Bytes())
-		newTotalActiveStake := new(big.Int).Add(totalActiveStakeBigInt, amount)
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalActiveStakeSlot)), common.BigToHash(newTotalActiveStake))
-	}
-
-	return nil, 0, nil
-}
-
-// handleRawUndelegate implements the _rawUndelegate function logic
-func handleRawUndelegate(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int, amount *big.Int, strict bool) ([]byte, uint64, error) {
-	// Initialize gas used
-	var gasUsed uint64 = 0
-	// Update the stake
-	stakeSlot, slotGasUsed := getStakeSlot(delegator, toValidatorID)
-	gasUsed += slotGasUsed
-	stake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stakeSlot))
-	gasUsed += params.ColdSloadCostEIP2929 // Add gas for SLOAD
-	stakeBigInt := new(big.Int).SetBytes(stake.Bytes())
-	newStake := new(big.Int).Sub(stakeBigInt, amount)
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stakeSlot), common.BigToHash(newStake))
-	gasUsed += params.SstoreSetGasEIP2200 // Add gas for SSTORE
-
-	// Update the validator's received stake
-	validatorReceivedStakeSlot, slotGasUsed := getValidatorReceivedStakeSlot(toValidatorID)
-	gasUsed += slotGasUsed
-	receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorReceivedStakeSlot))
-	gasUsed += params.ColdSloadCostEIP2929 // Add gas for SLOAD
-	receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
-	newReceivedStake := new(big.Int).Sub(receivedStakeBigInt, amount)
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorReceivedStakeSlot), common.BigToHash(newReceivedStake))
-	gasUsed += params.SstoreSetGasEIP2200 // Add gas for SSTORE
-
-	// Update the total stake
-	totalStakeState := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalStakeSlot)))
-	totalStakeBigInt := new(big.Int).SetBytes(totalStakeState.Bytes())
-	newTotalStake := new(big.Int).Sub(totalStakeBigInt, amount)
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalStakeSlot)), common.BigToHash(newTotalStake))
-
-	// Update the total active stake if the validator is active
-	validatorStatusSlot, _ := getValidatorStatusSlot(toValidatorID)
-	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorStatusSlot))
-	validatorStatusBigInt := new(big.Int).SetBytes(validatorStatus.Bytes())
-	if validatorStatusBigInt.Cmp(big.NewInt(0)) == 0 { // OK_STATUS
-		totalActiveStakeState := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalActiveStakeSlot)))
-		totalActiveStakeBigInt := new(big.Int).SetBytes(totalActiveStakeState.Bytes())
-		newTotalActiveStake := new(big.Int).Sub(totalActiveStakeBigInt, amount)
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalActiveStakeSlot)), common.BigToHash(newTotalActiveStake))
-	}
-
-	// Get the self-stake
-	// Create arguments for handleGetSelfStake
-	args := []interface{}{toValidatorID}
-	// Call handleGetSelfStake
-	result, selfStakeGasUsed, err := handleGetSelfStake(evm, args)
-	if err != nil {
-		return nil, gasUsed + selfStakeGasUsed, err
-	}
-
-	// Add the gas used by handleGetSelfStake
-	gasUsed += selfStakeGasUsed
-
-	// Unpack the result
-	selfStakeValues, err := SfcAbi.Methods["getSelfStake"].Outputs.Unpack(result)
-	if err != nil {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	// The result should be a single *big.Int value
-	if len(selfStakeValues) != 1 {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	selfStake, ok := selfStakeValues[0].(*big.Int)
-	if !ok {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	// Check if the validator should be deactivated
-	if selfStake.Cmp(big.NewInt(0)) == 0 {
-		// Set the validator as deactivated
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorStatusSlot), common.BigToHash(big.NewInt(1))) // WITHDRAWN_BIT
-	} else if validatorStatusBigInt.Cmp(big.NewInt(0)) == 0 { // OK_STATUS
-		// Check that the self-stake is at least the minimum self-stake
-		minSelfStakeBigInt := getConstantsManagerVariable("minSelfStake")
-		if selfStake.Cmp(minSelfStakeBigInt) < 0 {
-			// Set the validator as deactivated
-			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorStatusSlot), common.BigToHash(big.NewInt(1))) // WITHDRAWN_BIT
-		} else {
-			// Check that the delegated stake is within the limit
-			withinLimit, err := handleCheckDelegatedStakeLimit(evm, toValidatorID)
-			if err != nil {
-				return nil, gasUsed, err
-			}
-			if !withinLimit {
-				// Set the validator as deactivated
-				evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorStatusSlot), common.BigToHash(big.NewInt(1))) // WITHDRAWN_BIT
-			}
-		}
-	}
-
-	// Get the validator auth address
-	validatorAuthSlot, slotGasUsed := getValidatorAuthSlot(toValidatorID)
-	gasUsed += slotGasUsed
-	validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorAuthSlot))
-	gasUsed += params.ColdSloadCostEIP2929 // Add gas for SLOAD
-	validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
-
-	// Recount votes
-	_, recountGasUsed, err := handleRecountVotes(evm, delegator, validatorAuthAddr, strict)
-	if err != nil && strict {
-		return nil, gasUsed + recountGasUsed, err
-	}
-
-	// Add the gas used by handleRecountVotes
-	gasUsed += recountGasUsed
-
-	return nil, gasUsed, nil
 }
 
 // handleRecountVotes implements the _recountVotes function logic
@@ -683,7 +389,7 @@ func handleGetSelfStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, error)
 	stakeBigInt := GetBigInt().SetBytes(stake.Bytes())
 
 	// Don't use cache for ABI packing with parameters
-	result, err := SfcAbi.Methods["getSelfStake"].Outputs.Pack(stakeBigInt)
+	result, err := SfcLibAbi.Methods["getSelfStake"].Outputs.Pack(stakeBigInt)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}
@@ -694,8 +400,8 @@ func handleGetSelfStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, error)
 	return result, gasUsed, nil
 }
 
-// handleStashRewards stashes the rewards for a delegator
-func handleStashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
+// handle_stashRewards stashes the rewards for a delegator
+func handle_stashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	var gasUsed uint64 = 0
 	// Get the arguments
 	if len(args) != 2 {
@@ -709,111 +415,219 @@ func handleStashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error)
 	if !ok {
 		return nil, 0, vm.ErrExecutionReverted
 	}
-	// Get the current epoch
-	currentEpochBigInt, _, err := getCurrentEpoch(evm)
+
+	// Calculate nonStashedReward using _newRewards logic
+	nonStashedReward, newRewardsGasUsed, err := _newRewards(evm, delegator, toValidatorID)
 	if err != nil {
-		return nil, 0, err
+		log.Error("handle_stashRewards _newRewards", "err", err)
+		return nil, gasUsed, err
 	}
+	gasUsed += newRewardsGasUsed
 
-	// Get the stashed rewards until epoch
-	stashedRewardsUntilEpochSlot, _ := getStashedRewardsUntilEpochSlot(delegator, toValidatorID)
-	stashedRewardsUntilEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stashedRewardsUntilEpochSlot))
-	stashedRewardsUntilEpochBigInt := new(big.Int).SetBytes(stashedRewardsUntilEpoch.Bytes())
-
-	// Check if rewards are already stashed for the current epoch
-	if stashedRewardsUntilEpochBigInt.Cmp(currentEpochBigInt) >= 0 {
-		return nil, 0, nil
+	// Get the highest payable epoch for the validator
+	highestPayableEpoch, epochGasUsed, err := _highestPayableEpoch(evm, toValidatorID)
+	if err != nil {
+		log.Error("handle_stashRewards _highestPayableEpoch", "err", err)
+		return nil, gasUsed, err
 	}
-
-	// Calculate the rewards using _newRewards logic
-	// Get the delegation stake
-	stakeSlot, _ := getStakeSlot(delegator, toValidatorID)
-	stake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stakeSlot))
-	stakeBigInt := new(big.Int).SetBytes(stake.Bytes())
-
-	// Get the validator's received stake
-	validatorReceivedStakeSlot, slotGasUsed := getValidatorReceivedStakeSlot(toValidatorID)
+	gasUsed += epochGasUsed
+	
+	// Update stashedRewardsUntilEpoch
+	stashedRewardsUntilEpochSlot, slotGasUsed := getStashedRewardsUntilEpochSlot(delegator, toValidatorID)
 	gasUsed += slotGasUsed
-	receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorReceivedStakeSlot))
-	gasUsed += params.ColdSloadCostEIP2929 // Add gas for SLOAD
-	receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedRewardsUntilEpochSlot), common.BigToHash(highestPayableEpoch))
+	gasUsed += SstoreGasCost
 
-	// Get the validator status
-	validatorStatusSlot, _ := getValidatorStatusSlot(toValidatorID)
-	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorStatusSlot))
-	validatorStatusBigInt := new(big.Int).SetBytes(validatorStatus.Bytes())
-
-	// Check if the validator is active
-	isActive := (validatorStatusBigInt.Cmp(big.NewInt(0)) == 0) // OK_STATUS
-
-	// Calculate the rewards
-	rewards := big.NewInt(0)
-	if isActive && stakeBigInt.Cmp(big.NewInt(0)) > 0 && receivedStakeBigInt.Cmp(big.NewInt(0)) > 0 {
-		// Get the validator's auth address
-		validatorAuthSlot, slotGasUsed := getValidatorAuthSlot(toValidatorID)
-		gasUsed += slotGasUsed
-		validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorAuthSlot))
-		validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
-
-		// Check if the delegator is the validator (self-stake)
-		isSelfStake := delegator == validatorAuthAddr
-
-		// Get the validator commission
-		validatorCommission := big.NewInt(0)
-		if !isSelfStake {
-			validatorCommissionSlot, slotGasUsed := getValidatorCommissionSlot(toValidatorID)
-			gasUsed += slotGasUsed
-			commission := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorCommissionSlot))
-			validatorCommission = new(big.Int).SetBytes(commission.Bytes())
-		}
-
-		// Calculate the base reward rate
-		// In Solidity: uint256 baseRewardRate = _calcValidatorBaseRewardRate(toValidatorID, stashedRewardsUntilEpochBigInt, currentEpochBigInt);
-		// For simplicity, we'll use a fixed base reward rate
-		baseRewardRate := big.NewInt(1000000) // 0.1% per epoch as an example
-
-		// Calculate the reward weight
-		// In Solidity: uint256 weightedStake = (delegationStake * validatorBaseRewardWeight) / validatorTotalStake;
-		weightedStake := new(big.Int).Mul(stakeBigInt, big.NewInt(1000000)) // Assuming base weight of 1.0
-		weightedStake = new(big.Int).Div(weightedStake, receivedStakeBigInt)
-
-		// Calculate the raw rewards
-		// In Solidity: uint256 rawReward = (delegationStake * baseRewardRate * (currentEpochBigInt - stashedRewardsUntilEpochBigInt)) / 1e18;
-		epochsDiff := new(big.Int).Sub(currentEpochBigInt, stashedRewardsUntilEpochBigInt)
-		rawReward := new(big.Int).Mul(stakeBigInt, baseRewardRate)
-		rawReward = new(big.Int).Mul(rawReward, epochsDiff)
-		rawReward = new(big.Int).Div(rawReward, big.NewInt(1000000000000000000)) // 1e18
-
-		// Apply commission if not self-stake
-		if !isSelfStake && validatorCommission.Cmp(big.NewInt(0)) > 0 {
-			commissionReward := new(big.Int).Mul(rawReward, validatorCommission)
-			commissionReward = new(big.Int).Div(commissionReward, big.NewInt(1000000)) // Assuming commission is in parts per million
-			rawReward = new(big.Int).Sub(rawReward, commissionReward)
-		}
-
-		rewards = rawReward
-	}
-
-	// Get the current stashed rewards
+	// Get current rewards stash
 	rewardsStashSlot, slotGasUsed := getRewardsStashSlot(delegator, toValidatorID)
 	gasUsed += slotGasUsed
-	rewardsStash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(rewardsStashSlot))
-	rewardsStashBigInt := new(big.Int).SetBytes(rewardsStash.Bytes())
 
-	// Add the rewards to the stash
-	newRewardsStash := new(big.Int).Add(rewardsStashBigInt, rewards)
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(rewardsStashSlot), common.BigToHash(newRewardsStash))
+	// Get lockupExtraReward from current stash
+	lockupExtraRewardSlot := rewardsStashSlot
+	lockupExtraReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupExtraRewardSlot))
+	lockupExtraRewardBigInt := new(big.Int).SetBytes(lockupExtraReward.Bytes())
+	gasUsed += SloadGasCost
 
-	// Update the stashed rewards until epoch
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedRewardsUntilEpochSlot), common.BigToHash(currentEpochBigInt))
+	// Get lockupBaseReward from current stash
+	lockupBaseRewardSlot := new(big.Int).Add(rewardsStashSlot, big.NewInt(1))
+	lockupBaseReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupBaseRewardSlot))
+	lockupBaseRewardBigInt := new(big.Int).SetBytes(lockupBaseReward.Bytes())
+	gasUsed += SloadGasCost
 
-	return nil, 0, nil
+	// Get unlockedReward from current stash
+	unlockedRewardSlot := new(big.Int).Add(rewardsStashSlot, big.NewInt(2))
+	unlockedReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(unlockedRewardSlot))
+	unlockedRewardBigInt := new(big.Int).SetBytes(unlockedReward.Bytes())
+	gasUsed += SloadGasCost
+
+	// Create the current rewards stash struct
+	currentRewardsStash := Rewards{
+		LockupExtraReward: lockupExtraRewardBigInt,
+		LockupBaseReward:  lockupBaseRewardBigInt,
+		UnlockedReward:    unlockedRewardBigInt,
+	}
+
+	// Sum the rewards
+	newRewardsStash := sumRewards(currentRewardsStash, nonStashedReward, Rewards{
+		LockupExtraReward: big.NewInt(0),
+		LockupBaseReward:  big.NewInt(0),
+		UnlockedReward:    big.NewInt(0),
+	})
+
+	// Update the rewards stash
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(lockupExtraRewardSlot), common.BigToHash(newRewardsStash.LockupExtraReward))
+	gasUsed += SstoreGasCost
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(lockupBaseRewardSlot), common.BigToHash(newRewardsStash.LockupBaseReward))
+	gasUsed += SstoreGasCost
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(unlockedRewardSlot), common.BigToHash(newRewardsStash.UnlockedReward))
+	gasUsed += SstoreGasCost
+
+	// Get stashed lockup rewards
+	stashedLockupRewardsSlot, slotGasUsed := getStashedLockupRewardsSlot(delegator, toValidatorID)
+	gasUsed += slotGasUsed
+
+	// Get lockupExtraReward from stashed lockup rewards
+	stashedLockupExtraRewardSlot := stashedLockupRewardsSlot
+	stashedLockupExtraReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stashedLockupExtraRewardSlot))
+	stashedLockupExtraRewardBigInt := new(big.Int).SetBytes(stashedLockupExtraReward.Bytes())
+	gasUsed += SloadGasCost
+
+	// Get lockupBaseReward from stashed lockup rewards
+	stashedLockupBaseRewardSlot := new(big.Int).Add(stashedLockupRewardsSlot, big.NewInt(1))
+	stashedLockupBaseReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stashedLockupBaseRewardSlot))
+	stashedLockupBaseRewardBigInt := new(big.Int).SetBytes(stashedLockupBaseReward.Bytes())
+	gasUsed += SloadGasCost
+
+	// Get unlockedReward from stashed lockup rewards
+	stashedUnlockedRewardSlot := new(big.Int).Add(stashedLockupRewardsSlot, big.NewInt(2))
+	stashedUnlockedReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stashedUnlockedRewardSlot))
+	stashedUnlockedRewardBigInt := new(big.Int).SetBytes(stashedUnlockedReward.Bytes())
+	gasUsed += SloadGasCost
+
+	// Create the stashed lockup rewards struct
+	currentStashedLockupRewards := Rewards{
+		LockupExtraReward: stashedLockupExtraRewardBigInt,
+		LockupBaseReward:  stashedLockupBaseRewardBigInt,
+		UnlockedReward:    stashedUnlockedRewardBigInt,
+	}
+
+	// Sum the stashed lockup rewards
+	newStashedLockupRewards := sumRewards(currentStashedLockupRewards, nonStashedReward, Rewards{
+		LockupExtraReward: big.NewInt(0),
+		LockupBaseReward:  big.NewInt(0),
+		UnlockedReward:    big.NewInt(0),
+	})
+
+	// Update the stashed lockup rewards
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedLockupExtraRewardSlot), common.BigToHash(newStashedLockupRewards.LockupExtraReward))
+	gasUsed += SstoreGasCost
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedLockupBaseRewardSlot), common.BigToHash(newStashedLockupRewards.LockupBaseReward))
+	gasUsed += SstoreGasCost
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedUnlockedRewardSlot), common.BigToHash(newStashedLockupRewards.UnlockedReward))
+	gasUsed += SstoreGasCost
+
+	// Check if the delegation is locked up
+	isLocked, lockedGasUsed, err := isLockedUp(evm, delegator, toValidatorID)
+	if err != nil {
+		return nil, gasUsed, err
+	}
+	gasUsed += lockedGasUsed
+
+	// If not locked up, delete lockup info and stashed lockup rewards
+	if !isLocked {
+		// Delete lockup info
+		lockedStakeSlot, slotGasUsed := getLockedStakeSlot(delegator, toValidatorID)
+		gasUsed += slotGasUsed
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(lockedStakeSlot), common.Hash{})
+		gasUsed += SstoreGasCost
+
+		lockupFromEpochSlot, slotGasUsed := getLockupFromEpochSlot(delegator, toValidatorID)
+		gasUsed += slotGasUsed
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(lockupFromEpochSlot), common.Hash{})
+		gasUsed += SstoreGasCost
+
+		lockupEndTimeSlot, slotGasUsed := getLockupEndTimeSlot(delegator, toValidatorID)
+		gasUsed += slotGasUsed
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(lockupEndTimeSlot), common.Hash{})
+		gasUsed += SstoreGasCost
+
+		lockupDurationSlot, slotGasUsed := getLockupDurationSlot(delegator, toValidatorID)
+		gasUsed += slotGasUsed
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(lockupDurationSlot), common.Hash{})
+		gasUsed += SstoreGasCost
+
+		// Delete stashed lockup rewards
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedLockupExtraRewardSlot), common.Hash{})
+		gasUsed += SstoreGasCost
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedLockupBaseRewardSlot), common.Hash{})
+		gasUsed += SstoreGasCost
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedUnlockedRewardSlot), common.Hash{})
+		gasUsed += SstoreGasCost
+	}
+
+	// Check if there were any rewards to stash
+	updated := nonStashedReward.LockupBaseReward.Cmp(big.NewInt(0)) != 0 ||
+		nonStashedReward.LockupExtraReward.Cmp(big.NewInt(0)) != 0 ||
+		nonStashedReward.UnlockedReward.Cmp(big.NewInt(0)) != 0
+	var result int64
+	if updated {
+		result = 1
+	} else {
+		result = 0
+	}
+	return big.NewInt(result).Bytes(), gasUsed, nil
+}
+
+// checkDelegatedStakeLimit checks if the delegated stake is within the limit
+// Returns true if the limit is exceeded, false otherwise
+func checkDelegatedStakeLimit(evm *vm.EVM, validatorID *big.Int) (bool, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Get the validator's self-stake
+	validatorAuthSlot, slotGasUsed := getValidatorAuthSlot(validatorID)
+	gasUsed += slotGasUsed
+	validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorAuthSlot))
+	gasUsed += SloadGasCost
+	validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
+
+	// Get the self-stake (stake of the validator auth address)
+	selfStakeSlot, slotGasUsed := getStakeSlot(validatorAuthAddr, validatorID)
+	gasUsed += slotGasUsed
+	selfStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(selfStakeSlot))
+	gasUsed += SloadGasCost
+	selfStakeBigInt := new(big.Int).SetBytes(selfStake.Bytes())
+
+	// Get the validator's received stake
+	validatorReceivedStakeSlot, slotGasUsed := getValidatorReceivedStakeSlot(validatorID)
+	gasUsed += slotGasUsed
+	receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorReceivedStakeSlot))
+	gasUsed += SloadGasCost
+	receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
+
+	// Get the max delegated ratio
+	maxDelegatedRatioBigInt := getConstantsManagerVariable("maxDelegatedRatio")
+
+	// Calculate the max delegated stake
+	maxDelegatedStake := new(big.Int).Mul(selfStakeBigInt, maxDelegatedRatioBigInt)
+	maxDelegatedStake = new(big.Int).Div(maxDelegatedStake, getDecimalUnit())
+
+	// Check if the received stake exceeds the self-stake * maxDelegatedRatio
+	// In Solidity: return getValidator[validatorID].receivedStake <= getSelfStake(validatorID).mul(c.maxDelegatedRatio()).div(Decimal.unit());
+	limitExceeded := receivedStakeBigInt.Cmp(maxDelegatedStake) > 0
+
+	return limitExceeded, gasUsed, nil
 }
 
 // handleSyncValidator synchronizes a validator's state
-func handleSyncValidator(evm *vm.EVM, validatorID *big.Int) ([]byte, uint64, error) {
+func handleSyncValidator(evm *vm.EVM, validatorID *big.Int, isZeroOrig ...bool) ([]byte, uint64, error) {
 	// Initialize gas used
 	var gasUsed uint64 = 0
+
+	// Check if isZeroOrig parameter was provided
+	// This parameter is currently not used in the implementation
+	// but is kept for compatibility with the Solidity implementation
+	_ = isZeroOrig // Avoid unused variable warning
+
 	// Get the validator status
 	validatorStatusSlot, slotGasUsed := getValidatorStatusSlot(validatorID)
 	gasUsed += slotGasUsed
@@ -833,7 +647,7 @@ func handleSyncValidator(evm *vm.EVM, validatorID *big.Int) ([]byte, uint64, err
 	}
 
 	// Unpack the result
-	selfStakeValues, err := SfcAbi.Methods["getSelfStake"].Outputs.Unpack(result)
+	selfStakeValues, err := SfcLibAbi.Methods["getSelfStake"].Outputs.Unpack(result)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}

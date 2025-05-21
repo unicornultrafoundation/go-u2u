@@ -106,14 +106,28 @@ func (p *StateProcessor) Process(
 		receipts = append(receipts, receipt)
 		allLogs = append(allLogs, receipt.Logs...)
 
-		// extra dual state verification and benchmark
+		// extra dual-state verification and benchmark
 		if sfcStatedb != nil {
 			for _, addr := range SfcPrecompiles {
 				original := statedb.GetStorageRoot(addr)
 				sfc := sfcStatedb.GetStorageRoot(addr)
 				if original.Cmp(sfc) != 0 {
-					log.Error("StateProcessor.Process: SFC corrupted after applying tx", "tx", tx.Hash().Hex(),
-						"addr", addr, "tx", tx.Hash().Hex(), "original", original.Hex(), "sfc", sfc.Hex())
+					log.Error("U2UEVMProcessor.Process: SFC storage corrupted after applying block",
+						"tx", tx.Hash().Hex(), "addr", addr, "original", original.Hex(), "sfc", sfc.Hex())
+					common.SendInterrupt()
+				}
+				originalBalance := statedb.GetBalance(addr)
+				sfcBalance := sfcStatedb.GetBalance(addr)
+				if originalBalance.Cmp(sfcBalance) != 0 {
+					log.Error("U2UEVMProcessor.Process: SFC balance mismatched after applying block",
+						"tx", tx.Hash().Hex(), "addr", addr, "original", originalBalance, "sfc", sfcBalance)
+					common.SendInterrupt()
+				}
+				originalNonce := statedb.GetNonce(addr)
+				sfcNonce := sfcStatedb.GetNonce(addr)
+				if originalNonce != sfcNonce {
+					log.Error("U2UEVMProcessor.Process: SFC nonce mismatched after applying block",
+						"tx", tx.Hash().Hex(), "addr", addr, "original", originalNonce, "sfc", sfcNonce)
 					common.SendInterrupt()
 				}
 			}
@@ -196,10 +210,10 @@ func ApplyTransaction(
 	// Update the state with pending changes.
 	var root []byte
 	if config.IsByzantium(blockNumber) {
-		log.Trace("StateProcessor.Process during ApplyTransaction", "txHash", tx.Hash().Hex())
+		log.Info("StateProcessor.Process during ApplyTransaction", "txHash", tx.Hash().Hex())
 		statedb.Finalise(true)
 		if sfcStatedb != nil {
-			log.Trace("Separate two commit logs when StateProcessor.Process during ApplyTransaction")
+			log.Info("Separate two commit logs when StateProcessor.Process during ApplyTransaction")
 			sfcStatedb.Finalise(true)
 		}
 	} else {

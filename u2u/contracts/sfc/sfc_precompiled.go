@@ -8,11 +8,13 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/gossip/contract/sfc100"
+	"github.com/unicornultrafoundation/go-u2u/gossip/contract/sfclib100"
 	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 var (
 	SfcAbi            abi.ABI
+	SfcLibAbi         abi.ABI
 	CMAbi             abi.ABI
 	NodeDriverAbi     abi.ABI
 	NodeDriverAuthAbi abi.ABI
@@ -20,6 +22,7 @@ var (
 
 func init() {
 	SfcAbi, _ = abi.JSON(strings.NewReader(sfc100.ContractMetaData.ABI))
+	SfcLibAbi, _ = abi.JSON(strings.NewReader(sfclib100.ContractMetaData.ABI))
 	CMAbi, _ = abi.JSON(strings.NewReader(ConstantManagerABIStr))
 	NodeDriverAbi, _ = abi.JSON(strings.NewReader(NodeDriverABIStr))
 	NodeDriverAuthAbi, _ = abi.JSON(strings.NewReader(NodeDriverAuthABIStr))
@@ -45,11 +48,14 @@ func parseABIInput(input []byte) (*abi.Method, []interface{}, error) {
 		return nil, nil, vm.ErrExecutionReverted
 	}
 
-	// Get function signature from first 4 bytes
+	// Get function signature from the first 4 bytes
 	methodID := input[:4]
 	method, err := SfcAbi.MethodById(methodID)
 	if err != nil {
-		return nil, nil, vm.ErrExecutionReverted
+		method, err = SfcLibAbi.MethodById(methodID)
+		if err != nil {
+			return nil, nil, vm.ErrExecutionReverted
+		}
 	}
 
 	// Parse input arguments
@@ -62,11 +68,12 @@ func parseABIInput(input []byte) (*abi.Method, []interface{}, error) {
 }
 
 // Run runs the precompiled contract
-func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, suppliedGas uint64) ([]byte, uint64, error) {
+func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, suppliedGas uint64, value *big.Int) ([]byte, uint64, error) {
 	// We'll use evm.SfcStateDB directly in the handler functions
 	// Parse the input to get method and arguments
 	method, args, err := parseABIInput(input)
 	if err != nil {
+		log.Error("SFCPrecompile.Run: Error parsing input", "err", err)
 		return nil, 0, err
 	}
 
@@ -75,7 +82,7 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		gasUsed uint64
 	)
 
-	log.Debug("SFC Precompiled: Calling function", "function", method.Name,
+	log.Info("SFC Precompiled: Calling function", "function", method.Name,
 		"caller", caller.Hex(), "input", common.Bytes2Hex(input))
 
 	switch method.Name {
@@ -225,9 +232,7 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		result, gasUsed, err = handleCreateValidator(evm, caller, args, big.NewInt(0))
 
 	case "delegate":
-		// For delegate, we need to pass a value, but we don't have direct access to it
-		// Use a zero value for now, this should be fixed in a future update
-		result, gasUsed, err = handleDelegate(evm, caller, args, big.NewInt(0))
+		result, gasUsed, err = handleDelegate(evm, caller, args, value)
 
 	case "undelegate":
 		result, gasUsed, err = handleUndelegate(evm, caller, args)
@@ -257,7 +262,7 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		result, gasUsed, err = handleUpdateSlashingRefundRatio(evm, args)
 
 	case "mintU2U":
-		result, gasUsed, err = handleMintU2U(evm, args)
+		result, gasUsed, err = handleMintU2U(evm, caller, args)
 
 	case "burnU2U":
 		result, gasUsed, err = handleBurnU2U(evm, args)
@@ -288,10 +293,6 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 
 	case "sumRewards":
 		result, gasUsed, err = handleSumRewards(evm, args)
-
-	// Private function handlers
-	case "_delegate":
-		result, gasUsed, err = handle_delegate(evm, args, input)
 
 	// These internal functions are now implemented directly in the handleSealEpoch function
 	// and are no longer called separately
@@ -350,7 +351,9 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 
 	if suppliedGas < gasUsed {
 		log.Error("SFC Precompiled: Out of gas", "function", method.Name, "suppliedGas", suppliedGas, "gasUsed", gasUsed)
-		return nil, 0, vm.ErrOutOfGas
+		// TODO(trinhdn97): temporarily disable gas check here to use the EVM gas for now.
+		// Will re-enable this after tweaking gas cost of all handlers.
+		// return nil, 0, vm.ErrOutOfGas
 	}
 
 	return result, gasUsed, nil

@@ -15,3 +15,10 @@ func (ec *Client) SfcStorageAt(ctx context.Context, account common.Address, key 
 	err := ec.c.CallContext(ctx, &result, "sfc_getStorageAt", account, key, toBlockNumArg(blockNumber))
 	return result, err
 }
+
+// CheckIntegrity returns integrity of the SFC state, compared with the world state.
+func (ec *Client) CheckIntegrity(ctx context.Context, blockNumber *big.Int) (bool, error) {
+	var result bool
+	err := ec.c.CallContext(ctx, &result, "sfc_checkIntegrity", toBlockNumArg(blockNumber))
+	return result, err
+}

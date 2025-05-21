@@ -1,7 +1,6 @@
 package sfc
 
 import (
-	"github.com/unicornultrafoundation/go-u2u/log"
 	"math/big"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
@@ -23,7 +22,6 @@ func handleDelegate(evm *vm.EVM, caller common.Address, args []interface{}, valu
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
-	log.Info("@@@@@@@@@@@@@ handleDelegate after parsing args")
 	// Call the internal _delegate function
 	result, delegateGasUsed, err := handleInternalDelegate(evm, caller, toValidatorID, value)
 	if err != nil {
@@ -32,8 +30,6 @@ func handleDelegate(evm *vm.EVM, caller common.Address, args []interface{}, valu
 
 	// Add the gas used by handleInternalDelegate
 	gasUsed += delegateGasUsed
-
-	log.Info("@@@@@@@@@@@@@ handleDelegate after calling handleInternalDelegate")
 
 	// Emit Delegated event
 	topics := []common.Hash{
@@ -53,8 +49,6 @@ func handleDelegate(evm *vm.EVM, caller common.Address, args []interface{}, valu
 		Data:    data,
 	})
 
-	log.Info("@@@@@@@@@@@@@ handleDelegate after emitting event Delegated")
-
 	// Recount votes
 	// Get the validator auth address
 	validatorAuthSlot, _ := getValidatorAuthSlot(toValidatorID)
@@ -70,8 +64,6 @@ func handleDelegate(evm *vm.EVM, caller common.Address, args []interface{}, valu
 
 	// Add the gas used by handleRecountVotes
 	gasUsed += recountGasUsed
-
-	log.Info("@@@@@@@@@@@@@ handleDelegate after calling handleRecountVotes")
 
 	return nil, gasUsed, nil
 }
@@ -295,6 +287,18 @@ func handleInternalDelegate(evm *vm.EVM, delegator common.Address, toValidatorID
 		}
 		return revertData, 0, vm.ErrExecutionReverted
 	}
+
+	// Stash rewards
+	// Create arguments for handle_stashRewards
+	stashRewardsArgs := []interface{}{delegator, toValidatorID}
+	// Call handle_stashRewards
+	result, stashGasUsed, err := handle_stashRewards(evm, stashRewardsArgs)
+	if err != nil {
+		return result, gasUsed + stashGasUsed, err
+	}
+
+	// Add the gas used by handle_stashRewards
+	gasUsed += stashGasUsed
 
 	// Update the stake
 	stakeSlot, slotGasUsed := getStakeSlot(delegator, toValidatorID)

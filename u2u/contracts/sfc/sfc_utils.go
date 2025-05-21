@@ -1436,15 +1436,17 @@ func _highestPayableEpoch(evm *vm.EVM, validatorID *big.Int) (*big.Int, uint64, 
 	gasUsed += SloadGasCost
 	currentSealedEpochBigInt := new(big.Int).SetBytes(currentSealedEpoch.Bytes())
 
-	// If the validator is deactivated and the deactivated epoch is less than the current sealed epoch,
-	// return the deactivated epoch, otherwise return the current sealed epoch
+	// If the validator is deactivated (deactivatedEpoch != 0)
 	if validatorDeactivatedEpochBigInt.Cmp(big.NewInt(0)) != 0 {
+		// If currentSealedEpoch < deactivatedEpoch, return currentSealedEpoch
+		// Otherwise return deactivatedEpoch
 		if currentSealedEpochBigInt.Cmp(validatorDeactivatedEpochBigInt) < 0 {
 			return currentSealedEpochBigInt, gasUsed, nil
 		}
 		return validatorDeactivatedEpochBigInt, gasUsed, nil
 	}
 
+	// If validator is not deactivated, return currentSealedEpoch
 	return currentSealedEpochBigInt, gasUsed, nil
 }
 

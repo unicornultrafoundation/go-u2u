@@ -351,7 +351,9 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 
 	if suppliedGas < gasUsed {
 		log.Error("SFC Precompiled: Out of gas", "function", method.Name, "suppliedGas", suppliedGas, "gasUsed", gasUsed)
-		return nil, 0, vm.ErrOutOfGas
+		// TODO(trinhdn97): temporarily disable gas check here to use the EVM gas for now.
+		// Will re-enable this after tweaking gas cost of all handlers.
+		// return nil, 0, vm.ErrOutOfGas
 	}
 
 	return result, gasUsed, nil

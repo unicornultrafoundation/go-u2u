@@ -431,7 +431,7 @@ func handle_stashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 		return nil, gasUsed, err
 	}
 	gasUsed += epochGasUsed
-
+	
 	// Update stashedRewardsUntilEpoch
 	stashedRewardsUntilEpochSlot, slotGasUsed := getStashedRewardsUntilEpochSlot(delegator, toValidatorID)
 	gasUsed += slotGasUsed

@@ -112,8 +112,8 @@ func (p *StateProcessor) Process(
 				original := statedb.GetStorageRoot(addr)
 				sfc := sfcStatedb.GetStorageRoot(addr)
 				if original.Cmp(sfc) != 0 {
-					log.Error("StateProcessor.Process: SFC corrupted after applying tx", "tx", tx.Hash().Hex(),
-						"addr", addr, "tx", tx.Hash().Hex(), "original", original.Hex(), "sfc", sfc.Hex())
+					log.Error("StateProcessor.Process: SFC corrupted after applying tx",
+						"tx", tx.Hash().Hex(), "addr", addr, "original", original.Hex(), "sfc", sfc.Hex())
 					common.SendInterrupt()
 				}
 			}

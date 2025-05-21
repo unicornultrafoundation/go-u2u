@@ -155,8 +155,8 @@ func (p *U2UEVMProcessor) Finalize() (evmBlock *evmcore.EvmBlock, skippedTxs []u
 			original := p.statedb.GetStorageRoot(addr)
 			sfc := p.sfcStateDb.GetStorageRoot(addr)
 			if original.Cmp(sfc) != 0 {
-				log.Error("U2UEVMProcessor.Finalize: SFC corrupted after applying block", "height", p.block.Idx,
-					"addr", addr, "original", original.Hex(), "sfc", sfc.Hex())
+				log.Error("U2UEVMProcessor.Finalize: SFC corrupted after applying block",
+					"height", p.block.Idx, "addr", addr, "original", original.Hex(), "sfc", sfc.Hex())
 				common.SendInterrupt()
 			}
 		}

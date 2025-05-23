@@ -82,7 +82,7 @@ func initTestNetwork() error {
 	return nil
 }
 
-func TestSFCStore_CanDumpSFCStorageAndThenSyncAgain(t *testing.T) {
+func TestSFCStore_BasicFlows(t *testing.T) {
 	if err := setup(); err != nil {
 		t.Fatal(err)
 	}
@@ -90,8 +90,15 @@ func TestSFCStore_CanDumpSFCStorageAndThenSyncAgain(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to start the fake network: %v", err)
 	}
+	defer testnet.Stop()
+	testSFCStore_CanGetSfcStorage(t)
+	testSFCStore_CanGetSfcStorageAtBlock(t)
+	testSFCStore_CanDelegateToValidator(t)
+	testSFCStore_CanClaimRewards(t)
+	testSFCStore_CanRestakeRewards(t)
+}
 
-	// try to read storage from SFC state db
+func testSFCStore_CanGetSfcStorage(t *testing.T) {
 	owner, err := testnet.SfcGetStorageAt(
 		sfc.ContractAddress,
 		common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000033"),
@@ -100,8 +107,9 @@ func TestSFCStore_CanDumpSFCStorageAndThenSyncAgain(t *testing.T) {
 		t.Fatalf("Failed to get owner of SFC contract: %v", err)
 	}
 	assert.Equal(t, common.BytesToAddress(owner).Hex(), testnet.validator.Address().Hex())
+}
 
-	// try to get balance from SFC state db
+func testSFCStore_CanGetSfcStorageAtBlock(t *testing.T) {
 	client, err := testnet.GetClient()
 	if err != nil {
 		t.Fatalf("failed to connect to the integration test network: %v", err)
@@ -115,19 +123,9 @@ func TestSFCStore_CanDumpSFCStorageAndThenSyncAgain(t *testing.T) {
 	if want, got := want, balance; want.Cmp(got) != 0 {
 		t.Fatalf("Unexpected balance for account, got %v, wanted %v", got, want)
 	}
-	testnet.Stop()
 }
 
-func TestSFCStore_CanDelegateToValidator(t *testing.T) {
-	if err := setup(); err != nil {
-		t.Fatal(err)
-	}
-	testnet, err = StartIntegrationTestNet(dataDir, true)
-	if err != nil {
-		t.Fatalf("failed to start the fake network: %v", err)
-	}
-	defer testnet.Stop()
-
+func testSFCStore_CanDelegateToValidator(t *testing.T) {
 	// try to delegate to validator
 	if good, err := testnet.CheckIntegrity(nil); !good || err != nil {
 		t.Fatalf("sfc state is corrupted before delegating: %v", err)
@@ -143,15 +141,7 @@ func TestSFCStore_CanDelegateToValidator(t *testing.T) {
 	}
 }
 
-func TestSFCStore_CanClaimRewards(t *testing.T) {
-	if err := setup(); err != nil {
-		t.Fatal(err)
-	}
-	testnet, err = StartIntegrationTestNet(dataDir, true)
-	if err != nil {
-		t.Fatalf("failed to start the fake network: %v", err)
-	}
-
+func testSFCStore_CanClaimRewards(t *testing.T) {
 	// trigger epoch update
 	if err := testnet.EndowAccount(testAccounts[0].Address(), big.NewInt(1)); err != nil {
 		t.Fatalf("failed to endow account 1: %v", err)
@@ -173,18 +163,9 @@ func TestSFCStore_CanClaimRewards(t *testing.T) {
 	if good, err := testnet.CheckIntegrity(nil); !good || err != nil {
 		t.Fatalf("sfc state is corrupted after claiming rewards: %v", err)
 	}
-	testnet.Stop()
 }
 
-func TestSFCStore_CanRestakeRewards(t *testing.T) {
-	if err := setup(); err != nil {
-		t.Fatal(err)
-	}
-	testnet, err = StartIntegrationTestNet(dataDir, true)
-	if err != nil {
-		t.Fatalf("failed to start the fake network: %v", err)
-	}
-
+func testSFCStore_CanRestakeRewards(t *testing.T) {
 	// trigger epoch update
 	if err := testnet.EndowAccount(testAccounts[0].Address(), big.NewInt(1)); err != nil {
 		t.Fatalf("failed to endow account 1: %v", err)
@@ -206,5 +187,4 @@ func TestSFCStore_CanRestakeRewards(t *testing.T) {
 	if good, err := testnet.CheckIntegrity(nil); !good || err != nil {
 		t.Fatalf("sfc state is corrupted after restaking rewards: %v", err)
 	}
-	testnet.Stop()
 }

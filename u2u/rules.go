@@ -2,6 +2,7 @@ package u2u
 
 import (
 	"encoding/json"
+	"math"
 	"math/big"
 	"time"
 
@@ -26,6 +27,9 @@ const (
 	berlinBit              = 1 << 0
 	londonBit              = 1 << 1
 	llrBit                 = 1 << 2
+
+	MinimumMaxBlockGas = 20500000      // < must be large enough to allow internal transactions to seal blocks
+	MaximumMaxBlockGas = math.MaxInt64 // < should fit into 64-bit signed integers to avoid parsing errors in third-party libraries
 )
 
 var DefaultVMConfig = vm.Config{
@@ -122,9 +126,10 @@ type BlocksRules struct {
 }
 
 type Upgrades struct {
-	Berlin bool
-	London bool
-	Llr    bool
+	Berlin  bool
+	London  bool
+	Llr     bool
+	Vitriol bool
 }
 
 type UpgradeHeight struct {
@@ -168,7 +173,7 @@ func MainNetRules() Rules {
 		Epochs:    DefaultEpochsRules(),
 		Economy:   DefaultEconomyRules(),
 		Blocks: BlocksRules{
-			MaxBlockGas:             20500000,
+			MaxBlockGas:             MinimumMaxBlockGas,
 			MaxEmptyBlockSkipPeriod: native.Timestamp(1 * time.Second),
 		},
 		Upgrades: Upgrades{
@@ -187,7 +192,7 @@ func TestNetRules() Rules {
 		Epochs:    DefaultEpochsRules(),
 		Economy:   DefaultEconomyRules(),
 		Blocks: BlocksRules{
-			MaxBlockGas:             20500000,
+			MaxBlockGas:             MinimumMaxBlockGas,
 			MaxEmptyBlockSkipPeriod: native.Timestamp(1 * time.Second),
 		},
 		Upgrades: Upgrades{
@@ -206,7 +211,7 @@ func FakeNetRules() Rules {
 		Epochs:    FakeNetEpochsRules(),
 		Economy:   FakeEconomyRules(),
 		Blocks: BlocksRules{
-			MaxBlockGas:             20500000,
+			MaxBlockGas:             MinimumMaxBlockGas,
 			MaxEmptyBlockSkipPeriod: native.Timestamp(3 * time.Second),
 		},
 		Upgrades: Upgrades{

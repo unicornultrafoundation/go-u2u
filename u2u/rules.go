@@ -135,6 +135,7 @@ type Upgrades struct {
 type UpgradeHeight struct {
 	Upgrades Upgrades
 	Height   idx.Block
+	Time     native.Timestamp `rlp:"optional"`
 }
 
 // EvmChainConfig returns ChainConfig for transactions signing and execution
@@ -161,8 +162,36 @@ func (r Rules) EvmChainConfig(hh []UpgradeHeight) *ethparams.ChainConfig {
 		if !h.Upgrades.London {
 			cfg.LondonBlock = nil
 		}
+		if cfg.VitriolBlock == nil && h.Upgrades.Vitriol {
+			cfg.VitriolBlock = height
+		}
+		if !h.Upgrades.Vitriol {
+			// disabling upgrade like this will break the history replay
+			// should be never used
+			cfg.VitriolBlock = nil
+		}
 	}
 	return &cfg
+}
+
+// GetVitriolUpgrades contains the feature flags for the Vitriol upgrade.
+func GetVitriolUpgrades() Upgrades {
+	return Upgrades{
+		Berlin:  true,
+		London:  true,
+		Llr:     true,
+		Vitriol: true,
+	}
+}
+
+// GetSolarisUpgrades contains the feature flags for the U2U Solaris upgrade.
+func GetSolarisUpgrades() Upgrades {
+	return Upgrades{
+		Berlin:  true,
+		London:  true,
+		Llr:     true,
+		Vitriol: false,
+	}
 }
 
 func MainNetRules() Rules {

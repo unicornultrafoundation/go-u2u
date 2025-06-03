@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/unicornultrafoundation/go-u2u/rlp"
 )
 
@@ -13,13 +14,18 @@ func TestUpdateRules(t *testing.T) {
 
 	var exp Rules
 	exp.Epochs.MaxEpochGas = 99
-
 	exp.Dag.MaxParents = 5
 	exp.Economy.MinGasPrice = big.NewInt(7)
 	exp.Blocks.MaxBlockGas = 1000
 	got, err := UpdateRules(exp, []byte(`{"Dag":{"MaxParents":5},"Economy":{"MinGasPrice":7},"Blocks":{"MaxBlockGas":1000}}`))
 	require.NoError(err)
 	require.Equal(exp.String(), got.String(), "mutate fields")
+
+	exp.Upgrades.Vitriol = true
+	exp.Upgrades.Llr = false
+	got, err = UpdateRules(exp, []byte(`{"Upgrades":{"Llr":false,"Vitriol":true}}`))
+	require.NoError(err)
+	require.Equal(exp.String(), got.String(), "mutate Upgrade fields")
 
 	exp.Dag.MaxParents = 0
 	got, err = UpdateRules(exp, []byte(`{"Name":"xxx","NetworkID":1,"Dag":{"MaxParents":0}}`))

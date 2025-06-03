@@ -278,8 +278,9 @@ func consensusCallbackBeginBlockFn(
 					evmCfg.Tracer = txtracer.NewTraceStructLogger(store.txtracer)
 				}
 
+				prevRandao := computePrevRandao(confirmedEvents)
 				evmProcessor := blockProc.EVMModule.Start(blockCtx, statedb, sfcStatedb, evmStateReader, onNewLogAll,
-					es.Rules, es.Rules.EvmChainConfig(store.GetUpgradeHeights()))
+					es.Rules, es.Rules.EvmChainConfig(store.GetUpgradeHeights()), prevRandao)
 				executionStart := time.Now()
 
 				// Execute pre-internal transactions
@@ -518,7 +519,7 @@ func (s *Service) ReexecuteBlocks(from, to idx.Block) {
 			evmCfg.Tracer = txtracer.NewTraceStructLogger(s.store.txtracer)
 		}
 		evmProcessor := blockProc.EVMModule.Start(blockCtx, statedb, sfcStatedb, evmStateReader, func(t *types.Log) {},
-			es.Rules, es.Rules.EvmChainConfig(upgradeHeights))
+			es.Rules, es.Rules.EvmChainConfig(upgradeHeights), block.PrevRandao)
 		txs := s.store.GetBlockTxs(b, block)
 		evmProcessor.Execute(txs)
 		evmProcessor.Finalize()

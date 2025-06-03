@@ -1,14 +1,15 @@
 package blockproc
 
 import (
+	"github.com/unicornultrafoundation/go-helios/native/idx"
+
+	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
-	"github.com/unicornultrafoundation/go-u2u/params"
-
-	"github.com/unicornultrafoundation/go-helios/native/idx"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/params"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 )
 
@@ -53,5 +54,5 @@ type EVMProcessor interface {
 
 type EVM interface {
 	Start(block iblockproc.BlockCtx, statedb *state.StateDB, sfcStatedb *state.StateDB, reader evmcore.DummyChain,
-		onNewLog func(*types.Log), net u2u.Rules, evmCfg *params.ChainConfig) EVMProcessor
+		onNewLog func(*types.Log), net u2u.Rules, evmCfg *params.ChainConfig, prevrandao common.Hash) EVMProcessor
 }

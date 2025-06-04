@@ -134,7 +134,7 @@ func (m testConfirmedEventsModule) Start(bs iblockproc.BlockState, es iblockproc
 }
 
 func newTestEnv(firstEpoch idx.Epoch, validatorsNum idx.Validator) *testEnv {
-	rules := u2u.FakeNetRules()
+	rules := u2u.FakeNetRules(u2u.GetVitriolUpgrades())
 	rules.Epochs.MaxEpochDuration = native.Timestamp(maxEpochDuration)
 	rules.Blocks.MaxEmptyBlockSkipPeriod = 0
 

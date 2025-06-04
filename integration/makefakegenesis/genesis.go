@@ -45,7 +45,7 @@ func FakeKey(n idx.ValidatorID) *ecdsa.PrivateKey {
 }
 
 func FakeGenesisStore(num idx.Validator, balance, stake *big.Int) *genesisstore.Store {
-	return FakeGenesisStoreWithRules(num, balance, stake, u2u.FakeNetRules())
+	return FakeGenesisStoreWithRules(num, balance, stake, u2u.FakeNetRules(u2u.GetVitriolUpgrades()))
 }
 
 func FakeGenesisStoreWithRules(num idx.Validator, balance, stake *big.Int, rules u2u.Rules) *genesisstore.Store {

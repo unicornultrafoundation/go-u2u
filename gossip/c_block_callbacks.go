@@ -229,7 +229,7 @@ func consensusCallbackBeginBlockFn(
 				skipBlock = skipBlock || (emptyBlock && blockCtx.Time < bs.LastBlock.Time+es.Rules.Blocks.MaxEmptyBlockSkipPeriod)
 				// Finalize the progress of eventProcessor
 				bs = eventProcessor.Finalize(blockCtx, skipBlock) // TODO: refactor to not mutate the bs, it is unclear
-				{ // sort and merge MPs cheaters
+				{                                                 // sort and merge MPs cheaters
 					mpsCheaters := make(utypes.Cheaters, 0, len(mpsCheatersMap))
 					for vid := range mpsCheatersMap {
 						mpsCheaters = append(mpsCheaters, vid)

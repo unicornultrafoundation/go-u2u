@@ -206,11 +206,7 @@ func MainNetRules() Rules {
 			MaxBlockGas:             MinimumMaxBlockGas,
 			MaxEmptyBlockSkipPeriod: native.Timestamp(1 * time.Second),
 		},
-		Upgrades: Upgrades{
-			Berlin: true,
-			London: true,
-			Llr:    true,
-		},
+		Upgrades: GetSolarisUpgrades(),
 	}
 }
 
@@ -233,7 +229,7 @@ func TestNetRules() Rules {
 	}
 }
 
-func FakeNetRules() Rules {
+func FakeNetRules(upgrades Upgrades) Rules {
 	return Rules{
 		Name:      "fake",
 		NetworkID: FakeNetworkID,
@@ -244,12 +240,7 @@ func FakeNetRules() Rules {
 			MaxBlockGas:             MinimumMaxBlockGas,
 			MaxEmptyBlockSkipPeriod: native.Timestamp(3 * time.Second),
 		},
-		Upgrades: Upgrades{
-			Berlin:  true,
-			London:  true,
-			Llr:     true,
-			Vitriol: true,
-		},
+		Upgrades: upgrades,
 	}
 }
 

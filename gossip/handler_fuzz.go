@@ -79,7 +79,7 @@ func makeFuzzedHandler() (h *handler, err error) {
 	}
 
 	var (
-		network             = u2u.FakeNetRules()
+		network             = u2u.FakeNetRules(u2u.GetVitriolUpgrades())
 		heavyCheckReader    HeavyCheckReader
 		gasPowerCheckReader GasPowerCheckReader
 		// TODO: init

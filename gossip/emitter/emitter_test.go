@@ -66,7 +66,7 @@ func TestEmitter(t *testing.T) {
 
 	t.Run("init", func(t *testing.T) {
 		external.EXPECT().GetRules().
-			Return(u2u.FakeNetRules()).
+			Return(u2u.FakeNetRules(u2u.GetVitriolUpgrades())).
 			AnyTimes()
 
 		external.EXPECT().GetEpochValidators().

@@ -27,6 +27,7 @@ const (
 	berlinBit              = 1 << 0
 	londonBit              = 1 << 1
 	llrBit                 = 1 << 2
+	vitriolBit             = 1 << 3
 
 	MinimumMaxBlockGas = 20500000      // < must be large enough to allow internal transactions to seal blocks
 	MaximumMaxBlockGas = math.MaxInt64 // < should fit into 64-bit signed integers to avoid parsing errors in third-party libraries
@@ -244,9 +245,10 @@ func FakeNetRules() Rules {
 			MaxEmptyBlockSkipPeriod: native.Timestamp(3 * time.Second),
 		},
 		Upgrades: Upgrades{
-			Berlin: true,
-			London: true,
-			Llr:    true,
+			Berlin:  true,
+			London:  true,
+			Llr:     true,
+			Vitriol: true,
 		},
 	}
 }

@@ -413,8 +413,9 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 	totalTxRewardWeight := big.NewInt(0)
 	epochFee := big.NewInt(0)
 
-	// Calculate tx reward weights and epoch fee
+	// Fused loop: Calculate both tx reward weights and base reward weights in single pass
 	for i, validatorID := range validatorIDs {
+		// === TX REWARD WEIGHT CALCULATION ===
 		// Get previous accumulated originated txs fee using pre-calculated slot
 		// For a mapping within a struct, we need to calculate the slot as:
 		// keccak256(abi.encode(validatorID, abi.encode(prevEpochSnapshotSlot + accumulatedOriginatedTxsFeeOffset)))
@@ -450,10 +451,8 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 
 		// Update epoch fee
 		epochFee = new(big.Int).Add(epochFee, originatedTxsFee)
-	}
 
-	// Calculate base reward weights
-	for i, validatorID := range validatorIDs {
+		// === BASE REWARD WEIGHT CALCULATION ===
 		// Get validator's received stake
 		receivedStakeSlot, slotGasUsed := getEpochValidatorReceivedStakeSlot(currentEpoch, validatorID)
 		gasUsed += slotGasUsed
@@ -478,26 +477,34 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 	burntFeeShare := getConstantsManagerVariable("burntFeeShare")
 	treasuryFeeShare := getConstantsManagerVariable("treasuryFeeShare")
 
+	// Pre-calculate values that are reused for every validator to avoid repeated calculations
+	totalEpochReward := GetBigInt().Mul(epochDuration, baseRewardPerSecond)
+	shareToSubtract := GetBigInt().Add(burntFeeShare, treasuryFeeShare)
+	shareToKeep := GetBigInt().Sub(unit, shareToSubtract)
+	cachedZero := big.NewInt(0) // Cache zero value for comparisons
+
+	// Defer cleanup of pre-calculated values
+	defer func() {
+		PutBigInt(totalEpochReward)
+		PutBigInt(shareToSubtract)
+		PutBigInt(shareToKeep)
+	}()
+
 	// Calculate rewards for each validator
 	for i, validatorID := range validatorIDs {
 		// Calculate raw base reward
 		rawBaseReward := big.NewInt(0)
-		if baseRewardWeights[i].Cmp(big.NewInt(0)) > 0 {
-			totalReward := new(big.Int).Mul(epochDuration, baseRewardPerSecond)
-			rawBaseReward = new(big.Int).Mul(totalReward, baseRewardWeights[i])
+		if baseRewardWeights[i].Cmp(cachedZero) > 0 {
+			rawBaseReward = new(big.Int).Mul(totalEpochReward, baseRewardWeights[i])
 			rawBaseReward = new(big.Int).Div(rawBaseReward, totalBaseRewardWeight)
 		}
 
 		// Calculate raw tx reward
 		rawTxReward := big.NewInt(0)
-		if txRewardWeights[i].Cmp(big.NewInt(0)) > 0 {
+		if txRewardWeights[i].Cmp(cachedZero) > 0 {
 			// Calculate fee reward except burntFeeShare and treasuryFeeShare
 			txReward := new(big.Int).Mul(epochFee, txRewardWeights[i])
 			txReward = new(big.Int).Div(txReward, totalTxRewardWeight)
-
-			// Subtract burnt and treasury shares
-			shareToSubtract := new(big.Int).Add(burntFeeShare, treasuryFeeShare)
-			shareToKeep := new(big.Int).Sub(unit, shareToSubtract)
 
 			rawTxReward = new(big.Int).Mul(txReward, shareToKeep)
 			rawTxReward = new(big.Int).Div(rawTxReward, unit)
@@ -527,7 +534,7 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		selfStakeBigInt := new(big.Int).SetBytes(selfStake.Bytes())
 
 		// Process commission reward if self-stake is not zero
-		if selfStakeBigInt.Cmp(big.NewInt(0)) != 0 {
+		if selfStakeBigInt.Cmp(cachedZero) != 0 {
 			// Get locked stake
 			lockedStakeSlot, slotGasUsed := getLockedStakeSlot(validatorAuthAddr, validatorID)
 			gasUsed += slotGasUsed
@@ -662,7 +669,7 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 
 		// Calculate reward per token
 		rewardPerToken := big.NewInt(0)
-		if receivedStakeBigInt.Cmp(big.NewInt(0)) != 0 {
+		if receivedStakeBigInt.Cmp(cachedZero) != 0 {
 			rewardPerToken = new(big.Int).Mul(delegatorsReward, unit)
 			rewardPerToken = new(big.Int).Div(rewardPerToken, receivedStakeBigInt)
 		}

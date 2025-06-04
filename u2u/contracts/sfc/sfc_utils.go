@@ -1385,11 +1385,36 @@ func trimMinGasPrice(x *big.Int) *big.Int {
 
 // sumRewards adds three Rewards structs together and returns the result
 // This is a port of the sumRewards function from SFCBase.sol
+// Optimized to use pooled big.Int objects to reduce memory allocations
 func sumRewards(a Rewards, b Rewards, c Rewards) Rewards {
+	// Use pooled big.Int objects for intermediate calculations
+	temp1 := GetBigInt()
+	temp2 := GetBigInt()
+	temp3 := GetBigInt()
+
+	// Defer cleanup of pooled objects
+	defer func() {
+		PutBigInt(temp1)
+		PutBigInt(temp2)
+		PutBigInt(temp3)
+	}()
+
+	// Calculate LockupExtraReward: a + b + c
+	temp1.Add(a.LockupExtraReward, b.LockupExtraReward)
+	lockupExtraReward := new(big.Int).Add(temp1, c.LockupExtraReward)
+
+	// Calculate LockupBaseReward: a + b + c
+	temp2.Add(a.LockupBaseReward, b.LockupBaseReward)
+	lockupBaseReward := new(big.Int).Add(temp2, c.LockupBaseReward)
+
+	// Calculate UnlockedReward: a + b + c
+	temp3.Add(a.UnlockedReward, b.UnlockedReward)
+	unlockedReward := new(big.Int).Add(temp3, c.UnlockedReward)
+
 	return Rewards{
-		LockupExtraReward: new(big.Int).Add(new(big.Int).Add(a.LockupExtraReward, b.LockupExtraReward), c.LockupExtraReward),
-		LockupBaseReward:  new(big.Int).Add(new(big.Int).Add(a.LockupBaseReward, b.LockupBaseReward), c.LockupBaseReward),
-		UnlockedReward:    new(big.Int).Add(new(big.Int).Add(a.UnlockedReward, b.UnlockedReward), c.UnlockedReward),
+		LockupExtraReward: lockupExtraReward,
+		LockupBaseReward:  lockupBaseReward,
+		UnlockedReward:    unlockedReward,
 	}
 }
 

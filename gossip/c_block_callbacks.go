@@ -229,7 +229,7 @@ func consensusCallbackBeginBlockFn(
 				skipBlock = skipBlock || (emptyBlock && blockCtx.Time < bs.LastBlock.Time+es.Rules.Blocks.MaxEmptyBlockSkipPeriod)
 				// Finalize the progress of eventProcessor
 				bs = eventProcessor.Finalize(blockCtx, skipBlock) // TODO: refactor to not mutate the bs, it is unclear
-				{                                                 // sort and merge MPs cheaters
+				{ // sort and merge MPs cheaters
 					mpsCheaters := make(utypes.Cheaters, 0, len(mpsCheatersMap))
 					for vid := range mpsCheatersMap {
 						mpsCheaters = append(mpsCheaters, vid)
@@ -346,6 +346,7 @@ func consensusCallbackBeginBlockFn(
 					block.Root = hash.Hash(evmBlock.Root)
 					block.SfcStateRoot = hash.Hash(evmBlock.SfcStateRoot)
 					block.GasUsed = evmBlock.GasUsed
+					block.PrevRandao = hash.Hash(prevRandao)
 
 					// memorize event position of each tx
 					txPositions := make(map[common.Hash]ExtendedTxPosition)
@@ -519,7 +520,7 @@ func (s *Service) ReexecuteBlocks(from, to idx.Block) {
 			evmCfg.Tracer = txtracer.NewTraceStructLogger(s.store.txtracer)
 		}
 		evmProcessor := blockProc.EVMModule.Start(blockCtx, statedb, sfcStatedb, evmStateReader, func(t *types.Log) {},
-			es.Rules, es.Rules.EvmChainConfig(upgradeHeights), block.PrevRandao)
+			es.Rules, es.Rules.EvmChainConfig(upgradeHeights), common.Hash(block.PrevRandao))
 		txs := s.store.GetBlockTxs(b, block)
 		evmProcessor.Execute(txs)
 		evmProcessor.Finalize()

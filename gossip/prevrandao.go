@@ -2,7 +2,7 @@ package gossip
 
 import (
 	"crypto/sha256"
-
+	
 	"github.com/unicornultrafoundation/go-helios/hash"
 
 	"github.com/unicornultrafoundation/go-u2u/common"

@@ -377,7 +377,6 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 	var gasUsed uint64 = 0
 
 	// Declare variables to avoid redeclaration issues
-	var innerHash []byte
 	var outerHashInput []byte
 	var outerHash []byte
 
@@ -388,6 +387,25 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 	prevEpochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(prevEpoch)
 	gasUsed += slotGasUsed
 
+	// Pre-calculate common base slots that are reused multiple times in loops
+	// These slots will be reused for each validator in the processing loops
+	prevAccumulatedOriginatedTxsFeeSlot := GetBigInt().Add(prevEpochSnapshotSlot, big.NewInt(accumulatedOriginatedTxsFeeOffset))
+	currentAccumulatedRewardPerTokenSlot := GetBigInt().Add(currentEpochSnapshotSlot, big.NewInt(accumulatedRewardPerTokenOffset))
+	prevAccumulatedRewardPerTokenSlot := GetBigInt().Add(prevEpochSnapshotSlot, big.NewInt(accumulatedRewardPerTokenOffset))
+	currentAccumulatedOriginatedTxsFeeSlot := GetBigInt().Add(currentEpochSnapshotSlot, big.NewInt(accumulatedOriginatedTxsFeeOffset))
+	currentAccumulatedUptimeSlot := GetBigInt().Add(currentEpochSnapshotSlot, big.NewInt(accumulatedUptimeOffset))
+	prevAccumulatedUptimeSlot := GetBigInt().Add(prevEpochSnapshotSlot, big.NewInt(accumulatedUptimeOffset))
+
+	// Defer cleanup of pre-calculated slots
+	defer func() {
+		PutBigInt(prevAccumulatedOriginatedTxsFeeSlot)
+		PutBigInt(currentAccumulatedRewardPerTokenSlot)
+		PutBigInt(prevAccumulatedRewardPerTokenSlot)
+		PutBigInt(currentAccumulatedOriginatedTxsFeeSlot)
+		PutBigInt(currentAccumulatedUptimeSlot)
+		PutBigInt(prevAccumulatedUptimeSlot)
+	}()
+
 	// Initialize context for rewards calculation
 	baseRewardWeights := make([]*big.Int, len(validatorIDs))
 	totalBaseRewardWeight := big.NewInt(0)
@@ -397,20 +415,21 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 
 	// Calculate tx reward weights and epoch fee
 	for i, validatorID := range validatorIDs {
-		// Get previous accumulated originated txs fee
+		// Get previous accumulated originated txs fee using pre-calculated slot
 		// For a mapping within a struct, we need to calculate the slot as:
 		// keccak256(abi.encode(validatorID, abi.encode(prevEpochSnapshotSlot + accumulatedOriginatedTxsFeeOffset)))
-		mappingSlot := new(big.Int).Add(prevEpochSnapshotSlot, big.NewInt(accumulatedOriginatedTxsFeeOffset))
-		outerHashInput = CreateNestedHashInput(validatorID, mappingSlot.Bytes())
+		outerHashInput = CreateNestedHashInput(validatorID, prevAccumulatedOriginatedTxsFeeSlot.Bytes())
 		// Use cached hash calculation
 		outerHash = CachedKeccak256(outerHashInput)
 		gasUsed += HashGasCost
 
-		prevAccumulatedTxsFeeSlot := new(big.Int).SetBytes(outerHash)
+		prevAccumulatedTxsFeeSlot := GetBigInt().SetBytes(outerHash)
+		defer PutBigInt(prevAccumulatedTxsFeeSlot)
 
 		prevAccumulatedTxsFee := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(prevAccumulatedTxsFeeSlot))
 		gasUsed += SloadGasCost
-		prevAccumulatedTxsFeeBigInt := new(big.Int).SetBytes(prevAccumulatedTxsFee.Bytes())
+		prevAccumulatedTxsFeeBigInt := GetBigInt().SetBytes(prevAccumulatedTxsFee.Bytes())
+		defer PutBigInt(prevAccumulatedTxsFeeBigInt)
 
 		// Calculate originated txs fee for this epoch
 		originatedTxsFee := big.NewInt(0)
@@ -556,15 +575,17 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 			lockupExtraReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(rewardsStashSlot))
 			gasUsed += SloadGasCost
 
-			// Get lockupBaseReward (second field)
-			lockupBaseRewardSlot := new(big.Int).Add(rewardsStashSlot, big.NewInt(1))
+			// Get lockupBaseReward (second field) using pooled big.Int
+			lockupBaseRewardSlot := GetBigInt().Add(rewardsStashSlot, big.NewInt(1))
 			lockupBaseReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupBaseRewardSlot))
 			gasUsed += SloadGasCost
+			defer PutBigInt(lockupBaseRewardSlot)
 
-			// Get unlockedReward (third field)
-			unlockedRewardSlot := new(big.Int).Add(rewardsStashSlot, big.NewInt(2))
+			// Get unlockedReward (third field) using pooled big.Int
+			unlockedRewardSlot := GetBigInt().Add(rewardsStashSlot, big.NewInt(2))
 			unlockedReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(unlockedRewardSlot))
 			gasUsed += SloadGasCost
+			defer PutBigInt(unlockedRewardSlot)
 
 			// Convert the rewards stash to a Rewards struct
 			currentRewardsStash := Rewards{
@@ -595,15 +616,17 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 			stashedLockupExtraReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stashedLockupRewardsSlot))
 			gasUsed += SloadGasCost
 
-			// Get lockupBaseReward (second field)
-			stashedLockupBaseRewardSlot := new(big.Int).Add(stashedLockupRewardsSlot, big.NewInt(1))
+			// Get lockupBaseReward (second field) using pooled big.Int
+			stashedLockupBaseRewardSlot := GetBigInt().Add(stashedLockupRewardsSlot, big.NewInt(1))
 			stashedLockupBaseReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stashedLockupBaseRewardSlot))
 			gasUsed += SloadGasCost
+			defer PutBigInt(stashedLockupBaseRewardSlot)
 
-			// Get unlockedReward (third field)
-			stashedUnlockedRewardSlot := new(big.Int).Add(stashedLockupRewardsSlot, big.NewInt(2))
+			// Get unlockedReward (third field) using pooled big.Int
+			stashedUnlockedRewardSlot := GetBigInt().Add(stashedLockupRewardsSlot, big.NewInt(2))
 			stashedUnlockedReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stashedUnlockedRewardSlot))
 			gasUsed += SloadGasCost
+			defer PutBigInt(stashedUnlockedRewardSlot)
 
 			// Convert the stashed lockup rewards to a Rewards struct
 			currentStashedLockupRewards := Rewards{
@@ -644,34 +667,25 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 			rewardPerToken = new(big.Int).Div(rewardPerToken, receivedStakeBigInt)
 		}
 
-		// Update accumulated reward per token
+		// Update accumulated reward per token using pre-calculated slots
 		// For a mapping within a struct, we need to calculate the slot as:
 		// keccak256(key . (struct_slot + offset))
-		// Add the offset for the accumulatedRewardPerToken mapping within the struct
-		mappingSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(accumulatedRewardPerTokenOffset))
-
-		// Then, calculate the slot for the specific key using our helper function
-		// Use CreateValidatorMappingHashInput to create the hash input
-		// Declare outerHashInput at the beginning of the function
-		outerHashInput := CreateValidatorMappingHashInput(validatorID, mappingSlot)
+		// Use pre-calculated currentAccumulatedRewardPerTokenSlot
+		outerHashInput := CreateValidatorMappingHashInput(validatorID, currentAccumulatedRewardPerTokenSlot)
 		// Use cached hash calculation
 		accumulatedRewardPerTokenSlotHash := CachedKeccak256Hash(outerHashInput)
-		accumulatedRewardPerTokenSlot := new(big.Int).SetBytes(accumulatedRewardPerTokenSlotHash.Bytes())
+		accumulatedRewardPerTokenSlot := GetBigInt().SetBytes(accumulatedRewardPerTokenSlotHash.Bytes())
 		gasUsed += HashGasCost
+		defer PutBigInt(accumulatedRewardPerTokenSlot)
 
-		// For the previous epoch
-		// For a mapping within a struct, we need to calculate the slot as:
-		// keccak256(key . (struct_slot + offset))
-		// Add the offset for the accumulatedRewardPerToken mapping within the struct
-		prevMappingSlot := new(big.Int).Add(prevEpochSnapshotSlot, big.NewInt(accumulatedRewardPerTokenOffset))
-
-		// Then, calculate the slot for the specific key using our helper function
-		// Use CreateValidatorMappingHashInput to create the hash input
-		outerHashInput = CreateValidatorMappingHashInput(validatorID, prevMappingSlot)
+		// For the previous epoch using pre-calculated slot
+		// Use pre-calculated prevAccumulatedRewardPerTokenSlot
+		outerHashInput = CreateValidatorMappingHashInput(validatorID, prevAccumulatedRewardPerTokenSlot)
 		// Use cached hash calculation
 		prevAccumulatedRewardPerTokenSlotHash := CachedKeccak256Hash(outerHashInput)
-		prevAccumulatedRewardPerTokenSlot := new(big.Int).SetBytes(prevAccumulatedRewardPerTokenSlotHash.Bytes())
+		prevAccumulatedRewardPerTokenSlot := GetBigInt().SetBytes(prevAccumulatedRewardPerTokenSlotHash.Bytes())
 		gasUsed += HashGasCost
+		defer PutBigInt(prevAccumulatedRewardPerTokenSlot)
 
 		prevAccumulatedRewardPerToken := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(prevAccumulatedRewardPerTokenSlot))
 		gasUsed += SloadGasCost
@@ -681,62 +695,36 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(accumulatedRewardPerTokenSlot), common.BigToHash(newAccumulatedRewardPerToken))
 		gasUsed += SstoreGasCost
 
-		// Update accumulated originated txs fee (snapshot.accumulatedOriginatedTxsFee[validatorID] = accumulatedOriginatedTxsFee[i])
-		// Use our helper function to create the hash input from offset and slot
-		innerHash = CreateAndHashOffsetSlot(accumulatedOriginatedTxsFeeOffset, currentEpochSnapshotSlot)
-		gasUsed += HashGasCost
-
-		// Use our helper function to create a nested hash input
-		outerHashInput = CreateNestedHashInput(validatorID, innerHash)
-		// Use cached hash calculation
-		outerHash = CachedKeccak256(outerHashInput)
-		gasUsed += HashGasCost
-
-		// Update accumulated originated txs fee (snapshot.accumulatedOriginatedTxsFee[validatorID] = accumulatedOriginatedTxsFee[i])
-		// For a mapping within a struct, we need to calculate the slot as:
-		// keccak256(key . (struct_slot + offset))
-		// Add the offset for the accumulatedOriginatedTxsFee mapping within the struct
-		originatedTxsFeeSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(accumulatedOriginatedTxsFeeOffset))
-
-		// Then, calculate the slot for the specific key using our helper function
-		// Use CreateValidatorMappingHashInput to create the hash input
-		outerHashInput = CreateValidatorMappingHashInput(validatorID, originatedTxsFeeSlot)
+		// Update accumulated originated txs fee using pre-calculated slot
+		// Use pre-calculated currentAccumulatedOriginatedTxsFeeSlot
+		outerHashInput = CreateValidatorMappingHashInput(validatorID, currentAccumulatedOriginatedTxsFeeSlot)
 		// Use cached hash calculation
 		accumulatedOriginatedTxsFeeSlotHash := CachedKeccak256Hash(outerHashInput)
-		accumulatedOriginatedTxsFeeSlot := new(big.Int).SetBytes(accumulatedOriginatedTxsFeeSlotHash.Bytes())
+		accumulatedOriginatedTxsFeeSlot := GetBigInt().SetBytes(accumulatedOriginatedTxsFeeSlotHash.Bytes())
 		gasUsed += HashGasCost
+		defer PutBigInt(accumulatedOriginatedTxsFeeSlot)
 
 		// Set the value in the state
 		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(accumulatedOriginatedTxsFeeSlot), common.BigToHash(accumulatedOriginatedTxsFee[i]))
 		gasUsed += SstoreGasCost
 
-		// Update accumulated uptime
-		// For a mapping within a struct, we need to calculate the slot as:
-		// keccak256(key . (struct_slot + offset))
-		// Add the offset for the accumulatedUptime mapping within the struct
-		uptimeMappingSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(accumulatedUptimeOffset))
-
-		// Then, calculate the slot for the specific key using our helper function
-		// Use CreateValidatorMappingHashInput to create the hash input
-		outerHashInput = CreateValidatorMappingHashInput(validatorID, uptimeMappingSlot)
+		// Update accumulated uptime using pre-calculated slots
+		// Use pre-calculated currentAccumulatedUptimeSlot
+		outerHashInput = CreateValidatorMappingHashInput(validatorID, currentAccumulatedUptimeSlot)
 		// Use cached hash calculation
 		accumulatedUptimeSlotHash := CachedKeccak256Hash(outerHashInput)
-		accumulatedUptimeSlot := new(big.Int).SetBytes(accumulatedUptimeSlotHash.Bytes())
+		accumulatedUptimeSlot := GetBigInt().SetBytes(accumulatedUptimeSlotHash.Bytes())
 		gasUsed += HashGasCost
+		defer PutBigInt(accumulatedUptimeSlot)
 
-		// For the previous epoch
-		// For a mapping within a struct, we need to calculate the slot as:
-		// keccak256(key . (struct_slot + offset))
-		// Add the offset for the accumulatedUptime mapping within the struct
-		prevUptimeMappingSlot := new(big.Int).Add(prevEpochSnapshotSlot, big.NewInt(accumulatedUptimeOffset))
-
-		// Then, calculate the slot for the specific key using our helper function
-		// Use CreateValidatorMappingHashInput to create the hash input
-		outerHashInput = CreateValidatorMappingHashInput(validatorID, prevUptimeMappingSlot)
+		// For the previous epoch using pre-calculated slot
+		// Use pre-calculated prevAccumulatedUptimeSlot
+		outerHashInput = CreateValidatorMappingHashInput(validatorID, prevAccumulatedUptimeSlot)
 		// Use cached hash calculation
 		prevAccumulatedUptimeSlotHash := CachedKeccak256Hash(outerHashInput)
-		prevAccumulatedUptimeSlot := new(big.Int).SetBytes(prevAccumulatedUptimeSlotHash.Bytes())
+		prevAccumulatedUptimeSlot := GetBigInt().SetBytes(prevAccumulatedUptimeSlotHash.Bytes())
 		gasUsed += HashGasCost
+		defer PutBigInt(prevAccumulatedUptimeSlot)
 
 		prevAccumulatedUptime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(prevAccumulatedUptimeSlot))
 		gasUsed += SloadGasCost

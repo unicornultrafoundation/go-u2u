@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"maps"
 	"math"
 	"math/big"
 	"math/rand"
@@ -453,6 +454,16 @@ func (test *snapshotTest) checkEqual(state, checkstate *StateDB) error {
 			checkstate.ForEachStorage(addr, func(key, value common.Hash) bool {
 				return checkeq("GetState("+key.Hex()+")", checkstate.GetState(addr, key), value)
 			})
+		}
+		// Check transient storage.
+		{
+			have := state.transientStorage
+			want := checkstate.transientStorage
+			if !maps.EqualFunc(have, want, maps.Equal) {
+				return fmt.Errorf("transient storage differs ,have\n%v\nwant\n%v",
+					have.PrettyPrint(),
+					want.PrettyPrint())
+			}
 		}
 		if err != nil {
 			return err

@@ -145,6 +145,7 @@ func (r Rules) EvmChainConfig(hh []UpgradeHeight) *ethparams.ChainConfig {
 	cfg.ChainID = new(big.Int).SetUint64(r.NetworkID)
 	cfg.BerlinBlock = nil
 	cfg.LondonBlock = nil
+	cfg.VitriolBlock = nil
 	for i, h := range hh {
 		height := new(big.Int)
 		if i > 0 {

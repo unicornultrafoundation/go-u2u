@@ -2,15 +2,18 @@ package integrationtests
 
 import (
 	"context"
-	"math/big"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/unicornultrafoundation/go-u2u/accounts/abi/bind"
+	"github.com/unicornultrafoundation/go-u2u/ethclient"
 	"github.com/unicornultrafoundation/go-u2u/integrationtests/contracts/prevrandao"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
+	"math/big"
 )
 
-func TestPrevRandao(t *testing.T) {
+func TestVitriolTransition_TestComputePrevRandao(t *testing.T) {
 	net := StartIntegrationTestNetWithFakeGenesis(t,
 		IntegrationTestNetOptions{
 			Upgrades: AsPointer(u2u.GetVitriolUpgrades()),
@@ -73,4 +76,58 @@ func TestPrevRandao(t *testing.T) {
 	if fromSecondLastBlock.Cmp(fromLatestBlock) == 0 {
 		t.Errorf("prevrandao must be different for each block, found same: %s, %s", fromSecondLastBlock, fromLatestBlock)
 	}
+}
+
+func TestVitriolTransition_CanUpgradeNetworkRules(t *testing.T) {
+	net := StartIntegrationTestNetWithFakeGenesis(t,
+		IntegrationTestNetOptions{
+			Upgrades: AsPointer(u2u.GetSolarisUpgrades()),
+		})
+	defer net.Stop()
+	assert := require.New(t)
+	client, err := net.GetClient()
+	if err != nil {
+		t.Fatalf("failed to get client; %v", err)
+	}
+	defer client.Close()
+
+	block, err := client.BlockByNumber(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("failed to get block header; %v", err)
+	}
+	assert.Equal(block.MixDigest().Big().Cmp(big.NewInt(0)), 0, "block prevrandao must be 0 before Vitriol upgrade")
+
+	// start upgrading to Vitriol
+	receipt, err := net.CraftSFCTx(&net.validator, NodeDriverAuthAbi, &NodeDriverAuthAddr, big.NewInt(0),
+		"updateNetworkRules", []byte(`{"Upgrades":{"Vitriol":true}}`))
+	if err != nil {
+		t.Fatalf("failed to send tx to upgrade network to Vitriol: %v", err)
+	}
+	assert.Equal(receipt.Status, uint64(1), "transaction to upgrade network to Vitriol must succeed")
+	receipt, err = net.CraftSFCTx(&net.validator, NodeDriverAuthAbi, &NodeDriverAuthAddr, big.NewInt(0),
+		"advanceEpochs", big.NewInt(10))
+	if err != nil {
+		t.Fatalf("failed to send tx to advance epoch: %v", err)
+	}
+	assert.Equal(receipt.Status, uint64(1), "transaction to advance epoch must succeed")
+	// trigger new block to persist previous network changes
+	if err := net.EndowAccount(net.validator.Address(), 1); err != nil {
+		t.Fatalf("Failed to endow account: %v", err)
+	}
+	// done upgrading to Vitriol
+
+	testPrevRandaoMustBeSet(t, net, client)
+}
+
+func testPrevRandaoMustBeSet(t *testing.T, net *IntegrationTestNet, client *ethclient.Client) {
+	assert := require.New(t)
+	// trigger new block for the latest block to have prevrandao value
+	if err := net.EndowAccount(net.validator.Address(), 1); err != nil {
+		t.Fatalf("Failed to endow account: %v", err)
+	}
+	block, err := client.BlockByNumber(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("failed to get block header; %v", err)
+	}
+	assert.NotEqual(block.MixDigest().Big().Cmp(big.NewInt(0)), 0, "block prevrandao must be set after Vitriol upgrade")
 }

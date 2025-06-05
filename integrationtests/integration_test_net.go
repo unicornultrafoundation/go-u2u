@@ -9,20 +9,33 @@ import (
 	"math/rand/v2"
 	"net"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"golang.org/x/net/nettest"
 
 	go_u2u "github.com/unicornultrafoundation/go-u2u"
+	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
 	"github.com/unicornultrafoundation/go-u2u/accounts/abi/bind"
 	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/ethclient"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
+	"github.com/unicornultrafoundation/go-u2u/gossip/contract/driverauth100"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 )
+
+var (
+	NodeDriverAuthAddr = common.HexToAddress("0xd100ae0000000000000000000000000000000000")
+
+	NodeDriverAuthAbi abi.ABI
+)
+
+func init() {
+	NodeDriverAuthAbi, _ = abi.JSON(strings.NewReader(driverauth100.ContractMetaData.ABI))
+}
 
 // IntegrationTestNetOptions are configuration options for the integration test network.
 type IntegrationTestNetOptions struct {

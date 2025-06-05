@@ -66,13 +66,21 @@ type JumpTable [256]*operation
 
 func newVitriolInstructionSet() JumpTable {
 	instructionSet := newLondonInstructionSet()
-	// TODO(trinhdn97): Add Vitriol opcodes
+	// The Merge instruction set
 	instructionSet[PREVRANDAO] = &operation{
 		execute:     opRandom,
 		constantGas: GasQuickStep,
 		minStack:    minStack(0, 1),
 		maxStack:    maxStack(0, 1),
 	}
+
+	// Shanghai instruction set
+	enable3855(&instructionSet) // PUSH0 instruction
+	enable3860(&instructionSet) // Limit and meter initcode
+
+	// Part of Cancun instruction set.
+	// These changes below are only for compatibility purposes,
+	// not reflect a full Cancun instruction set
 
 	return instructionSet
 }

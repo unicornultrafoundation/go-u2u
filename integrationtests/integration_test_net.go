@@ -46,6 +46,7 @@ type IntegrationTestNetOptions struct {
 	// test network.
 	// A value of 0 is interpreted as 1.
 	NumNodes  int
+	Sfc       bool
 	Directory string
 }
 
@@ -122,9 +123,13 @@ func StartIntegrationTestNetWithFakeGenesis(
 		t.Fatal("fake genesis only supports sonic and allegro feature sets")
 	}
 
+	extraArgs := []string{"--fakenet", "1/1", "--upgrades", upgrades}
+	if effectiveOptions.Sfc {
+		extraArgs = append(extraArgs, "--sfc")
+	}
 	net, err := startIntegrationTestNet(
 		t,
-		[]string{"--fakenet", "1/1", "--upgrades", upgrades},
+		extraArgs,
 		effectiveOptions,
 	)
 	if err != nil {
@@ -217,9 +222,9 @@ func startIntegrationTestNet(
 			}
 			continue
 		}
+		t.Cleanup(net.Stop)
 		return net, nil
 	}
-	t.Cleanup(net.Stop)
 	return nil, fmt.Errorf("failed to successfully start up a test network within %d", timeout)
 }
 

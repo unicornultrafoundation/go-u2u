@@ -14,20 +14,17 @@ import (
 )
 
 func TestIntegrationTestNet_CanStartAndStopIntegrationTestNet(t *testing.T) {
-	net := StartIntegrationTestNetWithFakeGenesis(t)
-	net.Stop()
+	StartIntegrationTestNetWithFakeGenesis(t)
 }
 
 func TestIntegrationTestNet_CanStartMultipleConsecutiveInstances(t *testing.T) {
 	for i := 0; i < 2; i++ {
-		net := StartIntegrationTestNetWithFakeGenesis(t)
-		net.Stop()
+		StartIntegrationTestNetWithFakeGenesis(t)
 	}
 }
 
 func TestIntegrationTestNet_CanFetchInformationFromTheNetwork(t *testing.T) {
 	net := StartIntegrationTestNetWithFakeGenesis(t)
-	defer net.Stop()
 	client, err := net.GetClient()
 	if err != nil {
 		t.Fatalf("Failed to connect to the integration test network: %v", err)
@@ -44,11 +41,11 @@ func TestIntegrationTestNet_CanFetchInformationFromTheNetwork(t *testing.T) {
 
 func TestIntegrationTestNet_CanEndowAccountsWithTokens(t *testing.T) {
 	net := StartIntegrationTestNetWithFakeGenesis(t)
-	defer net.Stop()
 	client, err := net.GetClient()
 	if err != nil {
 		t.Fatalf("Failed to connect to the integration test network: %v", err)
 	}
+	defer client.Close()
 	address := common.Address{0x01}
 	balance, err := client.BalanceAt(context.Background(), address, nil)
 	if err != nil {
@@ -73,7 +70,6 @@ func TestIntegrationTestNet_CanEndowAccountsWithTokens(t *testing.T) {
 
 func TestIntegrationTestNet_CanDeployContracts(t *testing.T) {
 	net := StartIntegrationTestNetWithFakeGenesis(t)
-	defer net.Stop()
 	_, receipt, err := DeployContract(net, counter.DeployCounter)
 	if err != nil {
 		t.Fatalf("Failed to deploy contract: %v", err)
@@ -85,7 +81,6 @@ func TestIntegrationTestNet_CanDeployContracts(t *testing.T) {
 
 func TestIntegrationTestNet_CanInteractWithContract(t *testing.T) {
 	net := StartIntegrationTestNetWithFakeGenesis(t)
-	defer net.Stop()
 	contract, _, err := DeployContract(net, counter.DeployCounter)
 	if err != nil {
 		t.Fatalf("Failed to deploy contract: %v", err)
@@ -97,8 +92,4 @@ func TestIntegrationTestNet_CanInteractWithContract(t *testing.T) {
 	if receipt.Status != types.ReceiptStatusSuccessful {
 		t.Errorf("Contract deployment failed: %v", receipt)
 	}
-}
-
-func TestIntegrationTestNet_CanUpgradeNetworkToVitriol(t *testing.T) {
-
 }

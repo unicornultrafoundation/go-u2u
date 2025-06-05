@@ -18,8 +18,6 @@ func TestVitriolTransition_TestComputePrevRandao(t *testing.T) {
 		IntegrationTestNetOptions{
 			Upgrades: AsPointer(u2u.GetVitriolUpgrades()),
 		})
-	defer net.Stop()
-
 	// Deploy the contract.
 	contract, _, err := DeployContract(net, prevrandao.DeployPrevrandao)
 	if err != nil {
@@ -78,12 +76,12 @@ func TestVitriolTransition_TestComputePrevRandao(t *testing.T) {
 	}
 }
 
-func TestVitriolTransition_CanUpgradeNetworkRules(t *testing.T) {
+func TestVitriolTransition_CanUpgradeNetworkRulesToVitriol(t *testing.T) {
+	// start test network with Solaris rules
 	net := StartIntegrationTestNetWithFakeGenesis(t,
 		IntegrationTestNetOptions{
 			Upgrades: AsPointer(u2u.GetSolarisUpgrades()),
 		})
-	defer net.Stop()
 	assert := require.New(t)
 	client, err := net.GetClient()
 	if err != nil {

@@ -4,48 +4,28 @@
 package integrationtests
 
 import (
-	"testing"
-	"time"
-
 	"golang.org/x/net/nettest"
+	"testing"
 )
 
 var (
 	dataDir    string
-	testnet    *IntegrationTestNet
-	err        error
 	sfcTestOpt IntegrationTestNetOptions
 )
 
-func setup(t *testing.T) error {
-	if dataDir == "" {
-		dataDir, err = nettest.LocalPath()
-		if err != nil {
-			return err
-		}
+func TestSFCStore000_Setup(t *testing.T) {
+	var err error
+	dataDir, err = nettest.LocalPath()
+	if err != nil {
+		t.Fatalf("Failed to init the test network: %v", err)
 	}
-	if testnet == nil {
-		sfcTestOpt = IntegrationTestNetOptions{Directory: dataDir}
-		testnet = StartIntegrationTestNetWithFakeGenesis(t, sfcTestOpt)
-		// make sure the fake network passed the first epoch, to ensure the
-		// network is able to sync again after running db heal
-		time.Sleep(20 * time.Second)
-		testnet.Stop() // then shut down the network and dump SFC contract storage
-	}
-	return nil
+	sfcTestOpt = IntegrationTestNetOptions{Directory: dataDir}
+	StartIntegrationTestNetWithFakeGenesis(t, sfcTestOpt)
 }
 
-func TestSFCStore_CanDumpSFCStorageAndThenSyncAgain(t *testing.T) {
-	if err := setup(t); err != nil {
-		t.Fatal(err)
-	}
-	if err := testnet.DumpSFCStorage(dataDir); err != nil {
+func TestSFCStore001_CanDumpSFCStorageAndThenSyncAgain(t *testing.T) {
+	if err := DumpSFCStorage(dataDir); err != nil {
 		t.Fatalf("Failed to dump the SFC storage: %v", err)
 	}
-	if err := testnet.HealDB(dataDir); err != nil {
-		t.Fatalf("Failed to heal the DB after dumping: %v", err)
-	}
-	// restart the network on that healed DB after dumping
-	testnet = StartIntegrationTestNetWithFakeGenesis(t, sfcTestOpt)
-	defer testnet.Stop()
+	sfcTestOpt.Sfc = true
 }

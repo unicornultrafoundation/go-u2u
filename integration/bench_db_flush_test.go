@@ -9,11 +9,12 @@ import (
 	"github.com/unicornultrafoundation/go-helios/hash"
 	"github.com/unicornultrafoundation/go-helios/native/idx"
 	"github.com/unicornultrafoundation/go-helios/utils/cachescale"
-	"github.com/unicornultrafoundation/go-u2u/common"
 
+	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/integration/makefakegenesis"
 	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/utils"
 	"github.com/unicornultrafoundation/go-u2u/vecmt"
 )
@@ -21,7 +22,7 @@ import (
 func BenchmarkFlushDBs(b *testing.B) {
 	dir := tmpDir("flush_bench")
 	defer os.RemoveAll(dir)
-	genStore := makefakegenesis.FakeGenesisStore(1, utils.ToU2U(1), utils.ToU2U(1))
+	genStore := makefakegenesis.FakeGenesisStore(1, utils.ToU2U(1), utils.ToU2U(1), u2u.GetVitriolUpgrades())
 	g := genStore.Genesis()
 	_, _, store, s2, _, closeDBs := MakeEngine(dir, &g, Configs{
 		U2U:         gossip.DefaultConfig(cachescale.Identity),

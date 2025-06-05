@@ -2,6 +2,7 @@ package integrationtests
 
 import (
 	"context"
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -10,7 +11,6 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/ethclient"
 	"github.com/unicornultrafoundation/go-u2u/integrationtests/contracts/prevrandao"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
-	"math/big"
 )
 
 func TestVitriolTransition_TestComputePrevRandao(t *testing.T) {

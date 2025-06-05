@@ -101,6 +101,8 @@ const (
 	CHAINID     OpCode = 0x46
 	SELFBALANCE OpCode = 0x47
 	BASEFEE     OpCode = 0x48
+	BLOBHASH    OpCode = 0x49
+	BLOBBASEFEE OpCode = 0x4a
 )
 
 // 0x50 range - 'storage' and execution.
@@ -217,6 +219,7 @@ const (
 	CREATE2
 	STATICCALL   OpCode = 0xfa
 	REVERT       OpCode = 0xfd
+	INVALID      OpCode = 0xfe
 	SELFDESTRUCT OpCode = 0xff
 )
 
@@ -283,6 +286,8 @@ var opCodeToString = map[OpCode]string{
 	CHAINID:     "CHAINID",
 	SELFBALANCE: "SELFBALANCE",
 	BASEFEE:     "BASEFEE",
+	BLOBHASH:    "BLOBHASH",
+	BLOBBASEFEE: "BLOBBASEFEE",
 
 	// 0x50 range - 'storage' and execution.
 	POP: "POP",
@@ -386,6 +391,7 @@ var opCodeToString = map[OpCode]string{
 	CREATE2:      "CREATE2",
 	STATICCALL:   "STATICCALL",
 	REVERT:       "REVERT",
+	INVALID:      "INVALID",
 	SELFDESTRUCT: "SELFDESTRUCT",
 
 	PUSH: "PUSH",
@@ -440,6 +446,8 @@ var stringToOp = map[string]OpCode{
 	"CALLDATACOPY":   CALLDATACOPY,
 	"CHAINID":        CHAINID,
 	"BASEFEE":        BASEFEE,
+	"BLOBHASH":       BLOBHASH,
+	"BLOBBASEFEE":    BLOBBASEFEE,
 	"DELEGATECALL":   DELEGATECALL,
 	"STATICCALL":     STATICCALL,
 	"CODESIZE":       CODESIZE,
@@ -548,5 +556,6 @@ var stringToOp = map[string]OpCode{
 	"RETURN":         RETURN,
 	"CALLCODE":       CALLCODE,
 	"REVERT":         REVERT,
+	"INVALID":        INVALID,
 	"SELFDESTRUCT":   SELFDESTRUCT,
 }

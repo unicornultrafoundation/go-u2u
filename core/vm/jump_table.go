@@ -81,6 +81,7 @@ func newVitriolInstructionSet() JumpTable {
 	// Part of Cancun instruction set.
 	// These changes below are only for compatibility purposes,
 	// not reflect a full Cancun instruction set
+	enablePartialCancun(&instructionSet)
 
 	return instructionSet
 }

@@ -5,21 +5,16 @@ import (
 	"math/big"
 	"testing"
 
-	"golang.org/x/net/nettest"
-
 	"github.com/unicornultrafoundation/go-u2u/accounts/abi/bind"
 	"github.com/unicornultrafoundation/go-u2u/integrationtests/contracts/prevrandao"
+	"github.com/unicornultrafoundation/go-u2u/u2u"
 )
 
 func TestPrevRandao(t *testing.T) {
-	dataDir, err := nettest.LocalPath()
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	net, err := StartIntegrationTestNet(dataDir)
-	if err != nil {
-		t.Fatalf("failed to start the test network; %v", err)
-	}
+	net := StartIntegrationTestNetWithFakeGenesis(t,
+		IntegrationTestNetOptions{
+			Upgrades: AsPointer(u2u.GetVitriolUpgrades()),
+		})
 	defer net.Stop()
 
 	// Deploy the contract.

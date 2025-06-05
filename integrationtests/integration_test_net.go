@@ -9,16 +9,39 @@ import (
 	"math/rand/v2"
 	"net"
 	"os"
+	"testing"
 	"time"
+
+	"golang.org/x/net/nettest"
 
 	go_u2u "github.com/unicornultrafoundation/go-u2u"
 	"github.com/unicornultrafoundation/go-u2u/accounts/abi/bind"
-	u2u "github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher"
+	"github.com/unicornultrafoundation/go-u2u/cmd/u2u/launcher"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/ethclient"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
+	"github.com/unicornultrafoundation/go-u2u/u2u"
 )
+
+// IntegrationTestNetOptions are configuration options for the integration test network.
+type IntegrationTestNetOptions struct {
+	// Upgrades specifies the upgrades to be used for the integration test network.
+	// nil value will initialize network using SolarisUpgrades.
+	Upgrades *u2u.Upgrades
+	// NumNodes specifies the number of nodes to be started on the integration
+	// test network.
+	// A value of 0 is interpreted as 1.
+	NumNodes  int
+	Directory string
+}
+
+// AsPointer is a utility function that returns a pointer to the given value.
+// Useful to initialize values which nil value is semantically significant.
+// E.g., to initialize the `Upgrades` field in `IntegrationTestNetOptions` to a non-nil value.
+func AsPointer[T any](v T) *T {
+	return &v
+}
 
 // IntegrationTestNet is a in-process test network for integration tests. When
 // started, it runs a full U2U node maintaining a chain within the process
@@ -30,21 +53,11 @@ import (
 // tests against an integration test network instance, break-points can be set
 // in the client code, thereby facilitating debugging.
 //
-// A typical use case would look as follows:
-//
-//	func TestMyClientCode(t *testing.T) {
-//	  net, err := StartIntegrationTestNet(t.TempDir())
-//	  if err != nil {
-//	    t.Fatalf("Failed to start the fake network: %v", err)
-//	  }
-//	  defer net.Stop()
-//	  <run tests against the network>
-//	}
-//
 // Additionally, by providing support for scripting test traffic on a network,
 // integration test networks can also be used for automated integration and
 // regression tests for client code.
 type IntegrationTestNet struct {
+	options        IntegrationTestNetOptions
 	done           <-chan struct{}
 	validator      Account
 	httpClientPort int
@@ -72,11 +85,50 @@ func getFreePort() (int, error) {
 	return 0, fmt.Errorf("failed to find a free port after %d retries (last %d)", retries, port)
 }
 
-// StartIntegrationTestNet starts a single-node test network for integration tests.
+// StartIntegrationTestNetWithFakeGenesis starts a single-node test network for
+// integration tests using the Fake-Genesis procedure.
+// The fake genesis procedure is mainly intended for demo and small scale test networks
+// used for development and integration testing in Norma.
+func StartIntegrationTestNetWithFakeGenesis(
+	t *testing.T,
+	options ...IntegrationTestNetOptions,
+) *IntegrationTestNet {
+	t.Helper()
+
+	effectiveOptions, err := validateAndSanitizeOptions(t, options...)
+	if err != nil {
+		t.Fatal("failed to validate and sanitize options: ", err)
+	}
+
+	var upgrades string
+	if *effectiveOptions.Upgrades == u2u.GetSolarisUpgrades() {
+		upgrades = "solaris"
+	} else if *effectiveOptions.Upgrades == u2u.GetVitriolUpgrades() {
+		upgrades = "vitriol"
+	} else {
+		t.Fatal("fake genesis only supports sonic and allegro feature sets")
+	}
+
+	net, err := startIntegrationTestNet(
+		t,
+		[]string{"--fakenet", "1/1", "--upgrades", upgrades},
+		effectiveOptions,
+	)
+	if err != nil {
+		t.Fatal("failed to start integration test network: ", err)
+	}
+	return net
+}
+
+// startIntegrationTestNet starts a single-node test network for integration tests.
 // The node serving the network is started in the same process as the caller. This
 // is intended to facilitate debugging of client code in the context of a running
 // node.
-func StartIntegrationTestNet(directory string) (*IntegrationTestNet, error) {
+func startIntegrationTestNet(
+	t *testing.T,
+	fakenetArgs []string,
+	options IntegrationTestNetOptions,
+) (*IntegrationTestNet, error) {
 	// find free ports for the http-client, ws-client, and network interfaces
 	var err error
 	httpClientPort, err := getFreePort()
@@ -98,15 +150,12 @@ func StartIntegrationTestNet(directory string) (*IntegrationTestNet, error) {
 		defer func() { os.Args = originalArgs }()
 		// start the fakenet u2u node
 		// equivalent to running `u2u ...` but in this local process
-		os.Args = []string{
+		os.Args = append([]string{
 			"u2u",
 
 			// data storage options
-			"--datadir", directory,
+			"--datadir", options.Directory,
 			"--datadir.minfreedisk", "0",
-
-			// fake network options
-			"--fakenet", "1/1",
 
 			// http-client option
 			"--http", "--http.addr", "0.0.0.0", "--http.port", fmt.Sprint(httpClientPort),
@@ -114,7 +163,7 @@ func StartIntegrationTestNet(directory string) (*IntegrationTestNet, error) {
 
 			// websocket-client options
 			"--ws", "--ws.addr", "0.0.0.0", "--ws.port", fmt.Sprint(wsPort),
-			"--ws.api", "admin,eth,ftm",
+			"--ws.api", "admin,eth",
 
 			//  net options
 			"--port", fmt.Sprint(netPort),
@@ -122,19 +171,20 @@ func StartIntegrationTestNet(directory string) (*IntegrationTestNet, error) {
 			"--nodiscover",
 			"--ipcpath", getIPCPath(),
 			"--cache", "8192",
-		}
-		err := u2u.Run()
+		}, fakenetArgs...)
+		err := launcher.Run()
 		if err != nil {
 			panic(fmt.Sprint("Failed to start the fake network:", err))
 		}
 	}()
-	result := &IntegrationTestNet{
+	net := &IntegrationTestNet{
+		options:        options,
 		done:           done,
 		validator:      Account{evmcore.FakeKey(1)},
 		httpClientPort: httpClientPort,
 	}
 	// connect to blockchain network
-	client, err := result.GetClient()
+	client, err := net.GetClient()
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to the U2U client: %w", err)
 	}
@@ -154,8 +204,9 @@ func StartIntegrationTestNet(directory string) (*IntegrationTestNet, error) {
 			}
 			continue
 		}
-		return result, nil
+		return net, nil
 	}
+	t.Cleanup(net.Stop)
 	return nil, fmt.Errorf("failed to successfully start up a test network within %d", timeout)
 }
 
@@ -336,4 +387,38 @@ func (n *IntegrationTestNet) GetStorageAt(account common.Address, key common.Has
 	}
 	defer client.Close()
 	return client.StorageAt(context.Background(), account, key, blockNumber)
+}
+
+// validateAndSanitizeOptions ensures that the options are valid and sets the default values.
+func validateAndSanitizeOptions(t *testing.T, options ...IntegrationTestNetOptions) (IntegrationTestNetOptions, error) {
+	if len(options) > 1 {
+		return IntegrationTestNetOptions{}, fmt.Errorf("expected at most one option, got %d", len(options))
+	}
+
+	if len(options) == 0 {
+		dir, err := nettest.LocalPath()
+		if err != nil {
+			return IntegrationTestNetOptions{}, fmt.Errorf("failed to init temp dir, error %s", err)
+		}
+		return IntegrationTestNetOptions{
+			Upgrades:  AsPointer(u2u.GetSolarisUpgrades()),
+			NumNodes:  1,
+			Directory: dir,
+		}, nil
+	}
+	if options[0].NumNodes <= 0 {
+		options[0].NumNodes = 1
+	}
+	if options[0].Upgrades == nil {
+		options[0].Upgrades = AsPointer(u2u.GetVitriolUpgrades())
+	}
+	if options[0].Directory == "" {
+		dir, err := nettest.LocalPath()
+		if err != nil {
+			return IntegrationTestNetOptions{}, fmt.Errorf("failed to init temp dir, error %s", err)
+		}
+		options[0].Directory = dir
+	}
+
+	return options[0], nil
 }

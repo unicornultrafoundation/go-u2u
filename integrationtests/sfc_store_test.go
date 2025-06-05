@@ -11,12 +11,13 @@ import (
 )
 
 var (
-	dataDir string
-	testnet *IntegrationTestNet
-	err     error
+	dataDir    string
+	testnet    *IntegrationTestNet
+	err        error
+	sfcTestOpt IntegrationTestNetOptions
 )
 
-func setup() error {
+func setup(t *testing.T) error {
 	if dataDir == "" {
 		dataDir, err = nettest.LocalPath()
 		if err != nil {
@@ -24,10 +25,8 @@ func setup() error {
 		}
 	}
 	if testnet == nil {
-		testnet, err = StartIntegrationTestNet(dataDir)
-		if err != nil {
-			return err
-		}
+		sfcTestOpt = IntegrationTestNetOptions{Directory: dataDir}
+		testnet = StartIntegrationTestNetWithFakeGenesis(t, sfcTestOpt)
 		// make sure the fake network passed the first epoch, to ensure the
 		// network is able to sync again after running db heal
 		time.Sleep(20 * time.Second)
@@ -37,7 +36,7 @@ func setup() error {
 }
 
 func TestSFCStore_CanDumpSFCStorageAndThenSyncAgain(t *testing.T) {
-	if err := setup(); err != nil {
+	if err := setup(t); err != nil {
 		t.Fatal(err)
 	}
 	if err := testnet.DumpSFCStorage(dataDir); err != nil {
@@ -47,9 +46,6 @@ func TestSFCStore_CanDumpSFCStorageAndThenSyncAgain(t *testing.T) {
 		t.Fatalf("Failed to heal the DB after dumping: %v", err)
 	}
 	// restart the network on that healed DB after dumping
-	testnet, err = StartIntegrationTestNet(dataDir)
-	if err != nil {
-		t.Fatalf("Failed to start the fake network: %v", err)
-	}
+	testnet = StartIntegrationTestNetWithFakeGenesis(t, sfcTestOpt)
 	defer testnet.Stop()
 }

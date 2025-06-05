@@ -8,46 +8,25 @@ import (
 	"math/big"
 	"testing"
 
-	"golang.org/x/net/nettest"
-
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/integrationtests/contracts/counter"
 )
 
 func TestIntegrationTestNet_CanStartAndStopIntegrationTestNet(t *testing.T) {
-	dataDir, err := nettest.LocalPath()
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	net, err := StartIntegrationTestNet(dataDir)
-	if err != nil {
-		t.Fatalf("Failed to start the fake network: %v", err)
-	}
+	net := StartIntegrationTestNetWithFakeGenesis(t)
 	net.Stop()
 }
+
 func TestIntegrationTestNet_CanStartMultipleConsecutiveInstances(t *testing.T) {
 	for i := 0; i < 2; i++ {
-		dataDir, err := nettest.LocalPath()
-		if err != nil {
-			t.Fatalf(err.Error())
-		}
-		net, err := StartIntegrationTestNet(dataDir)
-		if err != nil {
-			t.Fatalf("Failed to start the fake network: %v", err)
-		}
+		net := StartIntegrationTestNetWithFakeGenesis(t)
 		net.Stop()
 	}
 }
+
 func TestIntegrationTestNet_CanFetchInformationFromTheNetwork(t *testing.T) {
-	dataDir, err := nettest.LocalPath()
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	net, err := StartIntegrationTestNet(dataDir)
-	if err != nil {
-		t.Fatalf("Failed to start the fake network: %v", err)
-	}
+	net := StartIntegrationTestNetWithFakeGenesis(t)
 	defer net.Stop()
 	client, err := net.GetClient()
 	if err != nil {
@@ -62,15 +41,9 @@ func TestIntegrationTestNet_CanFetchInformationFromTheNetwork(t *testing.T) {
 		t.Errorf("Unexpected block number: %v", block)
 	}
 }
+
 func TestIntegrationTestNet_CanEndowAccountsWithTokens(t *testing.T) {
-	dataDir, err := nettest.LocalPath()
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	net, err := StartIntegrationTestNet(dataDir)
-	if err != nil {
-		t.Fatalf("Failed to start the fake network: %v", err)
-	}
+	net := StartIntegrationTestNetWithFakeGenesis(t)
 	defer net.Stop()
 	client, err := net.GetClient()
 	if err != nil {
@@ -97,15 +70,9 @@ func TestIntegrationTestNet_CanEndowAccountsWithTokens(t *testing.T) {
 		balance = want
 	}
 }
+
 func TestIntegrationTestNet_CanDeployContracts(t *testing.T) {
-	dataDir, err := nettest.LocalPath()
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	net, err := StartIntegrationTestNet(dataDir)
-	if err != nil {
-		t.Fatalf("Failed to start the fake network: %v", err)
-	}
+	net := StartIntegrationTestNetWithFakeGenesis(t)
 	defer net.Stop()
 	_, receipt, err := DeployContract(net, counter.DeployCounter)
 	if err != nil {
@@ -115,15 +82,9 @@ func TestIntegrationTestNet_CanDeployContracts(t *testing.T) {
 		t.Errorf("Contract deployment failed: %+v", receipt)
 	}
 }
+
 func TestIntegrationTestNet_CanInteractWithContract(t *testing.T) {
-	dataDir, err := nettest.LocalPath()
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	net, err := StartIntegrationTestNet(dataDir)
-	if err != nil {
-		t.Fatalf("Failed to start the fake network: %v", err)
-	}
+	net := StartIntegrationTestNetWithFakeGenesis(t)
 	defer net.Stop()
 	contract, _, err := DeployContract(net, counter.DeployCounter)
 	if err != nil {
@@ -136,4 +97,8 @@ func TestIntegrationTestNet_CanInteractWithContract(t *testing.T) {
 	if receipt.Status != types.ReceiptStatusSuccessful {
 		t.Errorf("Contract deployment failed: %v", receipt)
 	}
+}
+
+func TestIntegrationTestNet_CanUpgradeNetworkToVitriol(t *testing.T) {
+
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // handleBurnU2U implements the _burnU2U function from SFCLib.sol
@@ -34,6 +35,7 @@ func handleBurnU2U(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 			amount,
 		)
 		if err != nil {
+			log.Error("handleBurnU2U: pack BurntU2U failed", "err", err, "amount", amount)
 			return nil, 0, err
 		}
 		evm.SfcStateDB.AddLog(&types.Log{

@@ -408,40 +408,27 @@ func handle_stashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 	}
 	gasUsed += epochGasUsed
 
-	// Update stashedRewardsUntilEpoch
+	// Update stashedRewardsUntilEpoch FIRST
 	stashedRewardsUntilEpochSlot, slotGasUsed := getStashedRewardsUntilEpochSlot(delegator, toValidatorID)
 	gasUsed += slotGasUsed
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedRewardsUntilEpochSlot), common.BigToHash(highestPayableEpoch))
 	gasUsed += SstoreGasCost
 
-	// Get current rewards stash
+	// Then update _rewardsStash
 	rewardsStashSlot, slotGasUsed := getRewardsStashSlot(delegator, toValidatorID)
 	gasUsed += slotGasUsed
 
-	// Get lockupExtraReward from current stash
-	lockupExtraRewardSlot := rewardsStashSlot
-	lockupExtraReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupExtraRewardSlot))
-	lockupExtraRewardBigInt := new(big.Int).SetBytes(lockupExtraReward.Bytes())
-	gasUsed += SloadGasCost
-
-	// Get lockupBaseReward from current stash
-	lockupBaseRewardSlot := new(big.Int).Add(rewardsStashSlot, big.NewInt(1))
-	lockupBaseReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupBaseRewardSlot))
-	lockupBaseRewardBigInt := new(big.Int).SetBytes(lockupBaseReward.Bytes())
-	gasUsed += SloadGasCost
-
-	// Get unlockedReward from current stash
-	unlockedRewardSlot := new(big.Int).Add(rewardsStashSlot, big.NewInt(2))
-	unlockedReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(unlockedRewardSlot))
-	unlockedRewardBigInt := new(big.Int).SetBytes(unlockedReward.Bytes())
-	gasUsed += SloadGasCost
-
-	// Create the current rewards stash struct
-	currentRewardsStash := Rewards{
-		LockupExtraReward: lockupExtraRewardBigInt,
-		LockupBaseReward:  lockupBaseRewardBigInt,
-		UnlockedReward:    unlockedRewardBigInt,
+	// Read all three slots of the current rewards stash
+	packedCurrentRewardsStash := make([][]byte, 3)
+	for i := 0; i < 3; i++ {
+		slot := new(big.Int).Add(rewardsStashSlot, big.NewInt(int64(i)))
+		value := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slot))
+		packedCurrentRewardsStash[i] = value.Bytes()
+		gasUsed += SloadGasCost
 	}
+
+	// Unpack the current rewards stash
+	currentRewardsStash := unpackRewards(packedCurrentRewardsStash)
 
 	// Sum the rewards
 	newRewardsStash := sumRewards(currentRewardsStash, nonStashedReward, Rewards{
@@ -450,42 +437,31 @@ func handle_stashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 		UnlockedReward:    big.NewInt(0),
 	})
 
-	// Update the rewards stash
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(lockupExtraRewardSlot), common.BigToHash(newRewardsStash.LockupExtraReward))
-	gasUsed += SstoreGasCost
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(lockupBaseRewardSlot), common.BigToHash(newRewardsStash.LockupBaseReward))
-	gasUsed += SstoreGasCost
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(unlockedRewardSlot), common.BigToHash(newRewardsStash.UnlockedReward))
-	gasUsed += SstoreGasCost
+	// Pack the new rewards stash
+	packedNewRewardsStash := packRewards(newRewardsStash)
 
-	// Get stashed lockup rewards
+	// Update _rewardsStash
+	for i := 0; i < 3; i++ {
+		slot := new(big.Int).Add(rewardsStashSlot, big.NewInt(int64(i)))
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(slot), common.BytesToHash(packedNewRewardsStash[i]))
+		gasUsed += SstoreGasCost
+	}
+
+	// Finally update getStashedLockupRewards
 	stashedLockupRewardsSlot, slotGasUsed := getStashedLockupRewardsSlot(delegator, toValidatorID)
 	gasUsed += slotGasUsed
 
-	// Get lockupExtraReward from stashed lockup rewards
-	stashedLockupExtraRewardSlot := stashedLockupRewardsSlot
-	stashedLockupExtraReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stashedLockupExtraRewardSlot))
-	stashedLockupExtraRewardBigInt := new(big.Int).SetBytes(stashedLockupExtraReward.Bytes())
-	gasUsed += SloadGasCost
-
-	// Get lockupBaseReward from stashed lockup rewards
-	stashedLockupBaseRewardSlot := new(big.Int).Add(stashedLockupRewardsSlot, big.NewInt(1))
-	stashedLockupBaseReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stashedLockupBaseRewardSlot))
-	stashedLockupBaseRewardBigInt := new(big.Int).SetBytes(stashedLockupBaseReward.Bytes())
-	gasUsed += SloadGasCost
-
-	// Get unlockedReward from stashed lockup rewards
-	stashedUnlockedRewardSlot := new(big.Int).Add(stashedLockupRewardsSlot, big.NewInt(2))
-	stashedUnlockedReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stashedUnlockedRewardSlot))
-	stashedUnlockedRewardBigInt := new(big.Int).SetBytes(stashedUnlockedReward.Bytes())
-	gasUsed += SloadGasCost
-
-	// Create the stashed lockup rewards struct
-	currentStashedLockupRewards := Rewards{
-		LockupExtraReward: stashedLockupExtraRewardBigInt,
-		LockupBaseReward:  stashedLockupBaseRewardBigInt,
-		UnlockedReward:    stashedUnlockedRewardBigInt,
+	// Read all three slots of the current stashed lockup rewards
+	packedCurrentStashedLockupRewards := make([][]byte, 3)
+	for i := 0; i < 3; i++ {
+		slot := new(big.Int).Add(stashedLockupRewardsSlot, big.NewInt(int64(i)))
+		value := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slot))
+		packedCurrentStashedLockupRewards[i] = value.Bytes()
+		gasUsed += SloadGasCost
 	}
+
+	// Unpack the current stashed lockup rewards
+	currentStashedLockupRewards := unpackRewards(packedCurrentStashedLockupRewards)
 
 	// Sum the stashed lockup rewards
 	newStashedLockupRewards := sumRewards(currentStashedLockupRewards, nonStashedReward, Rewards{
@@ -494,13 +470,15 @@ func handle_stashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 		UnlockedReward:    big.NewInt(0),
 	})
 
-	// Update the stashed lockup rewards
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedLockupExtraRewardSlot), common.BigToHash(newStashedLockupRewards.LockupExtraReward))
-	gasUsed += SstoreGasCost
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedLockupBaseRewardSlot), common.BigToHash(newStashedLockupRewards.LockupBaseReward))
-	gasUsed += SstoreGasCost
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedUnlockedRewardSlot), common.BigToHash(newStashedLockupRewards.UnlockedReward))
-	gasUsed += SstoreGasCost
+	// Pack the new stashed lockup rewards
+	packedNewStashedLockupRewards := packRewards(newStashedLockupRewards)
+
+	// Update getStashedLockupRewards
+	for i := 0; i < 3; i++ {
+		slot := new(big.Int).Add(stashedLockupRewardsSlot, big.NewInt(int64(i)))
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(slot), common.BytesToHash(packedNewStashedLockupRewards[i]))
+		gasUsed += SstoreGasCost
+	}
 
 	// Check if the delegation is locked up
 	isLocked, lockedGasUsed, err := isLockedUp(evm, delegator, toValidatorID)
@@ -511,47 +489,36 @@ func handle_stashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 
 	// If not locked up, delete lockup info and stashed lockup rewards
 	if !isLocked {
-		// Delete lockup info
+		// Delete all fields of the LockedDelegation struct
 		lockedStakeSlot, slotGasUsed := getLockedStakeSlot(delegator, toValidatorID)
 		gasUsed += slotGasUsed
 		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(lockedStakeSlot), common.Hash{})
 		gasUsed += SstoreGasCost
 
-		lockupFromEpochSlot, slotGasUsed := getLockupFromEpochSlot(delegator, toValidatorID)
+		fromEpochSlot, slotGasUsed := getLockupFromEpochSlot(delegator, toValidatorID)
 		gasUsed += slotGasUsed
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(lockupFromEpochSlot), common.Hash{})
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(fromEpochSlot), common.Hash{})
 		gasUsed += SstoreGasCost
 
-		lockupEndTimeSlot, slotGasUsed := getLockupEndTimeSlot(delegator, toValidatorID)
+		endTimeSlot, slotGasUsed := getLockupEndTimeSlot(delegator, toValidatorID)
 		gasUsed += slotGasUsed
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(lockupEndTimeSlot), common.Hash{})
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(endTimeSlot), common.Hash{})
 		gasUsed += SstoreGasCost
 
-		lockupDurationSlot, slotGasUsed := getLockupDurationSlot(delegator, toValidatorID)
+		durationSlot, slotGasUsed := getLockupDurationSlot(delegator, toValidatorID)
 		gasUsed += slotGasUsed
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(lockupDurationSlot), common.Hash{})
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(durationSlot), common.Hash{})
 		gasUsed += SstoreGasCost
 
 		// Delete stashed lockup rewards
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedLockupExtraRewardSlot), common.Hash{})
-		gasUsed += SstoreGasCost
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedLockupBaseRewardSlot), common.Hash{})
-		gasUsed += SstoreGasCost
-		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedUnlockedRewardSlot), common.Hash{})
-		gasUsed += SstoreGasCost
+		for i := 0; i < 3; i++ {
+			slot := new(big.Int).Add(stashedLockupRewardsSlot, big.NewInt(int64(i)))
+			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(slot), common.Hash{})
+			gasUsed += SstoreGasCost
+		}
 	}
 
-	// Check if there were any rewards to stash
-	updated := nonStashedReward.LockupBaseReward.Cmp(big.NewInt(0)) != 0 ||
-		nonStashedReward.LockupExtraReward.Cmp(big.NewInt(0)) != 0 ||
-		nonStashedReward.UnlockedReward.Cmp(big.NewInt(0)) != 0
-	var result int64
-	if updated {
-		result = 1
-	} else {
-		result = 0
-	}
-	return big.NewInt(result).Bytes(), gasUsed, nil
+	return nil, gasUsed, nil
 }
 
 // checkDelegatedStakeLimit checks if the delegated stake is within the limit

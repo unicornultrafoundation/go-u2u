@@ -596,11 +596,16 @@ func getValidatorReceivedStakeSlot(validatorID *big.Int) (*big.Int, uint64) {
 	hash := CachedKeccak256(hashInput)
 	gasUsed += HashGasCost
 
-	// Convert the hash to a big.Int
-	slot := new(big.Int).SetBytes(hash)
+	// Convert the hash to a big.Int using the pool
+	slot := GetBigInt().SetBytes(hash)
 
 	// The receivedStake field is at slot + 3
-	return new(big.Int).Add(slot, big.NewInt(3)), gasUsed
+	result := GetBigInt().Add(slot, big.NewInt(3))
+
+	// Return the slot to the pool
+	PutBigInt(slot)
+
+	return result, gasUsed
 }
 
 // getWithdrawalRequestSlot calculates the storage slot for a withdrawal request
@@ -812,7 +817,7 @@ func getRewardsStashSlot(delegator common.Address, toValidatorID *big.Int) (*big
 func getStashedLockupRewardsSlot(delegator common.Address, toValidatorID *big.Int) (*big.Int, uint64) {
 	// Initialize gas used
 	var gasUsed uint64 = 0
-	// For a mapping(address => mapping(uint256 => uint256)), the slot is calculated as:
+	// For a mapping(address => mapping(uint256 => Rewards)), first we need to get the slot for the Rewards struct
 	// keccak256(abi.encode(toValidatorID, keccak256(abi.encode(delegator, stashedLockupRewardsSlot))))
 
 	// Create the inner hash input using cached padded values
@@ -833,6 +838,30 @@ func getStashedLockupRewardsSlot(delegator common.Address, toValidatorID *big.In
 	slot := new(big.Int).SetBytes(outerHash)
 
 	return slot, gasUsed
+}
+
+// getStashedLockupExtraRewardSlot calculates the storage slot for a delegation's stashed lockup extra reward
+func getStashedLockupExtraRewardSlot(delegator common.Address, toValidatorID *big.Int) (*big.Int, uint64) {
+	// Get the base slot for the Rewards struct
+	baseSlot, gasUsed := getStashedLockupRewardsSlot(delegator, toValidatorID)
+	// The lockupExtraReward field is at the base slot
+	return baseSlot, gasUsed
+}
+
+// getStashedLockupBaseRewardSlot calculates the storage slot for a delegation's stashed lockup base reward
+func getStashedLockupBaseRewardSlot(delegator common.Address, toValidatorID *big.Int) (*big.Int, uint64) {
+	// Get the base slot for the Rewards struct
+	baseSlot, gasUsed := getStashedLockupRewardsSlot(delegator, toValidatorID)
+	// The lockupBaseReward field is at baseSlot + 1
+	return new(big.Int).Add(baseSlot, big.NewInt(1)), gasUsed
+}
+
+// getStashedUnlockedRewardSlot calculates the storage slot for a delegation's stashed unlocked reward
+func getStashedUnlockedRewardSlot(delegator common.Address, toValidatorID *big.Int) (*big.Int, uint64) {
+	// Get the base slot for the Rewards struct
+	baseSlot, gasUsed := getStashedLockupRewardsSlot(delegator, toValidatorID)
+	// The unlockedReward field is at baseSlot + 2
+	return new(big.Int).Add(baseSlot, big.NewInt(2)), gasUsed
 }
 
 // getStashedRewardsUntilEpochSlot calculates the storage slot for a delegation's stashed rewards until epoch
@@ -860,6 +889,30 @@ func getStashedRewardsUntilEpochSlot(delegator common.Address, toValidatorID *bi
 	slot := new(big.Int).SetBytes(outerHash)
 
 	return slot, gasUsed
+}
+
+// getRewardsStashLockupExtraRewardSlot calculates the storage slot for a delegation's rewards stash lockup extra reward
+func getRewardsStashLockupExtraRewardSlot(delegator common.Address, toValidatorID *big.Int) (*big.Int, uint64) {
+	// Get the base slot for the Rewards struct
+	baseSlot, gasUsed := getRewardsStashSlot(delegator, toValidatorID)
+	// The lockupExtraReward field is at baseSlot + 0
+	return baseSlot, gasUsed
+}
+
+// getRewardsStashLockupBaseRewardSlot calculates the storage slot for a delegation's rewards stash lockup base reward
+func getRewardsStashLockupBaseRewardSlot(delegator common.Address, toValidatorID *big.Int) (*big.Int, uint64) {
+	// Get the base slot for the Rewards struct
+	baseSlot, gasUsed := getRewardsStashSlot(delegator, toValidatorID)
+	// The lockupBaseReward field is at baseSlot + 1
+	return new(big.Int).Add(baseSlot, big.NewInt(1)), gasUsed
+}
+
+// getRewardsStashUnlockedRewardSlot calculates the storage slot for a delegation's rewards stash unlocked reward
+func getRewardsStashUnlockedRewardSlot(delegator common.Address, toValidatorID *big.Int) (*big.Int, uint64) {
+	// Get the base slot for the Rewards struct
+	baseSlot, gasUsed := getRewardsStashSlot(delegator, toValidatorID)
+	// The unlockedReward field is at baseSlot + 2
+	return new(big.Int).Add(baseSlot, big.NewInt(2)), gasUsed
 }
 
 // callConstantManagerMethod calls a method on the ConstantManager contract and returns the result
@@ -1818,4 +1871,36 @@ func _scaleLockupReward(evm *vm.EVM, fullReward *big.Int, lockupDuration *big.In
 	}
 
 	return reward, gasUsed, nil
+}
+
+// packRewards manually packs a Rewards struct into bytes for storage
+// Since internal functions don't have ABI, we need to pack the struct manually
+// The Rewards struct has three fields stored in consecutive slots:
+// - LockupExtraReward at slot N
+// - LockupBaseReward at slot N+1
+// - UnlockedReward at slot N+2
+func packRewards(rewards Rewards) [][]byte {
+	result := make([][]byte, 3)
+	// Pack each field into 32 bytes
+	result[0] = common.BigToHash(rewards.LockupExtraReward).Bytes() // First slot
+	result[1] = common.BigToHash(rewards.LockupBaseReward).Bytes()  // Second slot
+	result[2] = common.BigToHash(rewards.UnlockedReward).Bytes()    // Third slot
+	return result
+}
+
+// unpackRewards manually unpacks bytes into a Rewards struct
+// This is the reverse operation of packRewards
+func unpackRewards(packedData [][]byte) Rewards {
+	if len(packedData) != 3 {
+		return Rewards{
+			LockupExtraReward: big.NewInt(0),
+			LockupBaseReward:  big.NewInt(0),
+			UnlockedReward:    big.NewInt(0),
+		}
+	}
+	return Rewards{
+		LockupExtraReward: new(big.Int).SetBytes(packedData[0]),
+		LockupBaseReward:  new(big.Int).SetBytes(packedData[1]),
+		UnlockedReward:    new(big.Int).SetBytes(packedData[2]),
+	}
 }

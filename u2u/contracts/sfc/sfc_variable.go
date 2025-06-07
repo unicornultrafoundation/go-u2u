@@ -325,36 +325,27 @@ func handleGetStashedLockupRewards(evm *vm.EVM, args []interface{}) ([]byte, uin
 	addr := args[0].(common.Address)
 	validatorID := args[1].(*big.Int)
 
-	// Calculate the stashed lockup rewards slot using our cached function
-	slotBigInt, slotGasUsed := getStashedLockupRewardsSlot(addr, validatorID)
+	// Calculate the base slot for stashed lockup rewards
+	stashedLockupRewardsSlot, slotGasUsed := getStashedLockupRewardsSlot(addr, validatorID)
 	gasUsed += slotGasUsed
 
-	// Get the stashed lockup rewards
-	lockupBaseReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slotBigInt))
-	gasUsed += SloadGasCost
+	// Read all three slots of the stashed lockup rewards
+	packedRewards := make([][]byte, 3)
+	for i := 0; i < 3; i++ {
+		slot := new(big.Int).Add(stashedLockupRewardsSlot, big.NewInt(int64(i)))
+		value := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slot))
+		packedRewards[i] = value.Bytes()
+		gasUsed += SloadGasCost
+	}
 
-	// Use the big.Int pool for offset calculations
-	offset1 := GetBigInt().SetInt64(1)
-	slot1 := GetBigInt().Add(slotBigInt, offset1)
-	lockupExtraReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slot1))
-	gasUsed += SloadGasCost
+	// Unpack the rewards
+	rewards := unpackRewards(packedRewards)
 
-	offset2 := GetBigInt().SetInt64(2)
-	slot2 := GetBigInt().Add(slotBigInt, offset2)
-	unlockedReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slot2))
-	gasUsed += SloadGasCost
-
-	// Return temporary big.Ints to the pool
-	PutBigInt(offset1)
-	PutBigInt(offset2)
-	PutBigInt(slot1)
-	PutBigInt(slot2)
-
-	// Don't use cache for ABI packing with parameters
+	// Pack the result using ABI
 	result, err := SfcAbi.Methods["getStashedLockupRewards"].Outputs.Pack(
-		lockupBaseReward.Big(),
-		lockupExtraReward.Big(),
-		unlockedReward.Big(),
+		rewards.LockupBaseReward,
+		rewards.LockupExtraReward,
+		rewards.UnlockedReward,
 	)
 	return result, gasUsed, err
 }

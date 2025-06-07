@@ -91,6 +91,7 @@ func TestSFCStore_BasicFlows(t *testing.T) {
 		t.Fatalf("failed to start the fake network: %v", err)
 	}
 	defer testnet.Stop()
+
 	testSFCStore_CanGetSfcStorage(t)
 	testSFCStore_CanGetSfcStorageAtBlock(t)
 	testSFCStore_CanDelegateToValidator(t)

@@ -112,7 +112,7 @@ func handleClaimRewards(evm *vm.EVM, caller common.Address, args []interface{}) 
 
 	// Emit ClaimedRewards event
 	topics := []common.Hash{
-		SfcAbi.Events["ClaimedRewards"].ID,
+		SfcLibAbi.Events["ClaimedRewards"].ID,
 		common.BytesToHash(common.LeftPadBytes(caller.Bytes(), 32)), // indexed parameter (delegator)
 		common.BigToHash(toValidatorID),                             // indexed parameter (toValidatorID)
 	}
@@ -295,7 +295,7 @@ func handleRestakeRewards(evm *vm.EVM, caller common.Address, args []interface{}
 
 	// Emit RestakedRewards event
 	topics := []common.Hash{
-		SfcAbi.Events["RestakedRewards"].ID,
+		SfcLibAbi.Events["RestakedRewards"].ID,
 		common.BytesToHash(common.LeftPadBytes(caller.Bytes(), 32)), // indexed parameter (delegator)
 		common.BigToHash(toValidatorID),                             // indexed parameter (toValidatorID)
 	}

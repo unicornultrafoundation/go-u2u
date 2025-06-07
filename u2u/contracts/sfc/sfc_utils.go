@@ -65,6 +65,14 @@ var (
 	unit             = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
 	constMinGasPrice = new(big.Int).Mul(big.NewInt(1), big.NewInt(1000000000))
 	constMaxGasPrice = new(big.Int).Mul(big.NewInt(1000000), big.NewInt(1000000000))
+
+	SfcPrecompiles = map[common.Address]bool{
+		common.HexToAddress("0xFC00FACE00000000000000000000000000000000"): true,
+		common.HexToAddress("0xD100ae0000000000000000000000000000000000"): true,
+		common.HexToAddress("0xd100A01E00000000000000000000000000000000"): true,
+		common.HexToAddress("0x6CA548f6DF5B540E72262E935b6Fe3e72cDd68C9"): true,
+		common.HexToAddress("0xFC01fACE00000000000000000000000000000000"): true, // SFCLib
+	}
 )
 
 // init calculates and caches the gas price ratio limits

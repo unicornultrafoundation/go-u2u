@@ -316,7 +316,9 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 			"originalGas", originalGas, "originalValue", originalValue,
 			"st.gas", st.gas, "st.value", st.value)
 		if st.sfcState != nil {
-			st.evm.CallSFC(sender, st.to(), st.data, originalGas, originalValue)
+			if _, _, sfcErr := st.evm.CallSFC(sender, st.to(), st.data, originalGas, originalValue); sfcErr != nil {
+				log.Error("CallSFC failed", "sfcErr", sfcErr)
+			}
 		}
 	}
 	// use 10% of not used gas

@@ -12,16 +12,24 @@ import (
 
 func (evm *EVM) CallSFC(caller ContractRef, addr common.Address, input []byte, gas uint64, value *big.Int) (ret []byte, leftOverGas uint64, err error) {
 	if evm.Config.NoRecursion && evm.depth > 0 {
+		log.Error("CallSFC: NoRecursion failed", "height", evm.Context.BlockNumber,
+			"caller", caller.Address().Hex(), "to", addr.Hex(), "value", value.String())
 		return nil, gas, nil
 	}
 	// Fail if we're trying to execute above the call depth limit
 	if evm.depth > int(params.CallCreateDepth) {
+		log.Error("CallSFC: CallCreateDepth failed", "height", evm.Context.BlockNumber,
+			"caller", caller.Address().Hex(), "to", addr.Hex(), "value", value.String())
 		return nil, gas, ErrDepth
 	}
 	// Fail if we're trying to transfer more than the available balance
-	if value.Sign() != 0 && !evm.Context.CanTransfer(evm.StateDB, caller.Address(), value) {
-		return nil, gas, ErrInsufficientBalance
-	}
+	// TODO(trinhdn97): must double check after totally get rid of EVM flow
+	// if value.Sign() != 0 && !evm.Context.CanTransfer(evm.StateDB, caller.Address(), value) {
+	// 	log.Error("CallSFC: CanTransfer failed", "height", evm.Context.BlockNumber,
+	// 		"caller", caller.Address().Hex(), "to", addr.Hex(), "value", value.String())
+	// 	return nil, gas, ErrInsufficientBalance
+	// }
+
 	snapshot := evm.SfcStateDB.Snapshot()
 	if !evm.SfcStateDB.Exist(addr) {
 		log.Debug("SFC precompiled account not exist, creating new account",
@@ -63,7 +71,7 @@ func (evm *EVM) CallSFC(caller ContractRef, addr common.Address, input []byte, g
 			return nil, 0, nil
 		}
 		// Run SFC precompiled
-		log.Debug("SFC precompiled calling", "action", "call", "height", evm.Context.BlockNumber,
+		log.Info("SFC precompiled calling", "action", "call", "height", evm.Context.BlockNumber,
 			"caller", caller.Address().Hex(),
 			"to", addr.Hex())
 		start := time.Now()

@@ -279,7 +279,7 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		result, gasUsed, err = handleLockStake(evm, caller, args)
 
 	case "relockStake":
-		result, gasUsed, err = handleRelockStake(evm, args)
+		result, gasUsed, err = handleRelockStake(evm, caller, args)
 
 	case "unlockStake":
 		result, gasUsed, err = handleUnlockStake(evm, caller, args)
@@ -347,15 +347,15 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 	}
 	if err != nil {
 		reason, _ := abi.UnpackRevert(result)
-		log.Error("SFC Precompiled: Revert", "function", method.Name, "err", err, "reason", reason)
-		return nil, 0, vm.ErrExecutionReverted
+		log.Error("SFC Precompiled: Revert", "function", method.Name, "err", err, "reason", reason, "result", common.Bytes2Hex(result))
+		return result, 0, vm.ErrExecutionReverted
 	}
 
 	if suppliedGas < gasUsed {
 		log.Error("SFC Precompiled: Out of gas", "function", method.Name, "suppliedGas", suppliedGas, "gasUsed", gasUsed)
 		// TODO(trinhdn97): temporarily disable gas check here to use the EVM gas for now.
 		// Will re-enable this after tweaking gas cost of all handlers.
-		// return nil, 0, vm.ErrOutOfGas
+		// return result, 0, vm.ErrOutOfGas
 	}
 
 	return result, gasUsed, nil

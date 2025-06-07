@@ -316,7 +316,7 @@ func (s *stateObject) finalise(prefetch bool) {
 	for key, value := range s.dirtyStorage {
 		s.pendingStorage[key] = value
 		if isHeavyLog {
-			log.Debug("stateObject.finalise: stateObject to pending storage", "key", key.Hex(), "value", value.Hex())
+			log.Info("stateObject.finalise: stateObject to pending storage", "key", key.Hex(), "value", value.Hex())
 		}
 		if value != s.originStorage[key] {
 			slotsToPrefetch = append(slotsToPrefetch, common.CopyBytes(key[:])) // Copy needed for closure

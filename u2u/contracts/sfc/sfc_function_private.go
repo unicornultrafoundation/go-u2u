@@ -170,7 +170,7 @@ func handleGetUnlockedStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, er
 	}
 
 	// Don't use cache for ABI packing with parameters
-	result, err := SfcAbi.Methods["getUnlockedStake"].Outputs.Pack(unlockedStake)
+	result, err := SfcLibAbi.Methods["getUnlockedStake"].Outputs.Pack(unlockedStake)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}

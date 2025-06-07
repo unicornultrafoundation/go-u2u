@@ -6,6 +6,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
@@ -100,7 +101,7 @@ func handleUndelegate(evm *vm.EVM, caller common.Address, args []interface{}) ([
 	gasUsed += unlockGasUsed
 
 	// Unpack the result
-	unlockedStakeValues, err := SfcAbi.Methods["getUnlockedStake"].Outputs.Unpack(unlockedStakeResult)
+	unlockedStakeValues, err := SfcLibAbi.Methods["getUnlockedStake"].Outputs.Unpack(unlockedStakeResult)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted
 	}
@@ -185,12 +186,12 @@ func handleUndelegate(evm *vm.EVM, caller common.Address, args []interface{}) ([
 
 	// Emit Undelegated event
 	topics := []common.Hash{
-		SfcAbi.Events["Undelegated"].ID,
+		SfcLibAbi.Events["Undelegated"].ID,
 		common.BytesToHash(common.LeftPadBytes(caller.Bytes(), 32)), // indexed parameter (delegator)
 		common.BigToHash(toValidatorID),                             // indexed parameter (toValidatorID)
 		common.BigToHash(wrID),                                      // indexed parameter (wrID)
 	}
-	data, err := SfcAbi.Events["Undelegated"].Inputs.NonIndexed().Pack(
+	data, err := SfcLibAbi.Events["Undelegated"].Inputs.NonIndexed().Pack(
 		amount,
 	)
 	if err != nil {
@@ -317,7 +318,7 @@ func handleRawUndelegate(evm *vm.EVM, delegator common.Address, toValidatorID *b
 	gasUsed += selfStakeGasUsed
 
 	// Unpack the result
-	selfStakeValues, err := SfcAbi.Methods["getSelfStake"].Outputs.Unpack(result)
+	selfStakeValues, err := SfcLibAbi.Methods["getSelfStake"].Outputs.Unpack(result)
 	if err != nil {
 		return nil, gasUsed, vm.ErrExecutionReverted
 	}
@@ -449,7 +450,7 @@ func handleRawDelegate(evm *vm.EVM, delegator common.Address, toValidatorID *big
 
 	// Emit Delegated event
 	topics := []common.Hash{
-		SfcAbi.Events["Delegated"].ID,
+		SfcLibAbi.Events["Delegated"].ID,
 		common.BytesToHash(common.LeftPadBytes(delegator.Bytes(), 32)), // indexed parameter (delegator)
 		common.BigToHash(toValidatorID),                                // indexed parameter (toValidatorID)
 	}
@@ -497,7 +498,7 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	if !ok {
 		return nil, 0, vm.ErrExecutionReverted
 	}
-
+	log.Info("handleLockStake done parsing args", "args", args)
 	// Check that the validator exists
 	revertData, checkGasUsed, err := checkValidatorExists(evm, toValidatorID, "lockStake")
 	gasUsed = checkGasUsed
@@ -516,7 +517,7 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	if amount.Cmp(big.NewInt(0)) <= 0 {
 		revertData, err := encodeRevertReason("lockStake", "zero amount")
 		if err != nil {
-			return nil, 0, vm.ErrExecutionReverted
+			return nil, 0, err
 		}
 		return revertData, 0, vm.ErrExecutionReverted
 	}
@@ -535,7 +536,7 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	if lockupFromEpochBigInt.Cmp(big.NewInt(0)) != 0 && lockupEndTimeBigInt.Cmp(evm.Context.Time) > 0 {
 		revertData, err := encodeRevertReason("lockStake", "already locked up")
 		if err != nil {
-			return nil, 0, vm.ErrExecutionReverted
+			return nil, 0, err
 		}
 		return revertData, 0, vm.ErrExecutionReverted
 	}
@@ -547,7 +548,7 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	if lockupDuration.Cmp(minLockupDurationBigInt) < 0 || lockupDuration.Cmp(maxLockupDurationBigInt) > 0 {
 		revertData, err := encodeRevertReason("lockStake", "incorrect duration")
 		if err != nil {
-			return nil, 0, vm.ErrExecutionReverted
+			return nil, 0, err
 		}
 		return revertData, 0, vm.ErrExecutionReverted
 	}
@@ -569,7 +570,7 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 		if validatorLockupEndTimeBigInt.Cmp(endTime) < 0 {
 			revertData, err := encodeRevertReason("lockStake", "validator lockup period will end earlier")
 			if err != nil {
-				return nil, 0, vm.ErrExecutionReverted
+				return nil, 0, err
 			}
 			return revertData, 0, vm.ErrExecutionReverted
 		}
@@ -579,9 +580,9 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	// Create arguments for handle_stashRewards
 	stashRewardsArgs := []interface{}{caller, toValidatorID}
 	// Call handle_stashRewards
-	_, _, err = handle_stashRewards(evm, stashRewardsArgs)
+	revertData, _, err = handle_stashRewards(evm, stashRewardsArgs)
 	if err != nil {
-		return nil, 0, vm.ErrExecutionReverted
+		return revertData, 0, vm.ErrExecutionReverted
 	}
 
 	// Check that the lockup duration is not decreasing
@@ -593,7 +594,7 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	if lockupDuration.Cmp(lockupDurationStateBigInt) < 0 {
 		revertData, err := encodeRevertReason("lockStake", "lockup duration cannot decrease")
 		if err != nil {
-			return nil, 0, vm.ErrExecutionReverted
+			return nil, 0, err
 		}
 		return revertData, 0, vm.ErrExecutionReverted
 	}
@@ -604,29 +605,27 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	// Call handleGetUnlockedStake
 	unlockedStakeResult, _, err := handleGetUnlockedStake(evm, getUnlockedStakeArgs)
 	if err != nil {
-		return nil, 0, vm.ErrExecutionReverted
+		log.Error("lockStake: handleGetUnlockedStake failed", "err", err)
+		return unlockedStakeResult, 0, vm.ErrExecutionReverted
 	}
 
 	// Unpack the result
-	unlockedStakeValues, err := SfcAbi.Methods["getUnlockedStake"].Outputs.Unpack(unlockedStakeResult)
+	unlockedStakeValues, err := SfcLibAbi.Methods["getUnlockedStake"].Outputs.Unpack(unlockedStakeResult)
 	if err != nil {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	// The result should be a single *big.Int value
-	if len(unlockedStakeValues) != 1 {
-		return nil, 0, vm.ErrExecutionReverted
+		log.Error("lockStake: unpack getUnlockedStake failed", "err", err)
+		return nil, 0, err
 	}
 
 	unlockedStake, ok := unlockedStakeValues[0].(*big.Int)
 	if !ok {
-		return nil, 0, vm.ErrExecutionReverted
+		log.Error("lockStake: unpack unlockedStake failed", "err", err)
+		return nil, 0, err
 	}
 
 	if amount.Cmp(unlockedStake) > 0 {
 		revertData, err := encodeRevertReason("lockStake", "not enough stake")
 		if err != nil {
-			return nil, 0, vm.ErrExecutionReverted
+			return nil, 0, err
 		}
 		return revertData, 0, vm.ErrExecutionReverted
 	}
@@ -650,16 +649,16 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 
 	// Emit LockedUpStake event
 	topics := []common.Hash{
-		SfcAbi.Events["LockedUpStake"].ID,
+		SfcLibAbi.Events["LockedUpStake"].ID,
 		common.BytesToHash(common.LeftPadBytes(caller.Bytes(), 32)), // indexed parameter (delegator)
 		common.BigToHash(toValidatorID),                             // indexed parameter (toValidatorID)
 	}
-	data, err := SfcAbi.Events["LockedUpStake"].Inputs.NonIndexed().Pack(
+	data, err := SfcLibAbi.Events["LockedUpStake"].Inputs.NonIndexed().Pack(
 		lockupDuration,
 		amount,
 	)
 	if err != nil {
-		return nil, 0, vm.ErrExecutionReverted
+		return nil, 0, err
 	}
 	evm.SfcStateDB.AddLog(&types.Log{
 		Address: ContractAddress,
@@ -671,7 +670,7 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 }
 
 // handleRelockStake implements the relockStake function from SFCLib.sol
-func handleRelockStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
+func handleRelockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	var gasUsed uint64 = 0
 
 	// Get the arguments
@@ -691,15 +690,219 @@ func handleRelockStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) 
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
-	// Get the delegator (msg.sender in Solidity)
-	delegator := evm.TxContext.Origin
-
 	// Call handleLockStake directly without the additional checks that are in lockStake
-	result, lockGasUsed, err := handleLockStake(evm, delegator, []interface{}{toValidatorID, lockupDuration, amount})
+	result, lockGasUsed, err := handleLockStake(evm, caller, []interface{}{toValidatorID, lockupDuration, amount})
 	if err != nil {
 		return result, gasUsed + lockGasUsed, err
 	}
 	gasUsed += lockGasUsed
 
 	return nil, gasUsed, nil
+}
+
+// handleUnlockStake implements the unlockStake function from SFCLib.sol
+func handleUnlockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Parse arguments
+	if len(args) != 2 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	toValidatorID, ok := args[0].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	amount, ok := args[1].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Check amount > 0
+	if amount.Cmp(big.NewInt(0)) <= 0 {
+		revertData, err := encodeRevertReason("unlockStake", "zero amount")
+		if err != nil {
+			return nil, 0, err
+		}
+		return revertData, 0, vm.ErrExecutionReverted
+	}
+
+	// Check if locked up
+	isLockedUpArgs := []interface{}{caller, toValidatorID}
+	isLockedUpResult, _, err := handleIsLockedUp(evm, isLockedUpArgs)
+	if err != nil {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	isLockedUpValues, err := SfcLibAbi.Methods["isLockedUp"].Outputs.Unpack(isLockedUpResult)
+	if err != nil {
+		return nil, 0, err
+	}
+	isLockedUp, ok := isLockedUpValues[0].(bool)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	if !isLockedUp {
+		revertData, err := encodeRevertReason("unlockStake", "not locked up")
+		if err != nil {
+			return nil, 0, err
+		}
+		return revertData, 0, vm.ErrExecutionReverted
+	}
+
+	// Check amount <= lockedStake
+	lockedStakeSlot, getGasUsed := getLockedStakeSlot(caller, toValidatorID)
+	gasUsed += getGasUsed
+	lockedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockedStakeSlot))
+	lockedStakeBigInt := new(big.Int).SetBytes(lockedStake.Bytes())
+	if amount.Cmp(lockedStakeBigInt) > 0 {
+		revertData, err := encodeRevertReason("unlockStake", "not enough locked stake")
+		if err != nil {
+			return nil, 0, err
+		}
+		return revertData, 0, vm.ErrExecutionReverted
+	}
+
+	// Check allowed to withdraw
+	allowed, err := handleCheckAllowedToWithdraw(evm, caller, toValidatorID)
+	if err != nil {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	if !allowed {
+		revertData, err := encodeRevertReason("unlockStake", "outstanding sU2U balance")
+		if err != nil {
+			return nil, 0, err
+		}
+		return revertData, 0, vm.ErrExecutionReverted
+	}
+
+	// Stash rewards
+	stashRewardsArgs := []interface{}{caller, toValidatorID}
+	revertData, _, err := handle_stashRewards(evm, stashRewardsArgs)
+	if err != nil {
+		return revertData, 0, vm.ErrExecutionReverted
+	}
+
+	// Calculate penalty
+	penalty := big.NewInt(0)
+
+	// Get lockup duration and end time
+	lockupDurationSlot, getGasUsed := getLockupDurationSlot(caller, toValidatorID)
+	gasUsed += getGasUsed
+	lockupDuration := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupDurationSlot))
+	lockupDurationBigInt := new(big.Int).SetBytes(lockupDuration.Bytes())
+
+	lockupEndTimeSlot, getGasUsed := getLockupEndTimeSlot(caller, toValidatorID)
+	gasUsed += getGasUsed
+	lockupEndTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupEndTimeSlot))
+	lockupEndTimeBigInt := new(big.Int).SetBytes(lockupEndTime.Bytes())
+
+	// Check if was locked up before rewards reduction
+	rewardsReductionTime := big.NewInt(1665146565)
+	if lockupEndTimeBigInt.Cmp(new(big.Int).Add(lockupDurationBigInt, rewardsReductionTime)) < 0 {
+		// No penalty if locked before rewards reduction
+		penalty = big.NewInt(0)
+	} else {
+		// Calculate penalty from stashed rewards
+		stashedRewardsSlot, getGasUsed := getStashedLockupRewardsSlot(caller, toValidatorID)
+		gasUsed += getGasUsed
+		stashedRewards := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stashedRewardsSlot))
+		stashedRewardsBigInt := new(big.Int).SetBytes(stashedRewards.Bytes())
+
+		// Calculate penalty share based on amount vs total locked stake
+		penaltyShare := new(big.Int).Mul(stashedRewardsBigInt, amount)
+		penaltyShare = penaltyShare.Div(penaltyShare, lockedStakeBigInt)
+
+		// Penalty is all extra rewards + half of base rewards
+		penalty = penaltyShare
+		if penalty.Cmp(amount) > 0 {
+			penalty = amount
+		}
+	}
+
+	// Update locked stake
+	newLockedStake := new(big.Int).Sub(lockedStakeBigInt, amount)
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(lockedStakeSlot), common.BigToHash(newLockedStake))
+
+	// Apply penalty if any
+	if penalty.Cmp(big.NewInt(0)) > 0 {
+		// Undelegate the penalty amount
+		_, _, err = handleRawUndelegate(evm, caller, toValidatorID, penalty, true)
+		if err != nil {
+			return nil, gasUsed, err
+		}
+
+		// Burn the penalty
+		burnU2UArgs := []interface{}{penalty}
+		_, burnGasUsed, err := handleBurnU2U(evm, burnU2UArgs)
+		if err != nil {
+			return nil, gasUsed + burnGasUsed, err
+		}
+		gasUsed += burnGasUsed
+	}
+
+	// Emit UnlockedStake event
+	topics := []common.Hash{
+		SfcLibAbi.Events["UnlockedStake"].ID,
+		common.BytesToHash(common.LeftPadBytes(caller.Bytes(), 32)),
+		common.BigToHash(toValidatorID),
+	}
+	data, err := SfcLibAbi.Events["UnlockedStake"].Inputs.NonIndexed().Pack(
+		amount,
+		penalty,
+	)
+	if err != nil {
+		return nil, 0, err
+	}
+	evm.SfcStateDB.AddLog(&types.Log{
+		Address: ContractAddress,
+		Topics:  topics,
+		Data:    data,
+	})
+
+	// Return the penalty amount
+	result, err := SfcLibAbi.Methods["unlockStake"].Outputs.Pack(penalty)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return result, gasUsed, nil
+}
+
+// handleIsLockedUp implements the isLockedUp function from SFCLib.sol
+func handleIsLockedUp(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Parse arguments
+	if len(args) != 2 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	delegator, ok := args[0].(common.Address)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	toValidatorID, ok := args[1].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Get lockup info
+	lockupFromEpochSlot, getGasUsed := getLockupFromEpochSlot(delegator, toValidatorID)
+	gasUsed += getGasUsed
+	lockupFromEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupFromEpochSlot))
+	lockupFromEpochBigInt := new(big.Int).SetBytes(lockupFromEpoch.Bytes())
+
+	lockupEndTimeSlot, getGasUsed := getLockupEndTimeSlot(delegator, toValidatorID)
+	gasUsed += getGasUsed
+	lockupEndTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupEndTimeSlot))
+	lockupEndTimeBigInt := new(big.Int).SetBytes(lockupEndTime.Bytes())
+
+	// Check if locked up: fromEpoch > 0 and current time <= endTime
+	isLocked := lockupFromEpochBigInt.Cmp(big.NewInt(0)) > 0 && lockupEndTimeBigInt.Cmp(evm.Context.Time) >= 0
+
+	// Pack result
+	result, err := SfcLibAbi.Methods["isLockedUp"].Outputs.Pack(isLocked)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return result, gasUsed, nil
 }

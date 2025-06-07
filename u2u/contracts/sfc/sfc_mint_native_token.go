@@ -52,14 +52,16 @@ func handleMintU2U(evm *vm.EVM, caller common.Address, args []interface{}) ([]by
 
 	// Transfer the tokens from the SFC contract to the receiver
 	evm.SfcStateDB.SubBalance(ContractAddress, amount) // Subtract from SFC contract
-	evm.SfcStateDB.AddBalance(receiver, amount)       // Add to receiver
+	if SfcPrecompiles[receiver] {
+		evm.SfcStateDB.AddBalance(receiver, amount) // Only maintain balance of sfc precompiled addresses
+	}
 
 	// Emit InflatedU2U event
 	topics := []common.Hash{
-		SfcAbi.Events["InflatedU2U"].ID,
+		SfcLibAbi.Events["InflatedU2U"].ID,
 		common.BytesToHash(common.LeftPadBytes(receiver.Bytes(), 32)), // indexed parameter (receiver)
 	}
-	data, err := SfcAbi.Events["InflatedU2U"].Inputs.NonIndexed().Pack(
+	data, err := SfcLibAbi.Events["InflatedU2U"].Inputs.NonIndexed().Pack(
 		amount,
 		justification,
 	)

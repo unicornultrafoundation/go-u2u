@@ -170,13 +170,13 @@ func (c *DriverAuthPrecompile) Run(evm *vm.EVM, caller common.Address, input []b
 	}
 	if err != nil {
 		reason, _ := abi.UnpackRevert(result)
-		log.Error("DriverAuth Precompiled: Revert", "function", method.Name, "err", err, "reason", reason)
-		return nil, 0, vm.ErrExecutionReverted
+		log.Error("DriverAuth Precompiled: Revert", "function", method.Name, "err", err, "reason", reason, "result", common.Bytes2Hex(result))
+		return result, 0, vm.ErrExecutionReverted
 	}
 
 	if suppliedGas < gasUsed {
 		log.Error("DriverAuth Precompiled: Out of gas", "function", method.Name)
-		return nil, 0, vm.ErrOutOfGas
+		return result, 0, vm.ErrOutOfGas
 	}
 
 	return result, gasUsed, nil

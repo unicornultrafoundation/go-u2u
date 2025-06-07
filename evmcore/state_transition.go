@@ -17,7 +17,6 @@
 package evmcore
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -313,7 +312,10 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		originalGas := st.gas
 		originalValue := st.value
 		ret, st.gas, vmerr = st.evm.Call(sender, st.to(), st.data, st.gas, st.value)
-		if st.sfcState != nil && !errors.Is(vmerr, vm.ErrOutOfGas) {
+		log.Info("Trying to call SFC", "st.sfcState != nil", st.sfcState != nil, "vmerr", vmerr,
+			"originalGas", originalGas, "originalValue", originalValue,
+			"st.gas", st.gas, "st.value", st.value)
+		if st.sfcState != nil {
 			st.evm.CallSFC(sender, st.to(), st.data, originalGas, originalValue)
 		}
 	}

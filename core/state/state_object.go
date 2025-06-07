@@ -19,13 +19,13 @@ package state
 import (
 	"bytes"
 	"fmt"
-	"github.com/unicornultrafoundation/go-u2u/log"
 	"io"
 	"math/big"
 	"time"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/metrics"
 	"github.com/unicornultrafoundation/go-u2u/rlp"
 )
@@ -316,7 +316,7 @@ func (s *stateObject) finalise(prefetch bool) {
 	for key, value := range s.dirtyStorage {
 		s.pendingStorage[key] = value
 		if isHeavyLog {
-			log.Info("stateObject.finalise: stateObject to pending storage", "key", key.Hex(), "value", value.Hex())
+			log.Debug("stateObject.finalise: stateObject to pending storage", "key", key.Hex(), "value", value.Hex())
 		}
 		if value != s.originStorage[key] {
 			slotsToPrefetch = append(slotsToPrefetch, common.CopyBytes(key[:])) // Copy needed for closure

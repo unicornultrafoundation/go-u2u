@@ -31,6 +31,8 @@ func (evm *EVM) CallSFC(caller ContractRef, addr common.Address, input []byte, g
 
 	// Only transfer balance if value is not zero
 	if value.Sign() != 0 {
+		log.Info("SFC precompiled account transferring balance", "height", evm.Context.BlockNumber,
+			"from", caller.Address().Hex(), "to", addr.Hex(), "value", value.String())
 		if _, isSfcPrecompile := evm.SfcPrecompile(caller.Address()); isSfcPrecompile {
 			log.Info("SFC precompiled account subtracting balance", "height", evm.Context.BlockNumber,
 				"caller", caller.Address().Hex(), "value", value.String())

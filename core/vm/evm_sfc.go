@@ -29,12 +29,18 @@ func (evm *EVM) CallSFC(caller ContractRef, addr common.Address, input []byte, g
 		evm.SfcStateDB.CreateAccount(addr)
 	}
 
-	// transfer
-	if _, isSfcPrecompile := evm.SfcPrecompile(caller.Address()); isSfcPrecompile {
-		evm.SfcStateDB.SubBalance(caller.Address(), value)
-	}
-	if _, isSfcPrecompile := evm.SfcPrecompile(addr); isSfcPrecompile {
-		evm.SfcStateDB.AddBalance(addr, value)
+	// Only transfer balance if value is not zero
+	if value.Sign() != 0 {
+		if _, isSfcPrecompile := evm.SfcPrecompile(caller.Address()); isSfcPrecompile {
+			log.Info("SFC precompiled account subtracting balance", "height", evm.Context.BlockNumber,
+				"caller", caller.Address().Hex(), "value", value.String())
+			evm.SfcStateDB.SubBalance(caller.Address(), value)
+		}
+		if _, isSfcPrecompile := evm.SfcPrecompile(addr); isSfcPrecompile {
+			log.Info("SFC precompiled account adding balance", "height", evm.Context.BlockNumber,
+				"caller", caller.Address().Hex(), "to", addr.Hex(), "value", value.String())
+			evm.SfcStateDB.AddBalance(addr, value)
+		}
 	}
 
 	// Handle evmWriter calls from NodeDriver contract

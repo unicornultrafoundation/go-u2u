@@ -83,8 +83,34 @@ func handle_syncValidator(evm *vm.EVM, args []interface{}) ([]byte, uint64, erro
 
 // _validatorExists is an internal function to check if a validator exists
 func handle_validatorExists(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement _validatorExists handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+	var gasUsed uint64 = 0
+	// Get the arguments
+	if len(args) != 1 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	validatorID, ok := args[0].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Calculate validator createdTime slot
+	createdTimeSlot, slotGasUsed := getValidatorCreatedTimeSlot(validatorID)
+	gasUsed += slotGasUsed
+
+	// Check if validator exists (SLOAD operation)
+	validatorCreatedTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(createdTimeSlot))
+	gasUsed += SloadGasCost
+
+	// Check if createdTime is non-zero
+	exists := validatorCreatedTime.Big().Cmp(big.NewInt(0)) != 0
+
+	// Pack the result
+	result, err := SfcAbi.Methods["_validatorExists"].Outputs.Pack(exists)
+	if err != nil {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	return result, gasUsed, nil
 }
 
 // _now is an internal function to get the current time
@@ -529,9 +555,16 @@ func handle_stashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 }
 
 // checkDelegatedStakeLimit checks if the delegated stake is within the limit
-// Returns true if the limit is exceeded, false otherwise
+// Returns true if within limit, false if exceeded
 func checkDelegatedStakeLimit(evm *vm.EVM, validatorID *big.Int) (bool, uint64, error) {
 	var gasUsed uint64 = 0
+
+	// Get the validator's received stake
+	validatorReceivedStakeSlot, slotGasUsed := getValidatorReceivedStakeSlot(validatorID)
+	gasUsed += slotGasUsed
+	receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorReceivedStakeSlot))
+	gasUsed += SloadGasCost
+	receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
 
 	// Get the validator's self-stake
 	validatorAuthSlot, slotGasUsed := getValidatorAuthSlot(validatorID)
@@ -547,25 +580,19 @@ func checkDelegatedStakeLimit(evm *vm.EVM, validatorID *big.Int) (bool, uint64, 
 	gasUsed += SloadGasCost
 	selfStakeBigInt := new(big.Int).SetBytes(selfStake.Bytes())
 
-	// Get the validator's received stake
-	validatorReceivedStakeSlot, slotGasUsed := getValidatorReceivedStakeSlot(validatorID)
-	gasUsed += slotGasUsed
-	receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorReceivedStakeSlot))
-	gasUsed += SloadGasCost
-	receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
-
 	// Get the max delegated ratio
 	maxDelegatedRatioBigInt := getConstantsManagerVariable("maxDelegatedRatio")
 
-	// Calculate the max delegated stake
-	maxDelegatedStake := new(big.Int).Mul(selfStakeBigInt, maxDelegatedRatioBigInt)
-	maxDelegatedStake = new(big.Int).Div(maxDelegatedStake, getDecimalUnit())
+	// Calculate the maximum allowed stake (selfStake * maxDelegatedRatio / Decimal.unit())
+	maxAllowedStake := new(big.Int).Mul(selfStakeBigInt, maxDelegatedRatioBigInt)
+	maxAllowedStake = new(big.Int).Div(maxAllowedStake, getDecimalUnit())
 
-	// Check if the received stake exceeds the self-stake * maxDelegatedRatio
-	// In Solidity: return getValidator[validatorID].receivedStake <= getSelfStake(validatorID).mul(c.maxDelegatedRatio()).div(Decimal.unit());
-	limitExceeded := receivedStakeBigInt.Cmp(maxDelegatedStake) > 0
+	// Check if receivedStake <= selfStake * maxDelegatedRatio / Decimal.unit()
+	// This matches the Solidity implementation exactly:
+	// return getValidator[validatorID].receivedStake <= getSelfStake(validatorID).mul(c.maxDelegatedRatio()).div(Decimal.unit());
+	withinLimit := receivedStakeBigInt.Cmp(maxAllowedStake) <= 0
 
-	return limitExceeded, gasUsed, nil
+	return withinLimit, gasUsed, nil
 }
 
 // handleSyncValidator synchronizes a validator's state

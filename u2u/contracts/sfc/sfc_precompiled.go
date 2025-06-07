@@ -18,6 +18,7 @@ var (
 	CMAbi             abi.ABI
 	NodeDriverAbi     abi.ABI
 	NodeDriverAuthAbi abi.ABI
+	StakeTokenizerAbi abi.ABI
 )
 
 func init() {
@@ -26,6 +27,7 @@ func init() {
 	CMAbi, _ = abi.JSON(strings.NewReader(ConstantManagerABIStr))
 	NodeDriverAbi, _ = abi.JSON(strings.NewReader(NodeDriverABIStr))
 	NodeDriverAuthAbi, _ = abi.JSON(strings.NewReader(NodeDriverAuthABIStr))
+	StakeTokenizerAbi, _ = abi.JSON(strings.NewReader(StakeTokenizerABIStr))
 }
 
 // SfcPrecompile implements PrecompiledSfcContract interface

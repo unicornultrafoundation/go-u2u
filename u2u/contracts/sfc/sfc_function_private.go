@@ -152,71 +152,24 @@ func handleGetUnlockedStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, er
 	return result, 0, nil
 }
 
-// handleCheckAllowedToWithdraw checks if a delegator is allowed to withdraw
+// handleCheckAllowedToWithdraw checks if a delegator is allowed to withdraw their stake
 func handleCheckAllowedToWithdraw(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) (bool, error) {
-	// Initialize gas used
-	var gasUsed uint64 = 0
-	// Get the validator status
-	validatorStatusSlot, slotGasUsed := getValidatorStatusSlot(toValidatorID)
-	gasUsed += slotGasUsed
-	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorStatusSlot))
-	gasUsed += params.ColdSloadCostEIP2929 // Add gas for SLOAD
-	validatorStatusBigInt := new(big.Int).SetBytes(validatorStatus.Bytes())
-
-	// Check if the validator is deactivated
-	isDeactivated := (validatorStatusBigInt.Bit(0) == 1) // WITHDRAWN_BIT
-
-	// Get the validator auth
-	validatorAuthSlot, slotGasUsed := getValidatorAuthSlot(toValidatorID)
-	gasUsed += slotGasUsed
-	validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorAuthSlot))
-	gasUsed += params.ColdSloadCostEIP2929 // Add gas for SLOAD
-	validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
-
-	// Check if the delegator is the validator auth
-	isAuth := (delegator.Cmp(validatorAuthAddr) == 0)
-
-	// Get the stakeTokenizerAddress
+	// Get stakeTokenizerAddress from storage
 	stakeTokenizerAddressState := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(stakeTokenizerAddressSlot)))
-	stakeTokenizerAddressBytes := stakeTokenizerAddressState.Bytes()
+	stakeTokenizerAddr := common.BytesToAddress(stakeTokenizerAddressState.Bytes())
 
-	// Check if stakeTokenizerAddress is zero
-	isZeroAddress := true
-	for _, b := range stakeTokenizerAddressBytes {
-		if b != 0 {
-			isZeroAddress = false
-			break
-		}
+	// If stakeTokenizerAddress is zero, withdrawals are allowed
+	if stakeTokenizerAddr == (common.Address{}) {
+		return true, nil
 	}
 
-	if isZeroAddress {
-		// If stakeTokenizerAddress is zero, a delegator is allowed to withdraw if the validator is deactivated or if the delegator is the validator auth
-		return isDeactivated || isAuth, nil
+	// Pack the function call data using ABI
+	data, err := StakeTokenizerAbi.Pack("allowedToWithdrawStake", delegator, toValidatorID)
+	if err != nil {
+		return false, err
 	}
 
-	// Call the allowedToWithdrawStake function on the StakeTokenizer contract
-	stakeTokenizerAddr := common.BytesToAddress(stakeTokenizerAddressBytes)
-
-	// Pack the function call data for allowedToWithdrawStake(address,uint256)
-	methodID := []byte{0x4d, 0x31, 0x52, 0x9d} // keccak256("allowedToWithdrawStake(address,uint256)")[:4]
-
-	// Use our helper function to create the hash input with parameters
-	delegatorBytes := common.LeftPadBytes(delegator.Bytes(), 32)
-	toValidatorIDBytes := common.LeftPadBytes(toValidatorID.Bytes(), 32)
-
-	// Use the byte slice pool for the result
-	data := GetByteSlice()
-	if cap(data) < len(methodID)+len(delegatorBytes)+len(toValidatorIDBytes) {
-		// If the slice from the pool is too small, allocate a new one
-		data = make([]byte, 0, len(methodID)+len(delegatorBytes)+len(toValidatorIDBytes))
-	}
-
-	// Combine the bytes
-	data = append(data, methodID...)
-	data = append(data, delegatorBytes...)
-	data = append(data, toValidatorIDBytes...)
-
-	// Make the call to the StakeTokenizer contract
+	// Call the StakeTokenizer contract
 	result, _, err := evm.CallSFC(vm.AccountRef(ContractAddress), stakeTokenizerAddr, data, defaultGasLimit, big.NewInt(0))
 	if err != nil {
 		return false, err
@@ -228,10 +181,7 @@ func handleCheckAllowedToWithdraw(evm *vm.EVM, delegator common.Address, toValid
 	}
 
 	// Check the result (last byte of the 32-byte value)
-	allowed := result[31] != 0
-
-	// A delegator is allowed to withdraw if the validator is deactivated, if the delegator is the validator auth, or if the StakeTokenizer allows it
-	return isDeactivated || isAuth || allowed, nil
+	return result[31] != 0, nil
 }
 
 // handleCheckDelegatedStakeLimit checks if a validator's delegated stake is within the limit
@@ -431,7 +381,7 @@ func handle_stashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 		return nil, gasUsed, err
 	}
 	gasUsed += epochGasUsed
-	
+
 	// Update stashedRewardsUntilEpoch
 	stashedRewardsUntilEpochSlot, slotGasUsed := getStashedRewardsUntilEpochSlot(delegator, toValidatorID)
 	gasUsed += slotGasUsed

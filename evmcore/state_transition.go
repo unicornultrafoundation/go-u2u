@@ -51,16 +51,16 @@ The state transitioning model does all the necessary work to work out a valid ne
 6) Derive new state root
 */
 type StateTransition struct {
-	gp             *GasPool
-	msg            Message
-	gas            uint64
-	gasPrice       *big.Int
-	initialGas     uint64
-	value          *big.Int
-	data           []byte
-	state          vm.StateDB
-	consensusState vm.StateDB
-	evm            *vm.EVM
+	gp         *GasPool
+	msg        Message
+	gas        uint64
+	gasPrice   *big.Int
+	initialGas uint64
+	value      *big.Int
+	data       []byte
+	state      vm.StateDB
+	sfcState   vm.StateDB
+	evm        *vm.EVM
 }
 
 // Message represents a message sent to a contract.
@@ -155,7 +155,7 @@ func IntrinsicGas(data []byte, accessList types.AccessList, isContractCreation b
 
 // NewStateTransition initialises and returns a new state transition object.
 func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition {
-	return &StateTransition{
+	st := &StateTransition{
 		gp:       gp,
 		evm:      evm,
 		msg:      msg,
@@ -164,6 +164,10 @@ func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition 
 		data:     msg.Data(),
 		state:    evm.StateDB,
 	}
+	if !common.IsNilInterface(evm.SfcStateDB) {
+		st.sfcState = evm.SfcStateDB
+	}
+	return st
 }
 
 // ApplyMessage computes the new state by applying the given message
@@ -203,6 +207,11 @@ func (st *StateTransition) buyGas() error {
 
 	st.initialGas = st.msg.Gas()
 	st.state.SubBalance(st.msg.From(), mgval)
+	if st.sfcState != nil {
+		if _, ok := st.evm.SfcPrecompile(st.msg.From()); ok {
+			st.sfcState.SubBalance(st.msg.From(), mgval)
+		}
+	}
 	return nil
 }
 
@@ -282,6 +291,9 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	// Set up the initial access list.
 	if rules := st.evm.ChainConfig().Rules(st.evm.Context.BlockNumber); rules.IsBerlin {
 		st.state.PrepareAccessList(msg.From(), msg.To(), vm.ActivePrecompiles(rules), msg.AccessList())
+		if st.sfcState != nil {
+			st.sfcState.PrepareAccessList(msg.From(), msg.To(), vm.ActivePrecompiles(rules), msg.AccessList())
+		}
 	}
 
 	var (
@@ -292,8 +304,22 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		ret, _, st.gas, vmerr = st.evm.Create(sender, st.data, st.gas, st.value)
 	} else {
 		// Increment the nonce for the next transaction
-		st.state.SetNonce(msg.From(), st.state.GetNonce(sender.Address())+1)
+		nonce := st.state.GetNonce(sender.Address()) + 1
+		st.state.SetNonce(msg.From(), nonce)
+		if st.sfcState != nil {
+			st.sfcState.SetNonce(msg.From(), nonce)
+		}
+		originalGas := st.gas
+		originalValue := st.value
 		ret, st.gas, vmerr = st.evm.Call(sender, st.to(), st.data, st.gas, st.value)
+		log.Info("Trying to call SFC", "st.sfcState != nil", st.sfcState != nil, "vmerr", vmerr,
+			"originalGas", originalGas, "originalValue", originalValue,
+			"st.gas", st.gas, "st.value", st.value)
+		if st.sfcState != nil {
+			if _, _, sfcErr := st.evm.CallSFC(sender, st.to(), st.data, originalGas, originalValue); sfcErr != nil {
+				log.Error("CallSFC failed", "sfcErr", sfcErr)
+			}
+		}
 	}
 	// use 10% of not used gas
 	if !st.internal() {
@@ -328,6 +354,9 @@ func (st *StateTransition) refundGas(refundQuotient uint64) uint64 {
 	// Return wei for remaining gas, exchanged at the original rate.
 	remaining := new(big.Int).Mul(new(big.Int).SetUint64(st.gas), st.gasPrice)
 	st.state.AddBalance(st.msg.From(), remaining)
+	if st.sfcState != nil {
+		st.sfcState.AddBalance(st.msg.From(), remaining)
+	}
 
 	// Also return remaining gas to the block gas counter so it is
 	// available for the next transaction.

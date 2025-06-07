@@ -139,7 +139,7 @@ func TestRules_Copy_CopiesAreDisjoint(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			// Create a deep copy of the original rules
-			original := FakeNetRules(GetVitriolUpgrades())
+			original := FakeNetRules(GetClymeneUpgrades())
 			copied := original.Copy()
 
 			// Apply the update to the copied rules

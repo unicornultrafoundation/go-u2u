@@ -21,9 +21,9 @@ func TestUpdateRules(t *testing.T) {
 	require.NoError(err)
 	require.Equal(exp.String(), got.String(), "mutate fields")
 
-	exp.Upgrades.Vitriol = true
+	exp.Upgrades.Clymene = true
 	exp.Upgrades.Llr = false
-	got, err = UpdateRules(exp, []byte(`{"Upgrades":{"Llr":false,"Vitriol":true}}`))
+	got, err = UpdateRules(exp, []byte(`{"Upgrades":{"Llr":false,"Clymene":true}}`))
 	require.NoError(err)
 	require.Equal(exp.String(), got.String(), "mutate Upgrade fields")
 

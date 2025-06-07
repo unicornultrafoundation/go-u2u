@@ -117,8 +117,8 @@ func StartIntegrationTestNetWithFakeGenesis(
 	var upgrades string
 	if *effectiveOptions.Upgrades == u2u.GetSolarisUpgrades() {
 		upgrades = "solaris"
-	} else if *effectiveOptions.Upgrades == u2u.GetVitriolUpgrades() {
-		upgrades = "vitriol"
+	} else if *effectiveOptions.Upgrades == u2u.GetClymeneUpgrades() {
+		upgrades = "clymene"
 	} else {
 		t.Fatal("fake genesis only supports sonic and allegro feature sets")
 	}
@@ -428,7 +428,7 @@ func validateAndSanitizeOptions(t *testing.T, options ...IntegrationTestNetOptio
 		options[0].NumNodes = 1
 	}
 	if options[0].Upgrades == nil {
-		options[0].Upgrades = AsPointer(u2u.GetVitriolUpgrades())
+		options[0].Upgrades = AsPointer(u2u.GetClymeneUpgrades())
 	}
 	if options[0].Directory == "" {
 		dir, err := nettest.LocalPath()

@@ -81,7 +81,7 @@ func (p *U2UEVMProcessor) evmBlockWith(txs types.Transactions) *evmcore.EvmBlock
 		baseFee = nil
 	}
 	prevRandao := common.Hash{}
-	if p.net.Upgrades.Vitriol {
+	if p.net.Upgrades.Clymene {
 		prevRandao = p.prevRandao
 	}
 	h := &evmcore.EvmHeader{

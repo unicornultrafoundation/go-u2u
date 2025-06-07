@@ -58,13 +58,13 @@ var (
 	istanbulInstructionSet         = newIstanbulInstructionSet()
 	berlinInstructionSet           = newBerlinInstructionSet()
 	londonInstructionSet           = newLondonInstructionSet()
-	vitriolInstructionSet          = newVitriolInstructionSet()
+	clymeneInstructionSet          = newClymeneInstructionSet()
 )
 
 // JumpTable contains the EVM opcodes supported at a given fork.
 type JumpTable [256]*operation
 
-func newVitriolInstructionSet() JumpTable {
+func newClymeneInstructionSet() JumpTable {
 	instructionSet := newLondonInstructionSet()
 	// The Merge instruction set
 	instructionSet[PREVRANDAO] = &operation{

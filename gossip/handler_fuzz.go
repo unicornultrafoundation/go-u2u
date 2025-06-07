@@ -72,7 +72,7 @@ func makeFuzzedHandler() (h *handler, err error) {
 		genesisStakers,
 		utils.ToU2U(genesisBalance),
 		utils.ToU2U(genesisStake),
-		u2u.GetVitriolUpgrades(),
+		u2u.GetClymeneUpgrades(),
 	)
 	genesis := genStore.Genesis()
 
@@ -84,7 +84,7 @@ func makeFuzzedHandler() (h *handler, err error) {
 	}
 
 	var (
-		network             = u2u.FakeNetRules(u2u.GetVitriolUpgrades())
+		network             = u2u.FakeNetRules(u2u.GetClymeneUpgrades())
 		heavyCheckReader    HeavyCheckReader
 		gasPowerCheckReader GasPowerCheckReader
 		// TODO: init

@@ -125,7 +125,7 @@ func (v *Checker) Validate(e native.EventPayloadI) error {
 	version := uint8(0)
 	if rules.Upgrades.Llr {
 		version = 1
-	} else if rules.Upgrades.Vitriol {
+	} else if rules.Upgrades.Clymene {
 		version = 2
 	}
 	if e.Version() != version {

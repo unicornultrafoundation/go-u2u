@@ -149,7 +149,7 @@ func (b *GenesisBuilder) ExecuteGenesisTxs(blockProc BlockProc, genesisTxs types
 			Upgrades: es.Rules.Upgrades,
 			Height:   0,
 		},
-	}), common.Hash{0x01}) // non-zero PrevRandao necessary to enable Vitriol
+	}), common.Hash{0x01}) // non-zero PrevRandao necessary to enable Clymene
 
 	// Execute genesis transactions
 	evmProcessor.Execute(genesisTxs)

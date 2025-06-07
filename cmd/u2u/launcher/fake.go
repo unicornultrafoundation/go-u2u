@@ -20,7 +20,7 @@ var (
 	}
 	FakeUpgrades = cli.StringFlag{
 		Name:  "upgrades",
-		Usage: "Feature set enabled in the fake network, solaris|vitriol.",
+		Usage: "Feature set enabled in the fake network, solaris|clymene.",
 		Value: "solaris",
 	}
 )

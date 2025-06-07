@@ -63,8 +63,8 @@ func TestOracle_EffectiveMinGasPrice(t *testing.T) {
 	backend := &TestBackend{
 		block:             1,
 		totalGasPowerLeft: 0,
-		rules:             u2u.FakeNetRules(u2u.GetVitriolUpgrades()),
-		pendingRules:      u2u.FakeNetRules(u2u.GetVitriolUpgrades()),
+		rules:             u2u.FakeNetRules(u2u.GetClymeneUpgrades()),
+		pendingRules:      u2u.FakeNetRules(u2u.GetClymeneUpgrades()),
 	}
 
 	gpo := NewOracle(Config{})
@@ -123,8 +123,8 @@ func TestOracle_EffectiveMinGasPrice(t *testing.T) {
 func TestOracle_constructiveGasPrice(t *testing.T) {
 	backend := &TestBackend{
 		totalGasPowerLeft: 0,
-		rules:             u2u.FakeNetRules(u2u.GetVitriolUpgrades()),
-		pendingRules:      u2u.FakeNetRules(u2u.GetVitriolUpgrades()),
+		rules:             u2u.FakeNetRules(u2u.GetClymeneUpgrades()),
+		pendingRules:      u2u.FakeNetRules(u2u.GetClymeneUpgrades()),
 	}
 
 	gpo := NewOracle(Config{})
@@ -165,8 +165,8 @@ func TestOracle_constructiveGasPrice(t *testing.T) {
 func TestOracle_reactiveGasPrice(t *testing.T) {
 	backend := &TestBackend{
 		totalGasPowerLeft: 0,
-		rules:             u2u.FakeNetRules(u2u.GetVitriolUpgrades()),
-		pendingRules:      u2u.FakeNetRules(u2u.GetVitriolUpgrades()),
+		rules:             u2u.FakeNetRules(u2u.GetClymeneUpgrades()),
+		pendingRules:      u2u.FakeNetRules(u2u.GetClymeneUpgrades()),
 	}
 
 	gpo := NewOracle(Config{})

@@ -27,7 +27,7 @@ const (
 	berlinBit              = 1 << 0
 	londonBit              = 1 << 1
 	llrBit                 = 1 << 2
-	vitriolBit             = 1 << 3
+	clymeneBit             = 1 << 3
 
 	MinimumMaxBlockGas = 20500000      // < must be large enough to allow internal transactions to seal blocks
 	MaximumMaxBlockGas = math.MaxInt64 // < should fit into 64-bit signed integers to avoid parsing errors in third-party libraries
@@ -130,7 +130,7 @@ type Upgrades struct {
 	Berlin  bool
 	London  bool
 	Llr     bool
-	Vitriol bool
+	Clymene bool
 }
 
 type UpgradeHeight struct {
@@ -145,7 +145,7 @@ func (r Rules) EvmChainConfig(hh []UpgradeHeight) *ethparams.ChainConfig {
 	cfg.ChainID = new(big.Int).SetUint64(r.NetworkID)
 	cfg.BerlinBlock = nil
 	cfg.LondonBlock = nil
-	cfg.VitriolBlock = nil
+	cfg.ClymeneBlock = nil
 	for i, h := range hh {
 		height := new(big.Int)
 		if i > 0 {
@@ -164,25 +164,25 @@ func (r Rules) EvmChainConfig(hh []UpgradeHeight) *ethparams.ChainConfig {
 		if !h.Upgrades.London {
 			cfg.LondonBlock = nil
 		}
-		if cfg.VitriolBlock == nil && h.Upgrades.Vitriol {
-			cfg.VitriolBlock = height
+		if cfg.ClymeneBlock == nil && h.Upgrades.Clymene {
+			cfg.ClymeneBlock = height
 		}
-		if !h.Upgrades.Vitriol {
+		if !h.Upgrades.Clymene {
 			// disabling upgrade like this will break the history replay
 			// should be never used
-			cfg.VitriolBlock = nil
+			cfg.ClymeneBlock = nil
 		}
 	}
 	return &cfg
 }
 
-// GetVitriolUpgrades contains the feature flags for the Vitriol upgrade.
-func GetVitriolUpgrades() Upgrades {
+// GetClymeneUpgrades contains the feature flags for the Clymene upgrade.
+func GetClymeneUpgrades() Upgrades {
 	return Upgrades{
 		Berlin:  true,
 		London:  true,
 		Llr:     true,
-		Vitriol: true,
+		Clymene: true,
 	}
 }
 
@@ -192,7 +192,7 @@ func GetSolarisUpgrades() Upgrades {
 		Berlin:  true,
 		London:  true,
 		Llr:     true,
-		Vitriol: false,
+		Clymene: false,
 	}
 }
 

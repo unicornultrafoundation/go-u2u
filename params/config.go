@@ -46,7 +46,7 @@ var (
 		BerlinBlock:         big.NewInt(0),
 		LondonBlock:         big.NewInt(0),
 		CatalystBlock:       nil,
-		VitriolBlock:        nil,
+		ClymeneBlock:        nil,
 	}
 
 	TestChainConfig = &ChainConfig{
@@ -66,7 +66,7 @@ var (
 		BerlinBlock:         big.NewInt(0),
 		LondonBlock:         big.NewInt(0),
 		CatalystBlock:       nil,
-		VitriolBlock:        big.NewInt(0),
+		ClymeneBlock:        big.NewInt(0),
 	}
 )
 
@@ -101,12 +101,12 @@ type ChainConfig struct {
 	CatalystBlock *big.Int `json:"catalystBlock,omitempty"` // Catalyst switch block (nil = no fork, 0 = already on catalyst)
 
 	// U2U hardforks
-	VitriolBlock *big.Int `json:"vitriolBlock,omitempty"` // Vitriol switch block (nil = no fork, 0 = already on vitriol)
+	ClymeneBlock *big.Int `json:"clymeneBlock,omitempty"` // Clymene switch block (nil = no fork, 0 = already on clymene)
 }
 
 // String implements the fmt.Stringer interface.
 func (c *ChainConfig) String() string {
-	return fmt.Sprintf("{ChainID: %v Homestead: %v DAO: %v DAOSupport: %v EIP150: %v EIP155: %v EIP158: %v Byzantium: %v Constantinople: %v Petersburg: %v Istanbul: %v, Muir Glacier: %v, Berlin: %v, London: %v, Vitriol: %v}",
+	return fmt.Sprintf("{ChainID: %v Homestead: %v DAO: %v DAOSupport: %v EIP150: %v EIP155: %v EIP158: %v Byzantium: %v Constantinople: %v Petersburg: %v Istanbul: %v, Muir Glacier: %v, Berlin: %v, London: %v, Clymene: %v}",
 		c.ChainID,
 		c.HomesteadBlock,
 		c.DAOForkBlock,
@@ -121,7 +121,7 @@ func (c *ChainConfig) String() string {
 		c.MuirGlacierBlock,
 		c.BerlinBlock,
 		c.LondonBlock,
-		c.VitriolBlock,
+		c.ClymeneBlock,
 	)
 }
 
@@ -192,9 +192,9 @@ func (c *ChainConfig) IsCatalyst(num *big.Int) bool {
 	return isForked(c.CatalystBlock, num)
 }
 
-// IsVitriol returns whether num is either equal to the Vitriol fork block or greater.
-func (c *ChainConfig) IsVitriol(num *big.Int) bool {
-	return isForked(c.VitriolBlock, num)
+// IsClymene returns whether num is either equal to the Clymene fork block or greater.
+func (c *ChainConfig) IsClymene(num *big.Int) bool {
+	return isForked(c.ClymeneBlock, num)
 }
 
 // CheckCompatible checks whether scheduled fork transitions have been imported
@@ -237,7 +237,7 @@ func (c *ChainConfig) CheckConfigForkOrder() error {
 		{name: "muirGlacierBlock", block: c.MuirGlacierBlock, optional: true},
 		{name: "berlinBlock", block: c.BerlinBlock},
 		{name: "londonBlock", block: c.LondonBlock},
-		{name: "vitriolBlock", block: c.VitriolBlock},
+		{name: "clymeneBlock", block: c.ClymeneBlock},
 	} {
 		if lastFork.name != "" {
 			// Next one must be higher number
@@ -307,8 +307,8 @@ func (c *ChainConfig) checkCompatible(newcfg *ChainConfig, head *big.Int) *Confi
 	if isForkIncompatible(c.LondonBlock, newcfg.LondonBlock, head) {
 		return newCompatError("London fork block", c.LondonBlock, newcfg.LondonBlock)
 	}
-	if isForkIncompatible(c.VitriolBlock, newcfg.VitriolBlock, head) {
-		return newCompatError("VitriolBlock fork block", c.VitriolBlock, newcfg.VitriolBlock)
+	if isForkIncompatible(c.ClymeneBlock, newcfg.ClymeneBlock, head) {
+		return newCompatError("ClymeneBlock fork block", c.ClymeneBlock, newcfg.ClymeneBlock)
 	}
 	return nil
 }
@@ -377,7 +377,7 @@ type Rules struct {
 	ChainID                                                 *big.Int
 	IsHomestead, IsEIP150, IsEIP155, IsEIP158               bool
 	IsByzantium, IsConstantinople, IsPetersburg, IsIstanbul bool
-	IsBerlin, IsLondon, IsCatalyst, IsVitriol               bool
+	IsBerlin, IsLondon, IsCatalyst, IsClymene               bool
 }
 
 // Rules ensures c's ChainID is not nil.
@@ -399,6 +399,6 @@ func (c *ChainConfig) Rules(num *big.Int) Rules {
 		IsBerlin:         c.IsBerlin(num),
 		IsLondon:         c.IsLondon(num),
 		IsCatalyst:       c.IsCatalyst(num),
-		IsVitriol:        c.IsVitriol(num),
+		IsClymene:        c.IsClymene(num),
 	}
 }

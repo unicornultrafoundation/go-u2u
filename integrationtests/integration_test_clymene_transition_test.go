@@ -13,10 +13,10 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 )
 
-func TestVitriolTransition_TestComputePrevRandao(t *testing.T) {
+func TestClymeneTransition_TestComputePrevRandao(t *testing.T) {
 	net := StartIntegrationTestNetWithFakeGenesis(t,
 		IntegrationTestNetOptions{
-			Upgrades: AsPointer(u2u.GetVitriolUpgrades()),
+			Upgrades: AsPointer(u2u.GetClymeneUpgrades()),
 		})
 	// Deploy the contract.
 	contract, _, err := DeployContract(net, prevrandao.DeployPrevrandao)
@@ -76,7 +76,7 @@ func TestVitriolTransition_TestComputePrevRandao(t *testing.T) {
 	}
 }
 
-func TestVitriolTransition_CanUpgradeNetworkRulesToVitriol(t *testing.T) {
+func TestClymeneTransition_CanUpgradeNetworkRulesToClymene(t *testing.T) {
 	// start test network with Solaris rules
 	net := StartIntegrationTestNetWithFakeGenesis(t,
 		IntegrationTestNetOptions{
@@ -93,15 +93,15 @@ func TestVitriolTransition_CanUpgradeNetworkRulesToVitriol(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get block header; %v", err)
 	}
-	assert.Equal(block.MixDigest().Big().Cmp(big.NewInt(0)), 0, "block prevrandao must be 0 before Vitriol upgrade")
+	assert.Equal(block.MixDigest().Big().Cmp(big.NewInt(0)), 0, "block prevrandao must be 0 before Clymene upgrade")
 
-	// start upgrading to Vitriol
+	// start upgrading to Clymene
 	receipt, err := net.CraftSFCTx(&net.validator, NodeDriverAuthAbi, &NodeDriverAuthAddr, big.NewInt(0),
-		"updateNetworkRules", []byte(`{"Upgrades":{"Vitriol":true}}`))
+		"updateNetworkRules", []byte(`{"Upgrades":{"Clymene":true}}`))
 	if err != nil {
-		t.Fatalf("failed to send tx to upgrade network to Vitriol: %v", err)
+		t.Fatalf("failed to send tx to upgrade network to Clymene: %v", err)
 	}
-	assert.Equal(receipt.Status, uint64(1), "transaction to upgrade network to Vitriol must succeed")
+	assert.Equal(receipt.Status, uint64(1), "transaction to upgrade network to Clymene must succeed")
 	receipt, err = net.CraftSFCTx(&net.validator, NodeDriverAuthAbi, &NodeDriverAuthAddr, big.NewInt(0),
 		"advanceEpochs", big.NewInt(10))
 	if err != nil {
@@ -112,7 +112,7 @@ func TestVitriolTransition_CanUpgradeNetworkRulesToVitriol(t *testing.T) {
 	if err := net.EndowAccount(net.validator.Address(), 1); err != nil {
 		t.Fatalf("Failed to endow account: %v", err)
 	}
-	// done upgrading to Vitriol
+	// done upgrading to Clymene
 
 	testPrevRandaoMustBeSet(t, net, client)
 }
@@ -127,5 +127,5 @@ func testPrevRandaoMustBeSet(t *testing.T, net *IntegrationTestNet, client *ethc
 	if err != nil {
 		t.Fatalf("failed to get block header; %v", err)
 	}
-	assert.NotEqual(block.MixDigest().Big().Cmp(big.NewInt(0)), 0, "block prevrandao must be set after Vitriol upgrade")
+	assert.NotEqual(block.MixDigest().Big().Cmp(big.NewInt(0)), 0, "block prevrandao must be set after Clymene upgrade")
 }

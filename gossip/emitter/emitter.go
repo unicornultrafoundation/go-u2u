@@ -346,7 +346,7 @@ func (em *Emitter) createEvent(sortedTxs *types.TransactionsByPriceAndNonce) (*n
 	version := uint8(0)
 	if em.world.GetRules().Upgrades.Llr {
 		version = 1
-	} else if em.world.GetRules().Upgrades.Vitriol {
+	} else if em.world.GetRules().Upgrades.Clymene {
 		version = 2
 	}
 

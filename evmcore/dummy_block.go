@@ -79,7 +79,7 @@ func ToEvmHeader(block *native.Block, index idx.Block, prevHash hash.Event, rule
 		baseFee = nil
 	}
 	prevRandao := common.Hash{}
-	if rules.Upgrades.Vitriol {
+	if rules.Upgrades.Clymene {
 		prevRandao = common.Hash(block.PrevRandao)
 	}
 

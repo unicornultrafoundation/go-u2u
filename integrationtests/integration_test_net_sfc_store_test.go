@@ -96,6 +96,8 @@ func TestSFCStore_BasicFlows(t *testing.T) {
 	testSFCStore_CanDelegateToValidator(t)
 	testSFCStore_CanClaimRewards(t)
 	testSFCStore_CanRestakeRewards(t)
+	testSFCStore_CanLockStake(t)
+	testSFCStore_CanRelockStake(t)
 }
 
 func testSFCStore_CanGetSfcStorage(t *testing.T) {
@@ -186,5 +188,41 @@ func testSFCStore_CanRestakeRewards(t *testing.T) {
 	}
 	if good, err := testnet.CheckIntegrity(nil); !good || err != nil {
 		t.Fatalf("sfc state is corrupted after restaking rewards: %v", err)
+	}
+}
+
+func testSFCStore_CanLockStake(t *testing.T) {
+	// trigger epoch update
+	if err := testnet.EndowAccount(testAccounts[0].Address(), big.NewInt(1)); err != nil {
+		t.Fatalf("failed to endow account 1: %v", err)
+	}
+	// try to restake reward from validator 1
+	if good, err := testnet.CheckIntegrity(nil); !good || err != nil {
+		t.Fatalf("sfc state is corrupted before locking stake: %v", err)
+	}
+	if err := testnet.CraftSFCTx(testAccounts[0], SfcLibAbi, big.NewInt(0),
+		"lockStake", big.NewInt(1), big.NewInt(29376000), new(big.Int).Mul(big.NewInt(10), ether)); err != nil {
+		t.Fatalf("failed to lock stake: %v", err)
+	}
+	if good, err := testnet.CheckIntegrity(nil); !good || err != nil {
+		t.Fatalf("sfc state is corrupted after locking stake: %v", err)
+	}
+}
+
+func testSFCStore_CanRelockStake(t *testing.T) {
+	// trigger epoch update
+	if err := testnet.EndowAccount(testAccounts[0].Address(), big.NewInt(1)); err != nil {
+		t.Fatalf("failed to endow account 1: %v", err)
+	}
+	// try to restake reward from validator 1
+	if good, err := testnet.CheckIntegrity(nil); !good || err != nil {
+		t.Fatalf("sfc state is corrupted before relocking stake: %v", err)
+	}
+	if err := testnet.CraftSFCTx(testAccounts[0], SfcLibAbi, big.NewInt(0),
+		"relockStake", big.NewInt(1), big.NewInt(29376000), new(big.Int).Mul(big.NewInt(10), ether)); err != nil {
+		t.Fatalf("failed to relock stake: %v", err)
+	}
+	if good, err := testnet.CheckIntegrity(nil); !good || err != nil {
+		t.Fatalf("sfc state is corrupted after relocking stake: %v", err)
 	}
 }

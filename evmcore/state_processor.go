@@ -18,6 +18,8 @@ package evmcore
 
 import (
 	"fmt"
+	"math/big"
+
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
@@ -28,7 +30,6 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/params"
 	"github.com/unicornultrafoundation/go-u2u/utils/signers/gsignercache"
 	"github.com/unicornultrafoundation/go-u2u/utils/signers/internaltx"
-	"math/big"
 )
 
 var SfcPrecompiles = []common.Address{
@@ -114,21 +115,21 @@ func (p *StateProcessor) Process(
 				if original.Cmp(sfc) != 0 {
 					log.Error("U2UEVMProcessor.Process: SFC storage corrupted after applying block",
 						"tx", tx.Hash().Hex(), "addr", addr, "original", original.Hex(), "sfc", sfc.Hex())
-					//common.SendInterrupt()
+					common.SendInterrupt()
 				}
 				originalBalance := statedb.GetBalance(addr)
 				sfcBalance := sfcStatedb.GetBalance(addr)
 				if originalBalance.Cmp(sfcBalance) != 0 {
 					log.Error("U2UEVMProcessor.Process: SFC balance mismatched after applying block",
 						"tx", tx.Hash().Hex(), "addr", addr, "original", originalBalance, "sfc", sfcBalance)
-					//common.SendInterrupt()
+					common.SendInterrupt()
 				}
 				originalNonce := statedb.GetNonce(addr)
 				sfcNonce := sfcStatedb.GetNonce(addr)
 				if originalNonce != sfcNonce {
 					log.Error("U2UEVMProcessor.Process: SFC nonce mismatched after applying block",
 						"tx", tx.Hash().Hex(), "addr", addr, "original", originalNonce, "sfc", sfcNonce)
-					//common.SendInterrupt()
+					common.SendInterrupt()
 				}
 			}
 			// Benchmark execution time difference of SFC precompiled related txs

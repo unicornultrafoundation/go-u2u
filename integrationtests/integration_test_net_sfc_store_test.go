@@ -146,18 +146,18 @@ func testSFCStore_CanClaimRewards(t *testing.T) {
 	if err := testnet.EndowAccount(testAccounts[0].Address(), big.NewInt(1)); err != nil {
 		t.Fatalf("failed to endow account 1: %v", err)
 	}
-	// try to delegate to validator
+	// try to claim reward from validator 1
 	if good, err := testnet.CheckIntegrity(nil); !good || err != nil {
 		t.Fatalf("sfc state is corrupted before claiming rewards: %v", err)
 	}
-	if err := testnet.CraftSFCTx(&testnet.validator, SfcLibAbi, big.NewInt(0), "claimRewards", big.NewInt(1)); err != nil {
+	if err := testnet.CraftSFCTx(testAccounts[0], SfcLibAbi, big.NewInt(0), "claimRewards", big.NewInt(1)); err != nil {
 		t.Fatalf("failed to claim rewards from validator: %v", err)
 	}
 	if good, err := testnet.CheckIntegrity(nil); !good || err != nil {
 		t.Fatalf("sfc state is corrupted after claiming rewards: %v", err)
 	}
 	// check the zero-reward case
-	if err := testnet.CraftSFCTx(&testnet.validator, SfcLibAbi, big.NewInt(0), "claimRewards", big.NewInt(1)); err != nil {
+	if err := testnet.CraftSFCTx(testAccounts[0], SfcLibAbi, big.NewInt(0), "claimRewards", big.NewInt(1)); err != nil {
 		t.Fatalf("failed to claim rewards from validator: %v", err)
 	}
 	if good, err := testnet.CheckIntegrity(nil); !good || err != nil {
@@ -170,18 +170,18 @@ func testSFCStore_CanRestakeRewards(t *testing.T) {
 	if err := testnet.EndowAccount(testAccounts[0].Address(), big.NewInt(1)); err != nil {
 		t.Fatalf("failed to endow account 1: %v", err)
 	}
-	// try to delegate to validator
+	// try to restake reward from validator 1
 	if good, err := testnet.CheckIntegrity(nil); !good || err != nil {
 		t.Fatalf("sfc state is corrupted before restaking rewards: %v", err)
 	}
-	if err := testnet.CraftSFCTx(&testnet.validator, SfcLibAbi, big.NewInt(0), "restakeRewards", big.NewInt(1)); err != nil {
+	if err := testnet.CraftSFCTx(testAccounts[0], SfcLibAbi, big.NewInt(0), "restakeRewards", big.NewInt(1)); err != nil {
 		t.Fatalf("failed to restake rewards: %v", err)
 	}
 	if good, err := testnet.CheckIntegrity(nil); !good || err != nil {
 		t.Fatalf("sfc state is corrupted after restaking rewards: %v", err)
 	}
 	// check the zero-reward case
-	if err := testnet.CraftSFCTx(&testnet.validator, SfcLibAbi, big.NewInt(0), "restakeRewards", big.NewInt(1)); err != nil {
+	if err := testnet.CraftSFCTx(testAccounts[0], SfcLibAbi, big.NewInt(0), "restakeRewards", big.NewInt(1)); err != nil {
 		t.Fatalf("failed to restake rewards: %v", err)
 	}
 	if good, err := testnet.CheckIntegrity(nil); !good || err != nil {

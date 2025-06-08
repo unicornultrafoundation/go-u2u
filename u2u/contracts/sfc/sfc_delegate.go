@@ -549,18 +549,24 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 		return revertData, 0, vm.ErrExecutionReverted
 	}
 
-	// Check that the delegation is not already locked up
-	lockupFromEpochSlot, getGasUsed := getLockupFromEpochSlot(caller, toValidatorID)
-	gasUsed += getGasUsed
-	lockupFromEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupFromEpochSlot))
-	lockupFromEpochBigInt := new(big.Int).SetBytes(lockupFromEpoch.Bytes())
+	// Check if stake is locked up
+	isLockedUpArgs := []interface{}{caller, toValidatorID}
+	isLockedUpResult, _, err := handleIsLockedUp(evm, isLockedUpArgs)
+	if err != nil {
+		log.Error("lockStake: handleIsLockedUp failed", "err", err)
+		return isLockedUpResult, 0, err
+	}
+	isLockedUpValues, err := SfcAbi.Methods["isLockedUp"].Outputs.Unpack(isLockedUpResult)
+	if err != nil {
+		log.Error("lockStake: unpack isLockedUp failed", "err", err)
+		return nil, 0, err
+	}
+	isLocked, ok := isLockedUpValues[0].(bool)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
 
-	lockupEndTimeSlot, getGasUsed := getLockupEndTimeSlot(caller, toValidatorID)
-	gasUsed += getGasUsed
-	lockupEndTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupEndTimeSlot))
-	lockupEndTimeBigInt := new(big.Int).SetBytes(lockupEndTime.Bytes())
-
-	if lockupFromEpochBigInt.Cmp(big.NewInt(0)) != 0 && lockupEndTimeBigInt.Cmp(evm.Context.Time) > 0 {
+	if !isLocked {
 		revertData, err := encodeRevertReason("lockStake", "already locked up")
 		if err != nil {
 			return nil, 0, err
@@ -617,6 +623,11 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	gasUsed += getGasUsed
 	lockupDurationState := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupDurationSlot))
 	lockupDurationStateBigInt := new(big.Int).SetBytes(lockupDurationState.Bytes())
+
+	lockupFromEpochSlot, getGasUsed := getLockupFromEpochSlot(caller, toValidatorID)
+	gasUsed += getGasUsed
+	lockupEndTimeSlot, getGasUsed := getLockupEndTimeSlot(caller, toValidatorID)
+	gasUsed += getGasUsed
 
 	if lockupDuration.Cmp(lockupDurationStateBigInt) < 0 {
 		revertData, err := encodeRevertReason("lockStake", "lockup duration cannot decrease")
@@ -743,22 +754,27 @@ func _popDelegationUnlockPenalty(evm *vm.EVM, delegator common.Address, toValida
 	baseReward := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(baseRewardSlot))
 	gasUsed += SloadGasCost
 
-	// Calculate shares
-	extraRewardShare := new(big.Int).Mul(new(big.Int).SetBytes(extraReward.Bytes()), unlockAmount)
-	extraRewardShare = extraRewardShare.Div(extraRewardShare, totalAmount)
+	// Calculate lockupExtraRewardShare = extraReward * unlockAmount / totalAmount
+	lockupExtraRewardShare := new(big.Int).Mul(new(big.Int).SetBytes(extraReward.Bytes()), unlockAmount)
+	lockupExtraRewardShare = new(big.Int).Div(lockupExtraRewardShare, totalAmount)
 
-	baseRewardShare := new(big.Int).Mul(new(big.Int).SetBytes(baseReward.Bytes()), unlockAmount)
-	baseRewardShare = baseRewardShare.Div(baseRewardShare, totalAmount)
+	// Calculate lockupBaseRewardShare = baseReward * unlockAmount / totalAmount
+	lockupBaseRewardShare := new(big.Int).Mul(new(big.Int).SetBytes(baseReward.Bytes()), unlockAmount)
+	lockupBaseRewardShare = new(big.Int).Div(lockupBaseRewardShare, totalAmount)
 
-	// Calculate penalty
-	penalty := new(big.Int).Add(extraRewardShare, new(big.Int).Div(baseRewardShare, big.NewInt(2)))
+	// Calculate penalty = lockupExtraRewardShare + lockupBaseRewardShare / 2 (exactly matching Solidity)
+	penalty := new(big.Int).Add(lockupExtraRewardShare, new(big.Int).Div(lockupBaseRewardShare, big.NewInt(2)))
+	log.Info("_popDelegationUnlockPenalty: penalty", "penalty", penalty,
+		"lockupExtraRewardShare", lockupExtraRewardShare, "lockupBaseRewardShare", lockupBaseRewardShare,
+		"unlockAmount", unlockAmount, "totalAmount", totalAmount,
+		"new(big.Int).Div(lockupBaseRewardShare, big.NewInt(2))", new(big.Int).Div(lockupBaseRewardShare, big.NewInt(2)))
 
 	// Update stashed rewards
-	newExtraReward := new(big.Int).Sub(new(big.Int).SetBytes(extraReward.Bytes()), extraRewardShare)
+	newExtraReward := new(big.Int).Sub(new(big.Int).SetBytes(extraReward.Bytes()), lockupExtraRewardShare)
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(extraRewardSlot), common.BigToHash(newExtraReward))
 	gasUsed += SstoreGasCost
 
-	newBaseReward := new(big.Int).Sub(new(big.Int).SetBytes(baseReward.Bytes()), baseRewardShare)
+	newBaseReward := new(big.Int).Sub(new(big.Int).SetBytes(baseReward.Bytes()), lockupBaseRewardShare)
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(baseRewardSlot), common.BigToHash(newBaseReward))
 	gasUsed += SstoreGasCost
 
@@ -920,11 +936,15 @@ func handleUnlockStake(evm *vm.EVM, caller common.Address, args []interface{}) (
 		log.Error("unlockStake: pack UnlockedStake failed", "err", err)
 		return nil, 0, err
 	}
-	evm.SfcStateDB.AddLog(&types.Log{
+
+	unlockedStakeLog := &types.Log{
 		Address: ContractAddress,
 		Topics:  topics,
 		Data:    data,
-	})
+	}
+	evm.SfcStateDB.AddLog(unlockedStakeLog)
+	log.Info("unlockStake: unlockedStakeLog details", "Address", unlockedStakeLog.Address.Hex(),
+		"Topics", unlockedStakeLog.Topics, "Data", common.Bytes2Hex(unlockedStakeLog.Data))
 
 	return penalty.Bytes(), gasUsed, nil
 }

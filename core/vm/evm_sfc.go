@@ -36,25 +36,19 @@ func (evm *EVM) CallSFC(caller ContractRef, addr common.Address, input []byte, g
 			"height", evm.Context.BlockNumber, "addr", addr.Hex())
 		evm.SfcStateDB.CreateAccount(addr)
 	}
-	log.Info("SFC precompiled balance transfer check", "height", evm.Context.BlockNumber,
-		"caller", caller.Address().Hex(), "to", addr.Hex(), "value", value.String())
 	// Only transfer balance if value is not zero
 	if value.Sign() != 0 {
 		if _, isSfcPrecompile := evm.SfcPrecompile(caller.Address()); isSfcPrecompile {
-			log.Info("SFC precompiled account subtracting balance", "height", evm.Context.BlockNumber,
-				"caller", caller.Address().Hex(), "value", value.String())
 			evm.SfcStateDB.SubBalance(caller.Address(), value)
 		}
 		if _, isSfcPrecompile := evm.SfcPrecompile(addr); isSfcPrecompile {
-			log.Info("SFC precompiled account adding balance", "height", evm.Context.BlockNumber,
-				"caller", caller.Address().Hex(), "to", addr.Hex(), "value", value.String())
 			evm.SfcStateDB.AddBalance(addr, value)
 		}
 	}
 
 	// Handle evmWriter calls from NodeDriver contract
 	if sp, isStatePrecompile := evm.statePrecompile(addr); isStatePrecompile {
-		log.Info("EvmWriter precompiled calling", "height", evm.Context.BlockNumber,
+		log.Debug("EvmWriter precompiled calling", "height", evm.Context.BlockNumber,
 			"caller", caller.Address().Hex(),
 			"to", addr.Hex())
 		start := time.Now()
@@ -71,7 +65,7 @@ func (evm *EVM) CallSFC(caller ContractRef, addr common.Address, input []byte, g
 			return nil, 0, nil
 		}
 		// Run SFC precompiled
-		log.Info("SFC precompiled calling", "action", "call", "height", evm.Context.BlockNumber,
+		log.Debug("SFC precompiled calling", "action", "call", "height", evm.Context.BlockNumber,
 			"caller", caller.Address().Hex(),
 			"to", addr.Hex())
 		start := time.Now()

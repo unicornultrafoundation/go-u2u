@@ -929,6 +929,180 @@ func handleUnlockStake(evm *vm.EVM, caller common.Address, args []interface{}) (
 	return penalty.Bytes(), gasUsed, nil
 }
 
+// handleWithdraw withdraws a delegation
+func handleWithdraw(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
+	var gasUsed uint64 = 0
+	// Get the arguments
+	if len(args) != 2 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	toValidatorID, ok := args[0].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	wrID, ok := args[1].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Check that the validator exists
+	revertData, checkGasUsed, err := checkValidatorExists(evm, toValidatorID, "withdraw")
+	gasUsed = checkGasUsed
+	if err != nil {
+		return revertData, gasUsed, err
+	}
+
+	// Check that the withdrawal request exists by checking the epoch field (first field)
+	withdrawalRequestEpochSlot, getGasUsed := getWithdrawalRequestEpochSlot(caller, toValidatorID, wrID)
+	gasUsed += getGasUsed
+	withdrawalRequestEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(withdrawalRequestEpochSlot))
+	gasUsed += SloadGasCost
+	withdrawalRequestEpochBigInt := new(big.Int).SetBytes(withdrawalRequestEpoch.Bytes())
+	if withdrawalRequestEpochBigInt.Cmp(big.NewInt(0)) == 0 {
+		revertData, err := encodeRevertReason("withdraw", "request doesn't exist")
+		if err != nil {
+			return nil, 0, vm.ErrExecutionReverted
+		}
+		return revertData, 0, vm.ErrExecutionReverted
+	}
+
+	// Check that the delegator is allowed to withdraw
+	allowed, err := handleCheckAllowedToWithdraw(evm, caller, toValidatorID)
+	if err != nil {
+		log.Error("withdraw: handleCheckAllowedToWithdraw failed", "err", err)
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+	if !allowed {
+		revertData, err := encodeRevertReason("withdraw", "outstanding sU2U balance")
+		if err != nil {
+			return nil, 0, vm.ErrExecutionReverted
+		}
+		return revertData, 0, vm.ErrExecutionReverted
+	}
+
+	// Get the request time
+	withdrawalRequestTimeSlot, timeGasUsed := getWithdrawalRequestTimeSlot(caller, toValidatorID, wrID)
+	gasUsed += timeGasUsed
+	withdrawalRequestTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(withdrawalRequestTimeSlot))
+	gasUsed += SloadGasCost
+	withdrawalRequestTimeBigInt := new(big.Int).SetBytes(withdrawalRequestTime.Bytes())
+
+	// Check if the validator is deactivated
+	validatorDeactivatedTimeSlot, getGasUsed := getValidatorDeactivatedTimeSlot(toValidatorID)
+	gasUsed += getGasUsed
+	validatorDeactivatedTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorDeactivatedTimeSlot))
+	validatorDeactivatedTimeBigInt := new(big.Int).SetBytes(validatorDeactivatedTime.Bytes())
+
+	validatorDeactivatedEpochSlot, getGasUsed := getValidatorDeactivatedEpochSlot(toValidatorID)
+	gasUsed += getGasUsed
+	validatorDeactivatedEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorDeactivatedEpochSlot))
+	validatorDeactivatedEpochBigInt := new(big.Int).SetBytes(validatorDeactivatedEpoch.Bytes())
+
+	requestTime := withdrawalRequestTimeBigInt
+	requestEpoch := withdrawalRequestEpochBigInt
+	if validatorDeactivatedTimeBigInt.Cmp(big.NewInt(0)) != 0 && validatorDeactivatedTimeBigInt.Cmp(withdrawalRequestTimeBigInt) < 0 {
+		requestTime = validatorDeactivatedTimeBigInt
+		requestEpoch = validatorDeactivatedEpochBigInt
+	}
+
+	// Check that enough time has passed
+	withdrawalPeriodTimeBigInt := getConstantsManagerVariable("withdrawalPeriodTime")
+
+	if evm.Context.Time.Cmp(new(big.Int).Add(requestTime, withdrawalPeriodTimeBigInt)) < 0 {
+		revertData, err := encodeRevertReason("withdraw", "not enough time passed")
+		if err != nil {
+			return nil, 0, vm.ErrExecutionReverted
+		}
+		return revertData, 0, vm.ErrExecutionReverted
+	}
+
+	// Check that enough epochs have passed
+	withdrawalPeriodEpochsBigInt := getConstantsManagerVariable("withdrawalPeriodEpochs")
+
+	currentEpochBigInt, _, err := getCurrentEpoch(evm)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if currentEpochBigInt.Cmp(new(big.Int).Add(requestEpoch, withdrawalPeriodEpochsBigInt)) < 0 {
+		revertData, err := encodeRevertReason("withdraw", "not enough epochs passed")
+		if err != nil {
+			return nil, 0, vm.ErrExecutionReverted
+		}
+		return revertData, 0, vm.ErrExecutionReverted
+	}
+
+	// Get the amount
+	withdrawalRequestAmountSlot, slotGasUsed := getWithdrawalRequestAmountSlot(caller, toValidatorID, wrID)
+	gasUsed += slotGasUsed
+	withdrawalRequestAmountState := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(withdrawalRequestAmountSlot))
+	gasUsed += SloadGasCost
+	amount := new(big.Int).SetBytes(withdrawalRequestAmountState.Bytes())
+
+	// Check if the validator is slashed
+	validatorStatusSlot, getGasUsed := getValidatorStatusSlot(toValidatorID)
+	gasUsed += getGasUsed
+	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorStatusSlot))
+	validatorStatusBigInt := new(big.Int).SetBytes(validatorStatus.Bytes())
+	isCheater := (validatorStatusBigInt.Bit(7) == 1) // DOUBLESIGN_BIT
+
+	// Calculate the penalty using getSlashingPenalty
+	penalty, penaltyGasUsed, err := getSlashingPenalty(evm, amount, isCheater, toValidatorID)
+	gasUsed += penaltyGasUsed
+	if err != nil {
+		log.Error("withdraw: getSlashingPenalty failed", "err", err)
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Delete the withdrawal request
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(withdrawalRequestAmountSlot), common.BigToHash(big.NewInt(0)))
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(withdrawalRequestEpochSlot), common.BigToHash(big.NewInt(0)))
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(withdrawalRequestTimeSlot), common.BigToHash(big.NewInt(0)))
+
+	// Update the total slashed stake
+	totalSlashedStakeState := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(totalSlashedStakeSlot)))
+	totalSlashedStakeBigInt := new(big.Int).SetBytes(totalSlashedStakeState.Bytes())
+	newTotalSlashedStake := new(big.Int).Add(totalSlashedStakeBigInt, penalty)
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalSlashedStakeSlot)), common.BigToHash(newTotalSlashedStake))
+
+	// Check that the stake is not fully slashed
+	if amount.Cmp(penalty) <= 0 {
+		revertData, err := encodeRevertReason("withdraw", "stake is fully slashed")
+		if err != nil {
+			return nil, 0, vm.ErrExecutionReverted
+		}
+		return revertData, 0, vm.ErrExecutionReverted
+	}
+
+	// Transfer the amount minus the penalty to the delegator
+	amountToTransfer := new(big.Int).Sub(amount, penalty)
+	evm.SfcStateDB.AddBalance(caller, amountToTransfer)
+
+	// Burn the penalty
+	// TODO: Implement _burnU2U
+
+	// Emit Withdrawn event
+	topics := []common.Hash{
+		SfcAbi.Events["Withdrawn"].ID,
+		common.BytesToHash(common.LeftPadBytes(caller.Bytes(), 32)), // indexed parameter (delegator)
+		common.BigToHash(toValidatorID),                             // indexed parameter (toValidatorID)
+		common.BigToHash(wrID),                                      // indexed parameter (wrID)
+	}
+	data, err := SfcLibAbi.Events["Withdrawn"].Inputs.NonIndexed().Pack(
+		amount,
+	)
+	if err != nil {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	evm.SfcStateDB.AddLog(&types.Log{
+		Address: ContractAddress,
+		Topics:  topics,
+		Data:    data,
+	})
+
+	return nil, gasUsed, nil
+}
+
 // handleIsLockedUp implements the isLockedUp function from SFCLib.sol
 func handleIsLockedUp(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	var gasUsed uint64 = 0
@@ -967,6 +1141,10 @@ func handleIsLockedUp(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	isLocked := lockupEndTimeBigInt.Cmp(big.NewInt(0)) != 0 &&
 		lockedStakeBigInt.Cmp(big.NewInt(0)) != 0 &&
 		lockupEndTimeBigInt.Cmp(evm.Context.Time) >= 0
+	log.Info("isLockedUp result", "isLocked", isLocked, "lockupEndTimeBigInt", lockupEndTimeBigInt, "evm.Context.Time", evm.Context.Time,
+		"lockupEndTimeBigInt.Cmp(big.NewInt(0)) != 0", lockupEndTimeBigInt.Cmp(big.NewInt(0)) != 0,
+		"lockedStakeBigInt.Cmp(big.NewInt(0)) != 0", lockedStakeBigInt.Cmp(big.NewInt(0)) != 0,
+		"lockupEndTimeBigInt.Cmp(evm.Context.Time) >= 0", lockupEndTimeBigInt.Cmp(evm.Context.Time) >= 0)
 
 	// Pack result
 	result, err := SfcAbi.Methods["isLockedUp"].Outputs.Pack(isLocked)

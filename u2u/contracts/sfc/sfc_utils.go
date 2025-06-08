@@ -632,10 +632,10 @@ func getWithdrawalRequestSlot(delegator common.Address, toValidatorID *big.Int, 
 	// Convert the hash to a big.Int
 	slot := new(big.Int).SetBytes(outerHash)
 
-	// The WithdrawalRequest struct has the following fields:
-	// uint256 amount;
-	// uint256 epoch;
-	// uint256 time;
+	// The WithdrawalRequest struct has the following fields (in Solidity storage order):
+	// uint256 epoch;   // First field (slot + 0)
+	// uint256 time;    // Second field (slot + 1)
+	// uint256 amount;  // Third field (slot + 2)
 
 	// We're returning the base slot for the struct
 	return slot, gasUsed
@@ -646,8 +646,8 @@ func getWithdrawalRequestAmountSlot(delegator common.Address, toValidatorID *big
 	// Get the base slot for the withdrawal request
 	baseSlot, gasUsed := getWithdrawalRequestSlot(delegator, toValidatorID, wrID)
 
-	// The amount field is at the base slot (first field in the struct)
-	return baseSlot, gasUsed
+	// The amount field is at slot + 2 (third field in the struct)
+	return new(big.Int).Add(baseSlot, big.NewInt(2)), gasUsed
 }
 
 // getWithdrawalRequestEpochSlot calculates the storage slot for a withdrawal request epoch
@@ -655,13 +655,8 @@ func getWithdrawalRequestEpochSlot(delegator common.Address, toValidatorID *big.
 	// Get the base slot for the withdrawal request
 	baseSlot, gasUsed := getWithdrawalRequestSlot(delegator, toValidatorID, wrID)
 
-	// The WithdrawalRequest struct has the following fields:
-	// uint256 amount;
-	// uint256 epoch;
-	// uint256 time;
-
-	// The epoch field is at slot + 1
-	return new(big.Int).Add(baseSlot, big.NewInt(1)), gasUsed
+	// The epoch field is at slot + 0 (first field in the struct)
+	return baseSlot, gasUsed
 }
 
 // getWithdrawalRequestTimeSlot calculates the storage slot for a withdrawal request time
@@ -669,13 +664,8 @@ func getWithdrawalRequestTimeSlot(delegator common.Address, toValidatorID *big.I
 	// Get the base slot for the withdrawal request
 	baseSlot, gasUsed := getWithdrawalRequestSlot(delegator, toValidatorID, wrID)
 
-	// The WithdrawalRequest struct has the following fields:
-	// uint256 amount;
-	// uint256 epoch;
-	// uint256 time;
-
-	// The time field is at slot + 2
-	return new(big.Int).Add(baseSlot, big.NewInt(2)), gasUsed
+	// The time field is at slot + 1 (second field in the struct)
+	return new(big.Int).Add(baseSlot, big.NewInt(1)), gasUsed
 }
 
 // getValidatorIDSlot calculates the storage slot for a validator ID
@@ -1444,14 +1434,80 @@ func trimMinGasPrice(x *big.Int) *big.Int {
 	return x
 }
 
-// sumRewards adds three Rewards structs together and returns the result
+// sumRewards adds two Rewards structs together and returns the result
 // This is a port of the sumRewards function from SFCBase.sol
-func sumRewards(a Rewards, b Rewards, c Rewards) Rewards {
+func sumRewards(a Rewards, b Rewards) Rewards {
 	return Rewards{
-		LockupExtraReward: new(big.Int).Add(new(big.Int).Add(a.LockupExtraReward, b.LockupExtraReward), c.LockupExtraReward),
-		LockupBaseReward:  new(big.Int).Add(new(big.Int).Add(a.LockupBaseReward, b.LockupBaseReward), c.LockupBaseReward),
-		UnlockedReward:    new(big.Int).Add(new(big.Int).Add(a.UnlockedReward, b.UnlockedReward), c.UnlockedReward),
+		LockupExtraReward: new(big.Int).Add(a.LockupExtraReward, b.LockupExtraReward),
+		LockupBaseReward:  new(big.Int).Add(a.LockupBaseReward, b.LockupBaseReward),
+		UnlockedReward:    new(big.Int).Add(a.UnlockedReward, b.UnlockedReward),
 	}
+}
+
+// sumRewards3 adds three Rewards structs together and returns the result
+// This is used when we need to sum three rewards (like in _newRewards)
+func sumRewards3(a Rewards, b Rewards, c Rewards) Rewards {
+	return sumRewards(sumRewards(a, b), c)
+}
+
+// getSlashingPenalty calculates the slashing penalty for a validator
+// This is a port of the getSlashingPenalty function from SFCLib.sol
+func getSlashingPenalty(evm *vm.EVM, amount *big.Int, isCheater bool, validatorID *big.Int) (*big.Int, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// If not a cheater, no penalty
+	if !isCheater {
+		return big.NewInt(0), gasUsed, nil
+	}
+
+	// Get the slashing refund ratio for this validator
+	slashingRefundRatioSlot, slotGasUsed := getSlashingRefundRatioSlot(validatorID)
+	gasUsed += slotGasUsed
+	refundRatioState := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slashingRefundRatioSlot))
+	gasUsed += SloadGasCost
+	refundRatio := new(big.Int).SetBytes(refundRatioState.Bytes())
+
+	// Get decimal unit
+	decimalUnit := getDecimalUnit()
+
+	// If refundRatio >= Decimal.unit(), no penalty
+	if refundRatio.Cmp(decimalUnit) >= 0 {
+		return big.NewInt(0), gasUsed, nil
+	}
+
+	// Calculate penalty = amount * (Decimal.unit() - refundRatio) / Decimal.unit() + 1
+	// Round penalty upwards (ceiling) to prevent dust amount attacks
+	numerator := new(big.Int).Sub(decimalUnit, refundRatio)
+	penalty := new(big.Int).Mul(amount, numerator)
+	penalty = new(big.Int).Div(penalty, decimalUnit)
+	penalty = new(big.Int).Add(penalty, big.NewInt(1))
+
+	// If penalty > amount, return amount
+	if penalty.Cmp(amount) > 0 {
+		return amount, gasUsed, nil
+	}
+
+	return penalty, gasUsed, nil
+}
+
+// getSlashingRefundRatioSlot calculates the storage slot for a validator's slashing refund ratio
+func getSlashingRefundRatioSlot(validatorID *big.Int) (*big.Int, uint64) {
+	// Initialize gas used
+	var gasUsed uint64 = 0
+	// For a mapping(uint256 => uint256), the slot is calculated as:
+	// keccak256(abi.encode(validatorID, slashingRefundRatioSlot))
+
+	// Create the hash input using cached padded values
+	hashInput := CreateHashInput(validatorID, slashingRefundRatioSlot)
+
+	// Calculate the hash - add gas cost for hashing
+	hash := CachedKeccak256(hashInput)
+	gasUsed += HashGasCost
+
+	// Convert the hash to a big.Int
+	slot := new(big.Int).SetBytes(hash)
+
+	return slot, gasUsed
 }
 
 // _mintNativeToken mints native tokens to the specified address
@@ -1748,23 +1804,7 @@ func _newRewards(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) 
 	gasUsed += scaleGasUsed
 
 	// Sum the rewards
-	return sumRewards(plReward, puReward, wuReward), gasUsed, nil
-}
-
-// isLockedUp checks if a delegation is locked up
-// This is a port of the isLockedUp function from SFCLib.sol
-func isLockedUp(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) (bool, uint64, error) {
-	var gasUsed uint64 = 0
-
-	// Get the lockup end time
-	lockupEndTimeSlot, slotGasUsed := getLockupEndTimeSlot(delegator, toValidatorID)
-	gasUsed += slotGasUsed
-	lockupEndTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupEndTimeSlot))
-	gasUsed += SloadGasCost
-	lockupEndTimeBigInt := new(big.Int).SetBytes(lockupEndTime.Bytes())
-
-	// Check if the delegation is locked up
-	return lockupEndTimeBigInt.Cmp(evm.Context.Time) > 0, gasUsed, nil
+	return sumRewards3(plReward, puReward, wuReward), gasUsed, nil
 }
 
 // getEpochEndTimeSlot returns the storage slot for an epoch's end time

@@ -17,7 +17,7 @@ func handleInternalClaimRewards(evm *vm.EVM, delegator common.Address, toValidat
 	allowed, err := handleCheckAllowedToWithdraw(evm, delegator, toValidatorID)
 	if err != nil {
 		log.Error("handleInternalClaimRewards: handleCheckAllowedToWithdraw failed", "err", err)
-		return Rewards{}, 0, vm.ErrExecutionReverted
+		return Rewards{}, 0, err
 	}
 	if !allowed {
 		log.Error("handleInternalClaimRewards: not allowed to withdraw")

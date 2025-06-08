@@ -392,7 +392,7 @@ func handle_stashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
-	// Calculate nonStashedReward using _newRewards logic
+	// Calculate nonStashedReward using _newRewards
 	nonStashedReward, newRewardsGasUsed, err := _newRewards(evm, delegator, toValidatorID)
 	if err != nil {
 		log.Error("handle_stashRewards _newRewards", "err", err)
@@ -431,11 +431,7 @@ func handle_stashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 	currentRewardsStash := unpackRewards(packedCurrentRewardsStash)
 
 	// Sum the rewards
-	newRewardsStash := sumRewards(currentRewardsStash, nonStashedReward, Rewards{
-		LockupExtraReward: big.NewInt(0),
-		LockupBaseReward:  big.NewInt(0),
-		UnlockedReward:    big.NewInt(0),
-	})
+	newRewardsStash := sumRewards(currentRewardsStash, nonStashedReward)
 
 	// Pack the new rewards stash
 	packedNewRewardsStash := packRewards(newRewardsStash)
@@ -464,11 +460,7 @@ func handle_stashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 	currentStashedLockupRewards := unpackRewards(packedCurrentStashedLockupRewards)
 
 	// Sum the stashed lockup rewards
-	newStashedLockupRewards := sumRewards(currentStashedLockupRewards, nonStashedReward, Rewards{
-		LockupExtraReward: big.NewInt(0),
-		LockupBaseReward:  big.NewInt(0),
-		UnlockedReward:    big.NewInt(0),
-	})
+	newStashedLockupRewards := sumRewards(currentStashedLockupRewards, nonStashedReward)
 
 	// Pack the new stashed lockup rewards
 	packedNewStashedLockupRewards := packRewards(newStashedLockupRewards)
@@ -481,14 +473,26 @@ func handle_stashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 	}
 
 	// Check if the delegation is locked up
-	isLocked, lockedGasUsed, err := isLockedUp(evm, delegator, toValidatorID)
+	isLockedResult, lockedGasUsed, err := handleIsLockedUp(evm, []interface{}{delegator, toValidatorID})
 	if err != nil {
+		log.Error("handle_stashRewards: calling isLockedUp", "err", err)
 		return nil, gasUsed, err
 	}
 	gasUsed += lockedGasUsed
-
+	result, err := SfcAbi.Methods["isLockedUp"].Outputs.Unpack(isLockedResult)
+	if err != nil {
+		log.Error("isLockedUp: unpack isLockedUp failed", "err", err)
+		return nil, 0, err
+	}
+	isLocked, ok := result[0].(bool)
+	if !ok {
+		log.Error("isLockedUp: unpack isLockedUp failed", "err", err)
+		return nil, 0, err
+	}
+	log.Info("handle_stashRewards: isLocked", "isLocked", isLocked)
 	// If not locked up, delete lockup info and stashed lockup rewards
 	if !isLocked {
+		log.Info("handle_stashRewards: isLocked then Delete all fields of the LockedDelegation struct")
 		// Delete all fields of the LockedDelegation struct
 		lockedStakeSlot, slotGasUsed := getLockedStakeSlot(delegator, toValidatorID)
 		gasUsed += slotGasUsed
@@ -511,6 +515,7 @@ func handle_stashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 		gasUsed += SstoreGasCost
 
 		// Delete stashed lockup rewards
+		log.Info("handle_stashRewards: isLocked then Delete stashed lockup rewards")
 		for i := 0; i < 3; i++ {
 			slot := new(big.Int).Add(stashedLockupRewardsSlot, big.NewInt(int64(i)))
 			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(slot), common.Hash{})

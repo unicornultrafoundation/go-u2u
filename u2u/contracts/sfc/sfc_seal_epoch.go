@@ -574,7 +574,7 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 			}
 
 			// Use sumRewards to add the rewards
-			newRewardsStash := sumRewards(currentRewardsStash, reward, uReward)
+			newRewardsStash := sumRewards3(currentRewardsStash, reward, uReward)
 
 			// Store each field of the Rewards struct separately
 			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(rewardsStashSlot), common.BigToHash(newRewardsStash.LockupExtraReward))
@@ -613,7 +613,7 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 			}
 
 			// Use sumRewards to add the rewards
-			newStashedLockupRewards := sumRewards(currentStashedLockupRewards, reward, uReward)
+			newStashedLockupRewards := sumRewards3(currentStashedLockupRewards, reward, uReward)
 
 			// Store each field of the Rewards struct separately
 			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedLockupRewardsSlot), common.BigToHash(newStashedLockupRewards.LockupExtraReward))

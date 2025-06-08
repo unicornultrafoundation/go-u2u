@@ -1079,7 +1079,13 @@ func handleWithdraw(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 	evm.SfcStateDB.AddBalance(caller, amountToTransfer)
 
 	// Burn the penalty
-	// TODO: Implement _burnU2U
+	burnU2UArgs := []interface{}{penalty}
+	data, burnGasUsed, err := handleBurnU2U(evm, burnU2UArgs)
+	if err != nil {
+		log.Error("unlockStake: handleBurnU2U failed", "err", err)
+		return data, gasUsed + burnGasUsed, err
+	}
+	gasUsed += burnGasUsed
 
 	// Emit Withdrawn event
 	topics := []common.Hash{
@@ -1088,7 +1094,7 @@ func handleWithdraw(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 		common.BigToHash(toValidatorID),                             // indexed parameter (toValidatorID)
 		common.BigToHash(wrID),                                      // indexed parameter (wrID)
 	}
-	data, err := SfcLibAbi.Events["Withdrawn"].Inputs.NonIndexed().Pack(
+	data, err = SfcLibAbi.Events["Withdrawn"].Inputs.NonIndexed().Pack(
 		amount,
 	)
 	if err != nil {

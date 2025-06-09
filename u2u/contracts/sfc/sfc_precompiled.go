@@ -69,6 +69,14 @@ func parseABIInput(input []byte) (*abi.Method, []interface{}, error) {
 
 // Run runs the precompiled contract
 func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, suppliedGas uint64, value *big.Int) ([]byte, uint64, error) {
+	// Cache the SFC state DB to avoid unnecessary state reads
+	sfcStateDBCache := NewSfcStateDBCache(evm.SfcStateDB)
+	evm.SfcStateDB = sfcStateDBCache
+	defer func() {
+		sfcStateDBCache.Flush()
+		evm.SfcStateDB = sfcStateDBCache.StateDB
+	}()
+
 	// We'll use evm.SfcStateDB directly in the handler functions
 	// Parse the input to get method and arguments
 	method, args, err := parseABIInput(input)

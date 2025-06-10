@@ -1,6 +1,8 @@
 package sfc
 
 import (
+	"math/big"
+
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 )
@@ -8,26 +10,35 @@ import (
 var (
 	cache        map[common.Address]map[common.Hash]common.Hash
 	needFlushMap map[common.Address]map[common.Hash]struct{}
+	currentEpoch *big.Int
 )
 
 type SfcStateDBCache struct {
 	vm.StateDB
+	evm *vm.EVM
 }
 
-func NewSfcStateDBCache(originalStateDB vm.StateDB) *SfcStateDBCache {
+func NewSfcStateDBCache(originalStateDB vm.StateDB, evm *vm.EVM) *SfcStateDBCache {
 	if cache == nil {
 		cache = make(map[common.Address]map[common.Hash]common.Hash)
 	}
 	if needFlushMap == nil {
 		needFlushMap = make(map[common.Address]map[common.Hash]struct{})
 	}
+	if currentEpoch == nil {
+		currentEpoch = big.NewInt(0)
+	}
 
 	return &SfcStateDBCache{
 		StateDB: originalStateDB,
+		evm:     evm,
 	}
 }
 
 func (s *SfcStateDBCache) GetState(addr common.Address, hash common.Hash) common.Hash {
+	// Check if we need to flush due to epoch change
+	s.CheckAndFlushEpoch()
+
 	if value, ok := cache[addr][hash]; ok {
 		// Cache hit
 		return value
@@ -53,7 +64,6 @@ func (s *SfcStateDBCache) SetState(addr common.Address, hash common.Hash, value 
 		cache[addr][hash] = value
 		needFlushMap[addr][hash] = struct{}{}
 	}
-
 }
 
 func (s *SfcStateDBCache) Flush() {
@@ -64,5 +74,19 @@ func (s *SfcStateDBCache) Flush() {
 			}
 		}
 		delete(needFlushMap, addr)
+	}
+}
+
+func (s *SfcStateDBCache) CheckAndFlushEpoch() {
+	// Get current epoch directly from the original state DB to avoid recursion
+	newEpoch, ok := cache[ContractAddress][common.BigToHash(big.NewInt(currentSealedEpochSlot))]
+	if !ok {
+		return
+	}
+
+	// If epoch changed, flush the cache
+	if currentEpoch == nil || currentEpoch.Cmp(newEpoch.Big()) != 0 {
+		s.Flush()
+		currentEpoch = newEpoch.Big()
 	}
 }

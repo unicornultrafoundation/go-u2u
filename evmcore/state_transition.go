@@ -312,9 +312,6 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		originalGas := st.gas
 		originalValue := st.value
 		ret, st.gas, vmerr = st.evm.Call(sender, st.to(), st.data, st.gas, st.value)
-		log.Info("Trying to call SFC", "st.sfcState != nil", st.sfcState != nil, "vmerr", vmerr,
-			"originalGas", originalGas, "originalValue", originalValue,
-			"st.gas", st.gas, "st.value", st.value)
 		if st.sfcState != nil && vmerr == nil {
 			if _, _, sfcErr := st.evm.CallSFC(sender, st.to(), st.data, originalGas, originalValue); sfcErr != nil {
 				log.Error("CallSFC failed", "sfcErr", sfcErr)

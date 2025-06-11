@@ -373,8 +373,6 @@ func handle_stashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 	gasUsed += slotGasUsed
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedRewardsUntilEpochSlot), common.BigToHash(highestPayableEpoch))
 	gasUsed += SstoreGasCost
-	log.Info("handle_stashRewards: stashedRewardsUntilEpoch", "stashedRewardsUntilEpochSlot", common.Bytes2Hex(stashedRewardsUntilEpochSlot.Bytes()),
-		"stashedRewardsUntilEpoch", highestPayableEpoch.String())
 
 	// Then update _rewardsStash
 	rewardsStashSlot, slotGasUsed := getRewardsStashSlot(delegator, toValidatorID)
@@ -403,8 +401,6 @@ func handle_stashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 		slot := new(big.Int).Add(rewardsStashSlot, big.NewInt(int64(i)))
 		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(slot), common.BytesToHash(packedNewRewardsStash[i]))
 		gasUsed += SstoreGasCost
-		log.Info("handle_stashRewards: _rewardsStash", "slot", common.Bytes2Hex(slot.Bytes()),
-			"value", common.Bytes2Hex(packedNewRewardsStash[i]))
 	}
 
 	// Finally update getStashedLockupRewards
@@ -434,8 +430,6 @@ func handle_stashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 		slot := new(big.Int).Add(stashedLockupRewardsSlot, big.NewInt(int64(i)))
 		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(slot), common.BytesToHash(packedNewStashedLockupRewards[i]))
 		gasUsed += SstoreGasCost
-		log.Info("handle_stashRewards: getStashedLockupRewards", "slot", common.Bytes2Hex(slot.Bytes()),
-			"value", common.Bytes2Hex(packedNewStashedLockupRewards[i]))
 	}
 
 	// Check if the delegation is locked up
@@ -455,10 +449,8 @@ func handle_stashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 		log.Error("isLockedUp: unpack isLockedUp failed", "err", err)
 		return nil, 0, err
 	}
-	log.Info("handle_stashRewards: isLocked", "isLocked", isLocked)
 	// If not locked up, delete lockup info and stashed lockup rewards
 	if !isLocked {
-		log.Info("handle_stashRewards: isLocked then Delete all fields of the LockedDelegation struct")
 		// Delete all fields of the LockedDelegation struct
 		lockedStakeSlot, slotGasUsed := getLockedStakeSlot(delegator, toValidatorID)
 		gasUsed += slotGasUsed
@@ -481,7 +473,6 @@ func handle_stashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 		gasUsed += SstoreGasCost
 
 		// Delete stashed lockup rewards
-		log.Info("handle_stashRewards: isLocked then Delete stashed lockup rewards")
 		for i := 0; i < 3; i++ {
 			slot := new(big.Int).Add(stashedLockupRewardsSlot, big.NewInt(int64(i)))
 			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(slot), common.Hash{})

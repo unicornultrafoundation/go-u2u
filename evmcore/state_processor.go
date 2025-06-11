@@ -115,21 +115,21 @@ func (p *StateProcessor) Process(
 				if original.Cmp(sfc) != 0 {
 					log.Error("U2UEVMProcessor.Process: SFC storage corrupted after applying tx",
 						"tx", tx.Hash().Hex(), "addr", addr, "original", original.Hex(), "sfc", sfc.Hex())
-					common.SendInterrupt()
+					//common.SendInterrupt()
 				}
 				originalBalance := statedb.GetBalance(addr)
 				sfcBalance := sfcStatedb.GetBalance(addr)
 				if originalBalance.Cmp(sfcBalance) != 0 {
 					log.Error("U2UEVMProcessor.Process: SFC balance mismatched after applying tx",
 						"tx", tx.Hash().Hex(), "addr", addr, "original", originalBalance, "sfc", sfcBalance)
-					common.SendInterrupt()
+					//common.SendInterrupt()
 				}
 				originalNonce := statedb.GetNonce(addr)
 				sfcNonce := sfcStatedb.GetNonce(addr)
 				if originalNonce != sfcNonce {
 					log.Error("U2UEVMProcessor.Process: SFC nonce mismatched after applying tx",
 						"tx", tx.Hash().Hex(), "addr", addr, "original", originalNonce, "sfc", sfcNonce)
-					common.SendInterrupt()
+					//common.SendInterrupt()
 				}
 			}
 			// Benchmark execution time difference of SFC precompiled related txs
@@ -211,10 +211,11 @@ func ApplyTransaction(
 	// Update the state with pending changes.
 	var root []byte
 	if config.IsByzantium(blockNumber) {
-		log.Info("StateProcessor.Process during ApplyTransaction", "txHash", tx.Hash().Hex())
+		log.Trace("StateProcessor.Process during ApplyTransaction", "txHash", tx.Hash().Hex())
 		statedb.Finalise(true)
 		if sfcStatedb != nil {
-			log.Info("Separate two commit logs when StateProcessor.Process during ApplyTransaction")
+			log.Trace("Separate two commit logs when StateProcessor.Process during ApplyTransaction",
+				"above", "evm", "below", "sfc")
 			sfcStatedb.Finalise(true)
 		}
 	} else {
@@ -249,7 +250,7 @@ func ApplyTransaction(
 	receipt.BlockNumber = blockNumber
 	receipt.TransactionIndex = uint(statedb.TxIndex())
 
-	// Set post informations and save trace
+	// Set post-information and save trace
 	if traceLogger != nil {
 		traceLogger.SetGasUsed(result.UsedGas)
 		traceLogger.SetNewAddress(receipt.ContractAddress)

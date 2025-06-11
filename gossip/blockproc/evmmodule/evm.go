@@ -140,7 +140,8 @@ func (p *U2UEVMProcessor) Finalize() (evmBlock *evmcore.EvmBlock, skippedTxs []u
 	}
 	evmBlock.Root = newStateHash
 	if p.sfcStateDb != nil {
-		log.Trace("Separate two commit logs when U2UEVMProcessor.Finalize after block")
+		log.Trace("Separate two commit logs when U2UEVMProcessor.Finalize after block",
+			"above", "evm", "below", "sfc")
 		newSfcStateHash, err := p.sfcStateDb.Commit(true)
 		if err != nil {
 			log.Crit("Failed to commit sfc state", "err", err)
@@ -157,21 +158,21 @@ func (p *U2UEVMProcessor) Finalize() (evmBlock *evmcore.EvmBlock, skippedTxs []u
 			if original.Cmp(sfc) != 0 {
 				log.Error("U2UEVMProcessor.Finalize: SFC storage corrupted after applying block",
 					"height", p.block.Idx, "addr", addr, "original", original.Hex(), "sfc", sfc.Hex())
-				common.SendInterrupt()
+				//common.SendInterrupt()
 			}
 			originalBalance := p.statedb.GetBalance(addr)
 			sfcBalance := p.sfcStateDb.GetBalance(addr)
 			if originalBalance.Cmp(sfcBalance) != 0 {
 				log.Error("U2UEVMProcessor.Finalize: SFC balance mismatched after applying block",
 					"height", p.block.Idx, "addr", addr, "original", originalBalance, "sfc", sfcBalance)
-				common.SendInterrupt()
+				//common.SendInterrupt()
 			}
 			originalNonce := p.statedb.GetNonce(addr)
 			sfcNonce := p.sfcStateDb.GetNonce(addr)
 			if originalNonce != sfcNonce {
 				log.Error("U2UEVMProcessor.Finalize: SFC nonce mismatched after applying block",
 					"height", p.block.Idx, "addr", addr, "original", originalNonce, "sfc", sfcNonce)
-				common.SendInterrupt()
+				//common.SendInterrupt()
 			}
 		}
 	}

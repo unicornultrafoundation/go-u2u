@@ -44,8 +44,6 @@ func handleBurnU2U(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 			Data:    data,
 		}
 		evm.SfcStateDB.AddLog(burntU2ULog)
-		log.Info("handleBurnU2U: BurntU2U event", "Address", burntU2ULog.Address.Hex(),
-			"Topics", burntU2ULog.Topics, "Data", common.Bytes2Hex(burntU2ULog.Data))
 	}
 
 	return nil, gasUsed, nil

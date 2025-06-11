@@ -25,6 +25,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/metrics"
 	"github.com/unicornultrafoundation/go-u2u/rlp"
 )
@@ -315,7 +316,7 @@ func (s *stateObject) finalise(prefetch bool) {
 	for key, value := range s.dirtyStorage {
 		s.pendingStorage[key] = value
 		if isHeavyLog {
-			fmt.Println(key.Hex(), "value=", value.Hex())
+			log.Trace("stateObject.finalise on SFC contract", "key", key.Hex(), "value=", value.Hex())
 		}
 		if value != s.originStorage[key] {
 			slotsToPrefetch = append(slotsToPrefetch, common.CopyBytes(key[:])) // Copy needed for closure

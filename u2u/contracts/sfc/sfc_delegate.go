@@ -658,7 +658,7 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
-	if !isLocked {
+	if isLocked {
 		revertData, err := encodeRevertReason("lockStake", "already locked up")
 		if err != nil {
 			return nil, 0, err
@@ -1128,7 +1128,10 @@ func handleWithdraw(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 
 	// Transfer the amount minus the penalty to the delegator
 	amountToTransfer := new(big.Int).Sub(amount, penalty)
-	evm.SfcStateDB.AddBalance(caller, amountToTransfer)
+	if SfcPrecompiles[caller] {
+		evm.SfcStateDB.AddBalance(caller, amountToTransfer)
+	}
+	evm.SfcStateDB.SubBalance(ContractAddress, amountToTransfer)
 
 	// Burn the penalty
 	burnU2UArgs := []interface{}{penalty}

@@ -315,7 +315,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		log.Info("Trying to call SFC", "st.sfcState != nil", st.sfcState != nil, "vmerr", vmerr,
 			"originalGas", originalGas, "originalValue", originalValue,
 			"st.gas", st.gas, "st.value", st.value)
-		if st.sfcState != nil {
+		if st.sfcState != nil && vmerr == nil {
 			if _, _, sfcErr := st.evm.CallSFC(sender, st.to(), st.data, originalGas, originalValue); sfcErr != nil {
 				log.Error("CallSFC failed", "sfcErr", sfcErr)
 			}

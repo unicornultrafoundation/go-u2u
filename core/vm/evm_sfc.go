@@ -45,7 +45,6 @@ func (evm *EVM) CallSFC(caller ContractRef, addr common.Address, input []byte, g
 			evm.SfcStateDB.AddBalance(addr, value)
 		}
 	}
-
 	// Handle evmWriter calls from NodeDriver contract
 	if sp, isStatePrecompile := evm.statePrecompile(addr); isStatePrecompile {
 		log.Debug("EvmWriter precompiled calling", "height", evm.Context.BlockNumber,

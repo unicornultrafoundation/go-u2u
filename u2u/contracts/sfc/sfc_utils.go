@@ -1,6 +1,7 @@
 package sfc
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/unicornultrafoundation/go-u2u/accounts/abi"
@@ -1535,6 +1536,13 @@ type Rewards struct {
 	UnlockedReward    *big.Int
 }
 
+func (r Rewards) String() string {
+	return fmt.Sprintf("LockupExtraReward: %s, LockupBaseReward: %s, UnlockedReward: %s",
+		common.Bytes2Hex(r.LockupExtraReward.Bytes()),
+		common.Bytes2Hex(r.LockupBaseReward.Bytes()),
+		common.Bytes2Hex(r.UnlockedReward.Bytes()))
+}
+
 // _highestPayableEpoch returns the highest epoch for which rewards can be paid
 // This is a port of the _highestPayableEpoch function from SFCLib.sol
 func _highestPayableEpoch(evm *vm.EVM, validatorID *big.Int) (*big.Int, uint64, error) {
@@ -1673,6 +1681,9 @@ func _highestLockupEpoch(evm *vm.EVM, delegator common.Address, toValidatorID *b
 // _newRewardsOf calculates the new rewards for a delegation between two epochs
 // This is a port of the _newRewardsOf function from SFCLib.sol
 func _newRewardsOf(evm *vm.EVM, stakeAmount *big.Int, toValidatorID *big.Int, fromEpoch *big.Int, toEpoch *big.Int) (*big.Int, uint64, error) {
+	log.Info("_newRewardsOf: stakeAmount", "stakeAmount", common.Bytes2Hex(stakeAmount.Bytes()))
+	log.Info("_newRewardsOf: fromEpoch", "fromEpoch", common.Bytes2Hex(fromEpoch.Bytes()))
+	log.Info("_newRewardsOf: toEpoch", "toEpoch", common.Bytes2Hex(toEpoch.Bytes()))
 	var gasUsed uint64 = 0
 
 	// If fromEpoch >= toEpoch, return 0
@@ -1686,6 +1697,7 @@ func _newRewardsOf(evm *vm.EVM, stakeAmount *big.Int, toValidatorID *big.Int, fr
 	stashedRate := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stashedRateSlot))
 	gasUsed += SloadGasCost
 	stashedRateBigInt := new(big.Int).SetBytes(stashedRate.Bytes())
+	log.Info("_newRewardsOf: stashedRate", "slot", common.Bytes2Hex(stashedRateSlot.Bytes()), "stashedRate", common.Bytes2Hex(stashedRateBigInt.Bytes()))
 
 	// Get the current rate
 	currentRateSlot, slotGasUsed := getEpochAccumulatedRewardPerTokenSlot(toEpoch, toValidatorID)
@@ -1693,12 +1705,15 @@ func _newRewardsOf(evm *vm.EVM, stakeAmount *big.Int, toValidatorID *big.Int, fr
 	currentRate := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(currentRateSlot))
 	gasUsed += SloadGasCost
 	currentRateBigInt := new(big.Int).SetBytes(currentRate.Bytes())
+	log.Info("_newRewardsOf: currentRate", "slot", common.Bytes2Hex(currentRateSlot.Bytes()), "currentRate", common.Bytes2Hex(currentRateBigInt.Bytes()))
 
 	// Calculate the reward
 	// return currentRate.sub(stashedRate).mul(stakeAmount).div(Decimal.unit());
 	reward := new(big.Int).Sub(currentRateBigInt, stashedRateBigInt)
 	reward = new(big.Int).Mul(reward, stakeAmount)
 	reward = new(big.Int).Div(reward, getDecimalUnit())
+	log.Info("_newRewardsOf: reward", "stakeAmount", common.Bytes2Hex(stakeAmount.Bytes()),
+		"reward", common.Bytes2Hex(reward.Bytes()))
 
 	return reward, gasUsed, nil
 }
@@ -1714,6 +1729,7 @@ func _newRewards(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) 
 	stashedRewardsUntilEpoch := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stashedRewardsUntilEpochSlot))
 	gasUsed += SloadGasCost
 	stashedUntil := new(big.Int).SetBytes(stashedRewardsUntilEpoch.Bytes())
+	log.Info("_newRewards: stashedUntil", "slot", common.Bytes2Hex(stashedRewardsUntilEpochSlot.Bytes()), "stashedUntil", common.Bytes2Hex(stashedUntil.Bytes()))
 
 	// Get the highest payable epoch
 	payableUntil, epochGasUsed, err := _highestPayableEpoch(evm, toValidatorID)
@@ -1721,6 +1737,7 @@ func _newRewards(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) 
 		return Rewards{}, gasUsed, err
 	}
 	gasUsed += epochGasUsed
+	log.Info("_newRewards: _highestPayableEpoch", "payableUntil", common.Bytes2Hex(payableUntil.Bytes()))
 
 	// Get the highest lockup epoch
 	lockedUntil, lockupGasUsed, err := _highestLockupEpoch(evm, delegator, toValidatorID)
@@ -1728,6 +1745,7 @@ func _newRewards(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) 
 		return Rewards{}, gasUsed, err
 	}
 	gasUsed += lockupGasUsed
+	log.Info("_newRewards: _highestLockupEpoch", "lockedUntil", common.Bytes2Hex(lockedUntil.Bytes()))
 
 	// Adjust lockedUntil if necessary
 	if lockedUntil.Cmp(payableUntil) > 0 {
@@ -1736,6 +1754,7 @@ func _newRewards(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) 
 	if lockedUntil.Cmp(stashedUntil) < 0 {
 		lockedUntil = stashedUntil
 	}
+	log.Info("_newRewards: finalized lockedUntil", "lockedUntil", common.Bytes2Hex(lockedUntil.Bytes()))
 
 	// Get the locked delegation info
 	lockedStakeSlot, slotGasUsed := getLockedStakeSlot(delegator, toValidatorID)
@@ -1743,6 +1762,7 @@ func _newRewards(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) 
 	lockedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockedStakeSlot))
 	gasUsed += SloadGasCost
 	lockedStakeBigInt := new(big.Int).SetBytes(lockedStake.Bytes())
+	log.Info("_newRewards: lockedStake", "slot", common.Bytes2Hex(lockedStakeSlot.Bytes()), "lockedStake", common.Bytes2Hex(lockedStakeBigInt.Bytes()))
 
 	// Get the lockup duration
 	lockupDurationSlot, slotGasUsed := getLockupDurationSlot(delegator, toValidatorID)
@@ -1750,6 +1770,7 @@ func _newRewards(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) 
 	lockupDuration := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockupDurationSlot))
 	gasUsed += SloadGasCost
 	lockupDurationBigInt := new(big.Int).SetBytes(lockupDuration.Bytes())
+	log.Info("_newRewards: lockupDuration", "slot", common.Bytes2Hex(lockupDurationSlot.Bytes()), "lockupDuration", common.Bytes2Hex(lockupDurationBigInt.Bytes()))
 
 	// Get the whole stake
 	stakeSlot, slotGasUsed := getStakeSlot(delegator, toValidatorID)
@@ -1757,6 +1778,7 @@ func _newRewards(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) 
 	stake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stakeSlot))
 	gasUsed += SloadGasCost
 	wholeStake := new(big.Int).SetBytes(stake.Bytes())
+	log.Info("_newRewards: wholeStake", "slot", common.Bytes2Hex(stakeSlot.Bytes()), "wholeStake", common.Bytes2Hex(wholeStake.Bytes()))
 
 	// Calculate the unlocked stake
 	unlockedStake := new(big.Int).Sub(wholeStake, lockedStakeBigInt)
@@ -1770,12 +1792,14 @@ func _newRewards(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) 
 		return Rewards{}, gasUsed, err
 	}
 	gasUsed += rewardsGasUsed
+	log.Info("_newRewards: fullReward", "slot", common.Bytes2Hex(stakeSlot.Bytes()), "fullReward", common.Bytes2Hex(fullReward.Bytes()))
 
 	plReward, scaleGasUsed, err := _scaleLockupReward(evm, fullReward, lockupDurationBigInt)
 	if err != nil {
 		return Rewards{}, gasUsed, err
 	}
 	gasUsed += scaleGasUsed
+	log.Info("_newRewards: plReward", "slot", common.Bytes2Hex(stakeSlot.Bytes()), "plReward", plReward)
 
 	// Calculate rewards for unlocked stake during lockup epochs
 	fullReward, rewardsGasUsed, err = _newRewardsOf(evm, unlockedStake, toValidatorID, stashedUntil, lockedUntil)
@@ -1783,12 +1807,14 @@ func _newRewards(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) 
 		return Rewards{}, gasUsed, err
 	}
 	gasUsed += rewardsGasUsed
+	log.Info("_newRewards: fullReward", "slot", common.Bytes2Hex(stakeSlot.Bytes()), "fullReward", common.Bytes2Hex(fullReward.Bytes()))
 
 	puReward, scaleGasUsed, err := _scaleLockupReward(evm, fullReward, big.NewInt(0))
 	if err != nil {
 		return Rewards{}, gasUsed, err
 	}
 	gasUsed += scaleGasUsed
+	log.Info("_newRewards: puReward", "slot", common.Bytes2Hex(stakeSlot.Bytes()), "puReward", puReward)
 
 	// Calculate rewards for whole stake during unlocked epochs
 	fullReward, rewardsGasUsed, err = _newRewardsOf(evm, wholeStake, toValidatorID, lockedUntil, payableUntil)
@@ -1796,12 +1822,14 @@ func _newRewards(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) 
 		return Rewards{}, gasUsed, err
 	}
 	gasUsed += rewardsGasUsed
+	log.Info("_newRewards: fullReward", "slot", common.Bytes2Hex(stakeSlot.Bytes()), "fullReward", common.Bytes2Hex(fullReward.Bytes()))
 
 	wuReward, scaleGasUsed, err := _scaleLockupReward(evm, fullReward, big.NewInt(0))
 	if err != nil {
 		return Rewards{}, gasUsed, err
 	}
 	gasUsed += scaleGasUsed
+	log.Info("_newRewards: wuReward", "slot", common.Bytes2Hex(stakeSlot.Bytes()), "wuReward", wuReward)
 
 	// Sum the rewards
 	return sumRewards3(plReward, puReward, wuReward), gasUsed, nil
@@ -1839,25 +1867,24 @@ func getEpochAccumulatedRewardPerTokenSlot(epoch *big.Int, validatorID *big.Int)
 	// keccak256(abi.encode(validatorID, keccak256(abi.encode(epoch, epochSnapshotSlot)) + accumulatedRewardPerTokenOffset))
 
 	// Create the inner hash input using cached padded values
-	innerHashInput := CreateHashInput(epoch, epochSnapshotSlot)
+	thisEpochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(epoch)
+	gasUsed += slotGasUsed
 
-	// Calculate the inner hash - add gas cost for hashing
-	innerHash := CachedKeccak256(innerHashInput)
-	gasUsed += HashGasCost
+	// Update accumulated reward per token
+	// For a mapping within a struct, we need to calculate the slot as:
+	// keccak256(key . (struct_slot + offset))
+	// Add the offset for the accumulatedRewardPerToken mapping within the struct
+	mappingSlot := new(big.Int).Add(thisEpochSnapshotSlot, big.NewInt(accumulatedRewardPerTokenOffset))
 
-	// Convert the inner hash to a big.Int and add the offset for the accumulatedRewardPerToken mapping
-	innerSlot := new(big.Int).SetBytes(innerHash)
-	innerSlot = new(big.Int).Add(innerSlot, big.NewInt(accumulatedRewardPerTokenOffset))
-
-	// Create the outer hash input using cached nested hash input
-	outerHashInput := CreateNestedHashInput(validatorID, innerSlot.Bytes())
-
-	// Calculate the outer hash - add gas cost for hashing
-	outerHash := CachedKeccak256(outerHashInput)
-	gasUsed += HashGasCost
+	// Then, calculate the slot for the specific key using our helper function
+	// Use CreateValidatorMappingHashInput to create the hash input
+	// Declare outerHashInput at the beginning of the function
+	outerHashInput := CreateValidatorMappingHashInput(validatorID, mappingSlot)
+	// Use cached hash calculation
+	accumulatedRewardPerTokenSlotHash := CachedKeccak256Hash(outerHashInput)
 
 	// Convert the hash to a big.Int
-	slot := new(big.Int).SetBytes(outerHash)
+	slot := new(big.Int).SetBytes(accumulatedRewardPerTokenSlotHash.Bytes())
 
 	return slot, gasUsed
 }
@@ -1877,6 +1904,7 @@ func _scaleLockupReward(evm *vm.EVM, fullReward *big.Int, lockupDuration *big.In
 
 	// Get the unlockedRewardRatio from the constants manager
 	unlockedRewardRatioBigInt := getConstantsManagerVariable("unlockedRewardRatio")
+	log.Info("_scaleLockupReward: c.unlockedRewardRatio()", "unlockedRewardRatio", common.Bytes2Hex(unlockedRewardRatioBigInt.Bytes()))
 
 	// Check if lockupDuration is not zero
 	if lockupDuration.Cmp(big.NewInt(0)) != 0 {
@@ -1885,29 +1913,36 @@ func _scaleLockupReward(evm *vm.EVM, fullReward *big.Int, lockupDuration *big.In
 
 		// Calculate maxLockupExtraRatio = Decimal.unit() - unlockedRewardRatio
 		maxLockupExtraRatio := new(big.Int).Sub(decimalUnit, unlockedRewardRatioBigInt)
+		log.Info("_scaleLockupReward: maxLockupExtraRatio", "maxLockupExtraRatio", common.Bytes2Hex(maxLockupExtraRatio.Bytes()))
 
 		// Get the maxLockupDuration from the constants manager
 		maxLockupDurationBigInt := getConstantsManagerVariable("maxLockupDuration")
+		log.Info("_scaleLockupReward: c.maxLockupDuration()", "maxLockupDuration", common.Bytes2Hex(maxLockupDurationBigInt.Bytes()))
 
 		// Calculate lockupExtraRatio = maxLockupExtraRatio * lockupDuration / maxLockupDuration
 		lockupExtraRatio := new(big.Int).Mul(maxLockupExtraRatio, lockupDuration)
 		lockupExtraRatio = new(big.Int).Div(lockupExtraRatio, maxLockupDurationBigInt)
+		log.Info("_scaleLockupReward: lockupExtraRatio", "lockupExtraRatio", common.Bytes2Hex(lockupExtraRatio.Bytes()))
 
 		// Calculate totalScaledReward = fullReward * (unlockedRewardRatio + lockupExtraRatio) / Decimal.unit()
 		totalRewardRatio := new(big.Int).Add(unlockedRewardRatioBigInt, lockupExtraRatio)
 		totalScaledReward := new(big.Int).Mul(fullReward, totalRewardRatio)
 		totalScaledReward = new(big.Int).Div(totalScaledReward, decimalUnit)
+		log.Info("_scaleLockupReward: totalScaledReward", "totalScaledReward", common.Bytes2Hex(totalScaledReward.Bytes()))
 
 		// Calculate lockupBaseReward = fullReward * unlockedRewardRatio / Decimal.unit()
 		reward.LockupBaseReward = new(big.Int).Mul(fullReward, unlockedRewardRatioBigInt)
 		reward.LockupBaseReward = new(big.Int).Div(reward.LockupBaseReward, decimalUnit)
+		log.Info("_scaleLockupReward: lockupBaseReward", "lockupBaseReward", common.Bytes2Hex(reward.LockupBaseReward.Bytes()))
 
 		// Calculate lockupExtraReward = totalScaledReward - lockupBaseReward
 		reward.LockupExtraReward = new(big.Int).Sub(totalScaledReward, reward.LockupBaseReward)
+		log.Info("_scaleLockupReward: lockupExtraReward", "lockupExtraReward", common.Bytes2Hex(reward.LockupExtraReward.Bytes()))
 	} else {
 		// Calculate unlockedReward = fullReward * unlockedRewardRatio / Decimal.unit()
 		reward.UnlockedReward = new(big.Int).Mul(fullReward, unlockedRewardRatioBigInt)
 		reward.UnlockedReward = new(big.Int).Div(reward.UnlockedReward, getDecimalUnit())
+		log.Info("_scaleLockupReward: unlockedReward", "unlockedReward", common.Bytes2Hex(reward.UnlockedReward.Bytes()))
 	}
 
 	return reward, gasUsed, nil

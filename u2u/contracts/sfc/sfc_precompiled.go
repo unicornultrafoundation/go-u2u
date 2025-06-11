@@ -319,9 +319,6 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 	case "_mintNativeToken":
 		result, gasUsed, err = handle_mintNativeToken(evm, args)
 
-	case "_scaleLockupReward":
-		result, gasUsed, err = handle_scaleLockupReward(evm, args)
-
 	case "_setValidatorDeactivated":
 		result, gasUsed, err = handle_setValidatorDeactivated(evm, args)
 

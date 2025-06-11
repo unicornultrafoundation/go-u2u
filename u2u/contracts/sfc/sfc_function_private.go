@@ -29,46 +29,6 @@ func handle_calcValidatorCommission(evm *vm.EVM, args []interface{}) ([]byte, ui
 	return nil, 0, vm.ErrSfcFunctionNotImplemented
 }
 
-// _scaleLockupReward is an internal function to scale lockup reward
-func handle_scaleLockupReward(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// Initialize gas used
-	var gasUsed uint64 = 0
-
-	// Get the arguments
-	if len(args) != 2 {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	fullReward, ok := args[0].(*big.Int)
-	if !ok {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	lockupDuration, ok := args[1].(*big.Int)
-	if !ok {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	// Call the _scaleLockupReward helper function
-	reward, scaleGasUsed, err := _scaleLockupReward(evm, fullReward, lockupDuration)
-	gasUsed += scaleGasUsed
-	if err != nil {
-		return nil, gasUsed, err
-	}
-
-	// Don't use cache for ABI packing with parameters
-	result, err := SfcAbi.Methods["_scaleLockupReward"].Outputs.Pack(
-		reward.LockupBaseReward,
-		reward.LockupExtraReward,
-		reward.UnlockedReward,
-	)
-	if err != nil {
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	return result, gasUsed, nil
-}
-
 // _setValidatorDeactivated is an internal function to set a validator as deactivated
 func handle_setValidatorDeactivated(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	// TODO: Implement _setValidatorDeactivated handler
@@ -413,6 +373,8 @@ func handle_stashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 	gasUsed += slotGasUsed
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(stashedRewardsUntilEpochSlot), common.BigToHash(highestPayableEpoch))
 	gasUsed += SstoreGasCost
+	log.Info("handle_stashRewards: stashedRewardsUntilEpoch", "stashedRewardsUntilEpochSlot", common.Bytes2Hex(stashedRewardsUntilEpochSlot.Bytes()),
+		"stashedRewardsUntilEpoch", highestPayableEpoch.String())
 
 	// Then update _rewardsStash
 	rewardsStashSlot, slotGasUsed := getRewardsStashSlot(delegator, toValidatorID)
@@ -427,7 +389,7 @@ func handle_stashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 		gasUsed += SloadGasCost
 	}
 
-	// Unpack the current rewards stash
+	// Unpack the current rewards stash from sfcStateDB
 	currentRewardsStash := unpackRewards(packedCurrentRewardsStash)
 
 	// Sum the rewards
@@ -441,6 +403,8 @@ func handle_stashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 		slot := new(big.Int).Add(rewardsStashSlot, big.NewInt(int64(i)))
 		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(slot), common.BytesToHash(packedNewRewardsStash[i]))
 		gasUsed += SstoreGasCost
+		log.Info("handle_stashRewards: _rewardsStash", "slot", common.Bytes2Hex(slot.Bytes()),
+			"value", common.Bytes2Hex(packedNewRewardsStash[i]))
 	}
 
 	// Finally update getStashedLockupRewards
@@ -470,6 +434,8 @@ func handle_stashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error
 		slot := new(big.Int).Add(stashedLockupRewardsSlot, big.NewInt(int64(i)))
 		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(slot), common.BytesToHash(packedNewStashedLockupRewards[i]))
 		gasUsed += SstoreGasCost
+		log.Info("handle_stashRewards: getStashedLockupRewards", "slot", common.Bytes2Hex(slot.Bytes()),
+			"value", common.Bytes2Hex(packedNewStashedLockupRewards[i]))
 	}
 
 	// Check if the delegation is locked up

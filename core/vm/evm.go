@@ -160,7 +160,10 @@ func NewEVM(blockCtx BlockContext, txCtx TxContext, statedb StateDB, sfcStatedb 
 	}
 	evm.interpreter = NewEVMInterpreter(evm, config)
 	if !common.IsNilInterface(sfcStatedb) {
-		evm.SfcStateDB = sfcStatedb
+		// Cache the SFC state DB to avoid unnecessary state reads
+		sfcStateDBCache := NewSfcStateDBCache(sfcStatedb)
+		evm.SfcStateDB = sfcStateDBCache
+
 		// TODO(trinhdn97): init this cache once
 		// Dummy call to init CM cache
 		evm.CallSFC(AccountRef(common.HexToAddress("0xfc00face00000000000000000000000000000000")),

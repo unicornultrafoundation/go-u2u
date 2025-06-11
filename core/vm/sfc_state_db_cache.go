@@ -1,10 +1,10 @@
-package sfc
+package vm
 
 import (
+	"log"
 	"math/big"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/core/vm"
 )
 
 var (
@@ -14,11 +14,10 @@ var (
 )
 
 type SfcStateDBCache struct {
-	vm.StateDB
-	evm *vm.EVM
+	StateDB
 }
 
-func NewSfcStateDBCache(originalStateDB vm.StateDB, evm *vm.EVM) *SfcStateDBCache {
+func NewSfcStateDBCache(originalStateDB StateDB) *SfcStateDBCache {
 	if cache == nil {
 		cache = make(map[common.Address]map[common.Hash]common.Hash)
 	}
@@ -31,7 +30,6 @@ func NewSfcStateDBCache(originalStateDB vm.StateDB, evm *vm.EVM) *SfcStateDBCach
 
 	return &SfcStateDBCache{
 		StateDB: originalStateDB,
-		evm:     evm,
 	}
 }
 
@@ -75,11 +73,24 @@ func (s *SfcStateDBCache) Flush() {
 		}
 		delete(needFlushMap, addr)
 	}
+
+	// Log the size of the cache (in bytes) in other goroutine
+	go func() {
+		cacheSize := 0
+		for _, hashMap := range cache {
+			for _, value := range hashMap {
+				cacheSize += len(value.Bytes())
+			}
+		}
+		log.Printf("Cache size: %d bytes, current epoch: %d\n", cacheSize, currentEpoch)
+	}()
 }
 
 func (s *SfcStateDBCache) CheckAndFlushEpoch() {
-	// Get current epoch directly from the original state DB to avoid recursion
-	newEpoch, ok := cache[ContractAddress][common.BigToHash(big.NewInt(currentSealedEpochSlot))]
+	currentSealedEpochSlot := int64(1 + 0x66)
+	contractAddress := common.HexToAddress("0xfc00face00000000000000000000000000000000")
+	// Get current epoch from cache
+	newEpoch, ok := cache[contractAddress][common.BigToHash(big.NewInt(currentSealedEpochSlot))]
 	if !ok {
 		return
 	}

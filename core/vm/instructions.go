@@ -751,17 +751,17 @@ func opDelegateCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext
 	// Get arguments from the memory.
 	args := scope.Memory.GetPtr(int64(inOffset.Uint64()), int64(inSize.Uint64()))
 
-	originalGas := gas
+	// originalGas := gas
 	ret, returnGas, err := interpreter.evm.DelegateCall(scope.Contract, toAddr, args, gas)
 	if err != nil {
 		temp.Clear()
 	} else {
 		temp.SetOne()
 		if _, ok := interpreter.evm.SfcPrecompile(toAddr); ok {
-			sfcRet, _, sfcErr := interpreter.evm.DelegateCallSFC(scope.Contract, toAddr, args, originalGas)
-			if sfcErr != nil {
-				log.Error("opDelegateCall: DelegateCallSFC failed", "sfcErr", sfcErr, "ret", common.Bytes2Hex(sfcRet))
-			}
+			// sfcRet, _, sfcErr := interpreter.evm.DelegateCallSFC(scope.Contract, toAddr, args, originalGas)
+			// if sfcErr != nil {
+			// 	log.Error("opDelegateCall: DelegateCallSFC failed", "sfcErr", sfcErr, "ret", common.Bytes2Hex(sfcRet))
+			// }
 		}
 	}
 	stack.push(&temp)

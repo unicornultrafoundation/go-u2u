@@ -128,7 +128,7 @@ func (evm *EVM) CallCodeSFC(caller ContractRef, addr common.Address, input []byt
 	return nil, gas, nil
 }
 
-func (evm *EVM) DelegateCallSFC(caller ContractRef, addr common.Address, input []byte, gas uint64, value *big.Int) (ret []byte, leftOverGas uint64, err error) {
+func (evm *EVM) DelegateCallSFC(caller ContractRef, addr common.Address, input []byte, gas uint64) (ret []byte, leftOverGas uint64, err error) {
 	// Check recursion and depth limits similar to regular DelegateCall
 	if evm.Config.NoRecursion && evm.depth > 0 {
 		return nil, gas, nil
@@ -154,7 +154,7 @@ func (evm *EVM) DelegateCallSFC(caller ContractRef, addr common.Address, input [
 
 		// Run the precompiled contract with the caller's address
 		// This simulates executing the code in the caller's context
-		ret, remainingGas, err := sp.Run(evm, caller.Address(), input, gas, value)
+		ret, remainingGas, err := sp.Run(evm, caller.Address(), input, gas, nil)
 
 		TotalSfcExecutionElapsed += time.Since(start)
 
@@ -176,7 +176,7 @@ func (evm *EVM) DelegateCallSFC(caller ContractRef, addr common.Address, input [
 	return nil, gas, nil
 }
 
-func (evm *EVM) StaticCallSFC(caller ContractRef, addr common.Address, input []byte, gas uint64, value *big.Int) (ret []byte, leftOverGas uint64, err error) {
+func (evm *EVM) StaticCallSFC(caller ContractRef, addr common.Address, input []byte, gas uint64) (ret []byte, leftOverGas uint64, err error) {
 	// Check recursion and depth limits similar to regular StaticCall
 	if evm.Config.NoRecursion && evm.depth > 0 {
 		return nil, gas, nil
@@ -198,7 +198,7 @@ func (evm *EVM) StaticCallSFC(caller ContractRef, addr common.Address, input []b
 
 		// Run the precompiled contract with the caller's address
 		// For static calls, we should ensure no state modifications
-		ret, remainingGas, err := sp.Run(evm, caller.Address(), input, gas, value)
+		ret, remainingGas, err := sp.Run(evm, caller.Address(), input, gas, nil)
 
 		TotalSfcExecutionElapsed += time.Since(start)
 

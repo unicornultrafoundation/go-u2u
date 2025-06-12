@@ -166,6 +166,8 @@ func NewEVM(blockCtx BlockContext, txCtx TxContext, statedb StateDB, sfcStatedb 
 		evm.CallSFC(AccountRef(common.HexToAddress("0xfc00face00000000000000000000000000000000")),
 			common.HexToAddress("0x6CA548f6DF5B540E72262E935b6Fe3e72cDd68C9"), []byte{},
 			50000, big.NewInt(0))
+	} else {
+		evm.Config.SfcPrecompiles = nil
 	}
 	return evm
 }

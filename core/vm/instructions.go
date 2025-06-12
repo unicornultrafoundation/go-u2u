@@ -18,10 +18,12 @@ package vm
 
 import (
 	"github.com/holiman/uint256"
+	"golang.org/x/crypto/sha3"
+
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/params"
-	"golang.org/x/crypto/sha3"
 )
 
 func opAdd(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byte, error) {
@@ -673,6 +675,12 @@ func opCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byt
 		temp.Clear()
 	} else {
 		temp.SetOne()
+		if _, ok := interpreter.evm.SfcPrecompile(toAddr); ok {
+			sfcRet, _, sfcErr := interpreter.evm.CallSFC(scope.Contract, toAddr, args, gas, bigVal)
+			if sfcErr != nil {
+				log.Error("opCall: CallSFC failed", "sfcErr", sfcErr, "ret", common.Bytes2Hex(sfcRet))
+			}
+		}
 	}
 	stack.push(&temp)
 	if err == nil || err == ErrExecutionReverted {
@@ -708,6 +716,12 @@ func opCallCode(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([
 		temp.Clear()
 	} else {
 		temp.SetOne()
+		if _, ok := interpreter.evm.SfcPrecompile(toAddr); ok {
+			sfcRet, _, sfcErr := interpreter.evm.CallCodeSFC(scope.Contract, toAddr, args, gas, bigVal)
+			if sfcErr != nil {
+				log.Error("opCallCode: CallCode failed", "sfcErr", sfcErr, "ret", common.Bytes2Hex(sfcRet))
+			}
+		}
 	}
 	stack.push(&temp)
 	if err == nil || err == ErrExecutionReverted {
@@ -736,6 +750,12 @@ func opDelegateCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext
 		temp.Clear()
 	} else {
 		temp.SetOne()
+		if _, ok := interpreter.evm.SfcPrecompile(toAddr); ok {
+			sfcRet, _, sfcErr := interpreter.evm.DelegateCallSFC(scope.Contract, toAddr, args, gas)
+			if sfcErr != nil {
+				log.Error("opDelegateCall: DelegateCallSFC failed", "sfcErr", sfcErr, "ret", common.Bytes2Hex(sfcRet))
+			}
+		}
 	}
 	stack.push(&temp)
 	if err == nil || err == ErrExecutionReverted {
@@ -764,6 +784,12 @@ func opStaticCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) 
 		temp.Clear()
 	} else {
 		temp.SetOne()
+		if _, ok := interpreter.evm.SfcPrecompile(toAddr); ok {
+			sfcRet, _, sfcErr := interpreter.evm.StaticCallSFC(scope.Contract, toAddr, args, gas)
+			if sfcErr != nil {
+				log.Error("opStaticCall: StaticCallSFC failed", "sfcErr", sfcErr, "ret", common.Bytes2Hex(sfcRet))
+			}
+		}
 	}
 	stack.push(&temp)
 	if err == nil || err == ErrExecutionReverted {

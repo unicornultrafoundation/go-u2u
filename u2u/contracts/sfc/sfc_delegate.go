@@ -209,13 +209,13 @@ func handleUndelegate(evm *vm.EVM, caller common.Address, args []interface{}) ([
 	validatorAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorAuthSlot))
 	validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
 
-	// Call handleRecountVotes with strict=true
-	result, recountGasUsed, err := handleRecountVotes(evm, caller, validatorAuthAddr, true)
+	// Call handleInternalRecountVotes with strict=true
+	result, recountGasUsed, err := handleInternalRecountVotes(evm, caller, validatorAuthAddr, true)
 	if err != nil {
 		return result, gasUsed + recountGasUsed, err
 	}
 
-	// Add the gas used by handleRecountVotes
+	// Add the gas used by handleInternalRecountVotes
 	gasUsed += recountGasUsed
 
 	return nil, gasUsed, nil
@@ -391,12 +391,12 @@ func handleRawUndelegate(evm *vm.EVM, delegator common.Address, toValidatorID *b
 	validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
 
 	// Recount votes
-	_, recountGasUsed, err := handleRecountVotes(evm, delegator, validatorAuthAddr, strict)
+	_, recountGasUsed, err := handleInternalRecountVotes(evm, delegator, validatorAuthAddr, strict)
 	if err != nil && strict {
 		return nil, gasUsed + recountGasUsed, err
 	}
 
-	// Add the gas used by handleRecountVotes
+	// Add the gas used by handleInternalRecountVotes
 	gasUsed += recountGasUsed
 
 	return nil, gasUsed, nil
@@ -497,7 +497,7 @@ func handleRawDelegate(evm *vm.EVM, delegator common.Address, toValidatorID *big
 	validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
 
 	// Recount votes
-	result, recountGasUsed, err := handleRecountVotes(evm, delegator, validatorAuthAddr, strict)
+	result, recountGasUsed, err := handleInternalRecountVotes(evm, delegator, validatorAuthAddr, strict)
 	if err != nil {
 		return result, gasUsed + recountGasUsed, err
 	}

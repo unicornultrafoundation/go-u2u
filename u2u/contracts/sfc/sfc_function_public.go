@@ -564,5 +564,6 @@ func handleFallback(evm *vm.EVM, caller common.Address, args []interface{}, inpu
 		return revertData, gasUsed, vm.ErrExecutionReverted
 	}
 
-	return evm.CallSFC(vm.AccountRef(caller), ContractAddress, input, defaultGasLimit, value)
+	sfcLibPrecompile := SfcLibPrecompile{}
+	return sfcLibPrecompile.Run(evm, caller, input, defaultGasLimit, value)
 }

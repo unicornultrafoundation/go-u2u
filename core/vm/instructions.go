@@ -678,7 +678,7 @@ func opCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byt
 	} else {
 		temp.SetOne()
 		if _, ok := interpreter.evm.SfcPrecompile(toAddr); ok {
-			log.Info("opCall: CallSFC", "toAddr", toAddr, "args", common.Bytes2Hex(args), "originalGas", originalGas, "originalValue", originalValue)
+			log.Debug("opCall: CallSFC", "toAddr", toAddr, "args", common.Bytes2Hex(args), "originalGas", originalGas, "originalValue", originalValue)
 			sfcRet, _, sfcErr := interpreter.evm.CallSFC(scope.Contract, toAddr, args, originalGas, originalValue)
 			if sfcErr != nil {
 				log.Error("opCall: CallSFC failed", "sfcErr", sfcErr, "ret", common.Bytes2Hex(sfcRet))

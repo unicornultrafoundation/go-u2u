@@ -34,36 +34,26 @@ func init() {
 type SfcPrecompile struct{}
 
 // parseABIInput parses the input data and returns the method and unpacked parameters
-func parseABIInput(input []byte) (*abi.Method, []interface{}, error) {
-	// Handle empty input (native token transfer) - create a dummy method for fallback
-	if len(input) == 0 {
-		// Create a dummy method with empty name to trigger the fallback function
-		dummyMethod := &abi.Method{
-			Name:   "",
-			Inputs: abi.Arguments{},
-		}
-		return dummyMethod, []interface{}{}, nil
-	}
-
+func parseABIInput(smcAbi abi.ABI, input []byte) (*abi.Method, []interface{}, error) {
 	// Need at least 4 bytes for function signature
 	if len(input) < 4 {
 		return nil, nil, vm.ErrExecutionReverted
 	}
 
-	// Get function signature from the first 4 bytes
+	// Get function signature from first 4 bytes
 	methodID := input[:4]
-	method, err := SfcAbi.MethodById(methodID)
+	method, err := smcAbi.MethodById(methodID)
 	if err != nil {
-		method, err = SfcLibAbi.MethodById(methodID)
-		if err != nil {
-			return nil, nil, vm.ErrExecutionReverted
-		}
+		return nil, nil, vm.ErrExecutionReverted
 	}
 
 	// Parse input arguments
-	args, err := method.Inputs.Unpack(input[4:])
-	if err != nil {
-		return nil, nil, vm.ErrExecutionReverted
+	args := []interface{}{}
+	if len(input) > 4 {
+		args, err = method.Inputs.Unpack(input[4:])
+		if err != nil {
+			return nil, nil, vm.ErrExecutionReverted
+		}
 	}
 
 	return method, args, nil
@@ -73,10 +63,13 @@ func parseABIInput(input []byte) (*abi.Method, []interface{}, error) {
 func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, suppliedGas uint64, value *big.Int) ([]byte, uint64, error) {
 	// We'll use evm.SfcStateDB directly in the handler functions
 	// Parse the input to get method and arguments
-	method, args, err := parseABIInput(input)
+	method, args, err := parseABIInput(SfcAbi, input)
 	if err != nil {
 		log.Error("SFCPrecompile.Run: Error parsing input", "err", err)
-		return nil, 0, err
+		method = &abi.Method{
+			Name:   "",
+			Inputs: abi.Arguments{},
+		}
 	}
 
 	var (
@@ -161,30 +154,6 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 	case "constsAddress":
 		result, gasUsed, err = handleConstsAddress(evm)
 
-	case "getEpochValidatorIDs":
-		result, gasUsed, err = handleGetEpochValidatorIDs(evm, args)
-
-	case "getEpochReceivedStake":
-		result, gasUsed, err = handleGetEpochReceivedStake(evm, args)
-
-	case "getEpochAccumulatedRewardPerToken":
-		result, gasUsed, err = handleGetEpochAccumulatedRewardPerToken(evm, args)
-
-	case "getEpochAccumulatedUptime":
-		result, gasUsed, err = handleGetEpochAccumulatedUptime(evm, args)
-
-	case "getEpochAccumulatedOriginatedTxsFee":
-		result, gasUsed, err = handleGetEpochAccumulatedOriginatedTxsFee(evm, args)
-
-	case "getEpochOfflineTime":
-		result, gasUsed, err = handleGetEpochOfflineTime(evm, args)
-
-	case "getEpochOfflineBlocks":
-		result, gasUsed, err = handleGetEpochOfflineBlocks(evm, args)
-
-	case "rewardsStash":
-		result, gasUsed, err = handleRewardsStash(evm, args)
-
 	case "getLockedStake":
 		result, gasUsed, err = handleGetLockedStake(evm, args)
 
@@ -228,108 +197,17 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 	case "updateVoteBookAddress":
 		result, gasUsed, err = handleUpdateVoteBookAddress(evm, args)
 
-	case "createValidator":
-		// For createValidator, we need to pass a value, but we don't have direct access to it
-		// Use a zero value for now, this should be fixed in a future update
-		result, gasUsed, err = handleCreateValidator(evm, caller, args, big.NewInt(0))
-
-	case "delegate":
-		result, gasUsed, err = handleDelegate(evm, caller, args, value)
-
-	case "undelegate":
-		result, gasUsed, err = handleUndelegate(evm, caller, args)
-
-	case "withdraw":
-		result, gasUsed, err = handleWithdraw(evm, caller, args)
-
-	case "deactivateValidator":
-		result, gasUsed, err = handleDeactivateValidator(evm, args)
-
-	case "stashRewards":
-		result, gasUsed, err = handleStashRewards(evm, args)
-
-	case "claimRewards":
-		result, gasUsed, err = handleClaimRewards(evm, caller, args)
-
-	case "restakeRewards":
-		result, gasUsed, err = handleRestakeRewards(evm, caller, args)
-
-	case "updateBaseRewardPerSecond":
-		result, gasUsed, err = handleUpdateBaseRewardPerSecond(evm, args)
-
-	case "updateOfflinePenaltyThreshold":
-		result, gasUsed, err = handleUpdateOfflinePenaltyThreshold(evm, args)
-
-	case "updateSlashingRefundRatio":
-		result, gasUsed, err = handleUpdateSlashingRefundRatio(evm, args)
-
-	case "mintU2U":
-		result, gasUsed, err = handleMintU2U(evm, caller, args)
-
-	case "burnU2U":
-		result, gasUsed, err = handleBurnU2U(evm, args)
-
 	case "sealEpoch":
 		result, gasUsed, err = handleSealEpoch(evm, caller, args)
 
 	case "sealEpochValidators":
 		result, gasUsed, err = handleSealEpochValidators(evm, caller, args)
 
-	case "lockStake":
-		result, gasUsed, err = handleLockStake(evm, caller, args)
-
-	case "relockStake":
-		result, gasUsed, err = handleRelockStake(evm, caller, args)
-
-	case "unlockStake":
-		result, gasUsed, err = handleUnlockStake(evm, caller, args)
-
 	case "initialize":
 		result, gasUsed, err = handleInitialize(evm, caller, args)
 
-	case "setGenesisValidator":
-		result, gasUsed, err = handleSetGenesisValidator(evm, args)
-
-	case "setGenesisDelegation":
-		result, gasUsed, err = handleSetGenesisDelegation(evm, args)
-
 	case "sumRewards":
 		result, gasUsed, err = handleSumRewards(evm, args)
-
-	// These internal functions are now implemented directly in the handleSealEpoch function
-	// and are no longer called separately
-	case "_sealEpoch_offline":
-		return nil, 0, vm.ErrSfcFunctionNotImplemented
-
-	case "_sealEpoch_rewards":
-		return nil, 0, vm.ErrSfcFunctionNotImplemented
-
-	case "_sealEpoch_minGasPrice":
-		return nil, 0, vm.ErrSfcFunctionNotImplemented
-
-	case "_calcRawValidatorEpochBaseReward":
-		result, gasUsed, err = handle_calcRawValidatorEpochBaseReward(evm, args)
-
-	case "_calcRawValidatorEpochTxReward":
-		result, gasUsed, err = handle_calcRawValidatorEpochTxReward(evm, args)
-
-	case "_calcValidatorCommission":
-		result, gasUsed, err = handle_calcValidatorCommission(evm, args)
-
-	case "_mintNativeToken":
-		result, gasUsed, err = handle_mintNativeToken(evm, args)
-
-	case "_setValidatorDeactivated":
-		result, gasUsed, err = handle_setValidatorDeactivated(evm, args)
-
-	case "_syncValidator":
-		result, gasUsed, err = handle_syncValidator(evm, args)
-
-	case "_validatorExists":
-		result, gasUsed, err = handle_validatorExists(evm, args)
-
-	case "_now":
-		result, gasUsed, err = handle_now(evm, args)
 
 	case "getSlashingPenalty":
 		result, gasUsed, err = handleGetSlashingPenalty(evm, args)

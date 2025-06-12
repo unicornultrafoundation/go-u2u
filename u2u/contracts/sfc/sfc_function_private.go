@@ -220,8 +220,8 @@ func handleCheckDelegatedStakeLimit(evm *vm.EVM, validatorID *big.Int) (bool, er
 	return delegatedStake.Cmp(maxDelegatedStake) <= 0, nil
 }
 
-// handleRecountVotes implements the _recountVotes function logic
-func handleRecountVotes(evm *vm.EVM, delegator common.Address, validatorAuth common.Address, strict bool) ([]byte, uint64, error) {
+// handleInternalRecountVotes implements the _recountVotes function logic
+func handleInternalRecountVotes(evm *vm.EVM, delegator common.Address, validatorAuth common.Address, strict bool) ([]byte, uint64, error) {
 	// Get the voteBookAddress
 	voteBookAddress := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(voteBookAddressSlot)))
 	voteBookAddressBytes := voteBookAddress.Bytes()

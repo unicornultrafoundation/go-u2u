@@ -136,39 +136,26 @@ func (evm *EVM) DelegateCallSFC(caller ContractRef, addr common.Address, input [
 	if evm.depth > int(params.CallCreateDepth) {
 		return nil, gas, ErrDepth
 	}
+	var snapshot = evm.SfcStateDB.Snapshot()
 
 	sp, isSfcPrecompile := evm.SfcPrecompile(addr)
 	if isSfcPrecompile && evm.SfcStateDB != nil {
-		// Create a snapshot for potential revert
-		snapshot := evm.SfcStateDB.Snapshot()
-
-		log.Debug("SFC precompiled calling", "action", "delegatecall", "height", evm.Context.BlockNumber,
-			"caller", caller.Address().Hex(), "to", addr.Hex())
-
-		// In a delegate call, we need to preserve the caller context
-		// For SFC precompiled contracts, we need to pass the caller's address
-		// but execute in the context of the caller
-
-		// Track execution time
+		addrCopy := addr
+		// Initialise a new contract and make initialise the delegate values
+		contract := NewContract(caller, AccountRef(caller.Address()), nil, gas).AsDelegate()
+		contract.SetCallCode(&addrCopy, evm.StateDB.GetCodeHash(addrCopy), evm.StateDB.GetCode(addrCopy))
 		start := time.Now()
-
-		// Run the precompiled contract with the caller's address
-		// This simulates executing the code in the caller's context
-		ret, remainingGas, err := sp.Run(evm, caller.Address(), input, gas, nil)
-
+		ret, remainingGas, err := sp.Run(evm, contract.CallerAddress, input, gas, nil)
 		TotalSfcExecutionElapsed += time.Since(start)
-
-		// Handle errors and revert if needed
+		gas = contract.Gas
 		if err != nil {
 			evm.SfcStateDB.RevertToSnapshot(snapshot)
 			if !errors.Is(err, ErrExecutionReverted) {
-				gas = 0
 			}
 		} else {
 			// Update gas with the remaining gas from the execution
 			gas = remainingGas
 		}
-
 		return ret, gas, err
 	}
 

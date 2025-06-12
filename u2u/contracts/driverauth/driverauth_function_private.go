@@ -71,9 +71,11 @@ func handleSetGenesisValidator(evm *vm.EVM, caller common.Address, args []interf
 	}
 
 	// Call the SFC contract
-	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), sfcAddr, data, defaultGasLimit, big.NewInt(0))
-	if err != nil {
-		return nil, 0, err
+	if !evm.Rules().IsClymene {
+		_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), sfcAddr, data, defaultGasLimit, big.NewInt(0))
+		if err != nil {
+			return nil, 0, err
+		}
 	}
 
 	return nil, 0, nil
@@ -138,9 +140,11 @@ func handleSetGenesisDelegation(evm *vm.EVM, caller common.Address, args []inter
 	}
 
 	// Call the SFC contract
-	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), sfcAddr, data, defaultGasLimit, big.NewInt(0))
-	if err != nil {
-		return nil, 0, err
+	if !evm.Rules().IsClymene {
+		_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), sfcAddr, data, defaultGasLimit, big.NewInt(0))
+		if err != nil {
+			return nil, 0, err
+		}
 	}
 
 	return nil, 0, nil
@@ -177,9 +181,11 @@ func handleDeactivateValidator(evm *vm.EVM, caller common.Address, args []interf
 	}
 
 	// Call the SFC contract
-	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), sfcAddr, data, defaultGasLimit, big.NewInt(0))
-	if err != nil {
-		return nil, 0, err
+	if !evm.Rules().IsClymene {
+		_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), sfcAddr, data, defaultGasLimit, big.NewInt(0))
+		if err != nil {
+			return nil, 0, err
+		}
 	}
 
 	return nil, 0, nil
@@ -217,11 +223,13 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 	}
 
 	// Call the SFC contract
-	result, _, err := evm.CallSFC(vm.AccountRef(ContractAddress), sfcAddr, data, defaultGasLimit, big.NewInt(0))
-	if err != nil {
-		reason, _ := abi.UnpackRevert(result)
-		log.Error("DriverAuth SealEpochValidators: Error calling sealEpochValidators", "error", err, "reason", reason)
-		return nil, 0, err
+	if !evm.Rules().IsClymene {
+		result, _, err := evm.CallSFC(vm.AccountRef(ContractAddress), sfcAddr, data, defaultGasLimit, big.NewInt(0))
+		if err != nil {
+			reason, _ := abi.UnpackRevert(result)
+			log.Error("DriverAuth SealEpochValidators: Error calling sealEpochValidators", "error", err, "reason", reason)
+			return nil, 0, err
+		}
 	}
 
 	return nil, 0, nil
@@ -273,11 +281,13 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	}
 
 	// Call the SFC contract
-	result, _, err := evm.CallSFC(vm.AccountRef(ContractAddress), sfcAddr, data, defaultGasLimit, big.NewInt(0))
-	if err != nil {
-		reason, _ := abi.UnpackRevert(result)
-		log.Error("DriverAuth Precompiled: Error calling SFC contract", "error", err, "reason", reason)
-		return nil, 0, err
+	if !evm.Rules().IsClymene {
+		result, _, err := evm.CallSFC(vm.AccountRef(ContractAddress), sfcAddr, data, defaultGasLimit, big.NewInt(0))
+		if err != nil {
+			reason, _ := abi.UnpackRevert(result)
+			log.Error("DriverAuth Precompiled: Error calling SFC contract", "error", err, "reason", reason)
+			return nil, 0, err
+		}
 	}
 
 	return nil, 0, nil

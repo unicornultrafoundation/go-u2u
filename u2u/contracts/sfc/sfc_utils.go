@@ -906,42 +906,6 @@ func getRewardsStashUnlockedRewardSlot(delegator common.Address, toValidatorID *
 	return new(big.Int).Add(baseSlot, big.NewInt(2)), gasUsed
 }
 
-// callConstantManagerMethod calls a method on the ConstantManager contract and returns the result
-// methodName: the name of the method to call
-// args: the arguments to pass to the method
-// Returns: the result of the method call, the gas used, or an error if the call failed
-func callConstantManagerMethod(evm *vm.EVM, methodName string, args ...interface{}) ([]interface{}, uint64, error) {
-	// Initialize gas used
-	var gasUsed uint64 = 0
-
-	// Pack the function call data
-	data, err := CMAbi.Pack(methodName, args...)
-	if err != nil {
-		log.Error("SFC: Error packing ConstantsManager method", "method", methodName, "err", err)
-		return nil, gasUsed, vm.ErrExecutionReverted
-	}
-
-	// Make the call to the ConstantsManager contract
-	result, leftOverGas, err := evm.CallSFC(vm.AccountRef(ContractAddress), CMAddr, data, defaultGasLimit, big.NewInt(0))
-	if err != nil {
-		reason, _ := abi.UnpackRevert(result)
-		log.Error("SFC: Error calling ConstantsManager method", "method", methodName, "err", err, "reason", reason)
-		return []interface{}{result}, gasUsed + (defaultGasLimit - leftOverGas), err
-	}
-
-	// Add the gas used by the call
-	gasUsed += defaultGasLimit - leftOverGas
-
-	// Unpack the result
-	values, err := CMAbi.Methods[methodName].Outputs.Unpack(result)
-	if err != nil {
-		log.Error("SFC: Error unpacking ConstantsManager method", "method", methodName, "err", err)
-		return values, gasUsed, vm.ErrExecutionReverted
-	}
-
-	return values, gasUsed, nil
-}
-
 func getConstantsManagerVariable(methodName string) *big.Int {
 	return constant_manager.GetCMCache().GetValue(methodName)
 }
@@ -1169,9 +1133,11 @@ func _syncValidator(evm *vm.EVM, validatorID *big.Int, syncPubkey bool) (uint64,
 	}
 
 	// Call the node driver
-	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, defaultGasLimit, big.NewInt(0))
-	if err != nil {
-		return gasUsed, err
+	if !evm.Rules().IsClymene {
+		_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, defaultGasLimit, big.NewInt(0))
+		if err != nil {
+			return gasUsed, err
+		}
 	}
 
 	// If syncPubkey is true and weight is not zero, update validator pubkey
@@ -1190,9 +1156,11 @@ func _syncValidator(evm *vm.EVM, validatorID *big.Int, syncPubkey bool) (uint64,
 		}
 
 		// Call the node driver
-		_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, defaultGasLimit, big.NewInt(0))
-		if err != nil {
-			return gasUsed, err
+		if !evm.Rules().IsClymene {
+			_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, defaultGasLimit, big.NewInt(0))
+			if err != nil {
+				return gasUsed, err
+			}
 		}
 	}
 

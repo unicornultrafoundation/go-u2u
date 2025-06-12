@@ -268,34 +268,6 @@ func handleRecountVotes(evm *vm.EVM, delegator common.Address, validatorAuth com
 	return nil, 0, nil
 }
 
-// callSFCLibDelegate calls the _delegate function in the SFCLib contract
-func callSFCLibDelegate(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int, amount *big.Int) ([]byte, uint64, error) {
-	// Get the SFCLib contract address
-	sfcLibAddr := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(libAddressSlot)))
-	sfcLibAddress := common.BytesToAddress(sfcLibAddr.Bytes())
-
-	// Pack the function call data
-	// The function signature is _delegate(address,uint256,uint256)
-	methodID := []byte{0x9d, 0x11, 0xb4, 0x2d} // keccak256("_delegate(address,uint256,uint256)")[:4]
-	data := methodID
-
-	// Encode the parameters
-	// address delegator
-	data = append(data, common.LeftPadBytes(delegator.Bytes(), 32)...)
-	// uint256 toValidatorID
-	data = append(data, common.LeftPadBytes(toValidatorID.Bytes(), 32)...)
-	// uint256 amount
-	data = append(data, common.LeftPadBytes(amount.Bytes(), 32)...)
-
-	// Make the call to the SFCLib contract
-	result, leftOverGas, err := evm.CallSFC(vm.AccountRef(ContractAddress), sfcLibAddress, data, defaultGasLimit, big.NewInt(0))
-	if err != nil {
-		return nil, defaultGasLimit - leftOverGas, err
-	}
-
-	return result, defaultGasLimit - leftOverGas, nil
-}
-
 // handleGetSelfStake returns the self-stake of a validator
 func handleGetSelfStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	var gasUsed uint64 = 0

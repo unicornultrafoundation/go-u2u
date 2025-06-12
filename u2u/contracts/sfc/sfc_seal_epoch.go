@@ -295,11 +295,13 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 	}
 
 	// Call the node driver
-	result, _, err := evm.CallSFC(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, 50000, big.NewInt(0))
-	if err != nil {
-		reason, _ := abi.UnpackRevert(result)
-		log.Error("SFC: Error calling NodeDriverAuth method", "method", "updateMinGasPrice", "err", err, "reason", reason)
-		return nil, gasUsed, err
+	if !evm.Rules().IsClymene {
+		result, _, err := evm.CallSFC(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, 50000, big.NewInt(0))
+		if err != nil {
+			reason, _ := abi.UnpackRevert(result)
+			log.Error("SFC: Error calling NodeDriverAuth method", "method", "updateMinGasPrice", "err", err, "reason", reason)
+			return nil, gasUsed, err
+		}
 	}
 
 	return nil, gasUsed, nil
@@ -800,18 +802,20 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 
 		// Then make a call to transfer the tokens to the treasury address
 		// This simulates the Solidity code: treasuryAddress.CallSFC.value(feeShare)("");
-		callData := []byte{} // Empty call data
-		_, _, err = evm.CallSFC(
-			vm.AccountRef(ContractAddress), // Caller
-			treasuryAddr,                   // Target address
-			callData,                       // Call data (empty)
-			21000,                          // Gas limit for a simple transfer
-			feeShare,                       // Value to transfer
-		)
-		if err != nil {
-			return gasUsed, err
+		if !evm.Rules().IsClymene {
+			callData := []byte{} // Empty call data
+			_, _, err = evm.CallSFC(
+				vm.AccountRef(ContractAddress), // Caller
+				treasuryAddr,                   // Target address
+				callData,                       // Call data (empty)
+				21000,                          // Gas limit for a simple transfer
+				feeShare,                       // Value to transfer
+			)
+			if err != nil {
+				return gasUsed, err
+			}
+			gasUsed += 21000 // Add gas for the transfer
 		}
-		gasUsed += 21000 // Add gas for the transfer
 	}
 
 	return gasUsed, nil

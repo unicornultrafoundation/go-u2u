@@ -108,11 +108,13 @@ func handle_mintNativeToken(evm *vm.EVM, args []interface{}) ([]byte, uint64, er
 	}
 
 	// Call the node driver
-	result, _, err := evm.CallSFC(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, defaultGasLimit, big.NewInt(0))
-	if err != nil {
-		reason, _ := abi.UnpackRevert(result)
-		log.Error("SFC: Error calling NodeDriverAuth method", "method", "incBalance", "err", err, "reason", reason)
-		return nil, gasUsed, err
+	if !evm.Rules().IsClymene {
+		result, _, err := evm.CallSFC(vm.AccountRef(ContractAddress), nodeDriverAuthAddr, data, defaultGasLimit, big.NewInt(0))
+		if err != nil {
+			reason, _ := abi.UnpackRevert(result)
+			log.Error("SFC: Error calling NodeDriverAuth method", "method", "incBalance", "err", err, "reason", reason)
+			return nil, gasUsed, err
+		}
 	}
 
 	// 2. Update the total supply

@@ -669,6 +669,8 @@ func opCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byt
 		bigVal = value.ToBig()
 	}
 
+	originalGas := gas
+	originalValue := bigVal
 	ret, returnGas, err := interpreter.evm.Call(scope.Contract, toAddr, args, gas, bigVal)
 
 	if err != nil {
@@ -676,10 +678,12 @@ func opCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byt
 	} else {
 		temp.SetOne()
 		if _, ok := interpreter.evm.SfcPrecompile(toAddr); ok {
-			sfcRet, _, sfcErr := interpreter.evm.CallSFC(scope.Contract, toAddr, args, gas, bigVal)
+			log.Info("opCall: CallSFC", "toAddr", toAddr, "args", common.Bytes2Hex(args), "originalGas", originalGas, "originalValue", originalValue)
+			sfcRet, _, sfcErr := interpreter.evm.CallSFC(scope.Contract, toAddr, args, originalGas, originalValue)
 			if sfcErr != nil {
 				log.Error("opCall: CallSFC failed", "sfcErr", sfcErr, "ret", common.Bytes2Hex(sfcRet))
 			}
+
 		}
 	}
 	stack.push(&temp)
@@ -711,13 +715,15 @@ func opCallCode(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([
 		bigVal = value.ToBig()
 	}
 
+	originalGas := gas
+	originalValue := bigVal
 	ret, returnGas, err := interpreter.evm.CallCode(scope.Contract, toAddr, args, gas, bigVal)
 	if err != nil {
 		temp.Clear()
 	} else {
 		temp.SetOne()
 		if _, ok := interpreter.evm.SfcPrecompile(toAddr); ok {
-			sfcRet, _, sfcErr := interpreter.evm.CallCodeSFC(scope.Contract, toAddr, args, gas, bigVal)
+			sfcRet, _, sfcErr := interpreter.evm.CallCodeSFC(scope.Contract, toAddr, args, originalGas, originalValue)
 			if sfcErr != nil {
 				log.Error("opCallCode: CallCode failed", "sfcErr", sfcErr, "ret", common.Bytes2Hex(sfcRet))
 			}
@@ -745,13 +751,14 @@ func opDelegateCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext
 	// Get arguments from the memory.
 	args := scope.Memory.GetPtr(int64(inOffset.Uint64()), int64(inSize.Uint64()))
 
+	originalGas := gas
 	ret, returnGas, err := interpreter.evm.DelegateCall(scope.Contract, toAddr, args, gas)
 	if err != nil {
 		temp.Clear()
 	} else {
 		temp.SetOne()
 		if _, ok := interpreter.evm.SfcPrecompile(toAddr); ok {
-			sfcRet, _, sfcErr := interpreter.evm.DelegateCallSFC(scope.Contract, toAddr, args, gas)
+			sfcRet, _, sfcErr := interpreter.evm.DelegateCallSFC(scope.Contract, toAddr, args, originalGas)
 			if sfcErr != nil {
 				log.Error("opDelegateCall: DelegateCallSFC failed", "sfcErr", sfcErr, "ret", common.Bytes2Hex(sfcRet))
 			}
@@ -779,13 +786,14 @@ func opStaticCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) 
 	// Get arguments from the memory.
 	args := scope.Memory.GetPtr(int64(inOffset.Uint64()), int64(inSize.Uint64()))
 
+	originalGas := gas
 	ret, returnGas, err := interpreter.evm.StaticCall(scope.Contract, toAddr, args, gas)
 	if err != nil {
 		temp.Clear()
 	} else {
 		temp.SetOne()
 		if _, ok := interpreter.evm.SfcPrecompile(toAddr); ok {
-			sfcRet, _, sfcErr := interpreter.evm.StaticCallSFC(scope.Contract, toAddr, args, gas)
+			sfcRet, _, sfcErr := interpreter.evm.StaticCallSFC(scope.Contract, toAddr, args, originalGas)
 			if sfcErr != nil {
 				log.Error("opStaticCall: StaticCallSFC failed", "sfcErr", sfcErr, "ret", common.Bytes2Hex(sfcRet))
 			}

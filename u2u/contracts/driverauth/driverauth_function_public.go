@@ -89,9 +89,11 @@ func handleMigrateTo(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	}
 
 	// Call the driver contract
-	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
-	if err != nil {
-		return nil, 0, err
+	if !evm.Rules().IsClymene {
+		_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
+		if err != nil {
+			return nil, 0, err
+		}
 	}
 
 	return nil, 0, nil
@@ -175,9 +177,11 @@ func handleMutExecute(evm *vm.EVM, caller common.Address, args []interface{}) ([
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
-	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), executable, execData, defaultGasLimit, big.NewInt(0))
-	if err != nil {
-		return nil, 0, err
+	if !evm.Rules().IsClymene {
+		_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), executable, execData, defaultGasLimit, big.NewInt(0))
+		if err != nil {
+			return nil, 0, err
+		}
 	}
 
 	// Transfer ownership to the new owner
@@ -248,11 +252,13 @@ func handleIncBalance(evm *vm.EVM, caller common.Address, args []interface{}) ([
 	}
 
 	// Call the driver contract
-	result, _, err := evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
-	if err != nil {
-		reason, _ := abi.UnpackRevert(result)
-		log.Error("DriverAuth Precompiled: Error calling driver contract", "error", err, "method", "incBalance", "reason", reason)
-		return nil, 0, err
+	if !evm.Rules().IsClymene {
+		result, _, err := evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
+		if err != nil {
+			reason, _ := abi.UnpackRevert(result)
+			log.Error("DriverAuth Precompiled: Error calling driver contract", "error", err, "method", "incBalance", "reason", reason)
+			return nil, 0, err
+		}
 	}
 
 	return nil, 0, nil
@@ -294,9 +300,11 @@ func handleUpgradeCode(evm *vm.EVM, caller common.Address, args []interface{}) (
 	}
 
 	// Call the driver contract
-	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
-	if err != nil {
-		return nil, 0, err
+	if !evm.Rules().IsClymene {
+		_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
+		if err != nil {
+			return nil, 0, err
+		}
 	}
 
 	return nil, 0, nil
@@ -333,9 +341,11 @@ func handleCopyCode(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 	}
 
 	// Call the driver contract
-	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
-	if err != nil {
-		return nil, 0, err
+	if !evm.Rules().IsClymene {
+		_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
+		if err != nil {
+			return nil, 0, err
+		}
 	}
 
 	return nil, 0, nil
@@ -372,9 +382,11 @@ func handleIncNonce(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 	}
 
 	// Call the driver contract
-	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
-	if err != nil {
-		return nil, 0, err
+	if !evm.Rules().IsClymene {
+		_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
+		if err != nil {
+			return nil, 0, err
+		}
 	}
 
 	return nil, 0, nil
@@ -407,9 +419,11 @@ func handleUpdateNetworkRules(evm *vm.EVM, caller common.Address, args []interfa
 	}
 
 	// Call the driver contract
-	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
-	if err != nil {
-		return nil, 0, err
+	if !evm.Rules().IsClymene {
+		_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
+		if err != nil {
+			return nil, 0, err
+		}
 	}
 
 	return nil, 0, nil
@@ -445,9 +459,11 @@ func handleUpdateMinGasPrice(evm *vm.EVM, caller common.Address, args []interfac
 	}
 
 	// Call the driver contract
-	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
-	if err != nil {
-		return nil, 0, err
+	if !evm.Rules().IsClymene {
+		_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
+		if err != nil {
+			return nil, 0, err
+		}
 	}
 
 	return nil, 0, nil
@@ -480,9 +496,11 @@ func handleUpdateNetworkVersion(evm *vm.EVM, caller common.Address, args []inter
 	}
 
 	// Call the driver contract
-	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
-	if err != nil {
-		return nil, 0, err
+	if !evm.Rules().IsClymene {
+		_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
+		if err != nil {
+			return nil, 0, err
+		}
 	}
 
 	return nil, 0, nil
@@ -515,9 +533,11 @@ func handleAdvanceEpochs(evm *vm.EVM, caller common.Address, args []interface{})
 	}
 
 	// Call the driver contract
-	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
-	if err != nil {
-		return nil, 0, err
+	if !evm.Rules().IsClymene {
+		_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
+		if err != nil {
+			return nil, 0, err
+		}
 	}
 
 	return nil, 0, nil
@@ -554,9 +574,11 @@ func handleUpdateValidatorWeight(evm *vm.EVM, caller common.Address, args []inte
 	}
 
 	// Call the driver contract
-	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
-	if err != nil {
-		return nil, 0, err
+	if !evm.Rules().IsClymene {
+		_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
+		if err != nil {
+			return nil, 0, err
+		}
 	}
 
 	return nil, 0, nil
@@ -593,9 +615,11 @@ func handleUpdateValidatorPubkey(evm *vm.EVM, caller common.Address, args []inte
 	}
 
 	// Call the driver contract
-	_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
-	if err != nil {
-		return nil, 0, err
+	if !evm.Rules().IsClymene {
+		_, _, err = evm.CallSFC(vm.AccountRef(ContractAddress), driverAddr, data, defaultGasLimit, big.NewInt(0))
+		if err != nil {
+			return nil, 0, err
+		}
 	}
 
 	return nil, 0, nil

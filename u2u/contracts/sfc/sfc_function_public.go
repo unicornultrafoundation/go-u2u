@@ -6,6 +6,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // Handler functions for SFC contract public and external functions
@@ -551,6 +552,7 @@ func handleSumRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 
 // handleFallback is the payable fallback function that delegates calls to the library
 func handleFallback(evm *vm.EVM, caller common.Address, args []interface{}, input []byte, value *big.Int) ([]byte, uint64, error) {
+	log.Info("SFC: Calling fallback function", "caller", caller.Hex(), "input", common.Bytes2Hex(input))
 	var gasUsed uint64 = 0
 
 	// Check if input data is empty (pure native token transfer)

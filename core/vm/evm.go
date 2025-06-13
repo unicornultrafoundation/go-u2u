@@ -26,6 +26,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
@@ -208,6 +209,7 @@ func (evm *EVM) Rules() *params.Rules {
 // the necessary steps to create accounts and reverses the state in case of an
 // execution error or failed value transfer.
 func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas uint64, value *big.Int) (ret []byte, leftOverGas uint64, err error) {
+	log.Info("EVM Call", "caller", caller.Address().Hex(), "to", addr.Hex(), "value", value.String())
 	if evm.Config.NoRecursion && evm.depth > 0 {
 		return nil, gas, nil
 	}

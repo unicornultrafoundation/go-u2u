@@ -1283,6 +1283,7 @@ func RPCMarshalHeader(head *evmcore.EvmHeader, ext extBlockApi) map[string]inter
 		"sha3Uncles":       types.EmptyUncleHash,
 		"logsBloom":        ext.bloom,
 		"stateRoot":        head.Root,
+		"sfcStateRoot":     head.SfcStateRoot,
 		"miner":            head.Coinbase,
 		"difficulty":       (*hexutil.Big)(new(big.Int)),
 		"extraData":        hexutil.Bytes([]byte{}),

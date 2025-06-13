@@ -523,6 +523,7 @@ func (s *Service) ReexecuteBlocks(from, to idx.Block) {
 		evmProcessor.Execute(txs)
 		evmProcessor.Finalize()
 		_ = s.store.evm.Commit(b, block.Root, false)
+		_ = s.store.evm.CommitSfcState(b, block.SfcStateRoot, false)
 		s.store.evm.Cap()
 		s.mayCommit(false)
 		prev = block

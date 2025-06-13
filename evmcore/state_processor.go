@@ -115,21 +115,21 @@ func (p *StateProcessor) Process(
 				if original.Cmp(sfc) != 0 {
 					log.Error("U2UEVMProcessor.Process: SFC storage corrupted after applying tx",
 						"tx", tx.Hash().Hex(), "addr", addr, "original", original.Hex(), "sfc", sfc.Hex())
-					//common.SendInterrupt()
+					common.SendInterrupt()
 				}
 				originalBalance := statedb.GetBalance(addr)
 				sfcBalance := sfcStatedb.GetBalance(addr)
 				if originalBalance.Cmp(sfcBalance) != 0 {
 					log.Error("U2UEVMProcessor.Process: SFC balance mismatched after applying tx",
 						"tx", tx.Hash().Hex(), "addr", addr, "original", originalBalance, "sfc", sfcBalance)
-					//common.SendInterrupt()
+					common.SendInterrupt()
 				}
 				originalNonce := statedb.GetNonce(addr)
 				sfcNonce := sfcStatedb.GetNonce(addr)
 				if originalNonce != sfcNonce {
 					log.Error("U2UEVMProcessor.Process: SFC nonce mismatched after applying tx",
 						"tx", tx.Hash().Hex(), "addr", addr, "original", originalNonce, "sfc", sfcNonce)
-					//common.SendInterrupt()
+					common.SendInterrupt()
 				}
 			}
 			// Benchmark execution time difference of SFC precompiled related txs

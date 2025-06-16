@@ -30,6 +30,9 @@ func (evm *EVM) CallSFC(caller ContractRef, addr common.Address, input []byte, g
 	// 	return nil, gas, ErrInsufficientBalance
 	// }
 
+	if common.IsNilInterface(evm.SfcStateDB) {
+		return nil, gas, nil
+	}
 	snapshot := evm.SfcStateDB.Snapshot()
 	if !evm.SfcStateDB.Exist(addr) {
 		log.Debug("SFC precompiled account not exist, creating new account",

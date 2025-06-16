@@ -15,21 +15,22 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/unicornultrafoundation/go-helios/consensus"
 	"github.com/unicornultrafoundation/go-helios/utils/cachescale"
-	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
-	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/log"
-	"github.com/unicornultrafoundation/go-u2u/node"
-	"github.com/unicornultrafoundation/go-u2u/p2p/enode"
-	"github.com/unicornultrafoundation/go-u2u/params"
 	"gopkg.in/urfave/cli.v1"
 
+	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
+	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter"
 	"github.com/unicornultrafoundation/go-u2u/gossip/gasprice"
 	"github.com/unicornultrafoundation/go-u2u/integration"
 	"github.com/unicornultrafoundation/go-u2u/integration/makefakegenesis"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/monitoring"
+	"github.com/unicornultrafoundation/go-u2u/node"
+	"github.com/unicornultrafoundation/go-u2u/p2p/enode"
+	"github.com/unicornultrafoundation/go-u2u/params"
+	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesis"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesisstore"
 	futils "github.com/unicornultrafoundation/go-u2u/utils"
@@ -506,6 +507,9 @@ func mayMakeAllConfigs(ctx *cli.Context) (*config, error) {
 	}
 
 	cfg.U2UStore.EVM.SfcEnabled = ctx.GlobalBool(utils.SFCFlag.Name)
+	if !cfg.U2UStore.EVM.SfcEnabled {
+		u2u.DefaultVMConfig.SfcPrecompiles = nil
+	}
 
 	if ctx.GlobalIsSet(FakeNetFlag.Name) {
 		_, num, _ := parseFakeGen(ctx.GlobalString(FakeNetFlag.Name))

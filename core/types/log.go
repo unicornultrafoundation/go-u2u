@@ -18,7 +18,9 @@ package types
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"strings"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
@@ -54,6 +56,43 @@ type Log struct {
 	// The Removed field is true if this log was reverted due to a chain reorganisation.
 	// You must pay attention to this field if you receive logs through a filter query.
 	Removed bool `json:"removed"`
+}
+
+// String returns a human-readable string representation of the Log.
+// It displays all fields in a structured format for debugging and logging purposes.
+func (l *Log) String() string {
+	if l == nil {
+		return "<nil Log>"
+	}
+
+	var topics []string
+	for _, topic := range l.Topics {
+		topics = append(topics, topic.Hex())
+	}
+
+	return fmt.Sprintf(`Log{
+  Address: %s
+  Topics: [%s]
+  Data: %s (%d bytes)
+  BlockNumber: %d
+  TxHash: %s
+  TxIndex: %d
+  BlockHash: %s
+  Index: %d
+  Removed: %t
+}
+`,
+		l.Address.Hex(),
+		strings.Join(topics, ", "),
+		hexutil.Encode(l.Data),
+		len(l.Data),
+		l.BlockNumber,
+		l.TxHash.Hex(),
+		l.TxIndex,
+		l.BlockHash.Hex(),
+		l.Index,
+		l.Removed,
+	)
 }
 
 type logMarshaling struct {

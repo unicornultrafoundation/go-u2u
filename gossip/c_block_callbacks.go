@@ -123,10 +123,10 @@ func consensusCallbackBeginBlockFn(
 			log.Crit("Failed to open StateDB", "err", err)
 		}
 		sfcStatedb, err := store.evm.SfcStateDB(bs.SfcStateRoot)
-		if err != nil {
-			log.Warn("Failed to get SFC state", "height", bs.LastBlock.Idx,
-				"event hash", bs.LastBlock.Atropos.Hex(), "err", err)
-		}
+		//if err != nil {
+		//	log.Warn("Failed to get SFC state", "height", bs.LastBlock.Idx,
+		//		"event hash", bs.LastBlock.Atropos.Hex(), "err", err)
+		//}
 
 		evmStateReader := &EvmStateReader{
 			ServiceFeed: feed,
@@ -506,9 +506,9 @@ func (s *Service) ReexecuteBlocks(from, to idx.Block) {
 			log.Crit("Failue to re-execute blocks", "err", err)
 		}
 		sfcStatedb, err := s.store.evm.SfcStateDB(prev.SfcStateRoot)
-		if err != nil {
-			log.Warn("Failed to get SFC state", "event hash", prev.Atropos.Hex(), "err", err)
-		}
+		//if err != nil {
+		//	log.Warn("Failed to get SFC state", "event hash", prev.Atropos.Hex(), "err", err)
+		//}
 		es := s.store.GetHistoryEpochState(s.store.FindBlockEpoch(b))
 		// Providing default config
 		// In case of trace transaction node, this config is changed

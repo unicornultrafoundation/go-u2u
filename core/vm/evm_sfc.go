@@ -67,7 +67,7 @@ func (evm *EVM) CallSFC(caller ContractRef, addr common.Address, input []byte, g
 			return nil, 0, nil
 		}
 		// Run SFC precompiled
-		log.Debug("SFC precompiled calling", "action", "call", "height", evm.Context.BlockNumber,
+		log.Info("CallSFC: SFC precompiled calling", "action", "call", "height", evm.Context.BlockNumber,
 			"caller", caller.Address().Hex(),
 			"to", addr.Hex())
 		start := time.Now()

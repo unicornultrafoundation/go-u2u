@@ -212,9 +212,9 @@ func ApplyTransaction(
 			}
 		}
 		if len(logs) != len(sfcLogs) {
-			log.Error("SFC log mismatch", "txHash", tx.Hash().Hex())
-			log.Error("EVM", "logs", logs)
-			log.Error("SFC", "logs", sfcLogs)
+			log.Error("SFC log mismatch", "txHash", tx.Hash().Hex(), "evm", len(logs), "sfc", len(sfcLogs))
+			fmt.Println("EVM logs", logs)
+			fmt.Println("SFC logs", sfcLogs)
 		}
 	}
 

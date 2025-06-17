@@ -507,6 +507,7 @@ func mayMakeAllConfigs(ctx *cli.Context) (*config, error) {
 	}
 
 	cfg.U2UStore.EVM.SfcEnabled = ctx.GlobalBool(utils.SFCFlag.Name)
+	u2u.DefaultVMConfig = u2u.OriginalDefaultVMConfig
 	if !cfg.U2UStore.EVM.SfcEnabled {
 		u2u.DefaultVMConfig.SfcPrecompiles = nil
 	}

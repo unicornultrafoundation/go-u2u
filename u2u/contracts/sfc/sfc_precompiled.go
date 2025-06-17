@@ -296,41 +296,6 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 	case "sumRewards":
 		result, gasUsed, err = handleSumRewards(evm, args)
 
-	// These internal functions are now implemented directly in the handleSealEpoch function
-	// and are no longer called separately
-	case "_sealEpoch_offline":
-		return nil, 0, vm.ErrSfcFunctionNotImplemented
-
-	case "_sealEpoch_rewards":
-		return nil, 0, vm.ErrSfcFunctionNotImplemented
-
-	case "_sealEpoch_minGasPrice":
-		return nil, 0, vm.ErrSfcFunctionNotImplemented
-
-	case "_calcRawValidatorEpochBaseReward":
-		result, gasUsed, err = handle_calcRawValidatorEpochBaseReward(evm, args)
-
-	case "_calcRawValidatorEpochTxReward":
-		result, gasUsed, err = handle_calcRawValidatorEpochTxReward(evm, args)
-
-	case "_calcValidatorCommission":
-		result, gasUsed, err = handle_calcValidatorCommission(evm, args)
-
-	case "_mintNativeToken":
-		result, gasUsed, err = handle_mintNativeToken(evm, args)
-
-	case "_setValidatorDeactivated":
-		result, gasUsed, err = handle_setValidatorDeactivated(evm, args)
-
-	case "_syncValidator":
-		result, gasUsed, err = handle_syncValidator(evm, args)
-
-	case "_validatorExists":
-		result, gasUsed, err = handle_validatorExists(evm, args)
-
-	case "_now":
-		result, gasUsed, err = handle_now(evm, args)
-
 	case "getSlashingPenalty":
 		result, gasUsed, err = handleGetSlashingPenalty(evm, args)
 

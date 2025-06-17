@@ -69,9 +69,10 @@ func handleMintU2U(evm *vm.EVM, caller common.Address, args []interface{}) ([]by
 		return nil, gasUsed, vm.ErrExecutionReverted
 	}
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	return nil, gasUsed, nil

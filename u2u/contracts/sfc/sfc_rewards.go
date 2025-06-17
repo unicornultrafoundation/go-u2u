@@ -123,11 +123,20 @@ func handleClaimRewards(evm *vm.EVM, caller common.Address, args []interface{}) 
 		common.BytesToHash(common.LeftPadBytes(caller.Bytes(), 32)),
 		common.BigToHash(toValidatorID),
 	}
-	data := common.BigToHash(totalReward).Bytes()
+	// Pack the three reward values using ABI encoding
+	data, err := SfcLibAbi.Events["ClaimedRewards"].Inputs.NonIndexed().Pack(
+		rewards.LockupExtraReward,
+		rewards.LockupBaseReward,
+		rewards.UnlockedReward,
+	)
+	if err != nil {
+		return nil, gasUsed, err
+	}
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	return nil, gasUsed, nil
@@ -187,9 +196,10 @@ func handleRestakeRewards(evm *vm.EVM, caller common.Address, args []interface{}
 	data = append(data, common.BigToHash(rewards.UnlockedReward).Bytes()...)
 
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	return nil, gasUsed, nil

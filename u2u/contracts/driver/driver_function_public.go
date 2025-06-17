@@ -45,9 +45,10 @@ func handleSetBackend(evm *vm.EVM, caller common.Address, args []interface{}) ([
 	}
 	var data []byte
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	return nil, 0, nil
@@ -92,9 +93,10 @@ func handleInitialize(evm *vm.EVM, caller common.Address, args []interface{}) ([
 	}
 	data := []byte{}
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	return nil, 0, nil
@@ -333,9 +335,10 @@ func handleUpdateNetworkRules(evm *vm.EVM, caller common.Address, args []interfa
 	}
 
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	return nil, 0, nil
@@ -370,9 +373,10 @@ func handleUpdateNetworkVersion(evm *vm.EVM, caller common.Address, args []inter
 	}
 
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	return nil, 0, nil
@@ -407,9 +411,10 @@ func handleAdvanceEpochs(evm *vm.EVM, caller common.Address, args []interface{})
 	}
 
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	return nil, 0, nil
@@ -449,9 +454,10 @@ func handleUpdateValidatorWeight(evm *vm.EVM, caller common.Address, args []inte
 	}
 
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	return nil, 0, nil
@@ -491,9 +497,10 @@ func handleUpdateValidatorPubkey(evm *vm.EVM, caller common.Address, args []inte
 	}
 
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	return nil, 0, nil

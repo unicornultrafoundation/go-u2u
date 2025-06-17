@@ -11,36 +11,6 @@ import (
 
 // Handler functions for SFC contract internal and private functions
 
-// _calcRawValidatorEpochBaseReward is an internal function to calculate raw validator epoch base reward
-func handle_calcRawValidatorEpochBaseReward(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement _calcRawValidatorEpochBaseReward handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
-}
-
-// _calcRawValidatorEpochTxReward is an internal function to calculate raw validator epoch transaction reward
-func handle_calcRawValidatorEpochTxReward(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement _calcRawValidatorEpochTxReward handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
-}
-
-// _calcValidatorCommission is an internal function to calculate validator commission
-func handle_calcValidatorCommission(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement _calcValidatorCommission handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
-}
-
-// _setValidatorDeactivated is an internal function to set a validator as deactivated
-func handle_setValidatorDeactivated(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement _setValidatorDeactivated handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
-}
-
-// _syncValidator is an internal function to sync validator data
-func handle_syncValidator(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement _syncValidator handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
-}
-
 // _validatorExists is an internal function to check if a validator exists
 func handle_validatorExists(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	var gasUsed uint64 = 0
@@ -71,12 +41,6 @@ func handle_validatorExists(evm *vm.EVM, args []interface{}) ([]byte, uint64, er
 	}
 
 	return result, gasUsed, nil
-}
-
-// _now is an internal function to get the current time
-func handle_now(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement _now handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
 }
 
 // getSlashingPenalty is an internal function to get the slashing penalty

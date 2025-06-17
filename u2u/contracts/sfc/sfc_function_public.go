@@ -95,9 +95,10 @@ func handleInitialize(evm *vm.EVM, caller common.Address, args []interface{}) ([
 	}
 	data := []byte{}
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	return nil, 0, nil
@@ -273,9 +274,10 @@ func handleCreateValidator(evm *vm.EVM, caller common.Address, args []interface{
 		return nil, 0, vm.ErrExecutionReverted
 	}
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	// Delegate the value to the validator
@@ -362,9 +364,10 @@ func handleTransferOwnership(evm *vm.EVM, caller common.Address, args []interfac
 	}
 	data := []byte{}
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	return nil, 0, nil
@@ -396,9 +399,10 @@ func handleRenounceOwnership(evm *vm.EVM, caller common.Address, args []interfac
 	}
 	data := []byte{}
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	return nil, gasUsed, nil

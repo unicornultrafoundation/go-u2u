@@ -54,9 +54,10 @@ func handleInitialize(evm *vm.EVM, caller common.Address, args []interface{}) ([
 	}
 	data := []byte{}
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	return nil, 0, nil
@@ -164,9 +165,10 @@ func handleMutExecute(evm *vm.EVM, caller common.Address, args []interface{}) ([
 	}
 	data := []byte{}
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	// Call the executable contract's execute function
@@ -190,9 +192,10 @@ func handleMutExecute(evm *vm.EVM, caller common.Address, args []interface{}) ([
 		common.BytesToHash(common.LeftPadBytes(newOwner.Bytes(), 32)),   // indexed parameter (new owner)
 	}
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	// Check that the code hashes match
@@ -636,9 +639,10 @@ func handleTransferOwnership(evm *vm.EVM, caller common.Address, args []interfac
 	}
 	data := []byte{}
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	return nil, 0, nil
@@ -665,9 +669,10 @@ func handleRenounceOwnership(evm *vm.EVM, caller common.Address) ([]byte, uint64
 	}
 	data := []byte{}
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	return nil, 0, nil

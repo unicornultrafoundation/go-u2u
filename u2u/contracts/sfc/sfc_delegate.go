@@ -198,9 +198,10 @@ func handleUndelegate(evm *vm.EVM, caller common.Address, args []interface{}) ([
 		return nil, 0, vm.ErrExecutionReverted
 	}
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	// Recount votes
@@ -484,9 +485,10 @@ func handleRawDelegate(evm *vm.EVM, delegator common.Address, toValidatorID *big
 	data := common.BigToHash(amount).Bytes() // amount
 
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	// Get the validator auth address
@@ -603,9 +605,10 @@ func handleInternalLockStake(evm *vm.EVM, caller common.Address, toValidatorID *
 		return nil, 0, err
 	}
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	return nil, gasUsed, nil
@@ -950,12 +953,12 @@ func handleUnlockStake(evm *vm.EVM, caller common.Address, args []interface{}) (
 		return nil, 0, err
 	}
 
-	unlockedStakeLog := &types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
-	}
-	evm.SfcStateDB.AddLog(unlockedStakeLog)
+	evm.SfcStateDB.AddLog(&types.Log{
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
+	})
 
 	return penalty.Bytes(), gasUsed, nil
 }
@@ -1135,9 +1138,10 @@ func handleWithdraw(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 		return nil, 0, vm.ErrExecutionReverted
 	}
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	return nil, gasUsed, nil

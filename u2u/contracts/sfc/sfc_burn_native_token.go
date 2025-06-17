@@ -38,12 +38,13 @@ func handleBurnU2U(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 			log.Error("handleBurnU2U: pack BurntU2U failed", "err", err, "amount", amount)
 			return nil, 0, err
 		}
-		burntU2ULog := &types.Log{
-			Address: ContractAddress,
-			Topics:  topics,
-			Data:    data,
-		}
-		evm.SfcStateDB.AddLog(burntU2ULog)
+
+		evm.SfcStateDB.AddLog(&types.Log{
+			BlockNumber: evm.Context.BlockNumber.Uint64(),
+			Address:     ContractAddress,
+			Topics:      topics,
+			Data:        data,
+		})
 	}
 
 	return nil, gasUsed, nil

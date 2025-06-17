@@ -1094,10 +1094,10 @@ func _setValidatorDeactivated(evm *vm.EVM, validatorID *big.Int, statusBit uint6
 			data = append(data, common.BigToHash(evm.Context.Time).Bytes()...)
 
 			evm.SfcStateDB.AddLog(&types.Log{
+				BlockNumber: evm.Context.BlockNumber.Uint64(),
 				Address:     ContractAddress,
 				Topics:      topics,
 				Data:        data,
-				BlockNumber: evm.Context.BlockNumber.Uint64(),
 			})
 		}
 
@@ -1109,10 +1109,10 @@ func _setValidatorDeactivated(evm *vm.EVM, validatorID *big.Int, statusBit uint6
 		data := common.BigToHash(new(big.Int).SetUint64(statusBit)).Bytes()
 
 		evm.SfcStateDB.AddLog(&types.Log{
+			BlockNumber: evm.Context.BlockNumber.Uint64(),
 			Address:     ContractAddress,
 			Topics:      topics,
 			Data:        data,
-			BlockNumber: evm.Context.BlockNumber.Uint64(),
 		})
 	}
 

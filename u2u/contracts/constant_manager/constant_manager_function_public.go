@@ -483,7 +483,7 @@ func handleUpdateBaseRewardPerSecond(evm *vm.EVM, args []interface{}) ([]byte, u
 	// Validate the value
 	// Decimal.unit() = 1e18 as defined in Decimal.sol
 	decimalUnit := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
-	minValue := new(big.Int).Div(decimalUnit, big.NewInt(2)) // 0.5 * Decimal.unit()
+	minValue := new(big.Int).Div(decimalUnit, big.NewInt(2))  // 0.5 * Decimal.unit()
 	maxValue := new(big.Int).Mul(big.NewInt(32), decimalUnit) // 32 * Decimal.unit()
 
 	if value.Cmp(minValue) < 0 {
@@ -530,7 +530,7 @@ func handleUpdateOfflinePenaltyThresholdTime(evm *vm.EVM, args []interface{}) ([
 	}
 
 	// Validate the value
-	minValue := big.NewInt(86400)                                 // Minimum 1 day in seconds
+	minValue := big.NewInt(86400)                                   // Minimum 1 day in seconds
 	maxValue := new(big.Int).Mul(big.NewInt(86400), big.NewInt(10)) // 10 days in seconds
 
 	if value.Cmp(minValue) < 0 {
@@ -748,9 +748,10 @@ func handleInitialize(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	}
 	data := []byte{}
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	return nil, 0, nil
@@ -802,9 +803,10 @@ func handleTransferOwnership(evm *vm.EVM, args []interface{}) ([]byte, uint64, e
 	}
 	data := []byte{}
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	return nil, 0, nil
@@ -837,9 +839,10 @@ func handleRenounceOwnership(evm *vm.EVM, args []interface{}) ([]byte, uint64, e
 	}
 	data := []byte{}
 	evm.SfcStateDB.AddLog(&types.Log{
-		Address: ContractAddress,
-		Topics:  topics,
-		Data:    data,
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
 	})
 
 	return nil, 0, nil

@@ -316,7 +316,7 @@ func (s *stateObject) finalise(prefetch bool) {
 	for key, value := range s.dirtyStorage {
 		s.pendingStorage[key] = value
 		if isHeavyLog {
-			log.Info("stateObject.finalise on SFC contract", "key", key.Hex(), "value", value.Hex())
+			log.Trace("stateObject.finalise on SFC contract", "key", key.Hex(), "value", value.Hex())
 		}
 		if value != s.originStorage[key] {
 			slotsToPrefetch = append(slotsToPrefetch, common.CopyBytes(key[:])) // Copy needed for closure

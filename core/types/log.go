@@ -17,6 +17,7 @@
 package types
 
 import (
+	"bytes"
 	"io"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
@@ -140,4 +141,66 @@ func (l *LogForStorage) DecodeRLP(s *rlp.Stream) error {
 		}
 	}
 	return err
+}
+
+// Equal compares two Log instances and returns true if all fields are identical.
+// This function performs a deep comparison of all fields including:
+// - Address (consensus field)
+// - Topics slice (consensus field)
+// - Data byte slice (consensus field)
+// - BlockNumber (derived field)
+// - TxHash (derived field)
+// - TxIndex (derived field)
+// - BlockHash (derived field)
+// - Index (derived field)
+// - Removed (derived field)
+func (l *Log) Equal(other *Log) bool {
+	if l == nil && other == nil {
+		return true
+	}
+	if l == nil || other == nil {
+		return false
+	}
+
+	// Compare consensus fields
+	if l.Address.Cmp(other.Address) != 0 {
+		return false
+	}
+
+	// Compare Topics slice
+	if len(l.Topics) != len(other.Topics) {
+		return false
+	}
+	for i, topic := range l.Topics {
+		if topic.Cmp(other.Topics[i]) != 0 {
+			return false
+		}
+	}
+
+	// Compare Data byte slice
+	if !bytes.Equal(l.Data, other.Data) {
+		return false
+	}
+
+	// Compare derived fields
+	if l.BlockNumber != other.BlockNumber {
+		return false
+	}
+	if l.TxHash.Cmp(other.TxHash) != 0 {
+		return false
+	}
+	if l.TxIndex != other.TxIndex {
+		return false
+	}
+	if l.BlockHash.Cmp(other.BlockHash) != 0 {
+		return false
+	}
+	if l.Index != other.Index {
+		return false
+	}
+	if l.Removed != other.Removed {
+		return false
+	}
+
+	return true
 }

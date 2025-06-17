@@ -105,7 +105,6 @@ func dumpSfcStorageByStateDb(stateDb *state.StateDB, sfcStateDb *state.StateDB) 
 		sfcStateDb.SetNonce(sfcAddress, stateDb.GetNonce(sfcAddress))
 		sfcStateDb.SetCode(sfcAddress, stateDb.GetCode(sfcAddress))
 		stateDb.ForEachStorage(sfcAddress, func(key, value common.Hash) bool {
-			log.Debug("Looping on storage trie", "Contract", sfcAddress, "Key", key.Hex(), "Value", value.Hex())
 			sfcStateDb.SetState(sfcAddress, key, value)
 			return true
 		})

@@ -129,7 +129,7 @@ func StartIntegrationTestNet(directory string, isSfc bool) (*IntegrationTestNet,
 
 			// websocket-client options
 			"--ws", "--ws.addr", "0.0.0.0", "--ws.port", fmt.Sprint(wsPort),
-			"--ws.api", "admin,eth,ftm",
+			"--ws.api", "admin,eth",
 
 			//  net options
 			"--port", fmt.Sprint(netPort),

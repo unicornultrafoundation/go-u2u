@@ -109,7 +109,7 @@ func testSFCStore_CanGetSfcStorage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get owner of SFC contract: %v", err)
 	}
-	assert.Equal(t, common.BytesToAddress(owner).Hex(), testnet.validator.Address().Hex())
+	assert.Equal(t, testnet.validator.Address().Hex(), common.BytesToAddress(owner).Hex())
 }
 
 func testSFCStore_CanGetSfcStorageAtBlock(t *testing.T) {

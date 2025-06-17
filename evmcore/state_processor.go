@@ -203,18 +203,28 @@ func ApplyTransaction(
 	}
 	if sfcStatedb != nil {
 		sfcLogs := sfcStatedb.GetLogs(tx.Hash(), blockHash)
-		for _, l := range sfcLogs {
-			onNewLog(l, statedb)
+		for i := range sfcLogs {
+			// just process the EVM logs once for now
+			// onNewLog(l, sfcStatedb)
+			if !logs[i].Equal(sfcLogs[i]) {
+				log.Error("SFC log mismatch", "index", i, "txHash", tx.Hash().Hex(),
+					"evm", logs[i], "sfc", sfcLogs[i])
+			}
+		}
+		if len(logs) != len(sfcLogs) {
+			log.Error("SFC log mismatch", "txHash", tx.Hash().Hex())
+			log.Error("EVM", "logs", logs)
+			log.Error("SFC", "logs", sfcLogs)
 		}
 	}
 
 	// Update the state with pending changes.
 	var root []byte
 	if config.IsByzantium(blockNumber) {
-		log.Info("StateProcessor.Process during ApplyTransaction", "txHash", tx.Hash().Hex())
+		log.Trace("StateProcessor.Process during ApplyTransaction", "txHash", tx.Hash().Hex())
 		statedb.Finalise(true)
 		if sfcStatedb != nil {
-			log.Info("Separate two commit logs when StateProcessor.Process during ApplyTransaction",
+			log.Trace("Separate two commit logs when StateProcessor.Process during ApplyTransaction",
 				"above", "evm", "below", "sfc")
 			sfcStatedb.Finalise(true)
 		}

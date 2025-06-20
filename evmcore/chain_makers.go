@@ -99,9 +99,12 @@ func (b *BlockGen) AddTxWithChain(bc DummyChain, tx *types.Transaction) {
 		panic(err)
 	}
 	b.statedb.Prepare(tx.Hash(), len(b.txs))
+	if b.sfcStatedb != nil {
+		b.sfcStatedb.Prepare(tx.Hash(), len(b.txs))
+	}
 	blockContext := NewEVMBlockContext(b.header, bc, nil)
 	vmenv := vm.NewEVM(blockContext, vm.TxContext{}, b.statedb, b.sfcStatedb, b.config, u2u.DefaultVMConfig)
-	receipt, _, _, err := ApplyTransaction(msg, b.config, b.gasPool, b.statedb, b.header.Number, b.header.Hash, tx, &b.header.GasUsed, vmenv, u2u.DefaultVMConfig, func(log *types.Log, db *state.StateDB) {})
+	receipt, _, _, err := ApplyTransaction(msg, b.config, b.gasPool, b.statedb, b.sfcStatedb, b.header.Number, b.header.Hash, tx, &b.header.GasUsed, vmenv, u2u.DefaultVMConfig, func(log *types.Log, db *state.StateDB) {})
 	if err != nil {
 		panic(err)
 	}

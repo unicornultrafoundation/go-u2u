@@ -110,25 +110,11 @@ func (p *StateProcessor) Process(
 		// extra dual-state verification and benchmark
 		if sfcStatedb != nil {
 			for _, addr := range SfcPrecompiles {
-				original := statedb.GetStorageRoot(addr)
-				sfc := sfcStatedb.GetStorageRoot(addr)
-				if original.Cmp(sfc) != 0 {
-					log.Error("U2UEVMProcessor.Process: SFC storage corrupted after applying tx",
-						"tx", tx.Hash().Hex(), "addr", addr, "original", original.Hex(), "sfc", sfc.Hex())
-					common.SendInterrupt()
-				}
-				originalBalance := statedb.GetBalance(addr)
-				sfcBalance := sfcStatedb.GetBalance(addr)
-				if originalBalance.Cmp(sfcBalance) != 0 {
-					log.Error("U2UEVMProcessor.Process: SFC balance mismatched after applying tx",
-						"tx", tx.Hash().Hex(), "addr", addr, "original", originalBalance, "sfc", sfcBalance)
-					common.SendInterrupt()
-				}
-				originalNonce := statedb.GetNonce(addr)
-				sfcNonce := sfcStatedb.GetNonce(addr)
-				if originalNonce != sfcNonce {
-					log.Error("U2UEVMProcessor.Process: SFC nonce mismatched after applying tx",
-						"tx", tx.Hash().Hex(), "addr", addr, "original", originalNonce, "sfc", sfcNonce)
+				original := statedb.GetOrNewStateObject(addr).Account()
+				sfc := sfcStatedb.GetOrNewStateObject(addr).Account()
+				if !statedb.GetOrNewStateObject(addr).Account().Cmp(sfcStatedb.GetOrNewStateObject(addr).Account()) {
+					log.Error("StateProcessor.Process: SFC account mismatched after applying tx",
+						"tx", tx.Hash().Hex(), "addr", addr, "original", original, "sfc", sfc)
 					common.SendInterrupt()
 				}
 			}
@@ -197,18 +183,22 @@ func ApplyTransaction(
 		return nil, 0, result == nil, err
 	}
 	// Notify about logs with potential state changes
+	needToCompareLogs := false
 	logs := statedb.GetLogs(tx.Hash(), blockHash)
 	for _, l := range logs {
+		if _, ok := evm.SfcPrecompile(l.Address); ok {
+			needToCompareLogs = true
+		}
 		onNewLog(l, statedb)
 	}
-	if sfcStatedb != nil {
+	if sfcStatedb != nil && needToCompareLogs {
 		sfcLogs := sfcStatedb.GetLogs(tx.Hash(), blockHash)
-		for i := range sfcLogs {
-			// just process the EVM logs once for now
-			// onNewLog(l, sfcStatedb)
+		for i, l := range sfcLogs {
+			onNewLog(l, nil)
 			if !logs[i].Equal(sfcLogs[i]) {
-				log.Error("SFC log mismatch", "index", i, "txHash", tx.Hash().Hex(),
-					"evm", logs[i], "sfc", sfcLogs[i])
+				log.Error("SFC log mismatch", "index", i, "txHash", tx.Hash().Hex())
+				fmt.Println("EVM log", logs[i])
+				fmt.Println("SFC log", sfcLogs[i])
 			}
 		}
 		if len(logs) != len(sfcLogs) {
@@ -221,10 +211,10 @@ func ApplyTransaction(
 	// Update the state with pending changes.
 	var root []byte
 	if config.IsByzantium(blockNumber) {
-		log.Trace("StateProcessor.Process during ApplyTransaction", "txHash", tx.Hash().Hex())
+		log.Info("StateProcessor.Process during ApplyTransaction", "txHash", tx.Hash().Hex())
 		statedb.Finalise(true)
 		if sfcStatedb != nil {
-			log.Trace("Separate two commit logs when StateProcessor.Process during ApplyTransaction",
+			log.Info("Separate two commit logs when StateProcessor.Process during ApplyTransaction",
 				"above", "evm", "below", "sfc")
 			sfcStatedb.Finalise(true)
 		}

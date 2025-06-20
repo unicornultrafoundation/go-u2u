@@ -107,6 +107,56 @@ type Account struct {
 	CodeHash []byte
 }
 
+// Cmp deeply compares two Account structs.
+// Returns true if all fields are identical, false if any field is different.
+func (a *Account) Cmp(other *Account) bool {
+	if a == nil && other == nil {
+		return true
+	}
+	if a == nil || other == nil {
+		return false
+	}
+
+	// Compare Nonce
+	if a.Nonce != other.Nonce {
+		return false
+	}
+
+	// Compare Balance
+	if a.Balance == nil && other.Balance == nil {
+		// Both nil, continue to next field
+	} else if a.Balance == nil || other.Balance == nil {
+		return false
+	} else {
+		if a.Balance.Cmp(other.Balance) != 0 {
+			return false
+		}
+	}
+
+	// Compare Root hash using Cmp method
+	if a.Root.Cmp(other.Root) != 0 {
+		return false
+	}
+
+	// Compare CodeHash byte slices
+	return bytes.Equal(a.CodeHash, other.CodeHash)
+}
+
+// String returns a human-readable string representation of the Account.
+func (a *Account) String() string {
+	if a == nil {
+		return "Account(nil)"
+	}
+
+	balanceStr := "<nil>"
+	if a.Balance != nil {
+		balanceStr = a.Balance.String()
+	}
+
+	return fmt.Sprintf("Account{Nonce: %d, Balance: %s, Root: %s, CodeHash: %x}",
+		a.Nonce, balanceStr, a.Root.Hex(), a.CodeHash)
+}
+
 // newObject creates a state object.
 func newObject(db *StateDB, address common.Address, data Account) *stateObject {
 	if data.Balance == nil {
@@ -316,7 +366,7 @@ func (s *stateObject) finalise(prefetch bool) {
 	for key, value := range s.dirtyStorage {
 		s.pendingStorage[key] = value
 		if isHeavyLog {
-			log.Trace("stateObject.finalise on SFC contract", "key", key.Hex(), "value", value.Hex())
+			log.Info("stateObject.finalise on SFC contract", "key", key.Hex(), "value", value.Hex())
 		}
 		if value != s.originStorage[key] {
 			slotsToPrefetch = append(slotsToPrefetch, common.CopyBytes(key[:])) // Copy needed for closure
@@ -554,6 +604,10 @@ func (s *stateObject) Nonce() uint64 {
 
 func (s *stateObject) Root() common.Hash {
 	return s.data.Root
+}
+
+func (s *stateObject) Account() *Account {
+	return &s.data
 }
 
 // Never called, but must be present to allow stateObject to be used

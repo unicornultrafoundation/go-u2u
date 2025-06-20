@@ -181,6 +181,9 @@ func (eth *Service) stateAtTransaction(evmblock *evmcore.EvmBlock, txIndex int, 
 		// Not yet the searched for transaction, execute on top of the current state
 		vmenv := vm.NewEVM(context, txContext, statedb, sfcStatedb, eth.EthAPI.ChainConfig(), vm.Config{})
 		statedb.Prepare(tx.Hash(), idx)
+		if common.IsNilInterface(sfcStatedb) {
+			sfcStatedb.Prepare(tx.Hash(), idx)
+		}
 		if _, err := evmcore.ApplyMessage(vmenv, msg, new(evmcore.GasPool).AddGas(tx.Gas())); err != nil {
 			return nil, vm.BlockContext{}, nil, fmt.Errorf("transaction %#x failed: %v", tx.Hash(), err)
 		}

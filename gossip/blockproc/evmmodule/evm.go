@@ -99,10 +99,12 @@ func (p *U2UEVMProcessor) Execute(txs types.Transactions) types.Receipts {
 
 	// Process txs
 	evmBlock := p.evmBlockWith(txs)
-	receipts, _, skipped, err := evmProcessor.Process(evmBlock, p.statedb, p.sfcStateDb, u2u.DefaultVMConfig, &p.gasUsed, func(l *types.Log, _ *state.StateDB) {
+	receipts, _, skipped, err := evmProcessor.Process(evmBlock, p.statedb, p.sfcStateDb, u2u.DefaultVMConfig, &p.gasUsed, func(l *types.Log, s *state.StateDB) {
 		// Note: l.Index is properly set before
 		l.TxIndex += txsOffset
-		p.onNewLog(l)
+		if s != nil {
+			p.onNewLog(l)
+		}
 	})
 	if err != nil {
 		log.Crit("EVM internal error", "err", err)
@@ -153,25 +155,11 @@ func (p *U2UEVMProcessor) Finalize() (evmBlock *evmcore.EvmBlock, skippedTxs []u
 			log.Error("SFC state is empty now", "block", p.block.Idx)
 		}
 		for _, addr := range SfcPrecompiles {
-			original := p.statedb.GetStorageRoot(addr)
-			sfc := p.sfcStateDb.GetStorageRoot(addr)
-			if original.Cmp(sfc) != 0 {
-				log.Error("U2UEVMProcessor.Finalize: SFC storage corrupted after applying block",
-					"height", p.block.Idx, "addr", addr, "original", original.Hex(), "sfc", sfc.Hex())
-				common.SendInterrupt()
-			}
-			originalBalance := p.statedb.GetBalance(addr)
-			sfcBalance := p.sfcStateDb.GetBalance(addr)
-			if originalBalance.Cmp(sfcBalance) != 0 {
-				log.Error("U2UEVMProcessor.Finalize: SFC balance mismatched after applying block",
-					"height", p.block.Idx, "addr", addr, "original", originalBalance, "sfc", sfcBalance)
-				common.SendInterrupt()
-			}
-			originalNonce := p.statedb.GetNonce(addr)
-			sfcNonce := p.sfcStateDb.GetNonce(addr)
-			if originalNonce != sfcNonce {
-				log.Error("U2UEVMProcessor.Finalize: SFC nonce mismatched after applying block",
-					"height", p.block.Idx, "addr", addr, "original", originalNonce, "sfc", sfcNonce)
+			original := p.statedb.GetOrNewStateObject(addr).Account()
+			sfc := p.sfcStateDb.GetOrNewStateObject(addr).Account()
+			if !p.statedb.GetOrNewStateObject(addr).Account().Cmp(p.sfcStateDb.GetOrNewStateObject(addr).Account()) {
+				log.Error("U2UEVMProcessor.Finalize: SFC account mismatched after applying block",
+					"height", p.block.Idx, "addr", addr, "original", original, "sfc", sfc)
 				common.SendInterrupt()
 			}
 		}

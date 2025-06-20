@@ -665,16 +665,29 @@ func (s *StateDB) Copy() *StateDB {
 	state := &StateDB{
 		db:                  s.db,
 		trie:                s.db.CopyTrie(s.trie),
+		originalRoot:        s.originalRoot,
 		stateObjects:        make(map[common.Address]*stateObject, len(s.journal.dirties)),
 		stateObjectsPending: make(map[common.Address]struct{}, len(s.stateObjectsPending)),
 		stateObjectsDirty:   make(map[common.Address]struct{}, len(s.journal.dirties)),
+		dbErr:               s.dbErr,
 		refund:              s.refund,
+		thash:               s.thash,
+		txIndex:             s.txIndex,
 		logs:                make(map[common.Hash][]*types.Log, len(s.logs)),
 		logSize:             s.logSize,
 		preimages:           make(map[common.Hash][]byte, len(s.preimages)),
 		journal:             newJournal(),
-		hasher:              crypto.NewKeccakState(),
+
+		hasher: crypto.NewKeccakState(),
+
+		// Do we need to copy the access list? In practice: No. At the start of a
+		// transaction, the access list is empty. In practice, we only ever copy state
+		// _between_ transactions/blocks, never in the middle of a transaction.
+		// However, it doesn't cost us much to copy an empty list, so we do it anyway
+		// to not blow up if we ever decide to copy it in the middle of a transaction
+		accessList: s.accessList.Copy(),
 	}
+	
 	// Copy the dirty states, logs, and preimages
 	for addr := range s.journal.dirties {
 		// As documented [here](https://github.com/unicornultrafoundation/go-u2u/libs/pull/16485#issuecomment-380438527),
@@ -717,12 +730,6 @@ func (s *StateDB) Copy() *StateDB {
 	for hash, preimage := range s.preimages {
 		state.preimages[hash] = preimage
 	}
-	// Do we need to copy the access list? In practice: No. At the start of a
-	// transaction, the access list is empty. In practice, we only ever copy state
-	// _between_ transactions/blocks, never in the middle of a transaction.
-	// However, it doesn't cost us much to copy an empty list, so we do it anyway
-	// to not blow up if we ever decide copy it in the middle of a transaction
-	state.accessList = s.accessList.Copy()
 
 	// If there's a prefetcher running, make an inactive copy of it that can
 	// only access data but does not actively preload (since the user will not

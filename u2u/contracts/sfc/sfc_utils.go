@@ -1015,8 +1015,8 @@ func getValidatorStatusSlotByID(validatorID *big.Int) (*big.Int, uint64) {
 	return getValidatorStatusSlot(validatorID)
 }
 
-// _setValidatorDeactivated sets a validator as deactivated with the specified status bit
-func _setValidatorDeactivated(evm *vm.EVM, validatorID *big.Int, statusBit uint64) (uint64, error) {
+// handleInternalSetValidatorDeactivated sets a validator as deactivated with the specified status bit
+func handleInternalSetValidatorDeactivated(evm *vm.EVM, validatorID *big.Int, statusBit uint64) (uint64, error) {
 	// Initialize gas used
 	var gasUsed uint64 = 0
 
@@ -1119,8 +1119,8 @@ func _setValidatorDeactivated(evm *vm.EVM, validatorID *big.Int, statusBit uint6
 	return gasUsed, nil
 }
 
-// _syncValidator syncs a validator's weight with the node
-func _syncValidator(evm *vm.EVM, validatorID *big.Int, syncPubkey bool) (uint64, error) {
+// handleInternalSyncValidator syncs a validator's weight with the node
+func handleInternalSyncValidator(evm *vm.EVM, validatorID *big.Int, syncPubkey bool) (uint64, error) {
 	// Initialize gas used
 	var gasUsed uint64 = 0
 

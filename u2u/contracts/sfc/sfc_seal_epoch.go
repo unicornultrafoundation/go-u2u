@@ -319,14 +319,14 @@ func _sealEpoch_offline(evm *vm.EVM, validatorIDs []*big.Int, offlineTimes []*bi
 		// Check if the validator exceeds the offline thresholds
 		if offlineBlocks[i].Cmp(offlinePenaltyThresholdBlocksNum) > 0 && offlineTimes[i].Cmp(offlinePenaltyThresholdTime) >= 0 {
 			// Deactivate the validator with OFFLINE_BIT
-			deactivateGasUsed, err := _setValidatorDeactivated(evm, validatorID, OFFLINE_BIT)
+			deactivateGasUsed, err := handleInternalSetValidatorDeactivated(evm, validatorID, OFFLINE_BIT)
 			gasUsed += deactivateGasUsed
 			if err != nil {
 				return gasUsed, err
 			}
 
 			// Sync the validator
-			syncGasUsed, err := _syncValidator(evm, validatorID, false)
+			syncGasUsed, err := handleInternalSyncValidator(evm, validatorID, false)
 			gasUsed += syncGasUsed
 			if err != nil {
 				return gasUsed, err

@@ -635,9 +635,69 @@ func handleRewardsStash(evm *vm.EVM, args []interface{}) ([]byte, uint64, error)
 }
 
 // GetLockedStake returns the locked stake for a delegator and validator
+// This is a port of the getLockedStake function from SFCBase.sol
 func handleGetLockedStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement getLockedStake handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+	var gasUsed uint64 = 0
+
+	// Parse arguments
+	if len(args) != 2 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	delegator, ok := args[0].(common.Address)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	toValidatorID, ok := args[1].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Check if the delegation is locked up using the existing helper function
+	// This matches the Solidity: if (!isLockedUp(delegator, toValidatorID)) { return 0; }
+	isLockedUpArgs := []interface{}{delegator, toValidatorID}
+	isLockedUpResult, lockedGasUsed, err := handleIsLockedUp(evm, isLockedUpArgs)
+	gasUsed += lockedGasUsed
+	if err != nil {
+		return nil, gasUsed, err
+	}
+
+	// Unpack the isLockedUp result
+	isLockedUpValues, err := SfcAbi.Methods["isLockedUp"].Outputs.Unpack(isLockedUpResult)
+	if err != nil {
+		return nil, gasUsed, err
+	}
+
+	isLocked, ok := isLockedUpValues[0].(bool)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	// If not locked up, return 0
+	if !isLocked {
+		result, err := SfcAbi.Methods["getLockedStake"].Outputs.Pack(big.NewInt(0))
+		if err != nil {
+			return nil, gasUsed, vm.ErrExecutionReverted
+		}
+		return result, gasUsed, nil
+	}
+
+	// If locked up, get the locked stake from getLockupInfo[delegator][toValidatorID].lockedStake
+	// This matches the Solidity: return getLockupInfo[delegator][toValidatorID].lockedStake;
+	lockedStakeSlot, slotGasUsed := getLockedStakeSlot(delegator, toValidatorID)
+	gasUsed += slotGasUsed
+
+	// Load the locked stake from storage
+	lockedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockedStakeSlot))
+	gasUsed += SloadGasCost
+	lockedStakeBigInt := new(big.Int).SetBytes(lockedStake.Bytes())
+
+	// Pack and return the result
+	result, err := SfcAbi.Methods["getLockedStake"].Outputs.Pack(lockedStakeBigInt)
+	if err != nil {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	return result, gasUsed, nil
 }
 
 // IsSlashed returns whether a validator is slashed

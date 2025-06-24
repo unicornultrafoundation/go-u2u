@@ -95,8 +95,8 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 		validatorIDs = append(validatorIDs, validatorID)
 	}
 
-	// Call _sealEpoch_offline
-	offlineGasUsed, err := _sealEpoch_offline(evm, validatorIDs, offlineTimes, offlineBlocks, currentEpochSnapshotSlot)
+	// Call handleInternalSealEpochOffline
+	offlineGasUsed, err := handleInternalSealEpochOffline(evm, validatorIDs, offlineTimes, offlineBlocks, currentEpochSnapshotSlot)
 	gasUsed += offlineGasUsed
 	if err != nil {
 		return nil, gasUsed, err
@@ -124,20 +124,20 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	// Calculate epoch duration
 	epochDuration := GetBigInt().SetInt64(1) // Default to 1 if current time <= prevEndTime
 	if evm.Context.Time.Cmp(prevEndTimeBigInt) > 0 {
-		epochDuration = epochDuration.Sub(evm.Context.Time, prevEndTimeBigInt)
+		epochDuration = new(big.Int).Sub(evm.Context.Time, prevEndTimeBigInt)
 	}
 	PutBigInt(prevEndTimeBigInt)
 
-	// Call _sealEpoch_rewards
+	// Call handleInternalSealEpochRewards
 	// In Solidity: _sealEpoch_rewards(epochDuration, snapshot, prevSnapshot, validatorIDs, uptimes, originatedTxsFee)
-	rewardsGasUsed, err := _sealEpoch_rewards(evm, epochDuration, currentEpochBigInt, prevEpochBigInt, validatorIDs, uptimes, originatedTxsFee)
+	rewardsGasUsed, err := handleInternalSealEpochRewards(evm, epochDuration, currentEpochBigInt, prevEpochBigInt, validatorIDs, uptimes, originatedTxsFee)
 	gasUsed += rewardsGasUsed
 	if err != nil {
 		return nil, gasUsed, err
 	}
 
-	// Call _sealEpoch_minGasPrice
-	minGasPriceGasUsed, err := _sealEpoch_minGasPrice(evm, epochDuration, epochGas)
+	// Call handleInternalSealEpochMinGasPrice
+	minGasPriceGasUsed, err := handleInternalSealEpochMinGasPrice(evm, epochDuration, epochGas)
 	gasUsed += minGasPriceGasUsed
 	if err != nil {
 		return nil, gasUsed, err
@@ -305,8 +305,8 @@ func handleSealEpochValidators(evm *vm.EVM, caller common.Address, args []interf
 	return nil, gasUsed, nil
 }
 
-// _sealEpoch_offline is an internal function to seal offline validators in an epoch
-func _sealEpoch_offline(evm *vm.EVM, validatorIDs []*big.Int, offlineTimes []*big.Int, offlineBlocks []*big.Int, currentEpochSnapshotSlot *big.Int) (uint64, error) {
+// handleInternalSealEpochOffline is an internal function to seal offline validators in an epoch
+func handleInternalSealEpochOffline(evm *vm.EVM, validatorIDs []*big.Int, offlineTimes []*big.Int, offlineBlocks []*big.Int, currentEpochSnapshotSlot *big.Int) (uint64, error) {
 	// Initialize gas used
 	var gasUsed uint64 = 0
 
@@ -370,14 +370,13 @@ func _sealEpoch_offline(evm *vm.EVM, validatorIDs []*big.Int, offlineTimes []*bi
 	return gasUsed, nil
 }
 
-// _sealEpoch_rewards is an internal function to seal rewards in an epoch
-func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.Int, prevEpoch *big.Int,
+// handleInternalSealEpochRewards is an internal function to seal rewards in an epoch
+func handleInternalSealEpochRewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.Int, prevEpoch *big.Int,
 	validatorIDs []*big.Int, uptimes []*big.Int, accumulatedOriginatedTxsFee []*big.Int) (uint64, error) {
 	// Initialize gas used
 	var gasUsed uint64 = 0
 
 	// Declare variables to avoid redeclaration issues
-	var innerHash []byte
 	var outerHashInput []byte
 	var outerHash []byte
 
@@ -456,33 +455,15 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 
 	baseRewardPerSecond := getConstantsManagerVariable("baseRewardPerSecond")
 	validatorCommission := getConstantsManagerVariable("validatorCommission")
-	burntFeeShare := getConstantsManagerVariable("burntFeeShare")
 	treasuryFeeShare := getConstantsManagerVariable("treasuryFeeShare")
 
 	// Calculate rewards for each validator
 	for i, validatorID := range validatorIDs {
-		// Calculate raw base reward
-		rawBaseReward := big.NewInt(0)
-		if baseRewardWeights[i].Cmp(big.NewInt(0)) > 0 {
-			totalReward := new(big.Int).Mul(epochDuration, baseRewardPerSecond)
-			rawBaseReward = new(big.Int).Mul(totalReward, baseRewardWeights[i])
-			rawBaseReward = new(big.Int).Div(rawBaseReward, totalBaseRewardWeight)
-		}
+		// Calculate raw base reward using helper function
+		rawBaseReward := handleInternalCalcRawValidatorEpochBaseReward(epochDuration, baseRewardPerSecond, baseRewardWeights[i], totalBaseRewardWeight)
 
-		// Calculate raw tx reward
-		rawTxReward := big.NewInt(0)
-		if txRewardWeights[i].Cmp(big.NewInt(0)) > 0 {
-			// Calculate fee reward except burntFeeShare and treasuryFeeShare
-			txReward := new(big.Int).Mul(epochFee, txRewardWeights[i])
-			txReward = new(big.Int).Div(txReward, totalTxRewardWeight)
-
-			// Subtract burnt and treasury shares
-			shareToSubtract := new(big.Int).Add(burntFeeShare, treasuryFeeShare)
-			shareToKeep := new(big.Int).Sub(unit, shareToSubtract)
-
-			rawTxReward = new(big.Int).Mul(txReward, shareToKeep)
-			rawTxReward = new(big.Int).Div(rawTxReward, unit)
-		}
+		// Calculate raw tx reward using helper function
+		rawTxReward := handleInternalCalcRawValidatorEpochTxReward(epochFee, txRewardWeights[i], totalTxRewardWeight)
 
 		// Calculate total raw reward
 		rawReward := new(big.Int).Add(rawBaseReward, rawTxReward)
@@ -495,9 +476,8 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		gasUsed += SloadGasCost
 		validatorAuthAddr := common.BytesToAddress(validatorAuth.Bytes())
 
-		// Calculate validator's commission
-		commissionRewardFull := new(big.Int).Mul(rawReward, validatorCommission)
-		commissionRewardFull = new(big.Int).Div(commissionRewardFull, unit)
+		// Calculate validator's commission using helper function
+		commissionRewardFull := handleInternalCalcValidatorCommission(rawReward, validatorCommission)
 
 		// Get validator's self-stake
 		selfStakeSlot, slotGasUsed := getStakeSlot(validatorAuthAddr, validatorID)
@@ -509,13 +489,24 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 
 		// Process commission reward if self-stake is not zero
 		if selfStakeBigInt.Cmp(big.NewInt(0)) != 0 {
-			// Get locked stake
-			lockedStakeSlot, slotGasUsed := getLockedStakeSlot(validatorAuthAddr, validatorID)
-			gasUsed += slotGasUsed
+			// Get locked stake using existing helper function
+			getLockedStakeArgs := []interface{}{validatorAuthAddr, validatorID}
+			lockedStakeResult, lockedGasUsed, err := handleGetLockedStake(evm, getLockedStakeArgs)
+			gasUsed += lockedGasUsed
+			if err != nil {
+				return gasUsed, err
+			}
 
-			lockedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockedStakeSlot))
-			gasUsed += SloadGasCost
-			lockedStakeBigInt := new(big.Int).SetBytes(lockedStake.Bytes())
+			// Unpack the result
+			lockedStakeValues, err := SfcAbi.Methods["getLockedStake"].Outputs.Unpack(lockedStakeResult)
+			if err != nil {
+				return gasUsed, err
+			}
+
+			lockedStakeBigInt, ok := lockedStakeValues[0].(*big.Int)
+			if !ok {
+				return gasUsed, vm.ErrExecutionReverted
+			}
 
 			// Calculate locked and unlocked commission rewards
 			lCommissionRewardFull := new(big.Int).Mul(commissionRewardFull, lockedStakeBigInt)
@@ -533,7 +524,7 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 			lockupDurationBigInt := new(big.Int).SetBytes(lockupDuration.Bytes())
 
 			// Scale lockup rewards
-			reward, scaleGasUsed, err := _scaleLockupReward(evm, lCommissionRewardFull, lockupDurationBigInt)
+			reward, scaleGasUsed, err := handleInternalScaleLockupReward(evm, lCommissionRewardFull, lockupDurationBigInt)
 			gasUsed += scaleGasUsed
 			if err != nil {
 				return gasUsed, err
@@ -541,7 +532,7 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 
 			// Scale lockup reward for unlocked commission
 			uCommissionRewardFull := new(big.Int).Sub(commissionRewardFull, lCommissionRewardFull)
-			uReward, scaleGasUsed, err := _scaleLockupReward(evm, uCommissionRewardFull, big.NewInt(0))
+			uReward, scaleGasUsed, err := handleInternalScaleLockupReward(evm, uCommissionRewardFull, big.NewInt(0))
 			gasUsed += scaleGasUsed
 			if err != nil {
 				return gasUsed, err
@@ -640,7 +631,7 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		// Calculate reward per token
 		rewardPerToken := big.NewInt(0)
 		if receivedStakeBigInt.Cmp(big.NewInt(0)) != 0 {
-			rewardPerToken = new(big.Int).Mul(delegatorsReward, unit)
+			rewardPerToken = new(big.Int).Mul(delegatorsReward, getDecimalUnit())
 			rewardPerToken = new(big.Int).Div(rewardPerToken, receivedStakeBigInt)
 		}
 
@@ -680,17 +671,6 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 		newAccumulatedRewardPerToken := new(big.Int).Add(prevAccumulatedRewardPerTokenBigInt, rewardPerToken)
 		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(accumulatedRewardPerTokenSlot), common.BigToHash(newAccumulatedRewardPerToken))
 		gasUsed += SstoreGasCost
-
-		// Update accumulated originated txs fee (snapshot.accumulatedOriginatedTxsFee[validatorID] = accumulatedOriginatedTxsFee[i])
-		// Use our helper function to create the hash input from offset and slot
-		innerHash = CreateAndHashOffsetSlot(accumulatedOriginatedTxsFeeOffset, currentEpochSnapshotSlot)
-		gasUsed += HashGasCost
-
-		// Use our helper function to create a nested hash input
-		outerHashInput = CreateNestedHashInput(validatorID, innerHash)
-		// Use cached hash calculation
-		outerHash = CachedKeccak256(outerHashInput)
-		gasUsed += HashGasCost
 
 		// Update accumulated originated txs fee (snapshot.accumulatedOriginatedTxsFee[validatorID] = accumulatedOriginatedTxsFee[i])
 		// For a mapping within a struct, we need to calculate the slot as:
@@ -788,7 +768,7 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 	if treasuryAddr.Cmp(emptyAddr) != 0 {
 		// Calculate fee share
 		feeShare := new(big.Int).Mul(epochFee, treasuryFeeShare)
-		feeShare = new(big.Int).Div(feeShare, unit)
+		feeShare = new(big.Int).Div(feeShare, getDecimalUnit())
 
 		// First mint native token to the contract itself
 		// This matches the Solidity code: _mintNativeToken(feeShare);
@@ -817,8 +797,8 @@ func _sealEpoch_rewards(evm *vm.EVM, epochDuration *big.Int, currentEpoch *big.I
 	return gasUsed, nil
 }
 
-// _sealEpoch_minGasPrice is an internal function to seal minimum gas price in an epoch
-func _sealEpoch_minGasPrice(evm *vm.EVM, epochDuration *big.Int, epochGas *big.Int) (uint64, error) {
+// handleInternalSealEpochMinGasPrice is an internal function to seal minimum gas price in an epoch
+func handleInternalSealEpochMinGasPrice(evm *vm.EVM, epochDuration *big.Int, epochGas *big.Int) (uint64, error) {
 	// Initialize gas used
 	var gasUsed uint64 = 0
 

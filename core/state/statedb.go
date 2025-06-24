@@ -481,7 +481,7 @@ func (s *StateDB) updateStateObject(obj *stateObject) {
 	}
 	var isHeavyLog = addr.Cmp(common.HexToAddress("0xfc00face00000000000000000000000000000000")) == 0
 	if isHeavyLog {
-		log.Info("updateStateObject", "addr", addr.Hex(), "obj", obj, "data", data)
+		log.Info("updateStateObject", "addr", addr.Hex(), "obj.Account", obj.Account(), "data", common.Bytes2Hex(data))
 	}
 
 	// If state snapshotting is active, cache the data til commit. Note, this

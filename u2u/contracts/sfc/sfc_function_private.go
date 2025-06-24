@@ -300,8 +300,8 @@ func handleGetSelfStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, error)
 	return result, gasUsed, nil
 }
 
-// handle_stashRewards stashes the rewards for a delegator
-func handle_stashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
+// handleInternalStashRewards stashes the rewards for a delegator
+func handleInternalStashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	var gasUsed uint64 = 0
 	// Get the arguments
 	if len(args) != 2 {

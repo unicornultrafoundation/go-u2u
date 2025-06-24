@@ -71,7 +71,7 @@ func handleUndelegate(evm *vm.EVM, caller common.Address, args []interface{}) ([
 	// Create arguments for handle_stashRewards
 	stashRewardsArgs := []interface{}{caller, toValidatorID}
 	// Call handle_stashRewards
-	result, stashGasUsed, err := handle_stashRewards(evm, stashRewardsArgs)
+	result, stashGasUsed, err := handleInternalStashRewards(evm, stashRewardsArgs)
 	if err != nil {
 		return result, gasUsed + stashGasUsed, err
 	}
@@ -426,7 +426,7 @@ func handleRawDelegate(evm *vm.EVM, delegator common.Address, toValidatorID *big
 	}
 
 	// Stash rewards
-	result, stashGasUsed, err := handle_stashRewards(evm, []interface{}{delegator, toValidatorID})
+	result, stashGasUsed, err := handleInternalStashRewards(evm, []interface{}{delegator, toValidatorID})
 	if err != nil {
 		return result, gasUsed + stashGasUsed, err
 	}
@@ -528,7 +528,7 @@ func handleInternalLockStake(evm *vm.EVM, caller common.Address, toValidatorID *
 	// Create arguments for handle_stashRewards
 	stashRewardsArgs := []interface{}{caller, toValidatorID}
 	// Call handle_stashRewards
-	revertData, _, err := handle_stashRewards(evm, stashRewardsArgs)
+	revertData, _, err := handleInternalStashRewards(evm, stashRewardsArgs)
 	if err != nil {
 		return revertData, 0, vm.ErrExecutionReverted
 	}
@@ -892,7 +892,7 @@ func handleUnlockStake(evm *vm.EVM, caller common.Address, args []interface{}) (
 
 	// Stash rewards
 	stashRewardsArgs := []interface{}{caller, toValidatorID}
-	revertData, _, err := handle_stashRewards(evm, stashRewardsArgs)
+	revertData, _, err := handleInternalStashRewards(evm, stashRewardsArgs)
 	if err != nil {
 		log.Error("unlockStake: handle_stashRewards failed", "err", err)
 		return revertData, 0, err

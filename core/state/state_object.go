@@ -456,7 +456,7 @@ func (s *stateObject) updateRoot(db Database) {
 	s.data.Root = s.trie.Hash()
 	var isHeavyLog = s.address.Cmp(common.HexToAddress("0xfc00face00000000000000000000000000000000")) == 0
 	if isHeavyLog {
-		log.Info("stateObject.updateRoot", "addr", s.address.Hex(), "root", s.data.Root)
+		log.Info("stateObject.updateRoot", "addr", s.address.Hex(), "root", s.data.Root.Hex())
 	}
 }
 
@@ -479,7 +479,7 @@ func (s *stateObject) CommitTrie(db Database) error {
 		s.data.Root = root
 		var isHeavyLog = s.address.Cmp(common.HexToAddress("0xfc00face00000000000000000000000000000000")) == 0
 		if isHeavyLog {
-			log.Info("stateObject.CommitTrie", "addr", s.address.Hex(), "root", s.data.Root)
+			log.Info("stateObject.CommitTrie", "addr", s.address.Hex(), "root", s.data.Root.Hex())
 		}
 	}
 	return err

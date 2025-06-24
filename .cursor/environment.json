@@ -1,0 +1,6 @@
+{
+  "snapshot": "snapshot-20250624-05edb12d-8af1-469f-b1ee-351ded3625a5",
+  "install": "go mod tidy",
+  "start": "make all",
+  "terminals": []
+}

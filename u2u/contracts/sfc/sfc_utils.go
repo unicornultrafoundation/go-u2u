@@ -995,21 +995,6 @@ func getEpochSnapshotSlot(epoch *big.Int) (*big.Int, uint64) {
 	return slot, gasUsed
 }
 
-// getEpochSnapshotFieldSlot calculates the storage slot for a field in an epoch snapshot
-func getEpochSnapshotFieldSlot(epoch *big.Int, fieldOffset int64) (*big.Int, uint64) {
-	// Initialize gas used
-	var gasUsed uint64 = 0
-
-	// Get the base slot for the epoch snapshot
-	baseSlot, slotGasUsed := getEpochSnapshotSlot(epoch)
-	gasUsed += slotGasUsed
-
-	// Add the field offset to the base slot
-	fieldSlot := new(big.Int).Add(baseSlot, big.NewInt(fieldOffset))
-
-	return fieldSlot, gasUsed
-}
-
 // getValidatorStatusSlotByID calculates the storage slot for a validator's status by ID
 func getValidatorStatusSlotByID(validatorID *big.Int) (*big.Int, uint64) {
 	return getValidatorStatusSlot(validatorID)
@@ -1197,156 +1182,6 @@ func handleInternalSyncValidator(evm *vm.EVM, validatorID *big.Int, syncPubkey b
 	}
 
 	return gasUsed, nil
-}
-
-// getEpochValidatorOfflineTimeSlot calculates the storage slot for a validator's offline time in an epoch
-func getEpochValidatorOfflineTimeSlot(epoch *big.Int, validatorID *big.Int) (*big.Int, uint64) {
-	// Initialize gas used
-	var gasUsed uint64 = 0
-
-	// First get the epoch snapshot slot
-	epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(epoch)
-	gasUsed += slotGasUsed
-
-	// For a mapping field inside a struct, the correct approach is:
-	// 1. Get the base slot of the struct
-	// 2. Add the offset of the mapping field to get the mapping's slot
-	// 3. Calculate the final slot for a specific key as keccak256(key . (struct_slot + offset))
-
-	// Add the offset for the offlineTime mapping within the struct
-	mappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(offlineTimeOffset))
-
-	// Use our helper function to create and hash the input
-	hashInput := CreateValidatorMappingHashInput(validatorID, mappingSlot)
-
-	// Calculate the hash - add gas cost for hashing
-	hash := CachedKeccak256(hashInput)
-	gasUsed += HashGasCost
-
-	// Convert the hash to a big.Int
-	slot := new(big.Int).SetBytes(hash)
-
-	return slot, gasUsed
-}
-
-// getEpochValidatorOfflineBlocksSlot calculates the storage slot for a validator's offline blocks in an epoch
-func getEpochValidatorOfflineBlocksSlot(epoch *big.Int, validatorID *big.Int) (*big.Int, uint64) {
-	// Initialize gas used
-	var gasUsed uint64 = 0
-
-	// First get the epoch snapshot slot
-	epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(epoch)
-	gasUsed += slotGasUsed
-
-	// For a mapping field inside a struct, the correct approach is:
-	// 1. Get the base slot of the struct
-	// 2. Add the offset of the mapping field to get the mapping's slot
-	// 3. Calculate the final slot for a specific key as keccak256(key . (struct_slot + offset))
-
-	// Add the offset for the offlineBlocks mapping within the struct
-	mappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(offlineBlocksOffset))
-
-	// Use our helper function to create and hash the input
-	hashInput := CreateValidatorMappingHashInput(validatorID, mappingSlot)
-
-	// Calculate the hash - add gas cost for hashing
-	hash := CachedKeccak256(hashInput)
-	gasUsed += HashGasCost
-
-	// Convert the hash to a big.Int
-	slot := new(big.Int).SetBytes(hash)
-
-	return slot, gasUsed
-}
-
-// getEpochValidatorAccumulatedRewardPerTokenSlot calculates the storage slot for a validator's accumulated reward per token in an epoch
-func getEpochValidatorAccumulatedRewardPerTokenSlot(epoch *big.Int, validatorID *big.Int) (*big.Int, uint64) {
-	// Initialize gas used
-	var gasUsed uint64 = 0
-
-	// First get the epoch snapshot slot
-	epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(epoch)
-	gasUsed += slotGasUsed
-
-	// For a mapping field inside a struct, the correct approach is:
-	// 1. Get the base slot of the struct
-	// 2. Add the offset of the mapping field to get the mapping's slot
-	// 3. Calculate the final slot for a specific key as keccak256(key . (struct_slot + offset))
-
-	// Add the offset for the accumulatedRewardPerToken mapping within the struct
-	mappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(accumulatedRewardPerTokenOffset))
-
-	// Use our helper function to create and hash the input
-	hashInput := CreateValidatorMappingHashInput(validatorID, mappingSlot)
-
-	// Calculate the hash - add gas cost for hashing
-	hash := CachedKeccak256(hashInput)
-	gasUsed += HashGasCost
-
-	// Convert the hash to a big.Int
-	slot := new(big.Int).SetBytes(hash)
-
-	return slot, gasUsed
-}
-
-// getEpochValidatorAccumulatedUptimeSlot calculates the storage slot for a validator's accumulated uptime in an epoch
-func getEpochValidatorAccumulatedUptimeSlot(epoch *big.Int, validatorID *big.Int) (*big.Int, uint64) {
-	// Initialize gas used
-	var gasUsed uint64 = 0
-
-	// First get the epoch snapshot slot
-	epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(epoch)
-	gasUsed += slotGasUsed
-
-	// For a mapping field inside a struct, the correct approach is:
-	// 1. Get the base slot of the struct
-	// 2. Add the offset of the mapping field to get the mapping's slot
-	// 3. Calculate the final slot for a specific key as keccak256(key . (struct_slot + offset))
-
-	// Add the offset for the accumulatedUptime mapping within the struct
-	mappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(accumulatedUptimeOffset))
-
-	// Use our helper function to create and hash the input
-	hashInput := CreateValidatorMappingHashInput(validatorID, mappingSlot)
-
-	// Calculate the hash - add gas cost for hashing
-	hash := CachedKeccak256(hashInput)
-	gasUsed += HashGasCost
-
-	// Convert the hash to a big.Int
-	slot := new(big.Int).SetBytes(hash)
-
-	return slot, gasUsed
-}
-
-// getEpochValidatorAccumulatedOriginatedTxsFeeSlot calculates the storage slot for a validator's accumulated originated txs fee in an epoch
-func getEpochValidatorAccumulatedOriginatedTxsFeeSlot(epoch *big.Int, validatorID *big.Int) (*big.Int, uint64) {
-	// Initialize gas used
-	var gasUsed uint64 = 0
-
-	// First get the epoch snapshot slot
-	epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(epoch)
-	gasUsed += slotGasUsed
-
-	// For a mapping field inside a struct, the correct approach is:
-	// 1. Get the base slot of the struct
-	// 2. Add the offset of the mapping field to get the mapping's slot
-	// 3. Calculate the final slot for a specific key as keccak256(key . (struct_slot + offset))
-
-	// Add the offset for the accumulatedOriginatedTxsFee mapping within the struct
-	mappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(accumulatedOriginatedTxsFeeOffset))
-
-	// Use our helper function to create and hash the input
-	hashInput := CreateValidatorMappingHashInput(validatorID, mappingSlot)
-
-	// Calculate the hash - add gas cost for hashing
-	hash := CachedKeccak256(hashInput)
-	gasUsed += HashGasCost
-
-	// Convert the hash to a big.Int
-	slot := new(big.Int).SetBytes(hash)
-
-	return slot, gasUsed
 }
 
 // getEpochValidatorReceivedStakeSlot calculates the storage slot for a validator's received stake in an epoch
@@ -1779,7 +1614,7 @@ func _newRewards(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) 
 	}
 	gasUsed += rewardsGasUsed
 
-	plReward, scaleGasUsed, err := _scaleLockupReward(evm, fullReward, lockupDurationBigInt)
+	plReward, scaleGasUsed, err := handleInternalScaleLockupReward(evm, fullReward, lockupDurationBigInt)
 	if err != nil {
 		return Rewards{}, gasUsed, err
 	}
@@ -1793,7 +1628,7 @@ func _newRewards(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) 
 	}
 	gasUsed += rewardsGasUsed
 
-	puReward, scaleGasUsed, err := _scaleLockupReward(evm, fullReward, big.NewInt(0))
+	puReward, scaleGasUsed, err := handleInternalScaleLockupReward(evm, fullReward, big.NewInt(0))
 	if err != nil {
 		return Rewards{}, gasUsed, err
 	}
@@ -1807,7 +1642,7 @@ func _newRewards(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) 
 	}
 	gasUsed += rewardsGasUsed
 
-	wuReward, scaleGasUsed, err := _scaleLockupReward(evm, fullReward, big.NewInt(0))
+	wuReward, scaleGasUsed, err := handleInternalScaleLockupReward(evm, fullReward, big.NewInt(0))
 	if err != nil {
 		return Rewards{}, gasUsed, err
 	}
@@ -1873,9 +1708,9 @@ func getEpochAccumulatedRewardPerTokenSlot(epoch *big.Int, validatorID *big.Int)
 	return slot, gasUsed
 }
 
-// _scaleLockupReward scales the reward based on the lockup duration
+// handleInternalScaleLockupReward scales the reward based on the lockup duration
 // This is a port of the _scaleLockupReward function from SFCBase.sol
-func _scaleLockupReward(evm *vm.EVM, fullReward *big.Int, lockupDuration *big.Int) (Rewards, uint64, error) {
+func handleInternalScaleLockupReward(evm *vm.EVM, fullReward *big.Int, lockupDuration *big.Int) (Rewards, uint64, error) {
 	// Initialize gas used
 	var gasUsed uint64 = 0
 
@@ -1954,4 +1789,41 @@ func unpackRewards(packedData [][]byte) Rewards {
 		LockupBaseReward:  new(big.Int).SetBytes(packedData[1]),
 		UnlockedReward:    new(big.Int).SetBytes(packedData[2]),
 	}
+}
+
+// handleInternalCalcRawValidatorEpochBaseReward calculates the raw base reward for a validator in an epoch
+// This is a port of the _calcRawValidatorEpochBaseReward function from SFCBase.sol
+func handleInternalCalcRawValidatorEpochBaseReward(epochDuration *big.Int, baseRewardPerSecond *big.Int, baseRewardWeight *big.Int, totalBaseRewardWeight *big.Int) *big.Int {
+	if baseRewardWeight.Cmp(big.NewInt(0)) == 0 {
+		return big.NewInt(0)
+	}
+	if totalBaseRewardWeight.Cmp(big.NewInt(0)) == 0 {
+		return big.NewInt(0)
+	}
+	totalReward := new(big.Int).Mul(epochDuration, baseRewardPerSecond)
+	return new(big.Int).Div(new(big.Int).Mul(totalReward, baseRewardWeight), totalBaseRewardWeight)
+}
+
+// handleInternalCalcRawValidatorEpochTxReward calculates the raw transaction reward for a validator in an epoch
+// This is a port of the _calcRawValidatorEpochTxReward function from SFCBase.sol
+func handleInternalCalcRawValidatorEpochTxReward(epochFee *big.Int, txRewardWeight *big.Int, totalTxRewardWeight *big.Int) *big.Int {
+	if txRewardWeight.Cmp(big.NewInt(0)) == 0 {
+		return big.NewInt(0)
+	}
+	if totalTxRewardWeight.Cmp(big.NewInt(0)) == 0 {
+		return big.NewInt(0)
+	}
+	txReward := new(big.Int).Div(new(big.Int).Mul(epochFee, txRewardWeight), totalTxRewardWeight)
+	// fee reward except burntFeeShare and treasuryFeeShare
+	burntFeeShare := getConstantsManagerVariable("burntFeeShare")
+	treasuryFeeShare := getConstantsManagerVariable("treasuryFeeShare")
+	shareToSubtract := new(big.Int).Add(burntFeeShare, treasuryFeeShare)
+	shareToKeep := new(big.Int).Sub(getDecimalUnit(), shareToSubtract)
+	return new(big.Int).Div(new(big.Int).Mul(txReward, shareToKeep), getDecimalUnit())
+}
+
+// handleInternalCalcValidatorCommission calculates the validator commission from raw reward
+// This is a port of the _calcValidatorCommission function from SFCBase.sol
+func handleInternalCalcValidatorCommission(rawReward *big.Int, commission *big.Int) *big.Int {
+	return new(big.Int).Div(new(big.Int).Mul(rawReward, commission), getDecimalUnit())
 }

@@ -132,9 +132,10 @@ func (s *Store) initEVMDB() {
 	}
 }
 
-func (s *Store) ResetWithEVMDB(evmStore u2udb.Store) *Store {
+func (s *Store) ResetWithEVMDB(evmStore u2udb.Store, sfcStore u2udb.Store) *Store {
 	cp := *s
 	cp.table.Evm = evmStore
+	cp.table.SfcEvm = sfcStore
 	cp.initEVMDB()
 	cp.Snaps = nil
 	cp.SfcSnaps = nil
@@ -143,6 +144,10 @@ func (s *Store) ResetWithEVMDB(evmStore u2udb.Store) *Store {
 
 func (s *Store) EVMDB() u2udb.Store {
 	return s.table.Evm
+}
+
+func (s *Store) SFCDB() u2udb.Store {
+	return s.table.SfcEvm
 }
 
 func (s *Store) GenerateEvmSnapshot(root common.Hash, sfcRoot common.Hash, rebuild, async bool) (err error) {

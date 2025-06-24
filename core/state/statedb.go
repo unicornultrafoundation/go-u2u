@@ -479,6 +479,10 @@ func (s *StateDB) updateStateObject(obj *stateObject) {
 	if err = s.trie.TryUpdate(addr[:], data); err != nil {
 		s.setError(fmt.Errorf("updateStateObject (%x) error: %v", addr[:], err))
 	}
+	var isHeavyLog = addr.Cmp(common.HexToAddress("0xfc00face00000000000000000000000000000000")) == 0
+	if isHeavyLog {
+		log.Info("updateStateObject", "addr", addr.Hex(), "obj", obj, "data", data)
+	}
 
 	// If state snapshotting is active, cache the data til commit. Note, this
 	// update mechanism is not symmetric to the deletion, because whereas it is
@@ -687,7 +691,7 @@ func (s *StateDB) Copy() *StateDB {
 		// to not blow up if we ever decide to copy it in the middle of a transaction
 		accessList: s.accessList.Copy(),
 	}
-	
+
 	// Copy the dirty states, logs, and preimages
 	for addr := range s.journal.dirties {
 		// As documented [here](https://github.com/unicornultrafoundation/go-u2u/libs/pull/16485#issuecomment-380438527),

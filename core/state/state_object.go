@@ -366,7 +366,7 @@ func (s *stateObject) finalise(prefetch bool) {
 	for key, value := range s.dirtyStorage {
 		s.pendingStorage[key] = value
 		if isHeavyLog {
-			log.Info("stateObject.finalise on SFC contract", "key", key.Hex(), "value", value.Hex())
+			log.Info("stateObject.finalise", "key", key.Hex(), "value", value.Hex())
 		}
 		if value != s.originStorage[key] {
 			slotsToPrefetch = append(slotsToPrefetch, common.CopyBytes(key[:])) // Copy needed for closure
@@ -383,6 +383,7 @@ func (s *stateObject) finalise(prefetch bool) {
 // updateTrie writes cached storage modifications into the object's storage trie.
 // It will return nil if the trie has not been loaded and no changes have been made
 func (s *stateObject) updateTrie(db Database) Trie {
+	var isHeavyLog = s.address.Cmp(common.HexToAddress("0xfc00face00000000000000000000000000000000")) == 0
 	// Make sure all dirty slots are finalized into the pending storage area
 	s.finalise(false) // Don't prefetch any more, pull directly if need be
 	if len(s.pendingStorage) == 0 {
@@ -409,10 +410,16 @@ func (s *stateObject) updateTrie(db Database) Trie {
 		var v []byte
 		if (value == common.Hash{}) {
 			s.setError(tr.TryDelete(key[:]))
+			if isHeavyLog {
+				log.Info("stateObject.updateTrie TryDelete", "key", key.Hex(), "value", value.Hex())
+			}
 		} else {
 			// Encoding []byte cannot fail, ok to ignore the error.
 			v, _ = rlp.EncodeToBytes(common.TrimLeftZeroes(value[:]))
 			s.setError(tr.TryUpdate(key[:], v))
+			if isHeavyLog {
+				log.Info("stateObject.updateTrie TryUpdate", "key", key.Hex(), "value", value.Hex())
+			}
 		}
 		// If state snapshotting is active, cache the data til commit
 		if s.db.snap != nil {
@@ -447,6 +454,10 @@ func (s *stateObject) updateRoot(db Database) {
 		defer func(start time.Time) { s.db.StorageHashes += time.Since(start) }(time.Now())
 	}
 	s.data.Root = s.trie.Hash()
+	var isHeavyLog = s.address.Cmp(common.HexToAddress("0xfc00face00000000000000000000000000000000")) == 0
+	if isHeavyLog {
+		log.Info("stateObject.updateRoot", "addr", s.address.Hex(), "root", s.data.Root)
+	}
 }
 
 // CommitTrie the storage trie of the object to db.
@@ -466,6 +477,10 @@ func (s *stateObject) CommitTrie(db Database) error {
 	root, err := s.trie.Commit(nil)
 	if err == nil {
 		s.data.Root = root
+		var isHeavyLog = s.address.Cmp(common.HexToAddress("0xfc00face00000000000000000000000000000000")) == 0
+		if isHeavyLog {
+			log.Info("stateObject.CommitTrie", "addr", s.address.Hex(), "root", s.data.Root)
+		}
 	}
 	return err
 }

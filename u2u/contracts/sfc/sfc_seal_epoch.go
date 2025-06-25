@@ -398,9 +398,13 @@ func handleInternalSealEpochRewards(evm *vm.EVM, epochDuration *big.Int, current
 	for i, validatorID := range validatorIDs {
 		// Get previous accumulated originated txs fee
 		// For a mapping within a struct, we need to calculate the slot as:
-		// keccak256(abi.encode(validatorID, abi.encode(prevEpochSnapshotSlot + accumulatedOriginatedTxsFeeOffset)))
-		mappingSlot := new(big.Int).Add(prevEpochSnapshotSlot, big.NewInt(accumulatedOriginatedTxsFeeOffset))
-		outerHashInput = CreateNestedHashInput(validatorID, mappingSlot.Bytes())
+		// keccak256(key . (struct_slot + offset))
+		// Add the offset for the accumulatedOriginatedTxsFee mapping within the struct
+		prevMappingSlot := new(big.Int).Add(prevEpochSnapshotSlot, big.NewInt(accumulatedOriginatedTxsFeeOffset))
+
+		// Then, calculate the slot for the specific key using our helper function
+		// Use CreateValidatorMappingHashInput to create the hash input
+		outerHashInput = CreateValidatorMappingHashInput(validatorID, prevMappingSlot)
 		// Use cached hash calculation
 		outerHash = CachedKeccak256(outerHashInput)
 		gasUsed += HashGasCost

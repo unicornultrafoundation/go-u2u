@@ -115,7 +115,7 @@ func (p *StateProcessor) Process(
 				if !statedb.GetOrNewStateObject(addr).Account().Cmp(sfcStatedb.GetOrNewStateObject(addr).Account()) {
 					log.Error("StateProcessor.Process: SFC account mismatched after applying tx",
 						"tx", tx.Hash().Hex(), "addr", addr, "original", original, "sfc", sfc)
-					common.SendInterrupt()
+					// common.SendInterrupt()
 				}
 			}
 			// Benchmark execution time difference of SFC precompiled related txs

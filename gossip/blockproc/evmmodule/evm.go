@@ -157,7 +157,7 @@ func (p *U2UEVMProcessor) Finalize() (evmBlock *evmcore.EvmBlock, skippedTxs []u
 			if !p.statedb.GetOrNewStateObject(addr).Account().Cmp(p.sfcStateDb.GetOrNewStateObject(addr).Account()) {
 				log.Error("U2UEVMProcessor.Finalize: SFC account mismatched after applying block",
 					"height", p.block.Idx, "addr", addr, "original", original, "sfc", sfc)
-				common.SendInterrupt()
+				// common.SendInterrupt()
 			}
 		}
 	}

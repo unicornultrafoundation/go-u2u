@@ -714,8 +714,42 @@ func handlePendingRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, erro
 
 // handleStashRewards stashes the rewards for a delegator
 func handleStashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement handleStashRewards handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+	var gasUsed uint64 = 0
+
+	// Parse arguments: stashRewards(address delegator, uint256 toValidatorID)
+	if len(args) != 2 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	delegator, ok := args[0].(common.Address)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	toValidatorID, ok := args[1].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Call the internal stash rewards function
+	result, stashGasUsed, err := handleInternalStashRewards(evm, []interface{}{delegator, toValidatorID})
+	gasUsed += stashGasUsed
+	if err != nil {
+		return nil, gasUsed, err
+	}
+
+	// Check if anything was stashed (similar to Solidity: require(_stashRewards(delegator, toValidatorID), "nothing to stash"))
+	if len(result) == 32 {
+		updated := new(big.Int).SetBytes(result)
+		if updated.Cmp(big.NewInt(0)) == 0 {
+			revertData, err := encodeRevertReason("stashRewards", "nothing to stash")
+			if err != nil {
+				return nil, gasUsed, vm.ErrExecutionReverted
+			}
+			return revertData, gasUsed, vm.ErrExecutionReverted
+		}
+	}
+
+	// Return empty bytes for successful execution (no return value for this function)
+	return nil, gasUsed, nil
 }
 
 // UpdateConstsAddress updates the address of the constants contract

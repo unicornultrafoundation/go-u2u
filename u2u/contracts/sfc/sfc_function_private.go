@@ -444,7 +444,21 @@ func handleInternalStashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64
 		}
 	}
 
-	return nil, gasUsed, nil
+	// Calculate the return value: updated = nonStashedReward.lockupBaseReward != 0 || nonStashedReward.lockupExtraReward != 0 || nonStashedReward.unlockedReward != 0
+	updated := nonStashedReward.LockupBaseReward.Cmp(big.NewInt(0)) != 0 ||
+		nonStashedReward.LockupExtraReward.Cmp(big.NewInt(0)) != 0 ||
+		nonStashedReward.UnlockedReward.Cmp(big.NewInt(0)) != 0
+
+	// Since this is an internal function, we can't use ABI encoding
+	// Instead, we return the boolean result as bytes manually
+	var resultBytes []byte
+	if updated {
+		resultBytes = common.BigToHash(big.NewInt(1)).Bytes()
+	} else {
+		resultBytes = common.BigToHash(big.NewInt(0)).Bytes()
+	}
+
+	return resultBytes, gasUsed, nil
 }
 
 // checkDelegatedStakeLimit checks if the delegated stake is within the limit

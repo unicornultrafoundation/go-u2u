@@ -177,6 +177,12 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	totalSupplySnapshotSlot := GetBigInt().Add(currentEpochSnapshotSlot, totalSupplyOffsetBig)
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(totalSupplySnapshotSlot), common.BigToHash(totalSupplyBigInt))
 	gasUsed += SstoreGasCost
+
+	log.Debug("handleSealEpoch: updated this snapshot details",
+		"endTime", common.Bytes2Hex(evm.Context.Time.Bytes()),
+		"baseRewardPerSecond", common.Bytes2Hex(baseRewardPerSecond.Bytes()),
+		"totalSupply", common.Bytes2Hex(totalSupplyBigInt.Bytes()))
+
 	PutBigInt(totalSupplyBigInt)
 	PutBigInt(totalSupplySlotBig)
 	PutBigInt(totalSupplyOffsetBig)
@@ -318,6 +324,11 @@ func handleInternalSealEpochOffline(evm *vm.EVM, validatorIDs []*big.Int, offlin
 	for i, validatorID := range validatorIDs {
 		// Check if the validator exceeds the offline thresholds
 		if offlineBlocks[i].Cmp(offlinePenaltyThresholdBlocksNum) > 0 && offlineTimes[i].Cmp(offlinePenaltyThresholdTime) >= 0 {
+			log.Debug("handleInternalSealEpochOffline: validator is offline",
+				"validatorID", validatorID,
+				"offlineBlocks", offlineBlocks[i],
+				"offlineTimes", offlineTimes[i])
+
 			// Deactivate the validator with OFFLINE_BIT
 			deactivateGasUsed, err := handleInternalSetValidatorDeactivated(evm, validatorID, OFFLINE_BIT)
 			gasUsed += deactivateGasUsed
@@ -365,6 +376,11 @@ func handleInternalSealEpochOffline(evm *vm.EVM, validatorIDs []*big.Int, offlin
 		// Set the value in the state
 		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(offlineBlocksSlot), common.BigToHash(offlineBlocks[i]))
 		gasUsed += SstoreGasCost
+
+		log.Debug("handleInternalSealEpochOffline: updated this snapshot details",
+			"validatorID", validatorID,
+			"offlineTime", common.Bytes2Hex(offlineTimes[i].Bytes()),
+			"offlineBlocks", common.Bytes2Hex(offlineBlocks[i].Bytes()))
 	}
 
 	return gasUsed, nil
@@ -420,9 +436,9 @@ func handleInternalSealEpochRewards(evm *vm.EVM, epochDuration *big.Int, current
 		if accumulatedOriginatedTxsFee[i].Cmp(prevAccumulatedTxsFeeBigInt) > 0 {
 			originatedTxsFee = new(big.Int).Sub(accumulatedOriginatedTxsFee[i], prevAccumulatedTxsFeeBigInt)
 		}
-		log.Trace("SFC: Calculating originatedTxsFee of ", "validatorID", validatorID,
-			"accumulatedOriginatedTxsFee", accumulatedOriginatedTxsFee[i],
-			"prevAccumulatedTxsFee", prevAccumulatedTxsFeeBigInt)
+		log.Debug("handleInternalSealEpochRewards: Calculating originatedTxsFee of ", "validatorID", validatorID,
+			"accumulatedOriginatedTxsFee", common.Bytes2Hex(accumulatedOriginatedTxsFee[i].Bytes()),
+			"prevAccumulatedTxsFee", common.Bytes2Hex(prevAccumulatedTxsFeeBigInt.Bytes()))
 
 		// Calculate tx reward weight: originatedTxsFee * uptime / epochDuration
 		txRewardWeight := new(big.Int).Mul(originatedTxsFee, uptimes[i])
@@ -435,6 +451,9 @@ func handleInternalSealEpochRewards(evm *vm.EVM, epochDuration *big.Int, current
 		// Update epoch fee
 		epochFee = new(big.Int).Add(epochFee, originatedTxsFee)
 	}
+	log.Debug("handleInternalSealEpochRewards: Calculating totalTxRewardWeight",
+		"totalTxRewardWeight", common.Bytes2Hex(totalTxRewardWeight.Bytes()),
+		"epochFee", common.Bytes2Hex(epochFee.Bytes()))
 
 	// Calculate base reward weights
 	for i, validatorID := range validatorIDs {
@@ -452,10 +471,14 @@ func handleInternalSealEpochRewards(evm *vm.EVM, epochDuration *big.Int, current
 		term2 := new(big.Int).Mul(term1, uptimes[i])
 		baseRewardWeight := new(big.Int).Div(term2, epochDuration)
 		baseRewardWeights[i] = baseRewardWeight
+		log.Debug("handleInternalSealEpochRewards: Calculating baseRewardWeights of ",
+			"validatorIDs", validatorIDs, "baseRewardWeights", common.Bytes2Hex(baseRewardWeights[i].Bytes()))
 
 		// Update total base reward weight
 		totalBaseRewardWeight = new(big.Int).Add(totalBaseRewardWeight, baseRewardWeight)
 	}
+	log.Debug("handleInternalSealEpochRewards: Calculating totalBaseRewardWeight",
+		"totalBaseRewardWeight", common.Bytes2Hex(totalBaseRewardWeight.Bytes()))
 
 	baseRewardPerSecond := getConstantsManagerVariable("baseRewardPerSecond")
 	validatorCommission := getConstantsManagerVariable("validatorCommission")
@@ -729,7 +752,13 @@ func handleInternalSealEpochRewards(evm *vm.EVM, epochDuration *big.Int, current
 		newAccumulatedUptime := new(big.Int).Add(prevAccumulatedUptimeBigInt, uptimes[i])
 		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(accumulatedUptimeSlot), common.BigToHash(newAccumulatedUptime))
 		gasUsed += SstoreGasCost
+
+		log.Debug("handleInternalSealEpochRewards: updated this snapshot details",
+			"accumulatedRewardPerToken", common.Bytes2Hex(newAccumulatedRewardPerToken.Bytes()),
+			"accumulatedOriginatedTxsFee", common.Bytes2Hex(accumulatedOriginatedTxsFee[i].Bytes()),
+			"accumulatedUptime", common.Bytes2Hex(newAccumulatedUptime.Bytes()))
 	}
+
 	// Update epoch fee
 	epochFeeSlot := new(big.Int).Add(currentEpochSnapshotSlot, big.NewInt(epochFeeOffset))
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(epochFeeSlot), common.BigToHash(epochFee))
@@ -849,6 +878,9 @@ func handleInternalSealEpochMinGasPrice(evm *vm.EVM, epochDuration *big.Int, epo
 	// Apply new minGasPrice
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(minGasPriceSlot)), common.BigToHash(newMinGasPrice))
 	gasUsed += SstoreGasCost
+	log.Debug("handleInternalSealEpochMinGasPrice: updated minGasPrice",
+		"minGasPriceSlot", minGasPriceSlot,
+		"minGasPrice", common.Bytes2Hex(newMinGasPrice.Bytes()))
 
 	return gasUsed, nil
 }

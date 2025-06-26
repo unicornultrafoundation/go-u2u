@@ -135,24 +135,21 @@ func (p *U2UEVMProcessor) Finalize() (evmBlock *evmcore.EvmBlock, skippedTxs []u
 	receipts = p.receipts
 
 	// Get state root
-	log.Trace("U2UEVMProcessor.Finalize after block", "block", p.block.Idx)
 	newStateHash, err := p.statedb.Commit(true)
 	if err != nil {
 		log.Crit("Failed to commit state", "err", err)
 	}
 	evmBlock.Root = newStateHash
 	if p.sfcStateDb != nil {
-		log.Trace("Separate two commit logs when U2UEVMProcessor.Finalize after block",
-			"above", "evm", "below", "sfc")
 		newSfcStateHash, err := p.sfcStateDb.Commit(true)
 		if err != nil {
-			log.Crit("Failed to commit sfc state", "err", err)
+			log.Crit("Failed to commit SFC state", "err", err)
 		}
 		evmBlock.SfcStateRoot = newSfcStateHash
 
 		// extra dual-state verification
 		if newSfcStateHash.Cmp(types.EmptyRootHash) == 0 {
-			log.Error("SFC state is empty now", "block", p.block.Idx)
+			log.Error("SFC state is empty after finalizing block", "block", p.block.Idx)
 		}
 		for _, addr := range SfcPrecompiles {
 			original := p.statedb.GetOrNewStateObject(addr).Account()

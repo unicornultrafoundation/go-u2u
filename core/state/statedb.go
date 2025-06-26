@@ -479,10 +479,6 @@ func (s *StateDB) updateStateObject(obj *stateObject) {
 	if err = s.trie.TryUpdate(addr[:], data); err != nil {
 		s.setError(fmt.Errorf("updateStateObject (%x) error: %v", addr[:], err))
 	}
-	var isHeavyLog = addr.Cmp(common.HexToAddress("0xfc00face00000000000000000000000000000000")) == 0
-	if isHeavyLog {
-		log.Info("updateStateObject", "addr", addr.Hex(), "obj.Account", obj.Account(), "data", common.Bytes2Hex(data))
-	}
 
 	// If state snapshotting is active, cache the data til commit. Note, this
 	// update mechanism is not symmetric to the deletion, because whereas it is

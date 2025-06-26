@@ -182,29 +182,31 @@ func ApplyTransaction(
 	if err != nil {
 		return nil, 0, result == nil, err
 	}
+
 	// Notify about logs with potential state changes
-	needToCompareLogs := false
+	evmLogsFromSfcPrecompiles := make([]*types.Log, 0)
 	logs := statedb.GetLogs(tx.Hash(), blockHash)
 	for _, l := range logs {
 		if _, ok := evm.SfcPrecompile(l.Address); ok {
-			needToCompareLogs = true
+			evmLogsFromSfcPrecompiles = append(evmLogsFromSfcPrecompiles, l)
 		}
 		onNewLog(l, statedb)
 	}
-	if sfcStatedb != nil && needToCompareLogs {
+	if sfcStatedb != nil && len(evmLogsFromSfcPrecompiles) > 0 {
 		sfcLogs := sfcStatedb.GetLogs(tx.Hash(), blockHash)
-		for i, l := range sfcLogs {
-			onNewLog(l, nil)
-			if !logs[i].Equal(sfcLogs[i]) {
-				log.Error("SFC log mismatch", "index", i, "txHash", tx.Hash().Hex())
-				fmt.Println("EVM log", logs[i])
-				fmt.Println("SFC log", sfcLogs[i])
-			}
-		}
-		if len(logs) != len(sfcLogs) {
-			log.Error("SFC log mismatch", "txHash", tx.Hash().Hex(), "evm", len(logs), "sfc", len(sfcLogs))
-			fmt.Println("EVM logs", logs)
+		if len(evmLogsFromSfcPrecompiles) != len(sfcLogs) {
+			log.Error("SFC log mismatch", "txHash", tx.Hash().Hex(), "evm", len(evmLogsFromSfcPrecompiles), "sfc", len(sfcLogs))
+			fmt.Println("EVM logs", evmLogsFromSfcPrecompiles)
 			fmt.Println("SFC logs", sfcLogs)
+		} else {
+			for i, l := range sfcLogs {
+				onNewLog(l, nil)
+				if !evmLogsFromSfcPrecompiles[i].Equal(sfcLogs[i]) {
+					log.Error("SFC log mismatch", "index", i, "txHash", tx.Hash().Hex())
+					fmt.Println("EVM log", evmLogsFromSfcPrecompiles[i])
+					fmt.Println("SFC log", sfcLogs[i])
+				}
+			}
 		}
 	}
 

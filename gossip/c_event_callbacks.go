@@ -249,15 +249,8 @@ func (s *Service) processEvent(e *native.EventPayload) error {
 	// check prev epoch hash
 	if e.PrevEpochHash() != nil {
 		if *e.PrevEpochHash() != es.Hash() {
-			log.Error("processEvent errWrongEpochHash on es", "epoch", e.Epoch(),
-				"e.PrevEpochHash()", e.PrevEpochHash(), "es.Hash()", es.Hash())
-			prevEs, _ := s.store.GetHistoryBlockEpochState(e.Epoch() + 1)
-			if prevEs != nil && *e.PrevEpochHash() != prevEs.Hash() {
-				log.Error("processEvent errWrongEpochHash on prevEs", "prevEpoch", e.Epoch()+1,
-					"e.PrevEpochHash()", e.PrevEpochHash(), "prevEs.Hash()", prevEs.Hash())
-				s.store.DelEvent(e.ID())
-				return errWrongEpochHash
-			}
+			s.store.DelEvent(e.ID())
+			return errWrongEpochHash
 		}
 	}
 

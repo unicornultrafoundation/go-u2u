@@ -26,7 +26,7 @@ func handleInternalClaimRewards(evm *vm.EVM, delegator common.Address, toValidat
 
 	// Stash the rewards
 	stashRewardsArgs := []interface{}{delegator, toValidatorID}
-	_, stashGasUsed, err := handle_stashRewards(evm, stashRewardsArgs)
+	_, stashGasUsed, err := handleInternalStashRewards(evm, stashRewardsArgs)
 	gasUsed += stashGasUsed
 	if err != nil {
 		log.Error("handleInternalClaimRewards: handle_stashRewards failed", "err", err)

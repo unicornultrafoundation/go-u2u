@@ -30,6 +30,7 @@ type Store struct {
 	cfg StoreConfig
 
 	snapshotedEVMDB *switchable.Snapshot
+	snapshotedSFCDB *switchable.Snapshot
 	evm             *evmstore.Store
 	txtracer        *txtracer.Store
 	table           struct {
@@ -171,6 +172,9 @@ func (s *Store) Close() {
 	if s.snapshotedEVMDB != nil {
 		s.snapshotedEVMDB.Release()
 	}
+	if s.snapshotedSFCDB != nil {
+		s.snapshotedSFCDB.Release()
+	}
 	_ = table.CloseTables(&s.table)
 	table.MigrateTables(&s.table, nil)
 	table.MigrateCaches(&s.cache, setnil)
@@ -288,9 +292,10 @@ func (s *Store) CaptureEvmKvdbSnapshot() {
 	if gen {
 		return
 	}
+
 	newEvmKvdbSnap, err := s.evm.EVMDB().GetSnapshot()
 	if err != nil {
-		s.Log.Error("Failed to initialize frozen KVDB", "err", err)
+		s.Log.Error("Failed to initialize frozen EVM KVDB", "err", err)
 		return
 	}
 	if s.snapshotedEVMDB == nil {
@@ -302,7 +307,24 @@ func (s *Store) CaptureEvmKvdbSnapshot() {
 			old.Release()
 		}
 	}
-	newStore := s.evm.ResetWithEVMDB(snap2udb.Wrap(s.snapshotedEVMDB))
+	if s.cfg.EVM.SfcEnabled {
+		newSfcKvdbSnap, err := s.evm.SFCDB().GetSnapshot()
+		if err != nil {
+			s.Log.Error("Failed to initialize frozen SFC KVDB", "err", err)
+			return
+		}
+		if s.snapshotedSFCDB == nil {
+			s.snapshotedSFCDB = switchable.Wrap(newSfcKvdbSnap)
+		} else {
+			old := s.snapshotedSFCDB.SwitchTo(newSfcKvdbSnap)
+			// release only after DB is atomically switched
+			if old != nil {
+				old.Release()
+			}
+		}
+	}
+
+	newStore := s.evm.ResetWithEVMDB(snap2udb.Wrap(s.snapshotedEVMDB), snap2udb.Wrap(s.snapshotedSFCDB))
 	newStore.Snaps = nil
 	newStore.SfcSnaps = nil
 	root := s.GetBlockState().FinalizedStateRoot

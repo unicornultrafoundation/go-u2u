@@ -6,7 +6,6 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
-	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // Handler functions for SFC contract public and external functions
@@ -194,7 +193,6 @@ func handleCreateValidator(evm *vm.EVM, caller common.Address, args []interface{
 	minSelfStake := getConstantsManagerVariable("minSelfStake")
 	// Check that the value is at least the minimum self-stake
 	if value.Cmp(minSelfStake) < 0 {
-		log.Info("handleCreateValidator: insufficient self-stake", "value", value, "minSelfStake", minSelfStake)
 		revertData, err := encodeRevertReason("createValidator", "insufficient self-stake")
 		if err != nil {
 			return nil, 0, vm.ErrExecutionReverted

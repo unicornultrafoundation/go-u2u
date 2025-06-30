@@ -173,12 +173,15 @@ func handleGetValidatorPubkey(evm *vm.EVM, args []interface{}) ([]byte, uint64, 
 	slotBigInt, slotGasUsed := getValidatorPubkeySlot(validatorID)
 	gasUsed += slotGasUsed
 
-	// Get the validator pubkey
-	val := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slotBigInt))
-	gasUsed += SloadGasCost
+	// Get the validator pubkey (dynamic bytes)
+	pubkeyBytes, readBytesGasUsed, err := readDynamicBytes(evm, slotBigInt)
+	if err != nil {
+		return nil, gasUsed, err
+	}
+	gasUsed += readBytesGasUsed
 
 	// Don't use cache for ABI packing with parameters
-	result, err := SfcAbi.Methods["getValidatorPubkey"].Outputs.Pack(val.Bytes())
+	result, err := SfcAbi.Methods["getValidatorPubkey"].Outputs.Pack(pubkeyBytes)
 	return result, gasUsed, err
 }
 

@@ -1161,15 +1161,18 @@ func handleInternalSyncValidator(evm *vm.EVM, validatorID *big.Int, syncPubkey b
 
 	// If syncPubkey is true and weight is not zero, update validator pubkey
 	if syncPubkey && weight.Cmp(big.NewInt(0)) != 0 {
-		// Get the validator's pubkey
+		// Get the validator's pubkey (dynamic bytes)
 		pubkeySlot, slotGasUsed := getValidatorPubkeySlot(validatorID)
 		gasUsed += slotGasUsed
 
-		pubkeyHash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(pubkeySlot))
-		gasUsed += SloadGasCost
+		pubkeyBytes, readBytesGasUsed, err := readDynamicBytes(evm, pubkeySlot)
+		if err != nil {
+			return gasUsed, err
+		}
+		gasUsed += readBytesGasUsed
 
 		// Pack the function call data
-		data, err := NodeDriverAbi.Pack("updateValidatorPubkey", validatorID, pubkeyHash.Bytes())
+		data, err := NodeDriverAbi.Pack("updateValidatorPubkey", validatorID, pubkeyBytes)
 		if err != nil {
 			return gasUsed, vm.ErrExecutionReverted
 		}
@@ -1826,4 +1829,134 @@ func handleInternalCalcRawValidatorEpochTxReward(epochFee *big.Int, txRewardWeig
 // This is a port of the _calcValidatorCommission function from SFCBase.sol
 func handleInternalCalcValidatorCommission(rawReward *big.Int, commission *big.Int) *big.Int {
 	return new(big.Int).Div(new(big.Int).Mul(rawReward, commission), getDecimalUnit())
+}
+
+// readDynamicBytes reads a dynamic bytes value from storage following Solidity's storage layout
+// In Solidity, dynamic bytes are stored as:
+// - At the main slot: the length of the bytes
+// - If length <= 31: data is packed with length in the same slot
+// - If length > 31: data starts at keccak256(main_slot) for as many slots as needed
+func readDynamicBytes(evm *vm.EVM, mainSlot *big.Int) ([]byte, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Read the main slot to get length and possibly data
+	mainSlotValue := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(mainSlot))
+	gasUsed += SloadGasCost
+
+	// Convert to 32-byte array to ensure proper indexing
+	mainSlotBytes := common.LeftPadBytes(mainSlotValue.Bytes(), 32)
+
+	// Extract the length from the least significant byte
+	// In Solidity, if length is odd, the last bit is 1 and length = (value & 0xFF) / 2
+	// If length is even, the data is stored inline and length = (value & 0xFF) / 2
+	lastByte := mainSlotBytes[31] // Get the last byte
+
+	if lastByte&1 == 0 {
+		// Data is stored inline (length <= 31)
+		length := lastByte / 2
+		if length == 0 {
+			return []byte{}, gasUsed, nil
+		}
+
+		// Extract the data from the same slot (first 'length' bytes)
+		if len(mainSlotBytes) >= int(length) {
+			return mainSlotBytes[:length], gasUsed, nil
+		}
+		return mainSlotBytes, gasUsed, nil
+	} else {
+		// Data is stored in separate slots (length > 31)
+		// Length is stored in the main slot as: length * 2 + 1
+		length := new(big.Int).SetBytes(mainSlotBytes)
+		length = length.Sub(length, big.NewInt(1)) // subtract 1
+		length = length.Div(length, big.NewInt(2)) // length = (stored_value - 1) / 2
+
+		if length.Cmp(big.NewInt(0)) == 0 {
+			return []byte{}, gasUsed, nil
+		}
+
+		// Calculate the data starting slot: keccak256(main_slot)
+		mainSlotBytes := common.LeftPadBytes(mainSlot.Bytes(), 32)
+		dataStartSlotHash := CachedKeccak256(mainSlotBytes)
+		gasUsed += HashGasCost
+		dataStartSlot := new(big.Int).SetBytes(dataStartSlotHash)
+
+		// Calculate how many slots we need to read
+		lengthInt := length.Uint64()
+		slotsNeeded := (lengthInt + 31) / 32 // Round up to nearest 32-byte slot
+
+		// Read the data from storage
+		data := make([]byte, 0, lengthInt)
+		for i := uint64(0); i < slotsNeeded; i++ {
+			slotToRead := new(big.Int).Add(dataStartSlot, big.NewInt(int64(i)))
+			slotValue := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slotToRead))
+			gasUsed += SloadGasCost
+
+			// Convert to 32-byte array to ensure proper padding
+			slotBytes := common.LeftPadBytes(slotValue.Bytes(), 32)
+
+			// Append the slot data (32 bytes max)
+			if len(data)+len(slotBytes) > int(lengthInt) {
+				// Last slot - only take what we need
+				remaining := int(lengthInt) - len(data)
+				data = append(data, slotBytes[:remaining]...)
+			} else {
+				data = append(data, slotBytes...)
+			}
+		}
+
+		return data[:lengthInt], gasUsed, nil
+	}
+}
+
+// writeDynamicBytes writes a dynamic bytes value to storage following Solidity's storage layout
+func writeDynamicBytes(evm *vm.EVM, mainSlot *big.Int, data []byte) (uint64, error) {
+	var gasUsed uint64 = 0
+
+	dataLength := len(data)
+
+	if dataLength <= 31 {
+		// Store data inline in the main slot
+		// Format: [data...] [length * 2] (length in last byte, even number)
+		slotValue := make([]byte, 32)
+		copy(slotValue, data)
+		slotValue[31] = byte(dataLength * 2) // Store length * 2 in last byte
+
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(mainSlot), common.BytesToHash(slotValue))
+		gasUsed += SstoreGasCost
+	} else {
+		// Store length in main slot and data in separate slots
+		// Main slot stores: length * 2 + 1
+		lengthValue := big.NewInt(int64(dataLength*2 + 1))
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(mainSlot), common.BigToHash(lengthValue))
+		gasUsed += SstoreGasCost
+
+		// Calculate the data starting slot: keccak256(main_slot)
+		mainSlotBytes := common.LeftPadBytes(mainSlot.Bytes(), 32)
+		dataStartSlotHash := CachedKeccak256(mainSlotBytes)
+		gasUsed += HashGasCost
+		dataStartSlot := new(big.Int).SetBytes(dataStartSlotHash)
+
+		// Calculate how many slots we need to write
+		slotsNeeded := (dataLength + 31) / 32 // Round up to nearest 32-byte slot
+
+		// Write the data to storage
+		for i := 0; i < slotsNeeded; i++ {
+			slotToWrite := new(big.Int).Add(dataStartSlot, big.NewInt(int64(i)))
+
+			// Prepare the data for this slot (32 bytes max)
+			start := i * 32
+			end := start + 32
+			if end > dataLength {
+				end = dataLength
+			}
+
+			slotData := make([]byte, 32)
+			copy(slotData, data[start:end])
+
+			evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(slotToWrite), common.BytesToHash(slotData))
+			gasUsed += SstoreGasCost
+		}
+	}
+
+	return gasUsed, nil
 }

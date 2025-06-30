@@ -238,6 +238,11 @@ func testSFCStore_CanCreateValidator(t *testing.T) {
 	if good, err := testnet.CheckIntegrity(nil); !good || err != nil {
 		t.Fatalf("sfc state is corrupted before creating validator 2: %v", err)
 	}
+	testnet.CraftSFCTx(testAccounts[2], SfcLibAbi, new(big.Int).Mul(big.NewInt(0), ether),
+		"createValidator", testAccounts[2].PublicKeyBytes())
+	if good, err := testnet.CheckIntegrity(nil); !good || err != nil {
+		t.Fatalf("sfc state is corrupted after creating validator 2 with zero self-stake: %v", err)
+	}
 	if err := testnet.CraftSFCTx(testAccounts[2], SfcLibAbi, new(big.Int).Mul(big.NewInt(1000000), ether),
 		"createValidator", testAccounts[2].PublicKeyBytes()); err != nil {
 		t.Fatalf("failed to create validator 2: %v", err)

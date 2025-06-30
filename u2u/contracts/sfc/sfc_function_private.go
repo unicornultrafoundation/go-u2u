@@ -559,11 +559,14 @@ func handleInternalRawCreateValidator(evm *vm.EVM, auth common.Address, validato
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorAuthSlot), common.BytesToHash(auth.Bytes()))
 	gasUsed += SstoreGasCost
 
-	// Set getValidatorPubkey[validatorID] = pubkey
+	// Set getValidatorPubkey[validatorID] = pubkey (dynamic bytes)
 	validatorPubkeySlot, slotGasUsed := getValidatorPubkeySlot(validatorID)
 	gasUsed += slotGasUsed
-	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorPubkeySlot), common.BytesToHash(pubkey))
-	gasUsed += SstoreGasCost
+	writeBytesGasUsed, err := writeDynamicBytes(evm, validatorPubkeySlot, pubkey)
+	if err != nil {
+		return gasUsed, err
+	}
+	gasUsed += writeBytesGasUsed
 
 	// Emit CreatedValidator event
 	topics := []common.Hash{

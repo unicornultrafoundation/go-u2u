@@ -241,7 +241,7 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		result, gasUsed, err = handleWithdraw(evm, caller, args)
 
 	case "deactivateValidator":
-		result, gasUsed, err = handleDeactivateValidator(evm, args)
+		result, gasUsed, err = handleDeactivateValidator(evm, caller, args)
 
 	case "stashRewards":
 		result, gasUsed, err = handleStashRewards(evm, args)
@@ -251,12 +251,6 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 
 	case "restakeRewards":
 		result, gasUsed, err = handleRestakeRewards(evm, caller, args)
-
-	case "updateBaseRewardPerSecond":
-		result, gasUsed, err = handleUpdateBaseRewardPerSecond(evm, args)
-
-	case "updateOfflinePenaltyThreshold":
-		result, gasUsed, err = handleUpdateOfflinePenaltyThreshold(evm, args)
 
 	case "updateSlashingRefundRatio":
 		result, gasUsed, err = handleUpdateSlashingRefundRatio(evm, args)
@@ -286,7 +280,7 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		result, gasUsed, err = handleInitialize(evm, caller, args)
 
 	case "setGenesisValidator":
-		result, gasUsed, err = handleSetGenesisValidator(evm, args)
+		result, gasUsed, err = handleSetGenesisValidator(evm, caller, args)
 
 	case "setGenesisDelegation":
 		result, gasUsed, err = handleSetGenesisDelegation(evm, args)

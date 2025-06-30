@@ -167,59 +167,6 @@ func handleUpdateLibAddress(evm *vm.EVM, caller common.Address, args []interface
 	return nil, 0, nil
 }
 
-// handleCreateValidator creates a new validator
-func handleCreateValidator(evm *vm.EVM, caller common.Address, args []interface{}, value *big.Int) ([]byte, uint64, error) {
-	// Initialize gas used
-	var gasUsed uint64 = 0
-	// Get the arguments
-	if len(args) != 1 {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-	pubkey, ok := args[0].([]byte)
-	if !ok {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-
-	// Check that the pubkey is not empty
-	if len(pubkey) == 0 {
-		revertData, err := encodeRevertReason("createValidator", "empty pubkey")
-		if err != nil {
-			return nil, 0, vm.ErrExecutionReverted
-		}
-		return revertData, 0, vm.ErrExecutionReverted
-	}
-
-	// Call the minSelfStake method on the ConstantsManager contract
-	minSelfStake := getConstantsManagerVariable("minSelfStake")
-	// Check that the value is at least the minimum self-stake
-	if value.Cmp(minSelfStake) < 0 {
-		revertData, err := encodeRevertReason("createValidator", "insufficient self-stake")
-		if err != nil {
-			return nil, 0, vm.ErrExecutionReverted
-		}
-		return revertData, 0, vm.ErrExecutionReverted
-	}
-
-	// Call the internal _createValidator function
-	newValidatorID, createValidatorGasUsed, err := handleInternalCreateValidator(evm, caller, pubkey)
-	gasUsed += createValidatorGasUsed
-	if err != nil {
-		return nil, gasUsed, err
-	}
-
-	// Delegate the value to the validator
-	// This is equivalent to _delegate(msg.sender, lastValidatorID, msg.value)
-	result, delegateGasUsed, err := handleInternalDelegate(evm, caller, newValidatorID, value)
-	if err != nil {
-		return result, gasUsed + delegateGasUsed, err
-	}
-
-	// Add the gas used by handleInternalDelegate
-	gasUsed += delegateGasUsed
-
-	return nil, gasUsed, nil
-}
-
 // handleIsOwner returns whether the given address is the owner of the contract
 func handleIsOwner(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	var gasUsed uint64 = 0
@@ -1011,33 +958,9 @@ func handleUpdateVoteBookAddress(evm *vm.EVM, args []interface{}) ([]byte, uint6
 	return nil, 0, vm.ErrSfcFunctionNotImplemented
 }
 
-// DeactivateValidator deactivates a validator
-func handleDeactivateValidator(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement deactivateValidator handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
-}
-
-// UpdateBaseRewardPerSecond updates the base reward per second
-func handleUpdateBaseRewardPerSecond(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement updateBaseRewardPerSecond handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
-}
-
-// UpdateOfflinePenaltyThreshold updates the offline penalty threshold
-func handleUpdateOfflinePenaltyThreshold(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement updateOfflinePenaltyThreshold handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
-}
-
 // UpdateSlashingRefundRatio updates the slashing refund ratio
 func handleUpdateSlashingRefundRatio(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	// TODO: Implement updateSlashingRefundRatio handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
-}
-
-// SetGenesisValidator sets a genesis validator
-func handleSetGenesisValidator(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement setGenesisValidator handler
 	return nil, 0, vm.ErrSfcFunctionNotImplemented
 }
 
@@ -1055,39 +978,5 @@ func handleSumRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 
 // Fallback is the payable fallback function that delegates calls to the library
 func handleFallback(evm *vm.EVM, args []interface{}, input []byte) ([]byte, uint64, error) {
-	//var gasUsed uint64 = 0
-	//
-	//// Check if input data is empty (pure native token transfer)
-	//if len(input) == 0 {
-	//	// Return ABI-encoded revert reason: "transfers not allowed"
-	//	revertReason := "transfers not allowed"
-	//	revertData, err := encodeRevertReason("fallback", revertReason)
-	//	if err != nil {
-	//		return nil, gasUsed, vm.ErrExecutionReverted
-	//	}
-	//	return revertData, gasUsed, vm.ErrExecutionReverted
-	//}
-	//
-	//// Create a contract reference for the caller
-	//callerRef := vm.AccountRef(evm.TxContext.Origin)
-	//
-	//// Make the delegate call to the libAddress
-	//// This simulates the Solidity _delegate function
-	//gas := defaultGasLimit // Use a fixed gas amount for now
-	//ret, leftOverGas, err := evm.DelegateCallSFC(callerRef, SfcLibAddr, input, gas)
-	//
-	//// Calculate gas used
-	//gasUsed += gas - leftOverGas
-	//
-	//// Handle errors similar to the Solidity assembly code:
-	//// switch result
-	//// case 0 { revert(0, returndatasize) }
-	//// default { return (0, returndatasize) }
-	//if err != nil {
-	//	return ret, gasUsed, err
-	//}
-	//
-	//return ret, gasUsed, nil
-
 	return nil, 0, vm.ErrSfcFunctionNotImplemented
 }

@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/params"
@@ -500,4 +501,174 @@ func checkDelegatedStakeLimit(evm *vm.EVM, validatorID *big.Int) (bool, uint64, 
 	withinLimit := receivedStakeBigInt.Cmp(maxAllowedStake) <= 0
 
 	return withinLimit, gasUsed, nil
+}
+
+// handleInternalRawCreateValidator implements the _rawCreateValidator function logic
+// This is equivalent to the Solidity _rawCreateValidator(address auth, uint256 validatorID, bytes memory pubkey, uint256 status, uint256 createdEpoch, uint256 createdTime, uint256 deactivatedEpoch, uint256 deactivatedTime) internal function
+func handleInternalRawCreateValidator(evm *vm.EVM, auth common.Address, validatorID *big.Int, pubkey []byte, status *big.Int, createdEpoch *big.Int, createdTime *big.Int, deactivatedEpoch *big.Int, deactivatedTime *big.Int) (uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Check that the validator doesn't already exist (getValidatorID[auth] == 0)
+	authValidatorIDSlot, slotGasUsed := getValidatorIDSlot(auth)
+	gasUsed += slotGasUsed
+	existingValidatorID := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(authValidatorIDSlot))
+	gasUsed += SloadGasCost
+	existingValidatorIDBigInt := new(big.Int).SetBytes(existingValidatorID.Bytes())
+	if existingValidatorIDBigInt.Cmp(big.NewInt(0)) != 0 {
+		// For internal functions that don't return revert data, just return the error directly
+		return gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Set getValidatorID[auth] = validatorID
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(authValidatorIDSlot), common.BigToHash(validatorID))
+	gasUsed += SstoreGasCost
+
+	// Set getValidator[validatorID].status = status
+	validatorStatusSlot, slotGasUsed := getValidatorStatusSlot(validatorID)
+	gasUsed += slotGasUsed
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorStatusSlot), common.BigToHash(status))
+	gasUsed += SstoreGasCost
+
+	// Set getValidator[validatorID].createdEpoch = createdEpoch
+	validatorCreatedEpochSlot, slotGasUsed := getValidatorCreatedEpochSlot(validatorID)
+	gasUsed += slotGasUsed
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorCreatedEpochSlot), common.BigToHash(createdEpoch))
+	gasUsed += SstoreGasCost
+
+	// Set getValidator[validatorID].createdTime = createdTime
+	validatorCreatedTimeSlot, slotGasUsed := getValidatorCreatedTimeSlot(validatorID)
+	gasUsed += slotGasUsed
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorCreatedTimeSlot), common.BigToHash(createdTime))
+	gasUsed += SstoreGasCost
+
+	// Set getValidator[validatorID].deactivatedTime = deactivatedTime
+	validatorDeactivatedTimeSlot, slotGasUsed := getValidatorDeactivatedTimeSlot(validatorID)
+	gasUsed += slotGasUsed
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorDeactivatedTimeSlot), common.BigToHash(deactivatedTime))
+	gasUsed += SstoreGasCost
+
+	// Set getValidator[validatorID].deactivatedEpoch = deactivatedEpoch
+	validatorDeactivatedEpochSlot, slotGasUsed := getValidatorDeactivatedEpochSlot(validatorID)
+	gasUsed += slotGasUsed
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorDeactivatedEpochSlot), common.BigToHash(deactivatedEpoch))
+	gasUsed += SstoreGasCost
+
+	// Set getValidator[validatorID].auth = auth
+	validatorAuthSlot, slotGasUsed := getValidatorAuthSlot(validatorID)
+	gasUsed += slotGasUsed
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorAuthSlot), common.BytesToHash(auth.Bytes()))
+	gasUsed += SstoreGasCost
+
+	// Set getValidatorPubkey[validatorID] = pubkey
+	validatorPubkeySlot, slotGasUsed := getValidatorPubkeySlot(validatorID)
+	gasUsed += slotGasUsed
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(validatorPubkeySlot), common.BytesToHash(pubkey))
+	gasUsed += SstoreGasCost
+
+	// Emit CreatedValidator event
+	topics := []common.Hash{
+		SfcLibAbi.Events["CreatedValidator"].ID,
+		common.BigToHash(validatorID),                             // indexed parameter (validatorID)
+		common.BytesToHash(common.LeftPadBytes(auth.Bytes(), 32)), // indexed parameter (auth)
+	}
+	data, err := SfcLibAbi.Events["CreatedValidator"].Inputs.NonIndexed().Pack(
+		createdEpoch,
+		createdTime,
+	)
+	if err != nil {
+		return gasUsed, vm.ErrExecutionReverted
+	}
+	evm.SfcStateDB.AddLog(&types.Log{
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
+	})
+
+	// Emit DeactivatedValidator event if deactivatedEpoch != 0
+	if deactivatedEpoch.Cmp(big.NewInt(0)) != 0 {
+		deactivatedTopics := []common.Hash{
+			SfcLibAbi.Events["DeactivatedValidator"].ID,
+			common.BigToHash(validatorID), // indexed parameter (validatorID)
+		}
+		deactivatedData, err := SfcLibAbi.Events["DeactivatedValidator"].Inputs.NonIndexed().Pack(
+			deactivatedEpoch,
+			deactivatedTime,
+		)
+		if err != nil {
+			return gasUsed, vm.ErrExecutionReverted
+		}
+		evm.SfcStateDB.AddLog(&types.Log{
+			BlockNumber: evm.Context.BlockNumber.Uint64(),
+			Address:     ContractAddress,
+			Topics:      deactivatedTopics,
+			Data:        deactivatedData,
+		})
+	}
+
+	// Emit ChangedValidatorStatus event if status != 0
+	if status.Cmp(big.NewInt(0)) != 0 {
+		statusTopics := []common.Hash{
+			SfcLibAbi.Events["ChangedValidatorStatus"].ID,
+			common.BigToHash(validatorID), // indexed parameter (validatorID)
+		}
+		statusData, err := SfcLibAbi.Events["ChangedValidatorStatus"].Inputs.NonIndexed().Pack(
+			status,
+		)
+		if err != nil {
+			return gasUsed, vm.ErrExecutionReverted
+		}
+		evm.SfcStateDB.AddLog(&types.Log{
+			BlockNumber: evm.Context.BlockNumber.Uint64(),
+			Address:     ContractAddress,
+			Topics:      statusTopics,
+			Data:        statusData,
+		})
+	}
+
+	return gasUsed, nil
+}
+
+// handleInternalCreateValidator implements the _createValidator function logic
+// This is equivalent to the Solidity _createValidator(address auth, bytes calldata pubkey) internal function
+func handleInternalCreateValidator(evm *vm.EVM, auth common.Address, pubkey []byte) (*big.Int, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Get the last validator ID and increment it (uint256 validatorID = ++lastValidatorID)
+	lastValidatorID := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(lastValidatorIDSlot)))
+	gasUsed += SloadGasCost
+	lastValidatorIDBigInt := new(big.Int).SetBytes(lastValidatorID.Bytes())
+
+	// Increment the last validator ID
+	newValidatorID := new(big.Int).Add(lastValidatorIDBigInt, big.NewInt(1))
+
+	// Set the last validator ID
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(lastValidatorIDSlot)), common.BigToHash(newValidatorID))
+	gasUsed += SstoreGasCost
+
+	// Get current epoch and time
+	currentEpochBigInt, epochGasUsed, err := getCurrentEpoch(evm)
+	if err != nil {
+		return nil, gasUsed, err
+	}
+	gasUsed += epochGasUsed
+
+	// Call _rawCreateValidator(auth, validatorID, pubkey, OK_STATUS, currentEpoch(), _now(), 0, 0)
+	rawCreateGasUsed, err := handleInternalRawCreateValidator(
+		evm,
+		auth,
+		newValidatorID,
+		pubkey,
+		big.NewInt(0),      // OK_STATUS
+		currentEpochBigInt, // currentEpoch()
+		evm.Context.Time,   // _now()
+		big.NewInt(0),      // deactivatedEpoch = 0
+		big.NewInt(0),      // deactivatedTime = 0
+	)
+	gasUsed += rawCreateGasUsed
+	if err != nil {
+		return nil, gasUsed, err
+	}
+
+	return newValidatorID, gasUsed, nil
 }

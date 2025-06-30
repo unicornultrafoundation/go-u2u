@@ -229,9 +229,7 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		result, gasUsed, err = handleUpdateVoteBookAddress(evm, args)
 
 	case "createValidator":
-		// For createValidator, we need to pass a value, but we don't have direct access to it
-		// Use a zero value for now, this should be fixed in a future update
-		result, gasUsed, err = handleCreateValidator(evm, caller, args, big.NewInt(0))
+		result, gasUsed, err = handleCreateValidator(evm, caller, args, value)
 
 	case "delegate":
 		result, gasUsed, err = handleDelegate(evm, caller, args, value)

@@ -99,6 +99,7 @@ func TestSFCStore_BasicFlows(t *testing.T) {
 	testSFCStore_CanRestakeRewards(t)
 	testSFCStore_CanLockStake(t)
 	testSFCStore_CanRelockStake(t)
+	testSFCStore_CanCreateValidator(t)
 }
 
 func testSFCStore_CanGetSfcStorage(t *testing.T) {
@@ -225,5 +226,23 @@ func testSFCStore_CanRelockStake(t *testing.T) {
 	}
 	if good, err := testnet.CheckIntegrity(nil); !good || err != nil {
 		t.Fatalf("sfc state is corrupted after relocking stake: %v", err)
+	}
+}
+
+func testSFCStore_CanCreateValidator(t *testing.T) {
+	// trigger epoch update
+	if err := testnet.EndowAccount(testAccounts[2].Address(), new(big.Int).Mul(big.NewInt(1000000), ether)); err != nil {
+		t.Fatalf("failed to endow account 2: %v", err)
+	}
+	// try to create validator 2 as the second validator of the test network
+	if good, err := testnet.CheckIntegrity(nil); !good || err != nil {
+		t.Fatalf("sfc state is corrupted before creating validator 2: %v", err)
+	}
+	if err := testnet.CraftSFCTx(testAccounts[2], SfcLibAbi, new(big.Int).Mul(big.NewInt(1000000), ether),
+		"createValidator", testAccounts[2].PublicKeyBytes()); err != nil {
+		t.Fatalf("failed to create validator 2: %v", err)
+	}
+	if good, err := testnet.CheckIntegrity(nil); !good || err != nil {
+		t.Fatalf("sfc state is corrupted after creating validator 2: %v", err)
 	}
 }

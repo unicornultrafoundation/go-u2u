@@ -509,56 +509,370 @@ func handleCurrentEpoch(evm *vm.EVM) ([]byte, uint64, error) {
 
 // ConstsAddress returns the address of the constants contract
 func handleConstsAddress(evm *vm.EVM) ([]byte, uint64, error) {
-	// TODO: Implement constsAddress handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+	var gasUsed uint64 = 0
+	// Get the constants manager address from storage
+	constantsManager := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(constantsManagerSlot)))
+	gasUsed += SloadGasCost
+	constantsManagerAddr := common.BytesToAddress(constantsManager.Bytes())
+
+	// Pack the result
+	result, err := SfcAbi.Methods["constsAddress"].Outputs.Pack(constantsManagerAddr)
+	if err != nil {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	return result, gasUsed, nil
 }
 
 // GetEpochValidatorIDs returns the validator IDs for a given epoch
 func handleGetEpochValidatorIDs(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement getEpochValidatorIDs handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+	var gasUsed uint64 = 0
+	// Parse arguments
+	if len(args) != 1 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	epoch, ok := args[0].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Get the epoch snapshot slot
+	epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(epoch)
+	gasUsed += slotGasUsed
+
+	// The validatorIDs field is at offset 6 within the EpochSnapshot struct
+	validatorIDsSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(validatorIDsOffset))
+
+	// Read the length of the validatorIDs array
+	validatorIDsLengthHash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorIDsSlot))
+	gasUsed += SloadGasCost
+	validatorIDsLength := validatorIDsLengthHash.Big().Uint64()
+
+	// If no validators for this epoch, return empty array
+	if validatorIDsLength == 0 {
+		result, err := SfcAbi.Methods["getEpochValidatorIDs"].Outputs.Pack([]*big.Int{})
+		if err != nil {
+			return nil, gasUsed, vm.ErrExecutionReverted
+		}
+		return result, gasUsed, nil
+	}
+
+	// Calculate the base slot for the array elements: keccak256(validatorIDsSlot)
+	validatorIDsBaseSlotBytes := CachedKeccak256(common.BigToHash(validatorIDsSlot).Bytes())
+	gasUsed += HashGasCost
+	validatorIDsBaseSlot := new(big.Int).SetBytes(validatorIDsBaseSlotBytes)
+
+	// Read each validator ID from storage
+	validatorIDs := make([]*big.Int, 0, validatorIDsLength)
+	for i := uint64(0); i < validatorIDsLength; i++ {
+		elementSlot := new(big.Int).Add(validatorIDsBaseSlot, big.NewInt(int64(i)))
+		validatorIDHash := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(elementSlot))
+		gasUsed += SloadGasCost
+		validatorID := new(big.Int).SetBytes(validatorIDHash.Bytes())
+		validatorIDs = append(validatorIDs, validatorID)
+	}
+
+	// Pack the result
+	result, err := SfcAbi.Methods["getEpochValidatorIDs"].Outputs.Pack(validatorIDs)
+	if err != nil {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	return result, gasUsed, nil
 }
 
 // GetEpochReceivedStake returns the received stake for a validator in a given epoch
 func handleGetEpochReceivedStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement getEpochReceivedStake handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+	var gasUsed uint64 = 0
+	// Parse arguments
+	if len(args) != 2 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	epoch, ok := args[0].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	validatorID, ok := args[1].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Get the epoch received stake slot for this validator in this epoch
+	receivedStakeSlot, slotGasUsed := getEpochValidatorReceivedStakeSlot(epoch, validatorID)
+	gasUsed += slotGasUsed
+
+	// Read the received stake from storage
+	receivedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(receivedStakeSlot))
+	gasUsed += SloadGasCost
+	receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
+
+	// Pack the result
+	result, err := SfcAbi.Methods["getEpochReceivedStake"].Outputs.Pack(receivedStakeBigInt)
+	if err != nil {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	return result, gasUsed, nil
 }
 
 // GetEpochAccumulatedRewardPerToken returns the accumulated reward per token for a validator in a given epoch
 func handleGetEpochAccumulatedRewardPerToken(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement getEpochAccumulatedRewardPerToken handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+	var gasUsed uint64 = 0
+	// Parse arguments
+	if len(args) != 2 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	epoch, ok := args[0].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	validatorID, ok := args[1].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Get the epoch snapshot slot
+	epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(epoch)
+	gasUsed += slotGasUsed
+
+	// The accumulatedRewardPerToken mapping is at offset 1 within the EpochSnapshot struct
+	mappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(accumulatedRewardPerTokenOffset))
+
+	// Calculate the slot for the specific validatorID in this mapping
+	hashInput := CreateValidatorMappingHashInput(validatorID, mappingSlot)
+	accumulatedRewardPerTokenSlotHash := CachedKeccak256Hash(hashInput)
+	gasUsed += HashGasCost
+	accumulatedRewardPerTokenSlot := new(big.Int).SetBytes(accumulatedRewardPerTokenSlotHash.Bytes())
+
+	// Read the accumulated reward per token from storage
+	accumulatedRewardPerToken := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(accumulatedRewardPerTokenSlot))
+	gasUsed += SloadGasCost
+	accumulatedRewardPerTokenBigInt := new(big.Int).SetBytes(accumulatedRewardPerToken.Bytes())
+
+	// Pack the result
+	result, err := SfcAbi.Methods["getEpochAccumulatedRewardPerToken"].Outputs.Pack(accumulatedRewardPerTokenBigInt)
+	if err != nil {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	return result, gasUsed, nil
 }
 
 // GetEpochAccumulatedUptime returns the accumulated uptime for a validator in a given epoch
 func handleGetEpochAccumulatedUptime(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement getEpochAccumulatedUptime handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+	var gasUsed uint64 = 0
+	// Parse arguments
+	if len(args) != 2 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	epoch, ok := args[0].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	validatorID, ok := args[1].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Get the epoch snapshot slot
+	epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(epoch)
+	gasUsed += slotGasUsed
+
+	// The accumulatedUptime mapping is at offset 2 within the EpochSnapshot struct
+	mappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(accumulatedUptimeOffset))
+
+	// Calculate the slot for the specific validatorID in this mapping
+	hashInput := CreateValidatorMappingHashInput(validatorID, mappingSlot)
+	accumulatedUptimeSlotHash := CachedKeccak256Hash(hashInput)
+	gasUsed += HashGasCost
+	accumulatedUptimeSlot := new(big.Int).SetBytes(accumulatedUptimeSlotHash.Bytes())
+
+	// Read the accumulated uptime from storage
+	accumulatedUptime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(accumulatedUptimeSlot))
+	gasUsed += SloadGasCost
+	accumulatedUptimeBigInt := new(big.Int).SetBytes(accumulatedUptime.Bytes())
+
+	// Pack the result
+	result, err := SfcAbi.Methods["getEpochAccumulatedUptime"].Outputs.Pack(accumulatedUptimeBigInt)
+	if err != nil {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	return result, gasUsed, nil
 }
 
 // GetEpochAccumulatedOriginatedTxsFee returns the accumulated originated txs fee for a validator in a given epoch
 func handleGetEpochAccumulatedOriginatedTxsFee(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement getEpochAccumulatedOriginatedTxsFee handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+	var gasUsed uint64 = 0
+	// Parse arguments
+	if len(args) != 2 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	epoch, ok := args[0].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	validatorID, ok := args[1].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Get the epoch snapshot slot
+	epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(epoch)
+	gasUsed += slotGasUsed
+
+	// The accumulatedOriginatedTxsFee mapping is at offset 3 within the EpochSnapshot struct
+	mappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(accumulatedOriginatedTxsFeeOffset))
+
+	// Calculate the slot for the specific validatorID in this mapping
+	hashInput := CreateValidatorMappingHashInput(validatorID, mappingSlot)
+	accumulatedTxsFeeSlotHash := CachedKeccak256Hash(hashInput)
+	gasUsed += HashGasCost
+	accumulatedTxsFeeSlot := new(big.Int).SetBytes(accumulatedTxsFeeSlotHash.Bytes())
+
+	// Read the accumulated originated txs fee from storage
+	accumulatedTxsFee := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(accumulatedTxsFeeSlot))
+	gasUsed += SloadGasCost
+	accumulatedTxsFeeBigInt := new(big.Int).SetBytes(accumulatedTxsFee.Bytes())
+
+	// Pack the result
+	result, err := SfcAbi.Methods["getEpochAccumulatedOriginatedTxsFee"].Outputs.Pack(accumulatedTxsFeeBigInt)
+	if err != nil {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	return result, gasUsed, nil
 }
 
 // GetEpochOfflineTime returns the offline time for a validator in a given epoch
 func handleGetEpochOfflineTime(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement getEpochOfflineTime handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+	var gasUsed uint64 = 0
+	// Parse arguments
+	if len(args) != 2 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	epoch, ok := args[0].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	validatorID, ok := args[1].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Get the epoch snapshot slot
+	epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(epoch)
+	gasUsed += slotGasUsed
+
+	// The offlineTime mapping is at offset 4 within the EpochSnapshot struct
+	mappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(offlineTimeOffset))
+
+	// Calculate the slot for the specific validatorID in this mapping
+	hashInput := CreateValidatorMappingHashInput(validatorID, mappingSlot)
+	offlineTimeSlotHash := CachedKeccak256Hash(hashInput)
+	gasUsed += HashGasCost
+	offlineTimeSlot := new(big.Int).SetBytes(offlineTimeSlotHash.Bytes())
+
+	// Read the offline time from storage
+	offlineTime := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(offlineTimeSlot))
+	gasUsed += SloadGasCost
+	offlineTimeBigInt := new(big.Int).SetBytes(offlineTime.Bytes())
+
+	// Pack the result
+	result, err := SfcAbi.Methods["getEpochOfflineTime"].Outputs.Pack(offlineTimeBigInt)
+	if err != nil {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	return result, gasUsed, nil
 }
 
 // GetEpochOfflineBlocks returns the offline blocks for a validator in a given epoch
 func handleGetEpochOfflineBlocks(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement getEpochOfflineBlocks handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+	var gasUsed uint64 = 0
+	// Parse arguments
+	if len(args) != 2 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	epoch, ok := args[0].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	validatorID, ok := args[1].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Get the epoch snapshot slot
+	epochSnapshotSlot, slotGasUsed := getEpochSnapshotSlot(epoch)
+	gasUsed += slotGasUsed
+
+	// The offlineBlocks mapping is at offset 5 within the EpochSnapshot struct
+	mappingSlot := new(big.Int).Add(epochSnapshotSlot, big.NewInt(offlineBlocksOffset))
+
+	// Calculate the slot for the specific validatorID in this mapping
+	hashInput := CreateValidatorMappingHashInput(validatorID, mappingSlot)
+	offlineBlocksSlotHash := CachedKeccak256Hash(hashInput)
+	gasUsed += HashGasCost
+	offlineBlocksSlot := new(big.Int).SetBytes(offlineBlocksSlotHash.Bytes())
+
+	// Read the offline blocks from storage
+	offlineBlocks := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(offlineBlocksSlot))
+	gasUsed += SloadGasCost
+	offlineBlocksBigInt := new(big.Int).SetBytes(offlineBlocks.Bytes())
+
+	// Pack the result
+	result, err := SfcAbi.Methods["getEpochOfflineBlocks"].Outputs.Pack(offlineBlocksBigInt)
+	if err != nil {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	return result, gasUsed, nil
 }
 
 // RewardsStash returns the rewards stash for a delegator and validator
 func handleRewardsStash(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement rewardsStash handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+	var gasUsed uint64 = 0
+	// Parse arguments
+	if len(args) != 2 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	delegator, ok := args[0].(common.Address)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	validatorID, ok := args[1].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Get the rewards stash slot for this delegator and validator
+	rewardsStashSlot, slotGasUsed := getRewardsStashSlot(delegator, validatorID)
+	gasUsed += slotGasUsed
+
+	// Read all three slots of the rewards stash (Rewards struct has 3 fields)
+	packedRewardsStash := make([][]byte, 3)
+	for i := 0; i < 3; i++ {
+		slot := new(big.Int).Add(rewardsStashSlot, big.NewInt(int64(i)))
+		value := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slot))
+		packedRewardsStash[i] = value.Bytes()
+		gasUsed += SloadGasCost
+	}
+
+	// Unpack the rewards stash
+	rewards := unpackRewards(packedRewardsStash)
+
+	// Calculate the total rewards (lockupBaseReward + lockupExtraReward + unlockedReward)
+	totalRewards := new(big.Int).Add(rewards.LockupBaseReward, rewards.LockupExtraReward)
+	totalRewards = new(big.Int).Add(totalRewards, rewards.UnlockedReward)
+
+	// Pack the result
+	result, err := SfcAbi.Methods["rewardsStash"].Outputs.Pack(totalRewards)
+	if err != nil {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	return result, gasUsed, nil
 }
 
 // GetLockedStake returns the locked stake for a delegator and validator

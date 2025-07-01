@@ -46,15 +46,80 @@ func handle_validatorExists(evm *vm.EVM, args []interface{}) ([]byte, uint64, er
 
 // getSlashingPenalty is an internal function to get the slashing penalty
 func handleGetSlashingPenalty(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement getSlashingPenalty handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+	var gasUsed uint64 = 0
+
+	// Get the arguments
+	if len(args) != 3 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	amount, ok := args[0].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	isCheater, ok := args[1].(bool)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	refundRatio, ok := args[2].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Get decimal unit
+	decimalUnit := getDecimalUnit()
+	// If not a cheater OR refundRatio >= Decimal.unit(), return 0
+	if !isCheater || refundRatio.Cmp(decimalUnit) >= 0 {
+		// Pack the result
+		result, err := SfcLibAbi.Methods["getSlashingPenalty"].Outputs.Pack(big.NewInt(0))
+		if err != nil {
+			return nil, gasUsed, vm.ErrExecutionReverted
+		}
+		return result, gasUsed, nil
+	}
+	// Calculate penalty = amount * (Decimal.unit() - refundRatio) / Decimal.unit() + 1
+	// Round penalty upwards (ceiling) to prevent dust amount attacks
+	numerator := GetBigInt().Sub(decimalUnit, refundRatio)
+	penalty := GetBigInt().Mul(amount, numerator)
+	penalty.Div(penalty, decimalUnit)
+	penalty.Add(penalty, big.NewInt(1))
+
+	// If penalty > amount, return amount
+	if penalty.Cmp(amount) > 0 {
+		penalty = amount
+	}
+	// Pack the result
+	result, err := SfcLibAbi.Methods["getSlashingPenalty"].Outputs.Pack(penalty)
+	if err != nil {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	PutBigInt(numerator)
+	PutBigInt(penalty)
+	return result, gasUsed, nil
 }
 
-// handleIsNode checks if the caller is the node (address(0))
-func handleIsNode(evm *vm.EVM, caller common.Address) (bool, error) {
-	// Check if caller is address(0)
-	emptyAddr := common.Address{}
-	return caller.Cmp(emptyAddr) == 0, nil
+// handleIsNode checks if the caller is the node (NodeDriverAuth address)
+func handleIsNode(evm *vm.EVM, caller common.Address) ([]byte, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Get the node address from storage (NodeDriverAuth address)
+	nodeDriverAuth := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(nodeDriverAuthSlot)))
+	gasUsed += SloadGasCost
+	nodeAddr := common.BytesToAddress(nodeDriverAuth.Bytes())
+
+	// Check if caller equals the node address
+	isNode := caller.Cmp(nodeAddr) == 0
+
+	// Pack the result using SFC ABI
+	result, err := SfcAbi.Methods["isNode"].Outputs.Pack(isNode)
+	if err != nil {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	return result, gasUsed, nil
 }
 
 // handleGetUnlockedStake returns the unlocked stake of a delegator
@@ -674,4 +739,41 @@ func handleInternalCreateValidator(evm *vm.EVM, auth common.Address, pubkey []by
 	}
 
 	return newValidatorID, gasUsed, nil
+}
+
+// handleInternalPendingRewards implements the _pendingRewards function logic
+// This is equivalent to the Solidity _pendingRewards(address delegator, uint256 toValidatorID) internal view returns (Rewards memory) function
+func handleInternalPendingRewards(evm *vm.EVM, delegator common.Address, toValidatorID *big.Int) (Rewards, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Get new rewards using _newRewards function
+	// This matches the Solidity: Rewards memory reward = _newRewards(delegator, toValidatorID);
+	newReward, newRewardsGasUsed, err := _newRewards(evm, delegator, toValidatorID)
+	if err != nil {
+		return Rewards{}, gasUsed, err
+	}
+	gasUsed += newRewardsGasUsed
+
+	// Get the rewards stash from storage
+	// This matches the Solidity: _rewardsStash[delegator][toValidatorID]
+	rewardsStashSlot, slotGasUsed := getRewardsStashSlot(delegator, toValidatorID)
+	gasUsed += slotGasUsed
+
+	// Read all three slots of the rewards stash (Rewards struct has 3 fields)
+	packedRewardsStash := make([][]byte, 3)
+	for i := 0; i < 3; i++ {
+		slot := new(big.Int).Add(rewardsStashSlot, big.NewInt(int64(i)))
+		value := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slot))
+		packedRewardsStash[i] = value.Bytes()
+		gasUsed += SloadGasCost
+	}
+
+	// Unpack the rewards stash
+	rewardsStash := unpackRewards(packedRewardsStash)
+
+	// Sum the rewards stash and new rewards
+	// This matches the Solidity: return sumRewards(_rewardsStash[delegator][toValidatorID], reward);
+	pendingRewards := sumRewards(rewardsStash, newReward)
+
+	return pendingRewards, gasUsed, nil
 }

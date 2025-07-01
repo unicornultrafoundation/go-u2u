@@ -135,7 +135,7 @@ func (p *DriverPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte,
 
 	default:
 		log.Error("Driver Precompiled: Unknown function", "function", method.Name)
-		return nil, 0, vm.ErrSfcFunctionNotImplemented
+		return nil, 0, vm.ErrExecutionReverted
 	}
 	if err != nil {
 		reason, _ := abi.UnpackRevert(result)

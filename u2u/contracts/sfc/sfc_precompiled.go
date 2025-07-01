@@ -179,6 +179,9 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 	case "getEpochOfflineTime":
 		result, gasUsed, err = handleGetEpochOfflineTime(evm, args)
 
+	case "isNode":
+		result, gasUsed, err = handleIsNode(evm, caller)
+
 	case "getEpochOfflineBlocks":
 		result, gasUsed, err = handleGetEpochOfflineBlocks(evm, args)
 
@@ -214,7 +217,7 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		result, gasUsed, err = handleTransferOwnership(evm, caller, args)
 
 	case "updateConstsAddress":
-		result, gasUsed, err = handleUpdateConstsAddress(evm, args)
+		result, gasUsed, err = handleUpdateConstsAddress(evm, caller, args)
 
 	case "updateLibAddress":
 		result, gasUsed, err = handleUpdateLibAddress(evm, caller, args)
@@ -223,10 +226,10 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		result, gasUsed, err = handleUpdateStakeTokenizerAddress(evm, caller, args)
 
 	case "updateTreasuryAddress":
-		result, gasUsed, err = handleUpdateTreasuryAddress(evm, args)
+		result, gasUsed, err = handleUpdateTreasuryAddress(evm, caller, args)
 
 	case "updateVoteBookAddress":
-		result, gasUsed, err = handleUpdateVoteBookAddress(evm, args)
+		result, gasUsed, err = handleUpdateVoteBookAddress(evm, caller, args)
 
 	case "createValidator":
 		result, gasUsed, err = handleCreateValidator(evm, caller, args, value)
@@ -253,7 +256,7 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		result, gasUsed, err = handleRestakeRewards(evm, caller, args)
 
 	case "updateSlashingRefundRatio":
-		result, gasUsed, err = handleUpdateSlashingRefundRatio(evm, args)
+		result, gasUsed, err = handleUpdateSlashingRefundRatio(evm, caller, args)
 
 	case "mintU2U":
 		result, gasUsed, err = handleMintU2U(evm, caller, args)
@@ -283,21 +286,20 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		result, gasUsed, err = handleSetGenesisValidator(evm, caller, args)
 
 	case "setGenesisDelegation":
-		result, gasUsed, err = handleSetGenesisDelegation(evm, args)
+		result, gasUsed, err = handleSetGenesisDelegation(evm, caller, args)
 
 	case "sumRewards":
 		result, gasUsed, err = handleSumRewards(evm, args)
 
+	case "sumRewards0":
+		result, gasUsed, err = handleSumRewards0(evm, args)
+
 	case "getSlashingPenalty":
 		result, gasUsed, err = handleGetSlashingPenalty(evm, args)
 
-	// Fallback function
-	case "":
-		result, gasUsed, err = handleFallback(evm, args, input)
-
 	default:
 		log.Error("SFC Precompiled: Unknown function", "function", method.Name)
-		return nil, 0, vm.ErrSfcFunctionNotImplemented
+		return nil, 0, vm.ErrExecutionReverted
 	}
 	if err != nil {
 		reason, _ := abi.UnpackRevert(result)

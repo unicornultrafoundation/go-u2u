@@ -889,15 +889,81 @@ func handleGetLockedStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, erro
 }
 
 // IsSlashed returns whether a validator is slashed
+// This is equivalent to the Solidity isSlashed function: getValidator[validatorID].status & CHEATER_MASK != 0
 func handleIsSlashed(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement isSlashed handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+	var gasUsed uint64 = 0
+
+	// Get the arguments
+	if len(args) != 1 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	validatorID, ok := args[0].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Get the validator's status from storage
+	validatorStatusSlot, slotGasUsed := getValidatorStatusSlot(validatorID)
+	gasUsed += slotGasUsed
+	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorStatusSlot))
+	gasUsed += SloadGasCost
+
+	// Convert to big.Int for bit operations
+	statusBigInt := new(big.Int).SetBytes(validatorStatus.Bytes())
+
+	// Check if the DOUBLESIGN_BIT (bit 7) is set - this indicates the validator is slashed
+	// This matches the Solidity: getValidator[validatorID].status & CHEATER_MASK != 0
+	// where CHEATER_MASK = DOUBLESIGN_BIT = 1 << 7
+	isSlashed := statusBigInt.Bit(7) == 1
+
+	// Pack the result using SfcLib ABI
+	result, err := SfcLibAbi.Methods["isSlashed"].Outputs.Pack(isSlashed)
+	if err != nil {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	return result, gasUsed, nil
 }
 
 // PendingRewards returns the pending rewards for a delegator and validator
+// This is equivalent to the Solidity pendingRewards function
 func handlePendingRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement pendingRewards handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+	var gasUsed uint64 = 0
+
+	// Parse arguments: pendingRewards(address delegator, uint256 toValidatorID)
+	if len(args) != 2 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	delegator, ok := args[0].(common.Address)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	toValidatorID, ok := args[1].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Call the internal _pendingRewards function
+	// This matches the Solidity: Rewards memory reward = _pendingRewards(delegator, toValidatorID);
+	pendingRewards, pendingGasUsed, err := handleInternalPendingRewards(evm, delegator, toValidatorID)
+	if err != nil {
+		return nil, gasUsed, err
+	}
+	gasUsed += pendingGasUsed
+
+	// Sum all reward types to get the total
+	// This matches the Solidity: return reward.unlockedReward.add(reward.lockupBaseReward).add(reward.lockupExtraReward);
+	totalRewards := new(big.Int).Add(pendingRewards.UnlockedReward, pendingRewards.LockupBaseReward)
+	totalRewards = new(big.Int).Add(totalRewards, pendingRewards.LockupExtraReward)
+
+	// Pack the result using SfcLib ABI
+	result, err := SfcLibAbi.Methods["pendingRewards"].Outputs.Pack(totalRewards)
+	if err != nil {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	return result, gasUsed, nil
 }
 
 // handleStashRewards stashes the rewards for a delegator
@@ -941,42 +1007,476 @@ func handleStashRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error)
 }
 
 // UpdateConstsAddress updates the address of the constants contract
-func handleUpdateConstsAddress(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement updateConstsAddress handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+func handleUpdateConstsAddress(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Check if caller is the owner (onlyOwner modifier)
+	revertData, checkGasUsed, err := checkOnlyOwner(evm, caller, "updateConstsAddress")
+	gasUsed += checkGasUsed
+	if err != nil {
+		return revertData, gasUsed, err
+	}
+
+	// Parse arguments: updateConstsAddress(address v)
+	if len(args) != 1 {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	v, ok := args[0].(common.Address)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	// c = ConstantsManager(v);
+	// Set the constants manager address in storage
+	// This matches the Solidity: c = ConstantsManager(v);
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(constantsManagerSlot)), common.BytesToHash(v.Bytes()))
+	gasUsed += SstoreGasCost
+
+	return nil, gasUsed, nil
 }
 
 // UpdateTreasuryAddress updates the address of the treasury
-func handleUpdateTreasuryAddress(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement updateTreasuryAddress handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+func handleUpdateTreasuryAddress(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Check if caller is the owner (onlyOwner modifier)
+	revertData, checkGasUsed, err := checkOnlyOwner(evm, caller, "updateTreasuryAddress")
+	gasUsed += checkGasUsed
+	if err != nil {
+		return revertData, gasUsed, err
+	}
+
+	// Parse arguments: updateTreasuryAddress(address v)
+	if len(args) != 1 {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	v, ok := args[0].(common.Address)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	// treasuryAddress = v;
+	// Set the treasury address in storage
+	// This matches the Solidity: treasuryAddress = v;
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(treasuryAddressSlot)), common.BytesToHash(v.Bytes()))
+	gasUsed += SstoreGasCost
+
+	return nil, gasUsed, nil
 }
 
 // UpdateVoteBookAddress updates the address of the vote book
-func handleUpdateVoteBookAddress(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement updateVoteBookAddress handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+func handleUpdateVoteBookAddress(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Check if caller is the owner (onlyOwner modifier)
+	revertData, checkGasUsed, err := checkOnlyOwner(evm, caller, "updateVoteBookAddress")
+	gasUsed += checkGasUsed
+	if err != nil {
+		return revertData, gasUsed, err
+	}
+
+	// Parse arguments: updateVoteBookAddress(address v)
+	if len(args) != 1 {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	v, ok := args[0].(common.Address)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	// voteBookAddress = v;
+	// Set the vote book address in storage
+	// This matches the Solidity: voteBookAddress = v;
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(voteBookAddressSlot)), common.BytesToHash(v.Bytes()))
+	gasUsed += SstoreGasCost
+
+	return nil, gasUsed, nil
 }
 
 // UpdateSlashingRefundRatio updates the slashing refund ratio
-func handleUpdateSlashingRefundRatio(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement updateSlashingRefundRatio handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+func handleUpdateSlashingRefundRatio(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Check if caller is the owner (onlyOwner modifier)
+	revertData, checkGasUsed, err := checkOnlyOwner(evm, caller, "updateSlashingRefundRatio")
+	gasUsed += checkGasUsed
+	if err != nil {
+		return revertData, gasUsed, err
+	}
+
+	// Parse arguments: updateSlashingRefundRatio(uint256 validatorID, uint256 refundRatio)
+	if len(args) != 2 {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	validatorID, ok := args[0].(*big.Int)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	refundRatio, ok := args[1].(*big.Int)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	// require(isSlashed(validatorID), "validator isn't slashed");
+	// Check if the validator is slashed using the existing handleIsSlashed logic
+	isSlashedArgs := []interface{}{validatorID}
+	isSlashedResult, slashedGasUsed, err := handleIsSlashed(evm, isSlashedArgs)
+	gasUsed += slashedGasUsed
+	if err != nil {
+		return isSlashedResult, gasUsed, err
+	}
+
+	// Unpack the isSlashed result
+	isSlashedValues, err := SfcLibAbi.Methods["isSlashed"].Outputs.Unpack(isSlashedResult)
+	if err != nil {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	isSlashed, ok := isSlashedValues[0].(bool)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	if !isSlashed {
+		revertData, err := encodeRevertReason("updateSlashingRefundRatio", "validator isn't slashed")
+		if err != nil {
+			return nil, gasUsed, vm.ErrExecutionReverted
+		}
+		return revertData, gasUsed, vm.ErrExecutionReverted
+	}
+
+	// require(refundRatio <= Decimal.unit(), "must be less than or equal to 1.0");
+	decimalUnit := getDecimalUnit()
+	if refundRatio.Cmp(decimalUnit) > 0 {
+		revertData, err := encodeRevertReason("updateSlashingRefundRatio", "must be less than or equal to 1.0")
+		if err != nil {
+			return nil, gasUsed, vm.ErrExecutionReverted
+		}
+		return revertData, gasUsed, vm.ErrExecutionReverted
+	}
+
+	// slashingRefundRatio[validatorID] = refundRatio;
+	// Set the slashing refund ratio in storage
+	slashingRefundRatioSlot, slotGasUsed := getSlashingRefundRatioSlot(validatorID)
+	gasUsed += slotGasUsed
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(slashingRefundRatioSlot), common.BigToHash(refundRatio))
+	gasUsed += SstoreGasCost
+
+	// emit UpdatedSlashingRefundRatio(validatorID, refundRatio);
+	// Emit the UpdatedSlashingRefundRatio event
+	topics := []common.Hash{
+		SfcLibAbi.Events["UpdatedSlashingRefundRatio"].ID,
+		common.BigToHash(validatorID), // indexed parameter (validatorID)
+	}
+	data, err := SfcLibAbi.Events["UpdatedSlashingRefundRatio"].Inputs.NonIndexed().Pack(
+		refundRatio,
+	)
+	if err != nil {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+	evm.SfcStateDB.AddLog(&types.Log{
+		BlockNumber: evm.Context.BlockNumber.Uint64(),
+		Address:     ContractAddress,
+		Topics:      topics,
+		Data:        data,
+	})
+
+	return nil, gasUsed, nil
 }
 
 // SetGenesisDelegation sets a genesis delegation
-func handleSetGenesisDelegation(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement setGenesisDelegation handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+func handleSetGenesisDelegation(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Check if caller is the NodeDriverAuth contract (onlyDriver modifier)
+	revertData, checkGasUsed, err := checkOnlyDriver(evm, caller, "setGenesisDelegation")
+	gasUsed += checkGasUsed
+	if err != nil {
+		return revertData, gasUsed, err
+	}
+
+	// Parse arguments: delegator, toValidatorID, stake, lockedStake, lockupFromEpoch, lockupEndTime, lockupDuration, earlyUnlockPenalty, rewards
+	if len(args) != 9 {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	delegator, ok := args[0].(common.Address)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	toValidatorID, ok := args[1].(*big.Int)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	stake, ok := args[2].(*big.Int)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	lockedStake, ok := args[3].(*big.Int)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	lockupFromEpoch, ok := args[4].(*big.Int)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	lockupEndTime, ok := args[5].(*big.Int)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	lockupDuration, ok := args[6].(*big.Int)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	earlyUnlockPenalty, ok := args[7].(*big.Int)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	rewards, ok := args[8].(*big.Int)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Call _rawDelegate(delegator, toValidatorID, stake, false)
+	// This matches the Solidity: _rawDelegate(delegator, toValidatorID, stake, false);
+	result, rawDelegateGasUsed, err := handleRawDelegate(evm, delegator, toValidatorID, stake, false)
+	gasUsed += rawDelegateGasUsed
+	if err != nil {
+		return result, gasUsed, err
+	}
+
+	// Set _rewardsStash[delegator][toValidatorID].unlockedReward = rewards;
+	// This matches the Solidity: _rewardsStash[delegator][toValidatorID].unlockedReward = rewards;
+	rewardsStashSlot, slotGasUsed := getRewardsStashSlot(delegator, toValidatorID)
+	gasUsed += slotGasUsed
+
+	// The unlockedReward field is at offset 2 within the Rewards struct
+	unlockedRewardSlot := new(big.Int).Add(rewardsStashSlot, big.NewInt(2))
+	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(unlockedRewardSlot), common.BigToHash(rewards))
+	gasUsed += SstoreGasCost
+
+	// Call _mintNativeToken(stake)
+	// This matches the Solidity: _mintNativeToken(stake);
+	mintGasUsed, err := _mintNativeToken(evm, ContractAddress, stake)
+	gasUsed += mintGasUsed
+	if err != nil {
+		return nil, gasUsed, err
+	}
+
+	// Handle locked stake if lockedStake != 0
+	// This matches the Solidity: if (lockedStake != 0) { ... }
+	if lockedStake.Cmp(big.NewInt(0)) != 0 {
+		// require(lockedStake <= stake, "locked stake is greater than the whole stake");
+		if lockedStake.Cmp(stake) > 0 {
+			revertData, err := encodeRevertReason("setGenesisDelegation", "locked stake is greater than the whole stake")
+			if err != nil {
+				return nil, gasUsed, vm.ErrExecutionReverted
+			}
+			return revertData, gasUsed, vm.ErrExecutionReverted
+		}
+
+		// Set up the lockup info: LockedDelegation storage ld = getLockupInfo[delegator][toValidatorID];
+		lockedStakeSlot, lockedStakeSlotGasUsed := getLockedStakeSlot(delegator, toValidatorID)
+		gasUsed += lockedStakeSlotGasUsed
+
+		// ld.lockedStake = lockedStake;
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(lockedStakeSlot), common.BigToHash(lockedStake))
+		gasUsed += SstoreGasCost
+
+		// ld.fromEpoch = lockupFromEpoch;
+		fromEpochSlot, fromEpochSlotGasUsed := getLockupFromEpochSlot(delegator, toValidatorID)
+		gasUsed += fromEpochSlotGasUsed
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(fromEpochSlot), common.BigToHash(lockupFromEpoch))
+		gasUsed += SstoreGasCost
+
+		// ld.endTime = lockupEndTime;
+		endTimeSlot, endTimeSlotGasUsed := getLockupEndTimeSlot(delegator, toValidatorID)
+		gasUsed += endTimeSlotGasUsed
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(endTimeSlot), common.BigToHash(lockupEndTime))
+		gasUsed += SstoreGasCost
+
+		// ld.duration = lockupDuration;
+		durationSlot, durationSlotGasUsed := getLockupDurationSlot(delegator, toValidatorID)
+		gasUsed += durationSlotGasUsed
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(durationSlot), common.BigToHash(lockupDuration))
+		gasUsed += SstoreGasCost
+
+		// getStashedLockupRewards[delegator][toValidatorID].lockupExtraReward = earlyUnlockPenalty;
+		// This matches the Solidity: getStashedLockupRewards[delegator][toValidatorID].lockupExtraReward = earlyUnlockPenalty;
+		stashedLockupRewardsSlot, stashedSlotGasUsed := getStashedLockupRewardsSlot(delegator, toValidatorID)
+		gasUsed += stashedSlotGasUsed
+
+		// The lockupExtraReward field is at offset 0 within the Rewards struct
+		lockupExtraRewardSlot := stashedLockupRewardsSlot
+		evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(lockupExtraRewardSlot), common.BigToHash(earlyUnlockPenalty))
+		gasUsed += SstoreGasCost
+
+		// emit LockedUpStake(delegator, toValidatorID, lockupDuration, lockedStake);
+		// This matches the Solidity: emit LockedUpStake(delegator, toValidatorID, lockupDuration, lockedStake);
+		topics := []common.Hash{
+			SfcLibAbi.Events["LockedUpStake"].ID,
+			common.BytesToHash(common.LeftPadBytes(delegator.Bytes(), 32)), // indexed parameter (delegator)
+			common.BigToHash(toValidatorID),                                // indexed parameter (validatorID)
+		}
+		data, err := SfcLibAbi.Events["LockedUpStake"].Inputs.NonIndexed().Pack(
+			lockupDuration,
+			lockedStake,
+		)
+		if err != nil {
+			return nil, gasUsed, vm.ErrExecutionReverted
+		}
+		evm.SfcStateDB.AddLog(&types.Log{
+			BlockNumber: evm.Context.BlockNumber.Uint64(),
+			Address:     ContractAddress,
+			Topics:      topics,
+			Data:        data,
+		})
+	}
+
+	return nil, gasUsed, nil
 }
 
-// SumRewards sums rewards
+// SumRewards sums 2 rewards
 func handleSumRewards(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
-	// TODO: Implement sumRewards handler
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+	var gasUsed uint64 = 0
+
+	// Parse arguments: sumRewards(Rewards memory a, Rewards memory b)
+	if len(args) != 2 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Parse first Rewards struct
+	rewardsA, ok := args[0].(struct {
+		LockupExtraReward *big.Int
+		LockupBaseReward  *big.Int
+		UnlockedReward    *big.Int
+	})
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Parse second Rewards struct
+	rewardsB, ok := args[1].(struct {
+		LockupExtraReward *big.Int
+		LockupBaseReward  *big.Int
+		UnlockedReward    *big.Int
+	})
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Convert to internal Rewards struct format
+	a := Rewards{
+		LockupExtraReward: rewardsA.LockupExtraReward,
+		LockupBaseReward:  rewardsA.LockupBaseReward,
+		UnlockedReward:    rewardsA.UnlockedReward,
+	}
+
+	b := Rewards{
+		LockupExtraReward: rewardsB.LockupExtraReward,
+		LockupBaseReward:  rewardsB.LockupBaseReward,
+		UnlockedReward:    rewardsB.UnlockedReward,
+	}
+
+	// Call the utility function to sum the rewards
+	result := sumRewards(a, b)
+
+	// Pack the result using SFC ABI
+	packedResult, err := SfcAbi.Methods["sumRewards"].Outputs.Pack(
+		result.LockupExtraReward,
+		result.LockupBaseReward,
+		result.UnlockedReward,
+	)
+	if err != nil {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	return packedResult, gasUsed, nil
 }
 
-// Fallback is the payable fallback function that delegates calls to the library
-func handleFallback(evm *vm.EVM, args []interface{}, input []byte) ([]byte, uint64, error) {
-	return nil, 0, vm.ErrSfcFunctionNotImplemented
+// SumRewards0 sums 3 rewards
+func handleSumRewards0(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
+	var gasUsed uint64 = 0
+
+	// Parse arguments: sumRewards(Rewards memory a, Rewards memory b, Rewards memory c)
+	if len(args) != 3 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Parse first Rewards struct
+	rewardsA, ok := args[0].(struct {
+		LockupExtraReward *big.Int
+		LockupBaseReward  *big.Int
+		UnlockedReward    *big.Int
+	})
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Parse second Rewards struct
+	rewardsB, ok := args[1].(struct {
+		LockupExtraReward *big.Int
+		LockupBaseReward  *big.Int
+		UnlockedReward    *big.Int
+	})
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Parse third Rewards struct
+	rewardsC, ok := args[2].(struct {
+		LockupExtraReward *big.Int
+		LockupBaseReward  *big.Int
+		UnlockedReward    *big.Int
+	})
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+	// Convert to internal Rewards struct format
+	a := Rewards{
+		LockupExtraReward: rewardsA.LockupExtraReward,
+		LockupBaseReward:  rewardsA.LockupBaseReward,
+		UnlockedReward:    rewardsA.UnlockedReward,
+	}
+
+	b := Rewards{
+		LockupExtraReward: rewardsB.LockupExtraReward,
+		LockupBaseReward:  rewardsB.LockupBaseReward,
+		UnlockedReward:    rewardsB.UnlockedReward,
+	}
+
+	c := Rewards{
+		LockupExtraReward: rewardsC.LockupExtraReward,
+		LockupBaseReward:  rewardsC.LockupBaseReward,
+		UnlockedReward:    rewardsC.UnlockedReward,
+	}
+
+	// Call the utility function to sum the three rewards
+	result := sumRewards3(a, b, c)
+
+	// Pack the result using SFC ABI
+	packedResult, err := SfcAbi.Methods["sumRewards"].Outputs.Pack(
+		result.LockupExtraReward,
+		result.LockupBaseReward,
+		result.UnlockedReward,
+	)
+	if err != nil {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	return packedResult, gasUsed, nil
 }

@@ -234,34 +234,17 @@ func handleInternalDelegate(evm *vm.EVM, delegator common.Address, toValidatorID
 		return revertData, gasUsed, err
 	}
 
-	// Check that the validator is active
+	// Check that the validator is active (status == OK_STATUS)
+	// This matches the Solidity: require(getValidator[toValidatorID].status == OK_STATUS, "validator isn't active");
 	validatorStatusSlot, slotGasUsed := getValidatorStatusSlot(toValidatorID)
 	gasUsed += slotGasUsed
 	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(validatorStatusSlot))
 	gasUsed += SloadGasCost
 	statusBigInt := new(big.Int).SetBytes(validatorStatus.Bytes())
 
-	// Check if validator is not deactivated
-	if statusBigInt.Bit(0) == 1 { // WITHDRAWN_BIT
-		revertData, err := encodeRevertReason("_delegate", "validator is deactivated")
-		if err != nil {
-			return nil, gasUsed, vm.ErrExecutionReverted
-		}
-		return revertData, gasUsed, vm.ErrExecutionReverted
-	}
-
-	// Check if validator is not offline
-	if statusBigInt.Bit(3) == 1 { // OFFLINE_BIT
-		revertData, err := encodeRevertReason("_delegate", "validator is offline")
-		if err != nil {
-			return nil, gasUsed, vm.ErrExecutionReverted
-		}
-		return revertData, gasUsed, vm.ErrExecutionReverted
-	}
-
-	// Check if validator is not a cheater
-	if statusBigInt.Bit(7) == 1 { // DOUBLESIGN_BIT
-		revertData, err := encodeRevertReason("_delegate", "validator is a cheater")
+	// Check if validator status is exactly OK_STATUS (0) to match Solidity behavior
+	if statusBigInt.Cmp(big.NewInt(int64(OK_STATUS))) != 0 {
+		revertData, err := encodeRevertReason("_delegate", "validator isn't active")
 		if err != nil {
 			return nil, gasUsed, vm.ErrExecutionReverted
 		}

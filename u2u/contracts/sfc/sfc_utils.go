@@ -169,38 +169,17 @@ func checkValidatorActive(evm *vm.EVM, validatorID *big.Int, methodName string) 
 	statusSlot, slotGasUsed := getValidatorStatusSlot(validatorID)
 	gasUsed += slotGasUsed
 
-	// Check if validator is active (SLOAD operation)
+	// Check if validator is active (status == OK_STATUS) (SLOAD operation)
+	// This matches the Solidity: require(getValidator[toValidatorID].status == OK_STATUS, "validator isn't active");
 	validatorStatus := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(statusSlot))
 	gasUsed += SloadGasCost
 
 	statusBigInt := new(big.Int).SetBytes(validatorStatus.Bytes())
 
-	// Check if validator is not deactivated
-	if statusBigInt.Bit(0) == 1 { // WITHDRAWN_BIT
-		// Return ABI-encoded revert reason: "validator is deactivated"
-		revertReason := "validator is deactivated"
-		revertData, err := encodeRevertReason(methodName, revertReason)
-		if err != nil {
-			return nil, gasUsed, vm.ErrExecutionReverted
-		}
-		return revertData, gasUsed, vm.ErrExecutionReverted
-	}
-
-	// Check if validator is not offline
-	if statusBigInt.Bit(3) == 1 { // OFFLINE_BIT
-		// Return ABI-encoded revert reason: "validator is offline"
-		revertReason := "validator is offline"
-		revertData, err := encodeRevertReason(methodName, revertReason)
-		if err != nil {
-			return nil, gasUsed, vm.ErrExecutionReverted
-		}
-		return revertData, gasUsed, vm.ErrExecutionReverted
-	}
-
-	// Check if validator is not a cheater
-	if statusBigInt.Bit(7) == 1 { // DOUBLESIGN_BIT
-		// Return ABI-encoded revert reason: "validator is a cheater"
-		revertReason := "validator is a cheater"
+	// Check if validator status is exactly OK_STATUS (0) to match Solidity behavior
+	if statusBigInt.Cmp(big.NewInt(int64(OK_STATUS))) != 0 {
+		// Return ABI-encoded revert reason: "validator isn't active"
+		revertReason := "validator isn't active"
 		revertData, err := encodeRevertReason(methodName, revertReason)
 		if err != nil {
 			return nil, gasUsed, vm.ErrExecutionReverted

@@ -118,23 +118,6 @@ func (p *StateProcessor) Process(
 					// common.SendInterrupt()
 				}
 			}
-			// Benchmark execution time difference of SFC precompiled related txs
-			if tx.To() != nil {
-				if _, ok := vmenv.SfcPrecompile(*tx.To()); ok {
-					// Calculate percentage difference: ((sfc - evm) / evm) * 100
-					var percentDiff float64
-					if vm.TotalEvmExecutionElapsed > 0 {
-						percentDiff = (float64(vm.TotalSfcExecutionElapsed-vm.TotalEvmExecutionElapsed) / float64(vm.TotalEvmExecutionElapsed)) * 100
-					}
-
-					log.Info("SFC execution time comparison",
-						"diff", fmt.Sprintf("%.2f%%", percentDiff),
-						"evm", vm.TotalEvmExecutionElapsed,
-						"sfc", vm.TotalSfcExecutionElapsed,
-						"txHash", tx.Hash().Hex())
-					vm.ResetSFCMetrics()
-				}
-			}
 		}
 	}
 	return

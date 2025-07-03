@@ -34,7 +34,7 @@ func GetCMCache() *CMCache {
 	return cmCache
 }
 
-// InvalidateCmCache invalidates the cache with the correct values from CM contract
+// InvalidateCmCache invalidates the cache with the correct values from CM contract.
 func InvalidateCmCache(evm *vm.EVM) {
 	log.Info("Invalidating ConstantsManager cache...")
 	cmCache.mutex.Lock()

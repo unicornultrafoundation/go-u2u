@@ -29,11 +29,6 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
-var (
-	TotalEvmExecutionElapsed = time.Duration(0)
-	TotalSfcExecutionElapsed = time.Duration(0)
-)
-
 // emptyCodeHash is used by create to ensure deployment is disallowed to already
 // deployed contract addresses (relevant after the account abstraction).
 var emptyCodeHash = crypto.Keccak256Hash(nil)
@@ -72,6 +67,8 @@ func (evm *EVM) statePrecompile(addr common.Address) (PrecompiledStateContract, 
 	return p, ok
 }
 
+// SfcPrecompile returns the PrecompiledSfcContract for the given address
+// if the node is running in SFC mode
 func (evm *EVM) SfcPrecompile(addr common.Address) (PrecompiledSfcContract, bool) {
 	if evm.Config.SfcPrecompiles == nil {
 		return nil, false
@@ -161,8 +158,10 @@ func NewEVM(blockCtx BlockContext, txCtx TxContext, statedb StateDB, sfcStatedb 
 	evm.interpreter = NewEVMInterpreter(evm, config)
 	if !common.IsNilInterface(sfcStatedb) {
 		evm.SfcStateDB = sfcStatedb
-		// TODO(trinhdn97): init this cache once
-		// Dummy call to init CM cache
+		// TODO(trinhdn97): init this CM cache only once after starting node, not every NewEVM call.
+		// Make a dummy call to CM to init CM cache.
+		// This cache require a vm.EVM instance (or at least a SFC vm.StateDB instance) to be initialized.
+		// The initialization is done in the constant_manager.InvalidateCmCache function.
 		evm.CallSFC(AccountRef(common.HexToAddress("0xfc00face00000000000000000000000000000000")),
 			common.HexToAddress("0x6CA548f6DF5B540E72262E935b6Fe3e72cDd68C9"), []byte{},
 			50000, big.NewInt(0))
@@ -248,9 +247,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	if isPrecompile {
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else if isStatePrecompile {
-		start := time.Now()
 		ret, gas, err = sp.Run(evm.StateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
-		TotalSfcExecutionElapsed += time.Since(start)
 	} else {
 		// Initialise a new contract and set the code that is to be used by the EVM.
 		// The contract is a scoped environment for this execution context only.
@@ -263,9 +260,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			// The depth-check is already done, and precompiles handled above
 			contract := NewContract(caller, AccountRef(addrCopy), value, gas)
 			contract.SetCallCode(&addrCopy, evm.StateDB.GetCodeHash(addrCopy), code)
-			start := time.Now()
 			ret, err = evm.interpreter.Run(contract, input, false)
-			TotalEvmExecutionElapsed += time.Since(start)
 			gas = contract.Gas
 		}
 	}
@@ -325,9 +320,7 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 		// The contract is a scoped environment for this execution context only.
 		contract := NewContract(caller, AccountRef(caller.Address()), value, gas)
 		contract.SetCallCode(&addrCopy, evm.StateDB.GetCodeHash(addrCopy), evm.StateDB.GetCode(addrCopy))
-		start := time.Now()
 		ret, err = evm.interpreter.Run(contract, input, false)
-		TotalEvmExecutionElapsed += time.Since(start)
 		gas = contract.Gas
 	}
 	if err != nil {
@@ -369,9 +362,7 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 		// Initialise a new contract and make initialise the delegate values
 		contract := NewContract(caller, AccountRef(caller.Address()), nil, gas).AsDelegate()
 		contract.SetCallCode(&addrCopy, evm.StateDB.GetCodeHash(addrCopy), evm.StateDB.GetCode(addrCopy))
-		start := time.Now()
 		ret, err = evm.interpreter.Run(contract, input, false)
-		TotalEvmExecutionElapsed += time.Since(start)
 		gas = contract.Gas
 	}
 	if err != nil {
@@ -430,9 +421,7 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 		// When an error was returned by the EVM or when setting the creation code
 		// above, we revert to the snapshot and consume any gas remaining.
 		// Additionally, when we're in Homestead this also counts for code storage gas errors.
-		start := time.Now()
 		ret, err = evm.interpreter.Run(contract, input, true)
-		TotalEvmExecutionElapsed += time.Since(start)
 		gas = contract.Gas
 	}
 	if err != nil {
@@ -569,9 +558,3 @@ func (evm *EVM) Create2(caller ContractRef, code []byte, gas uint64, endowment *
 
 // ChainConfig returns the environment's chain configuration
 func (evm *EVM) ChainConfig() *params.ChainConfig { return evm.chainConfig }
-
-func ResetSFCMetrics() {
-	sfcDiffCallMeter.Mark(int64(TotalEvmExecutionElapsed - TotalSfcExecutionElapsed))
-	TotalEvmExecutionElapsed = time.Duration(0)
-	TotalSfcExecutionElapsed = time.Duration(0)
-}

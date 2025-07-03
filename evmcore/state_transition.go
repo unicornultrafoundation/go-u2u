@@ -20,12 +20,14 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"time"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
 	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/metrics"
 	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
@@ -309,13 +311,39 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		if st.sfcState != nil {
 			st.sfcState.SetNonce(msg.From(), nonce)
 		}
-		originalGas := st.gas
-		originalValue := st.value
+
+		var (
+			// Backup the original gas and value for SFC precompiled calls.
+			originalGas   = st.gas
+			originalValue = st.value
+
+			// Total execution time of the EVM calls per transaction.
+			// We must measure the total time of the EVM call here, because of the nested nature
+			// of EVM calls causes duplicated measurements.
+			totalEvmExecutionElapsed = time.Duration(0)
+		)
+
+		start := time.Now()
 		ret, st.gas, vmerr = st.evm.Call(sender, st.to(), st.data, st.gas, st.value)
+		if metrics.EnabledExpensive {
+			totalEvmExecutionElapsed = time.Since(start)
+		}
 		if st.sfcState != nil && vmerr == nil {
-			if _, _, sfcErr := st.evm.CallSFC(sender, st.to(), st.data, originalGas, originalValue); sfcErr != nil {
-				log.Error("CallSFC failed", "sfcErr", sfcErr)
+			if ret, _, sfcErr := st.evm.CallSFC(sender, st.to(), st.data, originalGas, originalValue); sfcErr != nil {
+				log.Error("TransitionDb: CallSFC failed", "sfcErr", sfcErr, "ret", common.Bytes2Hex(ret))
 			}
+		}
+
+		// Benchmark execution time difference of SFC precompiled related txs
+		if vm.TotalSfcExecutionElapsed > time.Duration(0) {
+			// Calculate percentage difference: ((sfc - evm) / evm) * 100
+			percentDiff := (float64(vm.TotalSfcExecutionElapsed-totalEvmExecutionElapsed) / float64(totalEvmExecutionElapsed)) * 100
+			log.Info("SFC execution time comparison",
+				"diff", fmt.Sprintf("%.2f%%", percentDiff),
+				"evm", totalEvmExecutionElapsed,
+				"sfc", vm.TotalSfcExecutionElapsed)
+			// Reset the total execution time of SFC precompiled calls after each transaction.
+			vm.TotalSfcExecutionElapsed = time.Duration(0)
 		}
 	}
 	// use 10% of not used gas

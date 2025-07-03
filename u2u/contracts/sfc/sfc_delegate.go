@@ -1135,7 +1135,7 @@ func handleWithdraw(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 
 	// Emit Withdrawn event
 	topics := []common.Hash{
-		SfcAbi.Events["Withdrawn"].ID,
+		SfcLibAbi.Events["Withdrawn"].ID,
 		common.BytesToHash(common.LeftPadBytes(caller.Bytes(), 32)), // indexed parameter (delegator)
 		common.BigToHash(toValidatorID),                             // indexed parameter (toValidatorID)
 		common.BigToHash(wrID),                                      // indexed parameter (wrID)

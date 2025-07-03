@@ -20,12 +20,14 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"time"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
 	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/metrics"
 	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
@@ -51,16 +53,16 @@ The state transitioning model does all the necessary work to work out a valid ne
 6) Derive new state root
 */
 type StateTransition struct {
-	gp             *GasPool
-	msg            Message
-	gas            uint64
-	gasPrice       *big.Int
-	initialGas     uint64
-	value          *big.Int
-	data           []byte
-	state          vm.StateDB
-	consensusState vm.StateDB
-	evm            *vm.EVM
+	gp         *GasPool
+	msg        Message
+	gas        uint64
+	gasPrice   *big.Int
+	initialGas uint64
+	value      *big.Int
+	data       []byte
+	state      vm.StateDB
+	sfcState   vm.StateDB
+	evm        *vm.EVM
 }
 
 // Message represents a message sent to a contract.
@@ -155,7 +157,7 @@ func IntrinsicGas(data []byte, accessList types.AccessList, isContractCreation b
 
 // NewStateTransition initialises and returns a new state transition object.
 func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition {
-	return &StateTransition{
+	st := &StateTransition{
 		gp:       gp,
 		evm:      evm,
 		msg:      msg,
@@ -164,6 +166,10 @@ func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition 
 		data:     msg.Data(),
 		state:    evm.StateDB,
 	}
+	if !common.IsNilInterface(evm.SfcStateDB) {
+		st.sfcState = evm.SfcStateDB
+	}
+	return st
 }
 
 // ApplyMessage computes the new state by applying the given message
@@ -203,6 +209,11 @@ func (st *StateTransition) buyGas() error {
 
 	st.initialGas = st.msg.Gas()
 	st.state.SubBalance(st.msg.From(), mgval)
+	if st.sfcState != nil {
+		if _, ok := st.evm.SfcPrecompile(st.msg.From()); ok {
+			st.sfcState.SubBalance(st.msg.From(), mgval)
+		}
+	}
 	return nil
 }
 
@@ -282,6 +293,9 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	// Set up the initial access list.
 	if rules := st.evm.ChainConfig().Rules(st.evm.Context.BlockNumber); rules.IsBerlin {
 		st.state.PrepareAccessList(msg.From(), msg.To(), vm.ActivePrecompiles(rules), msg.AccessList())
+		if st.sfcState != nil {
+			st.sfcState.PrepareAccessList(msg.From(), msg.To(), vm.ActivePrecompiles(rules), msg.AccessList())
+		}
 	}
 
 	var (
@@ -292,8 +306,45 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		ret, _, st.gas, vmerr = st.evm.Create(sender, st.data, st.gas, st.value)
 	} else {
 		// Increment the nonce for the next transaction
-		st.state.SetNonce(msg.From(), st.state.GetNonce(sender.Address())+1)
+		nonce := st.state.GetNonce(sender.Address()) + 1
+		st.state.SetNonce(msg.From(), nonce)
+		if st.sfcState != nil {
+			st.sfcState.SetNonce(msg.From(), nonce)
+		}
+
+		var (
+			// Backup the original gas and value for SFC precompiled calls.
+			originalGas   = st.gas
+			originalValue = st.value
+
+			// Total execution time of the EVM calls per transaction.
+			// We must measure the total time of the EVM call here, because of the nested nature
+			// of EVM calls causes duplicated measurements.
+			totalEvmExecutionElapsed = time.Duration(0)
+		)
+
+		start := time.Now()
 		ret, st.gas, vmerr = st.evm.Call(sender, st.to(), st.data, st.gas, st.value)
+		if metrics.EnabledExpensive {
+			totalEvmExecutionElapsed = time.Since(start)
+		}
+		if st.sfcState != nil && vmerr == nil {
+			if ret, _, sfcErr := st.evm.CallSFC(sender, st.to(), st.data, originalGas, originalValue); sfcErr != nil {
+				log.Error("TransitionDb: CallSFC failed", "sfcErr", sfcErr, "ret", common.Bytes2Hex(ret))
+			}
+		}
+
+		// Benchmark execution time difference of SFC precompiled related txs
+		if vm.TotalSfcExecutionElapsed > time.Duration(0) {
+			// Calculate percentage difference: ((sfc - evm) / evm) * 100
+			percentDiff := (float64(vm.TotalSfcExecutionElapsed-totalEvmExecutionElapsed) / float64(totalEvmExecutionElapsed)) * 100
+			log.Info("SFC execution time comparison",
+				"diff", fmt.Sprintf("%.2f%%", percentDiff),
+				"evm", totalEvmExecutionElapsed,
+				"sfc", vm.TotalSfcExecutionElapsed)
+			// Reset the total execution time of SFC precompiled calls after each transaction.
+			vm.TotalSfcExecutionElapsed = time.Duration(0)
+		}
 	}
 	// use 10% of not used gas
 	if !st.internal() {
@@ -328,6 +379,9 @@ func (st *StateTransition) refundGas(refundQuotient uint64) uint64 {
 	// Return wei for remaining gas, exchanged at the original rate.
 	remaining := new(big.Int).Mul(new(big.Int).SetUint64(st.gas), st.gasPrice)
 	st.state.AddBalance(st.msg.From(), remaining)
+	if st.sfcState != nil {
+		st.sfcState.AddBalance(st.msg.From(), remaining)
+	}
 
 	// Also return remaining gas to the block gas counter so it is
 	// available for the next transaction.

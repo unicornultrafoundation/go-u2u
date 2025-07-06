@@ -321,6 +321,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 			// We must measure the total time of the EVM call here, because of the nested nature
 			// of EVM calls causes duplicated measurements.
 			totalEvmExecutionElapsed = time.Duration(0)
+			totalSfcExecutionElapsed = time.Duration(0)
 		)
 
 		start := time.Now()
@@ -328,20 +329,24 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		if metrics.EnabledExpensive {
 			totalEvmExecutionElapsed = time.Since(start)
 		}
-		if st.sfcState != nil && vmerr == nil {
+		if _, ok := st.evm.SfcPrecompile(st.to()); ok && st.sfcState != nil && vmerr == nil {
+			start = time.Now()
 			if ret, _, sfcErr := st.evm.CallSFC(sender, st.to(), st.data, originalGas, originalValue); sfcErr != nil {
 				log.Error("TransitionDb: CallSFC failed", "sfcErr", sfcErr, "ret", common.Bytes2Hex(ret))
+			}
+			if metrics.EnabledExpensive {
+				totalSfcExecutionElapsed = time.Since(start)
 			}
 		}
 
 		// Benchmark execution time difference of SFC precompiled related txs
-		if vm.TotalSfcExecutionElapsed > time.Duration(0) {
+		if totalSfcExecutionElapsed > time.Duration(0) {
 			// Calculate percentage difference: ((sfc - evm) / evm) * 100
-			percentDiff := (float64(vm.TotalSfcExecutionElapsed-totalEvmExecutionElapsed) / float64(totalEvmExecutionElapsed)) * 100
+			percentDiff := (float64(totalSfcExecutionElapsed-totalEvmExecutionElapsed) / float64(totalEvmExecutionElapsed)) * 100
 			log.Info("SFC execution time comparison",
 				"diff", fmt.Sprintf("%.2f%%", percentDiff),
 				"evm", totalEvmExecutionElapsed,
-				"sfc", vm.TotalSfcExecutionElapsed)
+				"sfc", totalSfcExecutionElapsed)
 			// Reset the total execution time of SFC precompiled calls after each transaction.
 			vm.TotalSfcExecutionElapsed = time.Duration(0)
 		}

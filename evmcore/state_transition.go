@@ -31,7 +31,12 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
-var emptyCodeHash = crypto.Keccak256Hash(nil)
+var (
+	emptyCodeHash = crypto.Keccak256Hash(nil)
+
+	// execution time diff metrics per tx
+	sfcDiffCallMeter = metrics.GetOrRegisterMeter("sfc/diff/call", nil)
+)
 
 /*
 The State Transitioning Model
@@ -349,6 +354,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 				"sfc", totalSfcExecutionElapsed)
 			// Reset the total execution time of SFC precompiled calls after each transaction.
 			vm.TotalSfcExecutionElapsed = time.Duration(0)
+			sfcDiffCallMeter.Mark(int64(percentDiff * 100))
 		}
 	}
 	// use 10% of not used gas

@@ -323,8 +323,8 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 			originalValue = st.value
 
 			// Total execution time of the EVM calls per transaction.
-			// We must measure the total time of the EVM call here, because of the nested nature
-			// of EVM calls causes duplicated measurements.
+			// We must measure the total time of the EVM call here, because nested
+			// EVM and SFC calls cause duplicated measurements.
 			totalEvmExecutionElapsed = time.Duration(0)
 			totalSfcExecutionElapsed = time.Duration(0)
 		)

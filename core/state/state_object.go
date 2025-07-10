@@ -361,11 +361,11 @@ func (s *stateObject) setState(key, value common.Hash) {
 // finalise moves all dirty storage slots into the pending area to be hashed or
 // committed later. It is invoked at the end of every transaction.
 func (s *stateObject) finalise(prefetch bool) {
-	var isHeavyLog = s.address.Cmp(common.HexToAddress("0xfc00face00000000000000000000000000000000")) == 0
+	var isSfcContract = s.address.Cmp(common.HexToAddress("0xfc00face00000000000000000000000000000000")) == 0
 	slotsToPrefetch := make([][]byte, 0, len(s.dirtyStorage))
 	for key, value := range s.dirtyStorage {
 		s.pendingStorage[key] = value
-		if isHeavyLog {
+		if isSfcContract {
 			log.Debug("stateObject.finalise SFC contract", "key", key.Hex(), "value", value.Hex())
 		}
 		if value != s.originStorage[key] {

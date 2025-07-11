@@ -326,6 +326,7 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 	if err != nil {
 		evm.StateDB.RevertToSnapshot(snapshot)
 		if !errors.Is(err, ErrExecutionReverted) {
+			gas = 0
 		}
 	}
 	return ret, gas, err
@@ -368,6 +369,7 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 	if err != nil {
 		evm.StateDB.RevertToSnapshot(snapshot)
 		if !errors.Is(err, ErrExecutionReverted) {
+			gas = 0
 		}
 	}
 	return ret, gas, err

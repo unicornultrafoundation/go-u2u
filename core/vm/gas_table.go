@@ -18,6 +18,7 @@ package vm
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/common/math"
@@ -89,6 +90,7 @@ func memoryCopierGas(stackpos int) gasFunc {
 var (
 	gasCallDataCopy   = memoryCopierGas(2)
 	gasCodeCopy       = memoryCopierGas(2)
+	gasMcopy          = memoryCopierGas(2)
 	gasExtCodeCopy    = memoryCopierGas(3)
 	gasReturnDataCopy = memoryCopierGas(2)
 )
@@ -294,6 +296,45 @@ func gasCreate2(evm *EVM, contract *Contract, stack *Stack, mem *Memory, memoryS
 		return 0, ErrGasUintOverflow
 	}
 	if gas, overflow = math.SafeAdd(gas, wordGas); overflow {
+		return 0, ErrGasUintOverflow
+	}
+	return gas, nil
+}
+
+func gasCreateEip3860(evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
+	gas, err := memoryGasCost(mem, memorySize)
+	if err != nil {
+		return 0, err
+	}
+	size, overflow := stack.Back(2).Uint64WithOverflow()
+	if overflow {
+		return 0, ErrGasUintOverflow
+	}
+	if size > params.MaxInitCodeSize {
+		return 0, fmt.Errorf("%w: size %d", ErrMaxInitCodeSizeExceeded, size)
+	}
+	// Since size <= params.MaxInitCodeSize, these multiplication cannot overflow
+	moreGas := params.InitCodeWordGas * ((size + 31) / 32)
+	if gas, overflow = math.SafeAdd(gas, moreGas); overflow {
+		return 0, ErrGasUintOverflow
+	}
+	return gas, nil
+}
+func gasCreate2Eip3860(evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
+	gas, err := memoryGasCost(mem, memorySize)
+	if err != nil {
+		return 0, err
+	}
+	size, overflow := stack.Back(2).Uint64WithOverflow()
+	if overflow {
+		return 0, ErrGasUintOverflow
+	}
+	if size > params.MaxInitCodeSize {
+		return 0, fmt.Errorf("%w: size %d", ErrMaxInitCodeSizeExceeded, size)
+	}
+	// Since size <= params.MaxInitCodeSize, these multiplication cannot overflow
+	moreGas := (params.InitCodeWordGas + params.Sha3WordGas) * ((size + 31) / 32)
+	if gas, overflow = math.SafeAdd(gas, moreGas); overflow {
 		return 0, ErrGasUintOverflow
 	}
 	return gas, nil

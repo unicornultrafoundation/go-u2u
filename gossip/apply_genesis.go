@@ -2,7 +2,6 @@ package gossip
 
 import (
 	"errors"
-
 	"github.com/unicornultrafoundation/go-helios/hash"
 	"github.com/unicornultrafoundation/go-helios/u2udb/batched"
 

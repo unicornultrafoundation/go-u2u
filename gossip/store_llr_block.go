@@ -134,6 +134,7 @@ func (s *Store) GetFullBlockRecord(n idx.Block) *ibr.LlrFullBlockRecord {
 		Receipts:     receipts,
 		Time:         block.Time,
 		GasUsed:      block.GasUsed,
+		PrevRandao:   block.PrevRandao,
 	}
 }
 

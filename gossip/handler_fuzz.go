@@ -68,7 +68,12 @@ func makeFuzzedHandler() (h *handler, err error) {
 		genesisStake   = 2 * 4e6
 	)
 
-	genStore := makefakegenesis.FakeGenesisStore(genesisStakers, utils.ToU2U(genesisBalance), utils.ToU2U(genesisStake))
+	genStore := makefakegenesis.FakeGenesisStore(
+		genesisStakers,
+		utils.ToU2U(genesisBalance),
+		utils.ToU2U(genesisStake),
+		u2u.GetClymeneUpgrades(),
+	)
 	genesis := genStore.Genesis()
 
 	config := DefaultConfig(cachescale.Identity)
@@ -79,7 +84,7 @@ func makeFuzzedHandler() (h *handler, err error) {
 	}
 
 	var (
-		network             = u2u.FakeNetRules()
+		network             = u2u.FakeNetRules(u2u.GetClymeneUpgrades())
 		heavyCheckReader    HeavyCheckReader
 		gasPowerCheckReader GasPowerCheckReader
 		// TODO: init

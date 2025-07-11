@@ -4,8 +4,8 @@ import (
 	"github.com/unicornultrafoundation/go-helios/common/bigendian"
 	"github.com/unicornultrafoundation/go-helios/hash"
 	"github.com/unicornultrafoundation/go-helios/native/idx"
-	"github.com/unicornultrafoundation/go-u2u/core/types"
 
+	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
@@ -26,6 +26,7 @@ type LlrFullBlockRecord struct {
 	Receipts     []*types.ReceiptForStorage
 	Time         native.Timestamp
 	GasUsed      uint64
+	PrevRandao   hash.Hash `rlp:"optional"`
 	SfcStateRoot hash.Hash `rlp:"optional"`
 }
 

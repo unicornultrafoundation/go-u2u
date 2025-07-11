@@ -8,13 +8,12 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
-	"github.com/unicornultrafoundation/go-u2u/log"
-	"github.com/unicornultrafoundation/go-u2u/params"
-
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip/blockproc"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/params"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/utils"
 )
@@ -25,8 +24,16 @@ func New() *EVMModule {
 	return &EVMModule{}
 }
 
-func (p *EVMModule) Start(block iblockproc.BlockCtx, statedb *state.StateDB, sfcStatedb *state.StateDB, reader evmcore.DummyChain,
-	onNewLog func(*types.Log), net u2u.Rules, evmCfg *params.ChainConfig) blockproc.EVMProcessor {
+func (p *EVMModule) Start(
+	block iblockproc.BlockCtx,
+	statedb *state.StateDB,
+	sfcStatedb *state.StateDB,
+	reader evmcore.DummyChain,
+	onNewLog func(*types.Log),
+	net u2u.Rules,
+	evmCfg *params.ChainConfig,
+	prevrandao common.Hash,
+) blockproc.EVMProcessor {
 	var prevBlockHash common.Hash
 	if block.Idx != 0 {
 		prevBlockHash = reader.GetHeader(common.Hash{}, uint64(block.Idx-1)).Hash
@@ -40,6 +47,7 @@ func (p *EVMModule) Start(block iblockproc.BlockCtx, statedb *state.StateDB, sfc
 		evmCfg:        evmCfg,
 		blockIdx:      utils.U64toBig(uint64(block.Idx)),
 		prevBlockHash: prevBlockHash,
+		prevRandao:    prevrandao,
 	}
 	if !isNilInterface(sfcStatedb) {
 		processor.sfcStateDb = sfcStatedb
@@ -64,12 +72,17 @@ type U2UEVMProcessor struct {
 	incomingTxs types.Transactions
 	skippedTxs  []uint32
 	receipts    types.Receipts
+	prevRandao  common.Hash
 }
 
 func (p *U2UEVMProcessor) evmBlockWith(txs types.Transactions) *evmcore.EvmBlock {
 	baseFee := p.net.Economy.MinGasPrice
 	if !p.net.Upgrades.London {
 		baseFee = nil
+	}
+	prevRandao := common.Hash{}
+	if p.net.Upgrades.Clymene {
+		prevRandao = p.prevRandao
 	}
 	h := &evmcore.EvmHeader{
 		Number:       p.blockIdx,
@@ -82,6 +95,7 @@ func (p *U2UEVMProcessor) evmBlockWith(txs types.Transactions) *evmcore.EvmBlock
 		GasLimit:     math.MaxUint64,
 		GasUsed:      p.gasUsed,
 		BaseFee:      baseFee,
+		PrevRandao:   prevRandao,
 	}
 
 	return evmcore.NewEvmBlock(h, txs)

@@ -122,11 +122,7 @@ func consensusCallbackBeginBlockFn(
 		if err != nil {
 			log.Crit("Failed to open StateDB", "err", err)
 		}
-		sfcStatedb, err := store.evm.SfcStateDB(bs.SfcStateRoot)
-		if err != nil {
-			log.Warn("Failed to get SFC state", "height", bs.LastBlock.Idx,
-				"event hash", bs.LastBlock.Atropos.Hex(), "err", err)
-		}
+		sfcStatedb, _ := store.evm.SfcStateDB(bs.SfcStateRoot)
 
 		evmStateReader := &EvmStateReader{
 			ServiceFeed: feed,

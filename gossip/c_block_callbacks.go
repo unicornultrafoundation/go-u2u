@@ -502,9 +502,9 @@ func (s *Service) ReexecuteBlocks(from, to idx.Block) {
 			log.Crit("Failue to re-execute blocks", "err", err)
 		}
 		sfcStatedb, err := s.store.evm.SfcStateDB(prev.SfcStateRoot)
-		if err != nil {
-			log.Warn("Failed to get SFC state", "event hash", prev.Atropos.Hex(), "err", err)
-		}
+		//if err != nil {
+		//	log.Warn("Failed to get SFC state", "event hash", prev.Atropos.Hex(), "err", err)
+		//}
 		es := s.store.GetHistoryEpochState(s.store.FindBlockEpoch(b))
 		// Providing default config
 		// In case of trace transaction node, this config is changed
@@ -519,6 +519,7 @@ func (s *Service) ReexecuteBlocks(from, to idx.Block) {
 		evmProcessor.Execute(txs)
 		evmProcessor.Finalize()
 		_ = s.store.evm.Commit(b, block.Root, false)
+		_ = s.store.evm.CommitSfcState(b, block.SfcStateRoot, false)
 		s.store.evm.Cap()
 		s.mayCommit(false)
 		prev = block

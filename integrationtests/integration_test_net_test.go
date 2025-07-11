@@ -20,7 +20,7 @@ func TestIntegrationTestNet_CanStartAndStopIntegrationTestNet(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	net, err := StartIntegrationTestNet(dataDir)
+	net, err := StartIntegrationTestNet(dataDir, false)
 	if err != nil {
 		t.Fatalf("Failed to start the fake network: %v", err)
 	}
@@ -32,7 +32,7 @@ func TestIntegrationTestNet_CanStartMultipleConsecutiveInstances(t *testing.T) {
 		if err != nil {
 			t.Fatalf(err.Error())
 		}
-		net, err := StartIntegrationTestNet(dataDir)
+		net, err := StartIntegrationTestNet(dataDir, false)
 		if err != nil {
 			t.Fatalf("Failed to start the fake network: %v", err)
 		}
@@ -44,7 +44,7 @@ func TestIntegrationTestNet_CanFetchInformationFromTheNetwork(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	net, err := StartIntegrationTestNet(dataDir)
+	net, err := StartIntegrationTestNet(dataDir, false)
 	if err != nil {
 		t.Fatalf("Failed to start the fake network: %v", err)
 	}
@@ -67,7 +67,7 @@ func TestIntegrationTestNet_CanEndowAccountsWithTokens(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	net, err := StartIntegrationTestNet(dataDir)
+	net, err := StartIntegrationTestNet(dataDir, false)
 	if err != nil {
 		t.Fatalf("Failed to start the fake network: %v", err)
 	}
@@ -81,12 +81,12 @@ func TestIntegrationTestNet_CanEndowAccountsWithTokens(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get balance for account: %v", err)
 	}
+	increment := big.NewInt(1000)
 	for i := 0; i < 10; i++ {
-		increment := int64(1000)
 		if err := net.EndowAccount(address, increment); err != nil {
 			t.Fatalf("Failed to endow account 1: %v", err)
 		}
-		want := balance.Add(balance, big.NewInt(int64(increment)))
+		want := balance.Add(balance, increment)
 		balance, err = client.BalanceAt(context.Background(), address, nil)
 		if err != nil {
 			t.Fatalf("Failed to get balance for account: %v", err)
@@ -102,7 +102,7 @@ func TestIntegrationTestNet_CanDeployContracts(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	net, err := StartIntegrationTestNet(dataDir)
+	net, err := StartIntegrationTestNet(dataDir, false)
 	if err != nil {
 		t.Fatalf("Failed to start the fake network: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestIntegrationTestNet_CanInteractWithContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	net, err := StartIntegrationTestNet(dataDir)
+	net, err := StartIntegrationTestNet(dataDir, false)
 	if err != nil {
 		t.Fatalf("Failed to start the fake network: %v", err)
 	}

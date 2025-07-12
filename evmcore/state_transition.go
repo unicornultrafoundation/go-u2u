@@ -35,7 +35,7 @@ var (
 	emptyCodeHash = crypto.Keccak256Hash(nil)
 
 	// execution time diff metrics per tx
-	sfcDiffCallMeter = metrics.GetOrRegisterMeter("sfc/diff/call", nil)
+	sfcDiffCallHist = metrics.NewRegisteredHistogram("sfc/diff/call", nil, metrics.NewExpDecaySample(1028, 0.015))
 )
 
 /*
@@ -354,7 +354,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 				"sfc", totalSfcExecutionElapsed)
 			// Reset the total execution time of SFC precompiled calls after each transaction.
 			vm.TotalSfcExecutionElapsed = time.Duration(0)
-			sfcDiffCallMeter.Mark(int64(percentDiff * 100))
+			sfcDiffCallHist.Update(int64(percentDiff))
 		}
 	}
 	// use 10% of not used gas

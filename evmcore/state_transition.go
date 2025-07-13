@@ -34,8 +34,14 @@ import (
 var (
 	emptyCodeHash = crypto.Keccak256Hash(nil)
 
-	// execution time diff metrics per tx
+	// Execution time diff metrics per tx
 	sfcDiffCallHist = metrics.NewRegisteredHistogram("sfc/diff/call", nil, metrics.NewExpDecaySample(1028, 0.015))
+
+	// Additional metrics for comprehensive monitoring
+	sfcDiffAvgGauge   = metrics.NewRegisteredGaugeFloat64("sfc/diff/avg", nil) // Current average percentage difference
+	sfcExecutionGauge = metrics.NewRegisteredGauge("sfc/execution/time", nil)  // Last SFC execution time (nanoseconds)
+	evmExecutionGauge = metrics.NewRegisteredGauge("evm/execution/time", nil)  // Last EVM execution time (nanoseconds)
+	sfcCallMeter      = metrics.NewRegisteredMeter("sfc/call/rate", nil)       // Rate of SFC calls
 )
 
 /*
@@ -346,15 +352,22 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 
 		// Benchmark execution time difference of SFC precompiled related txs
 		if totalSfcExecutionElapsed > time.Duration(0) {
-			// Calculate percentage difference: ((sfc - evm) / evm) * 100
-			percentDiff := (float64(totalSfcExecutionElapsed-totalEvmExecutionElapsed) / float64(totalEvmExecutionElapsed)) * 100
+			// Calculate performance improvement: ((evm - sfc) / evm) * 100
+			// Positive = SFC faster (good), Negative = SFC slower (bad)
+			percentDiff := (float64(totalEvmExecutionElapsed-totalSfcExecutionElapsed) / float64(totalEvmExecutionElapsed)) * 100
 			log.Info("SFC execution time comparison",
-				"diff", fmt.Sprintf("%.2f%%", percentDiff),
+				"improvement", fmt.Sprintf("%.2f%%", percentDiff),
 				"evm", totalEvmExecutionElapsed,
 				"sfc", totalSfcExecutionElapsed)
 			// Reset the total execution time of SFC precompiled calls after each transaction.
 			vm.TotalSfcExecutionElapsed = time.Duration(0)
-			sfcDiffCallHist.Update(int64(percentDiff))
+
+			// Record comprehensive metrics
+			sfcDiffCallHist.Update(int64(percentDiff))                       // Histogram (existing)
+			sfcDiffAvgGauge.Update(percentDiff)                              // Current percentage difference
+			sfcExecutionGauge.Update(totalSfcExecutionElapsed.Nanoseconds()) // SFC execution time
+			evmExecutionGauge.Update(totalEvmExecutionElapsed.Nanoseconds()) // EVM execution time
+			sfcCallMeter.Mark(1)                                             // Count SFC calls
 		}
 	}
 	// use 10% of not used gas

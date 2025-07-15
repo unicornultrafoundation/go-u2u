@@ -351,7 +351,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		}
 
 		// Benchmark execution time difference of SFC precompiled related txs
-		if totalSfcExecutionElapsed > time.Duration(0) {
+		if totalSfcExecutionElapsed > time.Duration(0) && totalEvmExecutionElapsed > time.Duration(0) {
 			// Calculate performance improvement: ((evm - sfc) / evm) * 100
 			// Positive = SFC faster (good), Negative = SFC slower (bad)
 			percentDiff := (float64(totalEvmExecutionElapsed-totalSfcExecutionElapsed) / float64(totalEvmExecutionElapsed)) * 100

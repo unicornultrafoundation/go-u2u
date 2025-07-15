@@ -6,13 +6,12 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/unicornultrafoundation/go-helios/hash"
+	"github.com/unicornultrafoundation/go-helios/u2udb"
+
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
-	"github.com/unicornultrafoundation/go-u2u/rlp"
-
-	"github.com/unicornultrafoundation/go-helios/hash"
-	"github.com/unicornultrafoundation/go-helios/u2udb"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip/blockproc"
 	"github.com/unicornultrafoundation/go-u2u/gossip/blockproc/drivermodule"
@@ -24,6 +23,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
 	"github.com/unicornultrafoundation/go-u2u/native/ibr"
 	"github.com/unicornultrafoundation/go-u2u/native/ier"
+	"github.com/unicornultrafoundation/go-u2u/rlp"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesis"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesisstore"
@@ -149,7 +149,7 @@ func (b *GenesisBuilder) ExecuteGenesisTxs(blockProc BlockProc, genesisTxs types
 			Upgrades: es.Rules.Upgrades,
 			Height:   0,
 		},
-	}))
+	}), common.Hash{0x01}) // non-zero PrevRandao necessary to enable Clymene
 
 	// Execute genesis transactions
 	evmProcessor.Execute(genesisTxs)
@@ -209,6 +209,7 @@ func (b *GenesisBuilder) ExecuteGenesisTxs(blockProc BlockProc, genesisTxs types
 			Receipts:     receiptsStorage,
 			Time:         blockCtx.Time,
 			GasUsed:      evmBlock.GasUsed,
+			PrevRandao:   hash.Hash(evmBlock.PrevRandao),
 		},
 		Idx: blockCtx.Idx,
 	})

@@ -1279,7 +1279,7 @@ func RPCMarshalHeader(head *evmcore.EvmHeader, ext extBlockApi) map[string]inter
 		"hash":             head.Hash, // store EvmBlock's hash in extra, because extra is always empty
 		"parentHash":       head.ParentHash,
 		"nonce":            types.BlockNonce{},
-		"mixHash":          common.Hash{},
+		"mixHash":          head.PrevRandao,
 		"sha3Uncles":       types.EmptyUncleHash,
 		"logsBloom":        ext.bloom,
 		"stateRoot":        head.Root,

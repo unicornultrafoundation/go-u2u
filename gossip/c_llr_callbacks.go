@@ -134,6 +134,7 @@ func (s *Store) WriteFullBlockRecord(br ibr.LlrIdxFullBlockRecord) {
 		SkippedTxs:   []uint32{},
 		GasUsed:      br.GasUsed,
 		Root:         br.Root,
+		PrevRandao:   br.PrevRandao,
 		SfcStateRoot: br.SfcStateRoot,
 	})
 	s.SetBlockIndex(br.Atropos, br.Idx)

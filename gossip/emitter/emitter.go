@@ -61,7 +61,7 @@ type Emitter struct {
 	fcIndexer      *ancestor.FCIndexer
 	payloadIndexer *ancestor.PayloadIndexer
 
-	intervals                EmitIntervals
+	intervals EmitIntervals
 
 	done chan struct{}
 	wg   sync.WaitGroup
@@ -346,6 +346,8 @@ func (em *Emitter) createEvent(sortedTxs *types.TransactionsByPriceAndNonce) (*n
 	version := uint8(0)
 	if em.world.GetRules().Upgrades.Llr {
 		version = 1
+	} else if em.world.GetRules().Upgrades.Clymene {
+		version = 2
 	}
 
 	mutEvent := &native.MutableEventPayload{}

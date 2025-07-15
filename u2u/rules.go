@@ -2,6 +2,7 @@ package u2u
 
 import (
 	"encoding/json"
+	"math"
 	"math/big"
 	"time"
 
@@ -26,6 +27,10 @@ const (
 	berlinBit              = 1 << 0
 	londonBit              = 1 << 1
 	llrBit                 = 1 << 2
+	clymeneBit             = 1 << 3
+
+	MinimumMaxBlockGas = 20500000      // < must be large enough to allow internal transactions to seal blocks
+	MaximumMaxBlockGas = math.MaxInt64 // < should fit into 64-bit signed integers to avoid parsing errors in third-party libraries
 )
 
 var DefaultVMConfig = vm.Config{
@@ -122,14 +127,16 @@ type BlocksRules struct {
 }
 
 type Upgrades struct {
-	Berlin bool
-	London bool
-	Llr    bool
+	Berlin  bool
+	London  bool
+	Llr     bool
+	Clymene bool
 }
 
 type UpgradeHeight struct {
 	Upgrades Upgrades
 	Height   idx.Block
+	Time     native.Timestamp `rlp:"optional"`
 }
 
 // EvmChainConfig returns ChainConfig for transactions signing and execution
@@ -138,6 +145,7 @@ func (r Rules) EvmChainConfig(hh []UpgradeHeight) *ethparams.ChainConfig {
 	cfg.ChainID = new(big.Int).SetUint64(r.NetworkID)
 	cfg.BerlinBlock = nil
 	cfg.LondonBlock = nil
+	cfg.ClymeneBlock = nil
 	for i, h := range hh {
 		height := new(big.Int)
 		if i > 0 {
@@ -156,8 +164,36 @@ func (r Rules) EvmChainConfig(hh []UpgradeHeight) *ethparams.ChainConfig {
 		if !h.Upgrades.London {
 			cfg.LondonBlock = nil
 		}
+		if cfg.ClymeneBlock == nil && h.Upgrades.Clymene {
+			cfg.ClymeneBlock = height
+		}
+		if !h.Upgrades.Clymene {
+			// disabling upgrade like this will break the history replay
+			// should be never used
+			cfg.ClymeneBlock = nil
+		}
 	}
 	return &cfg
+}
+
+// GetClymeneUpgrades contains the feature flags for the Clymene upgrade.
+func GetClymeneUpgrades() Upgrades {
+	return Upgrades{
+		Berlin:  true,
+		London:  true,
+		Llr:     true,
+		Clymene: true,
+	}
+}
+
+// GetSolarisUpgrades contains the feature flags for the U2U Solaris upgrade.
+func GetSolarisUpgrades() Upgrades {
+	return Upgrades{
+		Berlin:  true,
+		London:  true,
+		Llr:     true,
+		Clymene: false,
+	}
 }
 
 func MainNetRules() Rules {
@@ -168,14 +204,10 @@ func MainNetRules() Rules {
 		Epochs:    DefaultEpochsRules(),
 		Economy:   DefaultEconomyRules(),
 		Blocks: BlocksRules{
-			MaxBlockGas:             20500000,
+			MaxBlockGas:             MinimumMaxBlockGas,
 			MaxEmptyBlockSkipPeriod: native.Timestamp(1 * time.Second),
 		},
-		Upgrades: Upgrades{
-			Berlin: true,
-			London: true,
-			Llr:    true,
-		},
+		Upgrades: GetSolarisUpgrades(),
 	}
 }
 
@@ -187,7 +219,7 @@ func TestNetRules() Rules {
 		Epochs:    DefaultEpochsRules(),
 		Economy:   DefaultEconomyRules(),
 		Blocks: BlocksRules{
-			MaxBlockGas:             20500000,
+			MaxBlockGas:             MinimumMaxBlockGas,
 			MaxEmptyBlockSkipPeriod: native.Timestamp(1 * time.Second),
 		},
 		Upgrades: Upgrades{
@@ -198,7 +230,7 @@ func TestNetRules() Rules {
 	}
 }
 
-func FakeNetRules() Rules {
+func FakeNetRules(upgrades Upgrades) Rules {
 	return Rules{
 		Name:      "fake",
 		NetworkID: FakeNetworkID,
@@ -206,14 +238,10 @@ func FakeNetRules() Rules {
 		Epochs:    FakeNetEpochsRules(),
 		Economy:   FakeEconomyRules(),
 		Blocks: BlocksRules{
-			MaxBlockGas:             20500000,
+			MaxBlockGas:             MinimumMaxBlockGas,
 			MaxEmptyBlockSkipPeriod: native.Timestamp(3 * time.Second),
 		},
-		Upgrades: Upgrades{
-			Berlin: true,
-			London: true,
-			Llr:    true,
-		},
+		Upgrades: upgrades,
 	}
 }
 

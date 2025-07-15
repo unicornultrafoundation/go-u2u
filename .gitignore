@@ -2,7 +2,7 @@
 .DS_Store
 .vscode
 /build
-# /u2u/contracts/sfc/contracts/*
+/u2u/contracts/sfc/contracts/*
 /profiles/*
 /benchmarks/profiles/*
 /benchmarks/test_node.datadir/*

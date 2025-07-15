@@ -88,6 +88,7 @@ Experimental - try to heal dirty DB.
 					utils.DataDirFlag,
 					experimentalFlag,
 					verbosityFlag,
+					utils.SFCFlag,
 				},
 				Description: `
 u2u db dump-sfc --experimental

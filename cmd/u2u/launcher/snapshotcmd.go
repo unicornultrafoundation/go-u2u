@@ -19,6 +19,7 @@ package launcher
 import (
 	"bytes"
 	"errors"
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 	"os"
 	"path"
 	"time"
@@ -141,10 +142,12 @@ It's also usable without snapshot enabled.
 	}
 )
 
-func pruneState(ctx *cli.Context) error {
+func pruneState(ctx *cli.Context) (err error) {
 	cfg := makeAllConfigs(ctx)
 	rawDbs := makeDirectDBsProducer(cfg)
+	defer caution.CloseAndReportError(&err, rawDbs, "failed to close raw DBs")
 	gdb := makeGossipStore(rawDbs, cfg)
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
 
 	if gdb.GetGenesisID() == nil {
 		return errors.New("failed to open snapshot tree: genesis is not written")
@@ -164,7 +167,6 @@ func pruneState(ctx *cli.Context) error {
 	}
 	root := common.Hash(gdb.GetBlockState().FinalizedStateRoot)
 	var bloom evmpruner.StateBloom
-	var err error
 	if ctx.Bool(PruneExactCommand.Name) {
 		log.Info("Initializing LevelDB storage of in-use-keys")
 		lset, closer, err := evmpruner.NewLevelDBSet(path.Join(tmpDir, "keys-in-use"))
@@ -207,10 +209,12 @@ func pruneState(ctx *cli.Context) error {
 	return nil
 }
 
-func verifyState(ctx *cli.Context) error {
+func verifyState(ctx *cli.Context) (err error) {
 	cfg := makeAllConfigs(ctx)
 	rawDbs := makeDirectDBsProducer(cfg)
+	defer caution.CloseAndReportError(&err, rawDbs, "failed to close raw DBs")
 	gdb := makeGossipStore(rawDbs, cfg)
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
 
 	genesis := gdb.GetGenesisID()
 	if genesis == nil {
@@ -220,7 +224,7 @@ func verifyState(ctx *cli.Context) error {
 	evmStore := gdb.EvmStore()
 	root := common.Hash(gdb.GetBlockState().FinalizedStateRoot)
 
-	err := evmStore.GenerateEvmSnapshot(root, false, false)
+	err = evmStore.GenerateEvmSnapshot(root, false, false)
 	if err != nil {
 		log.Error("Failed to open snapshot tree", "err", err)
 		return err
@@ -248,10 +252,12 @@ func verifyState(ctx *cli.Context) error {
 // traverseState is a helper function used for pruning verification.
 // Basically it just iterates the trie, ensure all nodes and associated
 // contract codes are present.
-func traverseState(ctx *cli.Context) error {
+func traverseState(ctx *cli.Context) (err error) {
 	cfg := makeAllConfigs(ctx)
 	rawDbs := makeDirectDBsProducer(cfg)
+	defer caution.CloseAndReportError(&err, rawDbs, "failed to close raw DBs")
 	gdb := makeGossipStore(rawDbs, cfg)
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
 
 	if gdb.GetGenesisID() == nil {
 		return errors.New("failed to open snapshot tree: genesis is not written")
@@ -262,10 +268,7 @@ func traverseState(ctx *cli.Context) error {
 		log.Error("Too many arguments given")
 		return errors.New("too many arguments")
 	}
-	var (
-		root common.Hash
-		err  error
-	)
+	var root common.Hash
 	if ctx.NArg() == 1 {
 		root, err = parseRoot(ctx.Args()[0])
 		if err != nil {
@@ -338,10 +341,12 @@ func traverseState(ctx *cli.Context) error {
 // Basically it just iterates the trie, ensure all nodes and associated
 // contract codes are present. It's basically identical to traverseState
 // but it will check each trie node.
-func traverseRawState(ctx *cli.Context) error {
+func traverseRawState(ctx *cli.Context) (err error) {
 	cfg := makeAllConfigs(ctx)
 	rawDbs := makeDirectDBsProducer(cfg)
+	defer caution.CloseAndReportError(&err, rawDbs, "failed to close raw DBs")
 	gdb := makeGossipStore(rawDbs, cfg)
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
 
 	if gdb.GetGenesisID() == nil {
 		return errors.New("failed to open snapshot tree: genesis is not written")
@@ -352,10 +357,7 @@ func traverseRawState(ctx *cli.Context) error {
 		log.Error("Too many arguments given")
 		return errors.New("too many arguments")
 	}
-	var (
-		root common.Hash
-		err  error
-	)
+	var root common.Hash
 	if ctx.NArg() == 1 {
 		root, err = parseRoot(ctx.Args()[0])
 		if err != nil {

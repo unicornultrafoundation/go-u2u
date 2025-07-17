@@ -1,6 +1,7 @@
 package launcher
 
 import (
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 	"time"
 
 	"github.com/unicornultrafoundation/go-helios/native/idx"
@@ -12,7 +13,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/native"
 )
 
-func checkEvm(ctx *cli.Context) error {
+func checkEvm(ctx *cli.Context) (err error) {
 	if len(ctx.Args()) != 0 {
 		utils.Fatalf("This command doesn't require an argument.")
 	}
@@ -21,8 +22,9 @@ func checkEvm(ctx *cli.Context) error {
 
 	rawDbs := makeDirectDBsProducer(cfg)
 	gdb := makeGossipStore(rawDbs, cfg)
-	defer gdb.Close()
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
 	evms := gdb.EvmStore()
+	defer caution.CloseAndReportError(&err, evms, "failed to close EVM store")
 
 	start, reported := time.Now(), time.Now()
 

@@ -15,24 +15,25 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/unicornultrafoundation/go-helios/consensus"
 	"github.com/unicornultrafoundation/go-helios/utils/cachescale"
-	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
-	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/log"
-	"github.com/unicornultrafoundation/go-u2u/node"
-	"github.com/unicornultrafoundation/go-u2u/p2p/enode"
-	"github.com/unicornultrafoundation/go-u2u/params"
 	"gopkg.in/urfave/cli.v1"
 
+	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
+	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter"
 	"github.com/unicornultrafoundation/go-u2u/gossip/gasprice"
 	"github.com/unicornultrafoundation/go-u2u/integration"
 	"github.com/unicornultrafoundation/go-u2u/integration/makefakegenesis"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/monitoring"
+	"github.com/unicornultrafoundation/go-u2u/node"
+	"github.com/unicornultrafoundation/go-u2u/p2p/enode"
+	"github.com/unicornultrafoundation/go-u2u/params"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesis"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesisstore"
 	futils "github.com/unicornultrafoundation/go-u2u/utils"
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 	"github.com/unicornultrafoundation/go-u2u/utils/memory"
 	"github.com/unicornultrafoundation/go-u2u/vecmt"
 )
@@ -591,7 +592,7 @@ func defaultNodeConfig() node.Config {
 }
 
 // dumpConfig is the dumpconfig command.
-func dumpConfig(ctx *cli.Context) error {
+func dumpConfig(ctx *cli.Context) (err error) {
 	cfg := makeAllConfigs(ctx)
 	comment := ""
 
@@ -606,12 +607,14 @@ func dumpConfig(ctx *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		defer dump.Close()
+		defer caution.CloseAndReportError(&err, dump, "failed to close config file")
 	}
-	dump.WriteString(comment)
-	dump.Write(out)
-
-	return nil
+	_, err = dump.WriteString(comment)
+	if err != nil {
+		return err
+	}
+	_, err = dump.Write(out)
+	return err
 }
 
 func checkConfig(ctx *cli.Context) error {

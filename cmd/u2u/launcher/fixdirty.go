@@ -2,6 +2,7 @@ package launcher
 
 import (
 	"fmt"
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 	"time"
 
 	"gopkg.in/urfave/cli.v1"
@@ -92,7 +93,7 @@ func healDirty(ctx *cli.Context) error {
 func fixDirtyGossipDb(producer u2udb.FlushableDBProducer, cfg *config) (
 	epochState *iblockproc.EpochState, topEpoch idx.Epoch, err error) {
 	gdb := makeGossipStore(producer, cfg) // requires FlushIDKey present (not clean) in all dbs
-	defer gdb.Close()
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
 	topEpoch = gdb.GetEpoch()
 
 	// find the last closed epoch with the state available

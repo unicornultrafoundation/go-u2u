@@ -2,28 +2,27 @@ package launcher
 
 import (
 	"compress/gzip"
+	"fmt"
 	"io"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"gopkg.in/urfave/cli.v1"
-
 	"github.com/status-im/keycard-go/hexutils"
 	"github.com/syndtr/goleveldb/leveldb/opt"
-
-	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
-	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/log"
-	"github.com/unicornultrafoundation/go-u2u/rlp"
-
 	"github.com/unicornultrafoundation/go-helios/hash"
 	"github.com/unicornultrafoundation/go-helios/native/idx"
 	"github.com/unicornultrafoundation/go-helios/u2udb/batched"
 	"github.com/unicornultrafoundation/go-helios/u2udb/pebble"
+	"gopkg.in/urfave/cli.v1"
 
+	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
+	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/gossip"
+	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/rlp"
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/autocompact"
 )
 
@@ -36,7 +35,7 @@ var (
 // always print out progress. This avoids the user wondering what's going on.
 const statsReportLimit = 8 * time.Second
 
-func exportEvents(ctx *cli.Context) error {
+func exportEvents(ctx *cli.Context) (err error) {
 	if len(ctx.Args()) < 1 {
 		utils.Fatalf("This command requires an argument.")
 	}
@@ -44,22 +43,25 @@ func exportEvents(ctx *cli.Context) error {
 	cfg := makeAllConfigs(ctx)
 
 	rawDbs := makeDirectDBsProducer(cfg)
+	defer caution.CloseAndReportError(&err, rawDbs, "failed to close Gossip DB")
 	gdb := makeGossipStore(rawDbs, cfg)
-	defer gdb.Close()
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
 
-	fn := ctx.Args().First()
+	filename := ctx.Args().First()
 
 	// Open the file handle and potentially wrap with a gzip stream
-	fh, err := os.OpenFile(fn, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
+	fileHandler, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
 	if err != nil {
 		return err
 	}
-	defer fh.Close()
+	defer caution.CloseAndReportError(&err, fileHandler, fmt.Sprintf("failed to close file %v", filename))
 
-	var writer io.Writer = fh
-	if strings.HasSuffix(fn, ".gz") {
+	var writer io.Writer = fileHandler
+	if strings.HasSuffix(filename, ".gz") {
 		writer = gzip.NewWriter(writer)
-		defer writer.(*gzip.Writer).Close()
+		defer caution.CloseAndReportError(&err,
+			writer.(*gzip.Writer),
+			fmt.Sprintf("failed to close gzip writer for file %v", filename))
 	}
 
 	from := idx.Epoch(1)
@@ -79,7 +81,7 @@ func exportEvents(ctx *cli.Context) error {
 		to = idx.Epoch(n)
 	}
 
-	log.Info("Exporting events to file", "file", fn)
+	log.Info("Exporting events to file", "file", filename)
 	// Write header and version
 	_, err = writer.Write(append(eventsFileHeader, eventsFileVersion...))
 	if err != nil {
@@ -122,7 +124,7 @@ func exportTo(w io.Writer, gdb *gossip.Store, from, to idx.Epoch) (err error) {
 	return
 }
 
-func exportEvmKeys(ctx *cli.Context) error {
+func exportEvmKeys(ctx *cli.Context) (err error) {
 	if len(ctx.Args()) < 1 {
 		utils.Fatalf("This command requires an argument.")
 	}
@@ -130,8 +132,9 @@ func exportEvmKeys(ctx *cli.Context) error {
 	cfg := makeAllConfigs(ctx)
 
 	rawDbs := makeDirectDBsProducer(cfg)
+	defer caution.CloseAndReportError(&err, rawDbs, "failed to close raw DBs")
 	gdb := makeGossipStore(rawDbs, cfg)
-	defer gdb.Close()
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
 
 	fn := ctx.Args().First()
 

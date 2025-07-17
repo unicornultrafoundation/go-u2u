@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 	"io"
 	"math"
 	"os"
@@ -29,7 +30,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/utils/ioread"
 )
 
-func importEvm(ctx *cli.Context) error {
+func importEvm(ctx *cli.Context) (err error) {
 	if len(ctx.Args()) < 1 {
 		utils.Fatalf("This command requires an argument.")
 	}
@@ -37,8 +38,9 @@ func importEvm(ctx *cli.Context) error {
 	cfg := makeAllConfigs(ctx)
 
 	rawDbs := makeDirectDBsProducer(cfg)
+	defer caution.CloseAndReportError(&err, rawDbs, "failed to close raw DBs")
 	gdb := makeGossipStore(rawDbs, cfg)
-	defer gdb.Close()
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
 
 	for _, fn := range ctx.Args() {
 		log.Info("Importing EVM storage from file", "file", fn)

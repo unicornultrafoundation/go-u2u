@@ -204,11 +204,13 @@ func loadAllConfigs(file string, cfg *config) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer caution.ExecuteAndReportError(&err, func() error { return f.Close() },
+		"failed to close config file")
 
 	err = tomlSettings.NewDecoder(bufio.NewReader(f)).Decode(cfg)
 	// Add file name to errors that have a line number.
-	if _, ok := err.(*toml.LineError); ok {
+	var lineError *toml.LineError
+	if errors.As(err, &lineError) {
 		err = errors.New(file + ", " + err.Error())
 	}
 	if err != nil {

@@ -1,16 +1,16 @@
 package launcher
 
 import (
-	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 	"time"
 
 	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"gopkg.in/urfave/cli.v1"
+
 	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/log"
-	"gopkg.in/urfave/cli.v1"
-
 	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 )
 
 func checkEvm(ctx *cli.Context) (err error) {

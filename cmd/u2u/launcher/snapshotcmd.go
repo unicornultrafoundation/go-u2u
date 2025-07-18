@@ -154,8 +154,9 @@ func pruneState(ctx *cli.Context) (err error) {
 	}
 
 	tmpDir := path.Join(cfg.Node.DataDir, "tmp")
-	_ = os.MkdirAll(tmpDir, 0700)
-	defer os.RemoveAll(tmpDir)
+	err = os.MkdirAll(tmpDir, 0700)
+	defer caution.ExecuteAndReportError(&err, func() error { return os.RemoveAll(tmpDir) },
+		"failed to remove tmp prune state dir")
 
 	genesisBlock := gdb.GetBlock(*gdb.GetGenesisBlockIndex())
 	genesisRoot := common.Hash{}
@@ -175,7 +176,7 @@ func pruneState(ctx *cli.Context) (err error) {
 			return err
 		}
 		bloom = lset
-		defer closer.Close()
+		defer caution.CloseAndReportError(&err, closer, "failed to close level DB set")
 	} else {
 		size := ctx.Uint64(utils.BloomFilterSizeFlag.Name)
 		log.Info("Initializing bloom filter of in-use-keys", "size (MB)", size)

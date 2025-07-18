@@ -47,21 +47,21 @@ func exportEvents(ctx *cli.Context) (err error) {
 	gdb := makeGossipStore(rawDbs, cfg)
 	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
 
-	filename := ctx.Args().First()
+	fileName := ctx.Args().First()
 
 	// Open the file handle and potentially wrap with a gzip stream
-	fileHandler, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
+	fileHandler, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
 	if err != nil {
 		return err
 	}
-	defer caution.CloseAndReportError(&err, fileHandler, fmt.Sprintf("failed to close file %v", filename))
+	defer caution.CloseAndReportError(&err, fileHandler, fmt.Sprintf("failed to close file %v", fileName))
 
 	var writer io.Writer = fileHandler
-	if strings.HasSuffix(filename, ".gz") {
+	if strings.HasSuffix(fileName, ".gz") {
 		writer = gzip.NewWriter(writer)
 		defer caution.CloseAndReportError(&err,
 			writer.(*gzip.Writer),
-			fmt.Sprintf("failed to close gzip writer for file %v", filename))
+			fmt.Sprintf("failed to close gzip writer for file %v", fileName))
 	}
 
 	from := idx.Epoch(1)
@@ -81,7 +81,7 @@ func exportEvents(ctx *cli.Context) (err error) {
 		to = idx.Epoch(n)
 	}
 
-	log.Info("Exporting events to file", "file", filename)
+	log.Info("Exporting events to file", "file", fileName)
 	// Write header and version
 	_, err = writer.Write(append(eventsFileHeader, eventsFileVersion...))
 	if err != nil {
@@ -143,7 +143,7 @@ func exportEvmKeys(ctx *cli.Context) (err error) {
 		return err
 	}
 	keysDB := batched.Wrap(autocompact.Wrap2M(keysDB_, opt.GiB, 16*opt.GiB, true, "evm-keys"))
-	defer keysDB.Close()
+	defer caution.CloseAndReportError(&err, keysDB, "failed to close keys DB")
 
 	it := gdb.EvmStore().EvmDb.NewIterator(nil, nil)
 	// iterate only over MPT data

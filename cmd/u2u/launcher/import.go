@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
-	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 	"io"
 	"math"
 	"os"
@@ -17,16 +16,17 @@ import (
 	"github.com/status-im/keycard-go/hexutils"
 	"github.com/unicornultrafoundation/go-helios/hash"
 	"github.com/unicornultrafoundation/go-helios/native/idx"
-	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
-	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/log"
-	"github.com/unicornultrafoundation/go-u2u/rlp"
 	"gopkg.in/urfave/cli.v1"
 
+	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
+	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/gossip/emitter"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/rlp"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesisstore"
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 	"github.com/unicornultrafoundation/go-u2u/utils/ioread"
 )
 
@@ -54,20 +54,21 @@ func importEvm(ctx *cli.Context) (err error) {
 	return nil
 }
 
-func importEvmFile(fn string, gdb *gossip.Store) error {
+func importEvmFile(fileName string, gdb *gossip.Store) error {
 	// Open the file handle and potentially unwrap the gzip stream
-	fh, err := os.Open(fn)
+	fileHandler, err := os.Open(fileName)
 	if err != nil {
 		return err
 	}
-	defer fh.Close()
+	defer caution.CloseAndReportError(&err, fileHandler, fmt.Sprintf("failed to close file %v", fileName))
 
-	var reader io.Reader = fh
-	if strings.HasSuffix(fn, ".gz") {
+	var reader io.Reader = fileHandler
+	if strings.HasSuffix(fileName, ".gz") {
 		if reader, err = gzip.NewReader(reader); err != nil {
 			return err
 		}
-		defer reader.(*gzip.Reader).Close()
+		defer caution.CloseAndReportError(&err, reader.(*gzip.Reader),
+			fmt.Sprintf("failed to close gzip reader file %v", fileName))
 	}
 
 	return gdb.EvmStore().ImportEvm(reader)
@@ -137,7 +138,7 @@ func checkEventsFileHeader(reader io.Reader) error {
 	return nil
 }
 
-func importEventsFile(srv *gossip.Service, fn string) error {
+func importEventsFile(srv *gossip.Service, fileName string) error {
 	// Watch for Ctrl-C while the import is running.
 	// If a signal is received, the import will stop.
 	interrupt := make(chan os.Signal, 1)
@@ -155,18 +156,19 @@ func importEventsFile(srv *gossip.Service, fn string) error {
 	}
 
 	// Open the file handle and potentially unwrap the gzip stream
-	fh, err := os.Open(fn)
+	fileHandler, err := os.Open(fileName)
 	if err != nil {
 		return err
 	}
-	defer fh.Close()
+	defer caution.CloseAndReportError(&err, fileHandler, fmt.Sprintf("failed to close file %v", fileName))
 
-	var reader io.Reader = fh
-	if strings.HasSuffix(fn, ".gz") {
+	var reader io.Reader = fileHandler
+	if strings.HasSuffix(fileName, ".gz") {
 		if reader, err = gzip.NewReader(reader); err != nil {
 			return err
 		}
-		defer reader.(*gzip.Reader).Close()
+		defer caution.CloseAndReportError(&err, reader.(*gzip.Reader),
+			fmt.Sprintf("failed to close gzip reader file %v", fileName))
 	}
 
 	// Check file version and header
@@ -235,7 +237,7 @@ func importEventsFile(srv *gossip.Service, fn string) error {
 		events++
 	}
 	srv.WaitBlockEnd()
-	log.Info("Events import is finished", "file", fn, "last", last.String(), "imported", events, "txs", txs, "elapsed", common.PrettyDuration(time.Since(start)))
+	log.Info("Events import is finished", "file", fileName, "last", last.String(), "imported", events, "txs", txs, "elapsed", common.PrettyDuration(time.Since(start)))
 
 	return nil
 }

@@ -21,10 +21,12 @@ package debug
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"runtime/trace"
 
 	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/utils"
 )
 
 // StartGoTrace turns on tracing, writing to the given file.
@@ -39,8 +41,9 @@ func (h *HandlerT) StartGoTrace(file string) error {
 		return err
 	}
 	if err := trace.Start(f); err != nil {
-		f.Close()
-		return err
+		return errors.Join(
+			fmt.Errorf("failed to start Go trace: %w", err),
+			utils.AnnotateIfError(f.Close(), "failed to close trace file"))
 	}
 	h.traceW = f
 	h.traceFile = file
@@ -57,7 +60,9 @@ func (h *HandlerT) StopGoTrace() error {
 		return errors.New("trace not in progress")
 	}
 	log.Info("Done writing Go trace", "dump", h.traceFile)
-	h.traceW.Close()
+	if err := h.traceW.Close(); err != nil {
+		return err
+	}
 	h.traceW = nil
 	h.traceFile = ""
 	return nil

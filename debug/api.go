@@ -23,6 +23,7 @@ package debug
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/user"
@@ -35,6 +36,7 @@ import (
 	"time"
 
 	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/utils"
 )
 
 // Handler is the global debugging handler.
@@ -106,8 +108,9 @@ func (h *HandlerT) StartCPUProfile(file string) error {
 		return err
 	}
 	if err := pprof.StartCPUProfile(f); err != nil {
-		f.Close()
-		return err
+		return errors.Join(
+			fmt.Errorf("failed to start CPU: %w", err),
+			utils.AnnotateIfError(f.Close(), "failed to close CPU profile file"))
 	}
 	h.cpuW = f
 	h.cpuFile = file
@@ -124,7 +127,9 @@ func (h *HandlerT) StopCPUProfile() error {
 		return errors.New("CPU profiling not in progress")
 	}
 	log.Info("Done writing CPU profile", "dump", h.cpuFile)
-	h.cpuW.Close()
+	if err := h.cpuW.Close(); err != nil {
+		return fmt.Errorf("failed to close CPU profile file: %w", err)
+	}
 	h.cpuW = nil
 	h.cpuFile = ""
 	return nil

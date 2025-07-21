@@ -202,10 +202,9 @@ func (c *config) AppConfigs() integration.Configs {
 func loadAllConfigs(file string, cfg *config) error {
 	f, err := os.Open(file)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open config file %s: %w", file, err)
 	}
-	defer caution.ExecuteAndReportError(&err, func() error { return f.Close() },
-		"failed to close config file")
+	defer caution.CloseAndReportError(&err, f, "failed to close config file")
 
 	err = tomlSettings.NewDecoder(bufio.NewReader(f)).Decode(cfg)
 	// Add file name to errors that have a line number.

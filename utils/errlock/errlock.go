@@ -69,7 +69,7 @@ func read(dir string) (bool, string, string, error) {
 
 	data, err := os.Open(eLockPath)
 	if err != nil {
-		return false, "", eLockPath, err
+		return false, "", eLockPath, nil
 	}
 	defer caution.CloseAndReportError(&err, data, "Failed to close errlock file")
 

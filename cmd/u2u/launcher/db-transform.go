@@ -1,6 +1,7 @@
 package launcher
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"strings"
@@ -11,12 +12,13 @@ import (
 	"github.com/unicornultrafoundation/go-helios/u2udb"
 	"github.com/unicornultrafoundation/go-helios/u2udb/batched"
 	"github.com/unicornultrafoundation/go-helios/u2udb/multidb"
-	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/log"
 	"gopkg.in/urfave/cli.v1"
 
+	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/integration"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/utils"
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/autocompact"
 )
 
@@ -25,8 +27,9 @@ func dbTransform(ctx *cli.Context) error {
 
 	tmpPath := path.Join(cfg.Node.DataDir, "tmp")
 	integration.MakeDBDirs(tmpPath)
-	_ = os.RemoveAll(tmpPath)
-	defer os.RemoveAll(tmpPath)
+	err := os.RemoveAll(tmpPath)
+	defer caution.ExecuteAndReportError(&err, func() error { return os.RemoveAll(tmpPath) },
+		"failed to remove tmp db transform dir")
 
 	// get supported DB producers
 	dbTypes := makeUncheckedCachedDBsProducers(path.Join(cfg.Node.DataDir, "chaindata"))
@@ -154,7 +157,7 @@ func readRoutes(cfg *config, dbTypes map[multidb.TypeName]u2udb.FullDBProducer) 
 			if err != nil {
 				log.Crit("DB opening error", "name", dbName, "err", err)
 			}
-			defer db.Close()
+			defer caution.CloseAndReportError(&err, db, fmt.Sprintf("failed to close DB %v", dbName))
 			tables, err := multidb.ReadTablesList(db, integration.TablesKey)
 			if err != nil {
 				log.Crit("Failed to read tables list", "name", dbName, "err", err)
@@ -197,7 +200,7 @@ func writeCleanTableRecords(dbTypes map[multidb.TypeName]u2udb.FullDBProducer, b
 		if err != nil {
 			return err
 		}
-		defer db.Close()
+		defer caution.CloseAndReportError(&err, db, fmt.Sprintf("failed to close DB %v", e.New.Name))
 		err = multidb.WriteTablesList(db, integration.TablesKey, records[dbLocatorOf(e.New)])
 		if err != nil {
 			return err
@@ -257,7 +260,7 @@ func transformComponent(datadir string, dbTypes, tmpDbTypes map[multidb.TypeName
 					return err
 				}
 				oldDB = batched.Wrap(oldDB)
-				defer oldDB.Close()
+				defer caution.CloseAndReportError(&err, oldDB, fmt.Sprintf("failed to close old DB %v", e.Old.Name))
 				oldReadableName := path.Join(string(e.Old.Type), e.Old.Name)
 				newDB, err := tmpDbTypes[e.New.Type].OpenDB(e.New.Name)
 				if err != nil {
@@ -267,7 +270,7 @@ func transformComponent(datadir string, dbTypes, tmpDbTypes map[multidb.TypeName
 
 				newReadableName := path.Join("tmp", string(e.New.Type), e.New.Name)
 				newDB = batched.Wrap(autocompact.Wrap2M(newDB, opt.GiB, 16*opt.GiB, true, newReadableName))
-				defer newDB.Close()
+				defer caution.CloseAndReportError(&err, newDB, fmt.Sprintf("failed to close new DB %v", e.New.Name))
 
 				log.Info("Copying DB table", "req", e.Req, "old_db", oldReadableName, "old_table", e.Old.Table,
 					"new_db", newReadableName, "new_table", e.New.Table)

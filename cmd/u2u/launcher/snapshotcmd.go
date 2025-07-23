@@ -23,6 +23,8 @@ import (
 	"path"
 	"time"
 
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
+
 	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/rawdb"
@@ -67,7 +69,7 @@ var (
 					utils.BloomFilterSizeFlag,
 				},
 				Description: `
-geth snapshot prune-state <state-root>
+u2u snapshot prune-state <state-root>
 will prune historical state data with the help of the state snapshot.
 All trie nodes and contract codes that do not belong to the specified
 version state will be deleted from the database. After pruning, only
@@ -77,7 +79,7 @@ The default pruning target is the HEAD state.
 
 WARNING: It's necessary to delete the trie clean cache after the pruning.
 If you specify another directory for the trie clean cache via "--cache.trie.journal"
-during the use of Geth, please also specify it here for correct deletion. Otherwise
+during the use of u2u, please also specify it here for correct deletion. Otherwise
 the trie clean cache with default directory will be deleted.
 `,
 			},
@@ -92,7 +94,7 @@ the trie clean cache with default directory will be deleted.
 					utils.AncientFlag,
 				},
 				Description: `
-geth snapshot verify-state <state-root>
+u2u snapshot verify-state <state-root>
 will traverse the whole accounts and storages set based on the specified
 snapshot and recalculate the root hash of state for verification.
 In other words, this command does the snapshot to trie conversion.
@@ -109,7 +111,7 @@ In other words, this command does the snapshot to trie conversion.
 					utils.AncientFlag,
 				},
 				Description: `
-geth snapshot traverse-state <state-root>
+u2u snapshot traverse-state <state-root>
 will traverse the whole state from the given state root and will abort if any
 referenced trie node or contract code is missing. This command can be used for
 state integrity verification. The default checking target is the HEAD state.
@@ -128,7 +130,7 @@ It's also usable without snapshot enabled.
 					utils.AncientFlag,
 				},
 				Description: `
-geth snapshot traverse-rawstate <state-root>
+u2u snapshot traverse-rawstate <state-root>
 will traverse the whole state from the given root and will abort if any referenced
 trie node or contract code is missing. This command can be used for state integrity
 verification. The default checking target is the HEAD state. It's basically identical
@@ -141,18 +143,21 @@ It's also usable without snapshot enabled.
 	}
 )
 
-func pruneState(ctx *cli.Context) error {
+func pruneState(ctx *cli.Context) (err error) {
 	cfg := makeAllConfigs(ctx)
 	rawDbs := makeDirectDBsProducer(cfg)
+	defer caution.CloseAndReportError(&err, rawDbs, "failed to close raw DBs")
 	gdb := makeGossipStore(rawDbs, cfg)
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
 
 	if gdb.GetGenesisID() == nil {
 		return errors.New("failed to open snapshot tree: genesis is not written")
 	}
 
 	tmpDir := path.Join(cfg.Node.DataDir, "tmp")
-	_ = os.MkdirAll(tmpDir, 0700)
-	defer os.RemoveAll(tmpDir)
+	err = os.MkdirAll(tmpDir, 0700)
+	defer caution.ExecuteAndReportError(&err, func() error { return os.RemoveAll(tmpDir) },
+		"failed to remove tmp prune state dir")
 
 	genesisBlock := gdb.GetBlock(*gdb.GetGenesisBlockIndex())
 	genesisRoot := common.Hash{}
@@ -164,7 +169,6 @@ func pruneState(ctx *cli.Context) error {
 	}
 	root := common.Hash(gdb.GetBlockState().FinalizedStateRoot)
 	var bloom evmpruner.StateBloom
-	var err error
 	if ctx.Bool(PruneExactCommand.Name) {
 		log.Info("Initializing LevelDB storage of in-use-keys")
 		lset, closer, err := evmpruner.NewLevelDBSet(path.Join(tmpDir, "keys-in-use"))
@@ -173,7 +177,7 @@ func pruneState(ctx *cli.Context) error {
 			return err
 		}
 		bloom = lset
-		defer closer.Close()
+		defer caution.CloseAndReportError(&err, closer, "failed to close level DB set")
 	} else {
 		size := ctx.Uint64(utils.BloomFilterSizeFlag.Name)
 		log.Info("Initializing bloom filter of in-use-keys", "size (MB)", size)
@@ -207,10 +211,12 @@ func pruneState(ctx *cli.Context) error {
 	return nil
 }
 
-func verifyState(ctx *cli.Context) error {
+func verifyState(ctx *cli.Context) (err error) {
 	cfg := makeAllConfigs(ctx)
 	rawDbs := makeDirectDBsProducer(cfg)
+	defer caution.CloseAndReportError(&err, rawDbs, "failed to close raw DBs")
 	gdb := makeGossipStore(rawDbs, cfg)
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
 
 	genesis := gdb.GetGenesisID()
 	if genesis == nil {
@@ -221,7 +227,7 @@ func verifyState(ctx *cli.Context) error {
 	root := common.Hash(gdb.GetBlockState().FinalizedStateRoot)
 	sfcRoot := common.Hash(gdb.GetBlockState().SfcStateRoot)
 
-	err := evmStore.GenerateEvmSnapshot(root, sfcRoot, false, false)
+	err = evmStore.GenerateEvmSnapshot(root, sfcRoot, false, false)
 	if err != nil {
 		log.Error("Failed to open snapshot tree", "err", err)
 		return err
@@ -249,10 +255,12 @@ func verifyState(ctx *cli.Context) error {
 // traverseState is a helper function used for pruning verification.
 // Basically it just iterates the trie, ensure all nodes and associated
 // contract codes are present.
-func traverseState(ctx *cli.Context) error {
+func traverseState(ctx *cli.Context) (err error) {
 	cfg := makeAllConfigs(ctx)
 	rawDbs := makeDirectDBsProducer(cfg)
+	defer caution.CloseAndReportError(&err, rawDbs, "failed to close raw DBs")
 	gdb := makeGossipStore(rawDbs, cfg)
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
 
 	if gdb.GetGenesisID() == nil {
 		return errors.New("failed to open snapshot tree: genesis is not written")
@@ -263,10 +271,7 @@ func traverseState(ctx *cli.Context) error {
 		log.Error("Too many arguments given")
 		return errors.New("too many arguments")
 	}
-	var (
-		root common.Hash
-		err  error
-	)
+	var root common.Hash
 	if ctx.NArg() == 1 {
 		root, err = parseRoot(ctx.Args()[0])
 		if err != nil {
@@ -339,10 +344,12 @@ func traverseState(ctx *cli.Context) error {
 // Basically it just iterates the trie, ensure all nodes and associated
 // contract codes are present. It's basically identical to traverseState
 // but it will check each trie node.
-func traverseRawState(ctx *cli.Context) error {
+func traverseRawState(ctx *cli.Context) (err error) {
 	cfg := makeAllConfigs(ctx)
 	rawDbs := makeDirectDBsProducer(cfg)
+	defer caution.CloseAndReportError(&err, rawDbs, "failed to close raw DBs")
 	gdb := makeGossipStore(rawDbs, cfg)
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
 
 	if gdb.GetGenesisID() == nil {
 		return errors.New("failed to open snapshot tree: genesis is not written")
@@ -353,10 +360,7 @@ func traverseRawState(ctx *cli.Context) error {
 		log.Error("Too many arguments given")
 		return errors.New("too many arguments")
 	}
-	var (
-		root common.Hash
-		err  error
-	)
+	var root common.Hash
 	if ctx.NArg() == 1 {
 		root, err = parseRoot(ctx.Args()[0])
 		if err != nil {

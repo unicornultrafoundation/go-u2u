@@ -51,6 +51,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/p2p/discover/discfilter"
 	"github.com/unicornultrafoundation/go-u2u/rlp"
 	"github.com/unicornultrafoundation/go-u2u/trie"
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 	"github.com/unicornultrafoundation/go-u2u/utils/txtime"
 )
 
@@ -995,7 +996,8 @@ func (h *handler) handleMsg(p *peer) error {
 	if msg.Size > protocolMaxMsgSize {
 		return errResp(ErrMsgTooLarge, "%v > %v", msg.Size, protocolMaxMsgSize)
 	}
-	defer msg.Discard()
+	defer caution.ExecuteAndReportError(&err, msg.Discard, "failed to discard message")
+
 	// Acquire semaphore for serialized messages
 	eventsSizeEst := dag.Metric{
 		Num:  1,

@@ -164,7 +164,7 @@ func (s *Store) initCache() {
 }
 
 // Close closes underlying database.
-func (s *Store) Close() {
+func (s *Store) Close() error {
 	setnil := func() interface{} {
 		return nil
 	}
@@ -175,15 +175,25 @@ func (s *Store) Close() {
 	if s.snapshotedSFCDB != nil {
 		s.snapshotedSFCDB.Release()
 	}
-	_ = table.CloseTables(&s.table)
+	if err := table.CloseTables(&s.table); err != nil {
+		return err
+	}
 	table.MigrateTables(&s.table, nil)
 	table.MigrateCaches(&s.cache, setnil)
 
 	if s.txtracer != nil {
-		s.txtracer.Close()
+		if err := s.txtracer.Close(); err != nil {
+			return err
+		}
 	}
-	_ = s.closeEpochStore()
-	s.evm.Close()
+	if err := s.closeEpochStore(); err != nil {
+		return err
+	}
+	if err := s.evm.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *Store) IsCommitNeeded() bool {

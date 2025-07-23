@@ -13,16 +13,17 @@ import (
 	"github.com/unicornultrafoundation/go-helios/native/idx"
 	"github.com/unicornultrafoundation/go-helios/u2udb"
 	"github.com/unicornultrafoundation/go-helios/u2udb/multidb"
+
 	"github.com/unicornultrafoundation/go-u2u/accounts"
 	"github.com/unicornultrafoundation/go-u2u/accounts/keystore"
 	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
-	"github.com/unicornultrafoundation/go-u2u/log"
-
 	"github.com/unicornultrafoundation/go-u2u/gossip"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesis"
 	"github.com/unicornultrafoundation/go-u2u/utils/adapters/vecmt2dagidx"
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/compactdb"
 	"github.com/unicornultrafoundation/go-u2u/vecmt"
 )
@@ -247,9 +248,9 @@ func makeEngine(chaindataDir string, g *genesis.Genesis, genesisProc bool, cfg C
 	gdb, cdb := getStores(dbs, cfg)
 	defer func() {
 		if err != nil {
-			gdb.Close()
-			cdb.Close()
-			dbs.Close()
+			caution.CloseAndReportError(&err, cdb, "failed to close helios store")
+			caution.CloseAndReportError(&err, gdb, "failed to close gossip store")
+			caution.CloseAndReportError(&err, dbs, "failed to close db producer")
 		}
 	}()
 

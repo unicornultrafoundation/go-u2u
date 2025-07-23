@@ -1,25 +1,37 @@
 package errlock
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path"
 
 	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 )
+
+var datadir string
 
 // Check if errlock is written
 func Check() {
-	locked, reason, eLockPath, _ := read(datadir)
+	locked, reason, eLockPath, err := read(datadir)
+	if err != nil {
+		// This is a user-facing error, so we want to provide a clear message.
+		//nolint:staticcheck // ST1005: allow capitalized error message and punctuation
+		utils.Fatalf("Node isn't allowed to start due to an error reading"+
+			" the lock file %s.\n Please fix the issue. Error message:\n%s",
+			eLockPath, err)
+	}
+
 	if locked {
-		utils.Fatalf("Node isn't allowed to start due to a previous error. Please fix the issue and then delete file \"%s\". Error message:\n%s", eLockPath, reason)
+		// This is a user-facing error, so we want to provide a clear message.
+		//nolint:staticcheck // ST1005: allow capitalized error message and punctuation
+		utils.Fatalf("Node isn't allowed to start due to a previous error."+
+			" Please fix the issue and then delete file \"%s\". Error message:\n%s",
+			eLockPath, reason)
 	}
 }
-
-var (
-	datadir string
-)
 
 // SetDefaultDatadir for errlock files
 func SetDefaultDatadir(dir string) {
@@ -29,7 +41,11 @@ func SetDefaultDatadir(dir string) {
 // Permanent error
 func Permanent(err error) {
 	eLockPath, _ := write(datadir, err.Error())
-	utils.Fatalf("Node is permanently stopping due to an issue. Please fix the issue and then delete file \"%s\". Error message:\n%s", eLockPath, err.Error())
+	// This is a user-facing error, so we want to provide a clear message.
+	//nolint:staticcheck // ST1005: allow capitalized error message and punctuation
+	utils.Fatalf("Node is permanently stopping due to an issue. Please fix"+
+		" the issue and then delete file \"%s\". Error message:\n%s",
+		eLockPath, err.Error())
 }
 
 func readAll(reader io.Reader, max int) ([]byte, error) {
@@ -53,15 +69,15 @@ func read(dir string) (bool, string, string, error) {
 
 	data, err := os.Open(eLockPath)
 	if err != nil {
-		return false, "", eLockPath, err
+		return false, "", eLockPath, nil
 	}
-	defer data.Close()
+	defer caution.CloseAndReportError(&err, data, "Failed to close errlock file")
 
 	// read no more than N bytes
 	maxFileLen := 5000
 	eLockBytes, err := readAll(data, maxFileLen)
 	if err != nil {
-		return true, "", eLockPath, err
+		return true, "", eLockPath, fmt.Errorf("failed to read lock file %v: %w", eLockPath, err)
 	}
 	return true, string(eLockBytes), eLockPath, nil
 }

@@ -90,15 +90,18 @@ func NewStore(dbs u2udb.DBProducer, cfg StoreConfig) *Store {
 }
 
 // Close closes underlying database.
-func (s *Store) Close() {
+func (s *Store) Close() error {
 	setnil := func() interface{} {
 		return nil
 	}
 
-	_ = table.CloseTables(&s.table)
+	if err := table.CloseTables(&s.table); err != nil {
+		return err
+	}
 	table.MigrateTables(&s.table, nil)
 	table.MigrateCaches(&s.cache, setnil)
 	s.EvmLogs.Close()
+	return nil
 }
 
 func (s *Store) initCache() {

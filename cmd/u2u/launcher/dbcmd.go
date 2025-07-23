@@ -15,6 +15,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/integration"
 	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/compactdb"
 )
 
@@ -161,14 +162,14 @@ func compact(ctx *cli.Context) error {
 	return nil
 }
 
-func compactDB(typ multidb.TypeName, name string, producer u2udb.DBProducer) error {
+func compactDB(typ multidb.TypeName, name string, producer u2udb.DBProducer) (err error) {
 	humanName := path.Join(string(typ), name)
 	db, err := producer.OpenDB(name)
-	defer db.Close()
 	if err != nil {
 		log.Error("Cannot open db or db does not exists", "db", humanName)
 		return err
 	}
+	defer caution.CloseAndReportError(&err, db, "failed to close db")
 
 	log.Info("Stats before compaction", "db", humanName)
 	showDbStats(db)

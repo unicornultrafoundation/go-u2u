@@ -17,18 +17,19 @@ import (
 	"github.com/unicornultrafoundation/go-helios/native/idx"
 	"github.com/unicornultrafoundation/go-helios/u2udb"
 	"github.com/unicornultrafoundation/go-helios/u2udb/pebble"
-	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
-	"github.com/unicornultrafoundation/go-u2u/log"
-	"github.com/unicornultrafoundation/go-u2u/rlp"
 	"gopkg.in/urfave/cli.v1"
 
+	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/native/ibr"
 	"github.com/unicornultrafoundation/go-u2u/native/ier"
+	"github.com/unicornultrafoundation/go-u2u/rlp"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesis"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesisstore"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesisstore/fileshash"
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 	"github.com/unicornultrafoundation/go-u2u/utils/devnullfile"
 	"github.com/unicornultrafoundation/go-u2u/utils/iodb"
 )
@@ -256,28 +257,30 @@ func exportGenesis(ctx *cli.Context) error {
 	}
 
 	cfg := makeAllConfigs(ctx)
-	tmpPath := path.Join(cfg.Node.DataDir, "tmp")
-	_ = os.RemoveAll(tmpPath)
-	defer os.RemoveAll(tmpPath)
+	tmpPath := path.Join(cfg.Node.DataDir, "tmp-genesis-export")
+	err := os.RemoveAll(tmpPath)
+	defer caution.ExecuteAndReportError(&err, func() error { return os.RemoveAll(tmpPath) },
+		"failed to remove tmp genesis export dir")
 
 	rawDbs := makeDirectDBsProducer(cfg)
+	defer caution.CloseAndReportError(&err, rawDbs, "failed to close raw DBs")
 	gdb := makeGossipStore(rawDbs, cfg)
 	if gdb.GetHighestLamport() != 0 {
 		log.Warn("Attempting genesis export not in a beginning of an epoch. Genesis file output may contain excessive data.")
 	}
-	defer gdb.Close()
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
 
-	fn := ctx.Args().First()
+	fileName := ctx.Args().First()
 
 	// Open the file handle
 	var plain io.WriteSeeker
-	if fn != "dry-run" {
-		fh, err := os.OpenFile(fn, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
+	if fileName != "dry-run" {
+		fileHandler, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
 		if err != nil {
 			return err
 		}
-		defer fh.Close()
-		plain = fh
+		defer caution.CloseAndReportError(&err, fileHandler, fmt.Sprintf("failed to close file %v", fileName))
+		plain = fileHandler
 	}
 
 	header := genesis.Header{
@@ -330,7 +333,8 @@ func exportGenesis(ctx *cli.Context) error {
 		toBlock := getEpochBlock(to, gdb)
 		fromBlock := getEpochBlock(from, gdb)
 		if sections["brs"] != "brs" {
-			// to continue prev section, include blocks of prev epochs too, excluding first blocks of prev epoch (which is last block if prev section)
+			// to continue prev section, include blocks of prev epochs too,
+			// excluding first blocks of prev epoch (which is the last block if prev section)
 			fromBlock = getEpochBlock(from-1, gdb) + 1
 		}
 		if fromBlock < 1 {

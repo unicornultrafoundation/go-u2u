@@ -109,7 +109,7 @@ func (ks keyStorePassphrase) StoreKey(filename string, key *Key, auth string) er
 		return err
 	}
 	// Write into temporary file
-	tmpName, err := writeTemporaryKeyFile(filename, keyjson)
+	tmpName, err := WriteTemporaryKeyFile(filename, keyjson)
 	if err != nil {
 		return err
 	}

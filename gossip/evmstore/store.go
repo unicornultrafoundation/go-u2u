@@ -49,6 +49,7 @@ type Store struct {
 	SfcState state.Database
 	EvmLogs  topicsdb.Index
 	Snaps    *snapshot.Tree
+	SfcSnaps *snapshot.Tree
 
 	cache struct {
 		TxPositions *wlru.Cache `cache:"-"` // store by pointer
@@ -134,11 +135,13 @@ func (s *Store) initEVMDB() {
 	}
 }
 
-func (s *Store) ResetWithEVMDB(evmStore u2udb.Store) *Store {
+func (s *Store) ResetWithEVMDB(evmStore u2udb.Store, sfcStore u2udb.Store) *Store {
 	cp := *s
 	cp.table.Evm = evmStore
+	cp.table.SfcEvm = sfcStore
 	cp.initEVMDB()
 	cp.Snaps = nil
+	cp.SfcSnaps = nil
 	return &cp
 }
 
@@ -146,7 +149,11 @@ func (s *Store) EVMDB() u2udb.Store {
 	return s.table.Evm
 }
 
-func (s *Store) GenerateEvmSnapshot(root common.Hash, rebuild, async bool) (err error) {
+func (s *Store) SFCDB() u2udb.Store {
+	return s.table.SfcEvm
+}
+
+func (s *Store) GenerateEvmSnapshot(root common.Hash, sfcRoot common.Hash, rebuild, async bool) (err error) {
 	if s.Snaps != nil {
 		return errors.New("EVM snapshot is already opened")
 	}
@@ -158,14 +165,28 @@ func (s *Store) GenerateEvmSnapshot(root common.Hash, rebuild, async bool) (err 
 		async,
 		rebuild,
 		false)
+	if s.SfcSnaps == nil && s.cfg.SfcEnabled && !common.IsNilInterface(s.SfcState) {
+		s.SfcSnaps, err = snapshot.New(
+			s.SfcDb,
+			s.SfcState.TrieDB(),
+			s.cfg.Cache.EvmSnap/opt.MiB,
+			sfcRoot,
+			async,
+			rebuild,
+			false)
+	}
 	return
 }
 
-func (s *Store) RebuildEvmSnapshot(root common.Hash) {
+func (s *Store) RebuildEvmSnapshot(root common.Hash, sfcRoot common.Hash) {
 	if s.Snaps == nil {
 		return
 	}
 	s.Snaps.Rebuild(root)
+	if s.SfcSnaps == nil {
+		return
+	}
+	s.SfcSnaps.Rebuild(sfcRoot)
 }
 
 // CleanCommit clean old state trie and commit changes.
@@ -192,11 +213,37 @@ func (s *Store) CleanCommit(block iblockproc.BlockState) error {
 	if err != nil {
 		s.Log.Error("Failed to flush trie DB into main DB", "err", err)
 	}
+
+	if s.cfg.SfcEnabled && !common.IsNilInterface(s.SfcState) {
+		sfcTriedb := s.SfcState.TrieDB()
+		sfcStateRoot := common.Hash(block.SfcStateRoot)
+		if current := uint64(block.LastBlock.Idx); current > TriesInMemory {
+			// Find the next state trie we need to commit
+			chosen := current - TriesInMemory
+			// Garbage collect all below the chosen block
+			for !s.triegc.Empty() {
+				root, number := s.triegc.Pop()
+				if uint64(-number) > chosen {
+					s.triegc.Push(root, number)
+					break
+				}
+				sfcTriedb.Dereference(root.(common.Hash))
+			}
+		}
+		// commit the state trie after clean up
+		err := sfcTriedb.Commit(sfcStateRoot, false, nil)
+		if err != nil {
+			s.Log.Error("Failed to flush SFC trie DB into main SFC DB", "err", err)
+		}
+	}
 	return err
 }
 
 func (s *Store) PauseEvmSnapshot() {
 	s.Snaps.Disable()
+	if s.SfcSnaps != nil {
+		s.SfcSnaps.Disable()
+	}
 }
 
 func (s *Store) IsEvmSnapshotPaused() bool {
@@ -279,11 +326,20 @@ func (s *Store) CommitSfcState(block idx.Block, root hash.Hash, flush bool) erro
 
 func (s *Store) Flush(block iblockproc.BlockState) {
 	// Ensure that the entirety of the state snapshot is journalled to disk.
-	var snapBase common.Hash
+	var (
+		snapBase    common.Hash
+		sfcSnapBase common.Hash
+	)
 	if s.Snaps != nil {
 		var err error
 		if snapBase, err = s.Snaps.Journal(common.Hash(block.FinalizedStateRoot)); err != nil {
 			s.Log.Error("Failed to journal state snapshot", "err", err)
+		}
+	}
+	if s.SfcSnaps != nil {
+		var err error
+		if sfcSnapBase, err = s.SfcSnaps.Journal(common.Hash(block.SfcStateRoot)); err != nil {
+			s.Log.Error("Failed to journal SFC state snapshot", "err", err)
 		}
 	}
 	// Ensure the state of a recent block is also stored to disk before exiting.
@@ -295,11 +351,35 @@ func (s *Store) Flush(block iblockproc.BlockState) {
 			if err := triedb.Commit(common.Hash(block.FinalizedStateRoot), true, nil); err != nil {
 				s.Log.Error("Failed to commit recent state trie", "err", err)
 			}
+			if s.cfg.SfcEnabled && !common.IsNilInterface(s.SfcState) {
+				sfcTrieDb := s.SfcState.TrieDB()
+				if err := sfcTrieDb.Commit(common.Hash(block.SfcStateRoot), true, nil); err != nil {
+					s.Log.Error("Failed to commit recent SFC state trie", "err", err)
+				}
+			}
 		}
+
+		if s.cfg.SfcEnabled && !common.IsNilInterface(s.SfcState) {
+			sfcTrieDb := s.SfcState.TrieDB()
+
+			if number := uint64(block.LastBlock.Idx); number > 0 {
+				s.Log.Info("Writing cached SFC state to disk", "block", number, "root", block.SfcStateRoot)
+				if err := sfcTrieDb.Commit(common.Hash(block.SfcStateRoot), true, nil); err != nil {
+					s.Log.Error("Failed to commit recent SFC state trie", "err", err)
+				}
+			}
+		}
+
 		if snapBase != (common.Hash{}) {
 			s.Log.Info("Writing snapshot state to disk", "root", snapBase)
 			if err := triedb.Commit(snapBase, true, nil); err != nil {
 				s.Log.Error("Failed to commit recent state trie", "err", err)
+			}
+		}
+		if sfcSnapBase != (common.Hash{}) {
+			s.Log.Info("Writing snapshot SFC state to disk", "root", sfcSnapBase)
+			if err := s.SfcState.TrieDB().Commit(sfcSnapBase, true, nil); err != nil {
+				s.Log.Error("Failed to commit recent SFC state trie", "err", err)
 			}
 		}
 	}
@@ -308,6 +388,10 @@ func (s *Store) Flush(block iblockproc.BlockState) {
 	if s.cfg.Cache.TrieCleanJournal != "" {
 		triedb := s.EvmState.TrieDB()
 		triedb.SaveCache(s.cfg.Cache.TrieCleanJournal)
+		if s.cfg.SfcEnabled && !common.IsNilInterface(s.SfcState) {
+			sfcTrieDb := s.SfcState.TrieDB()
+			sfcTrieDb.SaveCache(s.cfg.Cache.TrieCleanJournal)
+		}
 	}
 }
 
@@ -321,6 +405,19 @@ func (s *Store) Cap() {
 	// If we exceeded our memory allowance, flush matured singleton nodes to disk
 	if nodes > limit+ethdb.IdealBatchSize || imgs > 4*1024*1024 {
 		triedb.Cap(limit)
+	}
+
+	// Cap SfcState
+	if s.cfg.SfcEnabled && !common.IsNilInterface(s.SfcState) {
+		sfcTrieDb := s.SfcState.TrieDB()
+		var (
+			nodes, imgs = sfcTrieDb.Size()
+			limit       = common.StorageSize(s.cfg.Cache.TrieDirtyLimit)
+		)
+		// If we exceeded our memory allowance, flush matured singleton nodes to disk
+		if nodes > limit+ethdb.IdealBatchSize || imgs > 4*1024*1024 {
+			sfcTrieDb.Cap(limit)
+		}
 	}
 }
 
@@ -353,7 +450,7 @@ func (s *Store) SfcStateDB(from hash.Hash) (*state.StateDB, error) {
 	if !s.cfg.SfcEnabled {
 		return nil, errors.New("SFC state is not available because of EVM config")
 	}
-	return state.NewWithSnapLayers(common.Hash(from), s.SfcState, s.Snaps, 0)
+	return state.NewWithSnapLayers(common.Hash(from), s.SfcState, s.SfcSnaps, 0)
 }
 
 // HasSfcStateDB returns if SFC state database exists
@@ -372,6 +469,10 @@ func (s *Store) IndexLogs(recs ...*types.Log) {
 
 func (s *Store) Snapshots() *snapshot.Tree {
 	return s.Snaps
+}
+
+func (s *Store) SfcSnapshots() *snapshot.Tree {
+	return s.SfcSnaps
 }
 
 /*

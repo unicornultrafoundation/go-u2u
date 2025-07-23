@@ -163,6 +163,12 @@ func (h *handler) updateSnapsyncStage() {
 	snapGenOngoing, _ := h.store.evm.Snaps.Generating()
 	fullsyncPossibleEver := h.store.evm.HasStateDB(h.store.GetBlockState().FinalizedStateRoot)
 	fullsyncPossibleNow := fullsyncPossibleEver && !snapGenOngoing
+	if h.store.cfg.EVM.SfcEnabled {
+		sfcSnapGenOngoing, _ := h.store.evm.SfcSnaps.Generating()
+		snapGenOngoing = snapGenOngoing && sfcSnapGenOngoing
+		fullsyncPossibleEver = fullsyncPossibleEver && h.store.evm.HasSfcStateDB(h.store.GetBlockState().SfcStateRoot)
+		fullsyncPossibleNow = fullsyncPossibleNow && !snapGenOngoing
+	}
 	// never allow to stop fullsync as it may lead to a race condition due to overwritten EVM snapshot by snapsync
 	snapsyncPossible := h.config.AllowSnapsync && (h.syncStatus.Is(ssUnknown) || h.syncStatus.Is(ssSnaps))
 	snapsyncNeeded := !fullsyncPossibleEver || time.Since(h.store.GetEpochState().EpochStart.Time()) > snapsyncMinEndAge

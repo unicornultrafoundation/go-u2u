@@ -25,6 +25,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/metrics"
 	"github.com/unicornultrafoundation/go-u2u/rlp"
 )
@@ -104,6 +105,56 @@ type Account struct {
 	Balance  *big.Int
 	Root     common.Hash // merkle root of the storage trie
 	CodeHash []byte
+}
+
+// Cmp deeply compares two Account structs.
+// Returns true if all fields are identical, false if any field is different.
+func (a *Account) Cmp(other *Account) bool {
+	if a == nil && other == nil {
+		return true
+	}
+	if a == nil || other == nil {
+		return false
+	}
+
+	// Compare Nonce
+	if a.Nonce != other.Nonce {
+		return false
+	}
+
+	// Compare Balance
+	if a.Balance == nil && other.Balance == nil {
+		// Both nil, continue to next field
+	} else if a.Balance == nil || other.Balance == nil {
+		return false
+	} else {
+		if a.Balance.Cmp(other.Balance) != 0 {
+			return false
+		}
+	}
+
+	// Compare Root hash using Cmp method
+	if a.Root.Cmp(other.Root) != 0 {
+		return false
+	}
+
+	// Compare CodeHash byte slices
+	return bytes.Equal(a.CodeHash, other.CodeHash)
+}
+
+// String returns a human-readable string representation of the Account.
+func (a *Account) String() string {
+	if a == nil {
+		return "Account(nil)"
+	}
+
+	balanceStr := "<nil>"
+	if a.Balance != nil {
+		balanceStr = a.Balance.String()
+	}
+
+	return fmt.Sprintf("Account{Nonce: %d, Balance: %s, Root: %s, CodeHash: %x}",
+		a.Nonce, balanceStr, a.Root.Hex(), a.CodeHash)
 }
 
 // newObject creates a state object.
@@ -310,9 +361,13 @@ func (s *stateObject) setState(key, value common.Hash) {
 // finalise moves all dirty storage slots into the pending area to be hashed or
 // committed later. It is invoked at the end of every transaction.
 func (s *stateObject) finalise(prefetch bool) {
+	var isSfcContract = s.address.Cmp(common.HexToAddress("0xfc00face00000000000000000000000000000000")) == 0
 	slotsToPrefetch := make([][]byte, 0, len(s.dirtyStorage))
 	for key, value := range s.dirtyStorage {
 		s.pendingStorage[key] = value
+		if isSfcContract {
+			log.Debug("stateObject.finalise SFC contract", "key", key.Hex(), "value", value.Hex())
+		}
 		if value != s.originStorage[key] {
 			slotsToPrefetch = append(slotsToPrefetch, common.CopyBytes(key[:])) // Copy needed for closure
 		}
@@ -549,6 +604,10 @@ func (s *stateObject) Nonce() uint64 {
 
 func (s *stateObject) Root() common.Hash {
 	return s.data.Root
+}
+
+func (s *stateObject) Account() *Account {
+	return &s.data
 }
 
 // Never called, but must be present to allow stateObject to be used

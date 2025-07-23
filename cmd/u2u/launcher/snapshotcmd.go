@@ -19,10 +19,11 @@ package launcher
 import (
 	"bytes"
 	"errors"
-	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 	"os"
 	"path"
 	"time"
+
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 
 	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/common"
@@ -224,8 +225,9 @@ func verifyState(ctx *cli.Context) (err error) {
 
 	evmStore := gdb.EvmStore()
 	root := common.Hash(gdb.GetBlockState().FinalizedStateRoot)
+	sfcRoot := common.Hash(gdb.GetBlockState().SfcStateRoot)
 
-	err = evmStore.GenerateEvmSnapshot(root, false, false)
+	err = evmStore.GenerateEvmSnapshot(root, sfcRoot, false, false)
 	if err != nil {
 		log.Error("Failed to open snapshot tree", "err", err)
 		return err

@@ -5,7 +5,6 @@ on:
     branches:
       - master
 
-
 jobs:
   build:
     name: Build
@@ -25,14 +24,3 @@ jobs:
           go-version: '1.23.4'
       - name: Test with the Go CLI
         run: go test --timeout 10m -coverprofile=coverage.out ./...
-      - uses: sonarsource/sonarqube-scan-action@master
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-     
-      # If you wish to fail your job when the Quality Gate is red, uncomment the
-      # following lines. This would typically be used to fail a deployment.
-      # - uses: sonarsource/sonarqube-quality-gate-action@master
-      #   timeout-minutes: 5
-      #   env:
-      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

@@ -114,6 +114,15 @@ var (
 	underpricedTxMeter = metrics.GetOrRegisterMeter("txpool/underpriced", nil)
 	overflowedTxMeter  = metrics.GetOrRegisterMeter("txpool/overflowed", nil)
 
+	// throttleTxMeter counts how many transactions are rejected due to too-many-changes between
+	// txpool reorgs.
+	throttleTxMeter = metrics.NewRegisteredMeter("txpool/throttle", nil)
+	// reorgDurationTimer measures how long time a txpool reorg takes.
+	reorgDurationTimer = metrics.NewRegisteredTimer("txpool/reorgtime", nil)
+	// dropBetweenReorgHistogram counts how many drops we experience between two reorg runs. It is expected
+	// that this number is pretty low, since txpool reorgs happen very frequently.
+	dropBetweenReorgHistogram = metrics.NewRegisteredHistogram("txpool/dropbetweenreorg", nil, metrics.NewExpDecaySample(1028, 0.015))
+
 	pendingGauge = metrics.GetOrRegisterGauge("txpool/pending", nil)
 	queuedGauge  = metrics.GetOrRegisterGauge("txpool/queued", nil)
 	localGauge   = metrics.GetOrRegisterGauge("txpool/local", nil)
@@ -260,6 +269,8 @@ type TxPool struct {
 	reorgShutdownCh chan struct{}  // requests shutdown of scheduleReorgLoop
 	wg              sync.WaitGroup // tracks loop, scheduleReorgLoop
 	initDoneCh      chan struct{}  // is closed once the pool is initialized (for tests)
+
+	changesSinceReorg int // A counter for how many drops we've performed in-between reorg.
 }
 
 type txpoolResetRequest struct {
@@ -678,6 +689,16 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (replaced bool, err e
 			underpricedTxMeter.Mark(1)
 			return false, ErrUnderpriced
 		}
+
+		// We're about to replace a transaction. The reorg does a more thorough
+		// analysis of what to remove and how, but it runs async. We don't want to
+		// do too many replacements between reorg-runs, so we cap the number of
+		// replacements to 25% of the slots
+		if pool.changesSinceReorg > int(pool.config.GlobalSlots/4) {
+			throttleTxMeter.Mark(1)
+			return false, ErrTxPoolOverflow
+		}
+
 		// New transaction is better than our worse ones, make room for it.
 		// If it's a local transaction, forcibly discard all available transactions.
 		// Otherwise if we can't make enough room for new one, abort the operation.
@@ -693,7 +714,9 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (replaced bool, err e
 		for _, tx := range drop {
 			log.Trace("Discarding freshly underpriced transaction", "hash", tx.Hash(), "gasTipCap", tx.GasTipCap(), "gasFeeCap", tx.GasFeeCap())
 			underpricedTxMeter.Mark(1)
-			pool.removeTx(tx.Hash(), false)
+			dropped := pool.removeTx(tx.Hash(), false)
+
+			pool.changesSinceReorg += dropped
 		}
 	}
 	// Try to replace an existing transaction in the pending pool
@@ -990,11 +1013,11 @@ func (pool *TxPool) OnlyNotExisting(hashes []common.Hash) []common.Hash {
 
 // removeTx removes a single transaction from the queue, moving all subsequent
 // transactions back to the future queue.
-func (pool *TxPool) removeTx(hash common.Hash, outofbound bool) {
+func (pool *TxPool) removeTx(hash common.Hash, outofbound bool) int {
 	// Fetch the transaction we wish to delete
 	tx := pool.all.Get(hash)
 	if tx == nil {
-		return
+		return 0
 	}
 	addr, _ := types.Sender(pool.signer, tx) // already validated during insertion
 
@@ -1022,7 +1045,7 @@ func (pool *TxPool) removeTx(hash common.Hash, outofbound bool) {
 			pool.pendingNonces.setIfLower(addr, tx.Nonce())
 			// Reduce the pending counter
 			pendingGauge.Dec(int64(1 + len(invalids)))
-			return
+			return 1 + len(invalids)
 		}
 	}
 	// Transaction is in the future queue
@@ -1036,6 +1059,7 @@ func (pool *TxPool) removeTx(hash common.Hash, outofbound bool) {
 			delete(pool.beats, addr)
 		}
 	}
+	return 0
 }
 
 // requestReset requests a pool reset to the new head block.
@@ -1142,6 +1166,9 @@ func (pool *TxPool) scheduleReorgLoop() {
 
 // runReorg runs reset and promoteExecutables on behalf of scheduleReorgLoop.
 func (pool *TxPool) runReorg(done chan struct{}, reset *txpoolResetRequest, dirtyAccounts *accountSet, events map[common.Address]*txSortedMap) {
+	defer func(t0 time.Time) {
+		reorgDurationTimer.Update(time.Since(t0))
+	}(time.Now())
 	defer close(done)
 
 	var promoteAddrs []common.Address
@@ -1197,6 +1224,9 @@ func (pool *TxPool) runReorg(done chan struct{}, reset *txpoolResetRequest, dirt
 		highestPending := list.LastElement()
 		pool.pendingNonces.set(addr, highestPending.Nonce()+1)
 	}
+
+	dropBetweenReorgHistogram.Update(int64(pool.changesSinceReorg))
+	pool.changesSinceReorg = 0 // Reset change counter
 	pool.mu.Unlock()
 
 	// Notify subsystems for newly added transactions

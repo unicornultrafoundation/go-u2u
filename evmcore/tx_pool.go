@@ -34,7 +34,6 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/metrics"
 	"github.com/unicornultrafoundation/go-u2u/params"
-
 	"github.com/unicornultrafoundation/go-u2u/utils/signers/gsignercache"
 	"github.com/unicornultrafoundation/go-u2u/utils/txtime"
 )
@@ -260,6 +259,7 @@ type TxPool struct {
 	reorgDoneCh     chan chan struct{}
 	reorgShutdownCh chan struct{}  // requests shutdown of scheduleReorgLoop
 	wg              sync.WaitGroup // tracks loop, scheduleReorgLoop
+	initDoneCh      chan struct{}  // is closed once the pool is initialized (for tests)
 }
 
 type txpoolResetRequest struct {
@@ -289,6 +289,7 @@ func NewTxPool(config TxPoolConfig, chainconfig *params.ChainConfig, chain State
 		reorgDoneCh:     make(chan chan struct{}),
 		reorgShutdownCh: make(chan struct{}),
 		gasPrice:        new(big.Int).SetUint64(config.PriceLimit),
+		initDoneCh:      make(chan struct{}),
 	}
 	pool.locals = newAccountSet(pool.signer)
 	for _, addr := range config.Locals {
@@ -341,6 +342,8 @@ func (pool *TxPool) loop() {
 	defer evict.Stop()
 	defer journal.Stop()
 
+	// Notify tests that the init phase is done
+	close(pool.initDoneCh)
 	for {
 		select {
 		// Handle ChainHeadNotify
@@ -359,8 +362,8 @@ func (pool *TxPool) loop() {
 		case <-report.C:
 			pool.mu.RLock()
 			pending, queued := pool.stats()
-			stales := pool.priced.stales
 			pool.mu.RUnlock()
+			stales := int(pool.priced.stales.Load())
 
 			if pending != prevPending || queued != prevQueued || stales != prevStales {
 				log.Debug("Transaction pool status report", "executable", pending, "queued", queued, "stales", stales)

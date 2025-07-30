@@ -23,17 +23,16 @@ import (
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
+	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"github.com/unicornultrafoundation/go-helios/utils/piecefunc"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/common/math"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/params"
-
-	"github.com/unicornultrafoundation/go-helios/native/idx"
-	"github.com/unicornultrafoundation/go-helios/utils/piecefunc"
-
 	"github.com/unicornultrafoundation/go-u2u/u2u"
+	"github.com/unicornultrafoundation/go-u2u/utils"
 )
 
 var (
@@ -60,6 +59,7 @@ type Reader interface {
 	GetRules() u2u.Rules
 	GetPendingRules() u2u.Rules
 	PendingTxs() map[common.Address]types.Transactions
+	GasPrice() *big.Int
 }
 
 type tipCache struct {
@@ -137,22 +137,20 @@ func (gpo *Oracle) Stop() {
 func (gpo *Oracle) suggestTip(certainty uint64) *big.Int {
 	minPrice := gpo.backend.GetRules().Economy.MinGasPrice
 	pendingMinPrice := gpo.backend.GetPendingRules().Economy.MinGasPrice
-	adjustedMinGasPrice := math.BigMax(minPrice, pendingMinPrice)
+	adjustedMinGasPrice := utils.BigMax(minPrice, pendingMinPrice)
 
 	reactive := gpo.reactiveGasPrice(certainty)
 	constructive := gpo.constructiveGasPrice(gpo.c.totalGas(), 0.005*DecimalUnit+certainty/25, adjustedMinGasPrice)
 
-	combined := math.BigMax(reactive, constructive)
-	if combined.Cmp(gpo.cfg.MinGasPrice) < 0 {
-		combined = gpo.cfg.MinGasPrice
-	}
-	if combined.Cmp(gpo.cfg.MaxGasPrice) > 0 {
-		combined = gpo.cfg.MaxGasPrice
-	}
+	combined := utils.BigMin(
+		utils.BigMax(gpo.cfg.MinGasPrice, reactive, constructive),
+		gpo.cfg.MaxGasPrice,
+	)
 
 	tip := new(big.Int).Sub(combined, minPrice)
-	if tip.Cmp(gpo.cfg.MinGasTip) < 0 {
-		return new(big.Int).Set(gpo.cfg.MinGasTip)
+	minGasTip := gpo.backend.GasPrice()
+	if tip.Cmp(minGasTip) < 0 {
+		return minGasTip
 	}
 	return tip
 }

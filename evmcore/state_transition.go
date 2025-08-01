@@ -320,7 +320,9 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		nonce := st.state.GetNonce(sender.Address()) + 1
 		st.state.SetNonce(msg.From(), nonce)
 		if st.sfcState != nil {
-			st.sfcState.SetNonce(msg.From(), nonce)
+			if _, ok := st.evm.SfcPrecompile(st.msg.From()); ok {
+				st.sfcState.SetNonce(msg.From(), nonce)
+			}
 		}
 
 		var (

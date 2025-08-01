@@ -23,8 +23,8 @@ func NewStore(mainDB u2udb.Store) *Store {
 }
 
 // Close closes underlying database.
-func (s *Store) Close() {
-	_ = s.mainDB.Close()
+func (s *Store) Close() error {
+	return s.mainDB.Close()
 }
 
 // SetTxTrace stores []byte representation of transaction traces.

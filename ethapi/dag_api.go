@@ -2,12 +2,9 @@ package ethapi
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"math/big"
 
 	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
-	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/rpc"
 
 	"github.com/unicornultrafoundation/go-u2u/native"
@@ -65,17 +62,9 @@ func (s *PublicDAGChainAPI) GetHeads(ctx context.Context, epoch rpc.BlockNumber)
 // * When epoch is -2 the statistics for latest epoch is returned.
 // * When epoch is -1 the statistics for latest sealed epoch is returned.
 func (s *PublicBlockChainAPI) GetEpochStats(ctx context.Context, requestedEpoch rpc.BlockNumber) (map[string]interface{}, error) {
-	log.Warn("GetEpochStats API call is deprecated. Consider retrieving data from SFC v3 contract.")
-	if requestedEpoch != rpc.LatestBlockNumber && requestedEpoch != rpc.BlockNumber(s.b.CurrentEpoch(ctx))-1 {
-		return nil, errors.New("getEpochStats API call doesn't support retrieving previous sealed epochs")
+	_, es, err := s.b.GetEpochBlockState(ctx, requestedEpoch)
+	if err != nil {
+		return nil, err
 	}
-	start, end := s.b.SealedEpochTiming(ctx)
-	return map[string]interface{}{
-		"epoch":                 hexutil.Uint64(s.b.CurrentEpoch(ctx) - 1),
-		"start":                 hexutil.Uint64(start),
-		"end":                   hexutil.Uint64(end),
-		"totalFee":              (*hexutil.Big)(new(big.Int)),
-		"totalBaseRewardWeight": (*hexutil.Big)(new(big.Int)),
-		"totalTxRewardWeight":   (*hexutil.Big)(new(big.Int)),
-	}, nil
+	return es.ToMap()
 }

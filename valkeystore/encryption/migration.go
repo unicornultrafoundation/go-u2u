@@ -7,7 +7,6 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/accounts/keystore"
 	"github.com/unicornultrafoundation/go-u2u/common"
-
 	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"
 )
 
@@ -37,7 +36,7 @@ func MigrateAccountToValidatorKey(acckeypath string, valkeypath string, pubkey v
 	if err != nil {
 		return err
 	}
-	tmpName, err := writeTemporaryKeyFile(valkeypath, valkeyjson)
+	tmpName, err := keystore.WriteTemporaryKeyFile(valkeypath, valkeyjson)
 	if err != nil {
 		return err
 	}

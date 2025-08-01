@@ -4,7 +4,6 @@ import (
 	"os"
 
 	"github.com/unicornultrafoundation/go-helios/hash"
-	"github.com/unicornultrafoundation/go-helios/u2udb"
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
@@ -12,10 +11,11 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 )
 
 // dumpSfcStorage is the 'db dump-sfc' command.
-func dumpSfcStorage(ctx *cli.Context) error {
+func dumpSfcStorage(ctx *cli.Context) (err error) {
 	if !ctx.Bool(experimentalFlag.Name) {
 		utils.Fatalf("Add --experimental flag")
 	}
@@ -27,18 +27,11 @@ func dumpSfcStorage(ctx *cli.Context) error {
 	cfg.U2UStore.EVM.SfcEnabled = true
 
 	rawDbs := makeDirectDBsProducer(cfg)
+	defer caution.CloseAndReportError(&err, rawDbs, "failed to close raw DBs")
 	gdb := makeGossipStore(rawDbs, cfg)
-
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
 	evms := gdb.EvmStore()
-
-	defer evms.Close()
-	defer gdb.Close()
-	defer func(rawDbs u2udb.FullDBProducer) {
-		err := rawDbs.Close()
-		if err != nil {
-			log.Error("Error closing raw dbs", "err", err)
-		}
-	}(rawDbs)
+	defer caution.CloseAndReportError(&err, evms, "failed to close EVM store")
 
 	latestBlockIndex := gdb.GetLatestBlockIndex()
 	latestBlockHash := gdb.GetBlock(latestBlockIndex).Atropos

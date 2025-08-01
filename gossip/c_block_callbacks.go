@@ -56,6 +56,8 @@ var (
 	blockExecutionTimer = metrics.GetOrRegisterTimer("chain/execution", nil)
 	blockWriteTimer     = metrics.GetOrRegisterTimer("chain/write", nil)
 	blockAgeGauge       = metrics.GetOrRegisterGauge("chain/block/age", nil)
+
+	processedTxsMeter = metrics.GetOrRegisterMeter("chain/txs/processed", nil)
 )
 
 type ExtendedTxPosition struct {
@@ -122,11 +124,7 @@ func consensusCallbackBeginBlockFn(
 		if err != nil {
 			log.Crit("Failed to open StateDB", "err", err)
 		}
-		sfcStatedb, err := store.evm.SfcStateDB(bs.SfcStateRoot)
-		if err != nil {
-			log.Warn("Failed to get SFC state", "height", bs.LastBlock.Idx,
-				"event hash", bs.LastBlock.Atropos.Hex(), "err", err)
-		}
+		sfcStatedb, _ := store.evm.SfcStateDB(bs.SfcStateRoot)
 
 		evmStateReader := &EvmStateReader{
 			ServiceFeed: feed,
@@ -469,6 +467,7 @@ func consensusCallbackBeginBlockFn(
 						evmBlock.GasUsed, "txs", fmt.Sprintf("%d/%d", len(evmBlock.Transactions), len(block.SkippedTxs)),
 						"age", utils.PrettyDuration(blockAge), "t", utils.PrettyDuration(now.Sub(start)))
 					blockAgeGauge.Update(int64(blockAge.Nanoseconds()))
+					processedTxsMeter.Mark(int64(len(evmBlock.Transactions)))
 				}
 				if confirmedEvents.Len() != 0 {
 					atomic.StoreUint32(blockBusyFlag, 1)

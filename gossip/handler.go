@@ -15,15 +15,10 @@ import (
 	"github.com/unicornultrafoundation/go-helios/native/dag"
 	"github.com/unicornultrafoundation/go-helios/native/idx"
 	"github.com/unicornultrafoundation/go-helios/utils/datasemaphore"
+
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	notify "github.com/unicornultrafoundation/go-u2u/event"
-	"github.com/unicornultrafoundation/go-u2u/log"
-	"github.com/unicornultrafoundation/go-u2u/p2p"
-	"github.com/unicornultrafoundation/go-u2u/p2p/discover/discfilter"
-	"github.com/unicornultrafoundation/go-u2u/rlp"
-	"github.com/unicornultrafoundation/go-u2u/trie"
-
 	"github.com/unicornultrafoundation/go-u2u/eventcheck"
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/bvallcheck"
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/epochcheck"
@@ -47,10 +42,16 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/epochpacks/epstream/epstreamleecher"
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/epochpacks/epstream/epstreamseeder"
 	"github.com/unicornultrafoundation/go-u2u/gossip/protocols/snap/snapstream/snapleecher"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/logger"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/native/ibr"
 	"github.com/unicornultrafoundation/go-u2u/native/ier"
+	"github.com/unicornultrafoundation/go-u2u/p2p"
+	"github.com/unicornultrafoundation/go-u2u/p2p/discover/discfilter"
+	"github.com/unicornultrafoundation/go-u2u/rlp"
+	"github.com/unicornultrafoundation/go-u2u/trie"
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 	"github.com/unicornultrafoundation/go-u2u/utils/txtime"
 )
 
@@ -995,7 +996,8 @@ func (h *handler) handleMsg(p *peer) error {
 	if msg.Size > protocolMaxMsgSize {
 		return errResp(ErrMsgTooLarge, "%v > %v", msg.Size, protocolMaxMsgSize)
 	}
-	defer msg.Discard()
+	defer caution.ExecuteAndReportError(&err, msg.Discard, "failed to discard message")
+
 	// Acquire semaphore for serialized messages
 	eventsSizeEst := dag.Metric{
 		Num:  1,

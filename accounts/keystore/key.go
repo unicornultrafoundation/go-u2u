@@ -21,18 +21,20 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/unicornultrafoundation/go-u2u/accounts"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
+	"github.com/unicornultrafoundation/go-u2u/utils"
 )
 
 const (
@@ -188,30 +190,31 @@ func storeNewKey(ks keyStore, rand io.Reader, auth string) (*Key, accounts.Accou
 	return key, a, err
 }
 
-func writeTemporaryKeyFile(file string, content []byte) (string, error) {
+func WriteTemporaryKeyFile(file string, content []byte) (string, error) {
 	// Create the keystore directory with appropriate permissions
 	// in case it is not present yet.
 	const dirPerm = 0700
 	if err := os.MkdirAll(filepath.Dir(file), dirPerm); err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to create keystore directory: %w", err)
 	}
 	// Atomic write: create a temporary hidden file first
 	// then move it into place. TempFile assigns mode 0600.
-	f, err := ioutil.TempFile(filepath.Dir(file), "."+filepath.Base(file)+".tmp")
+	f, err := os.CreateTemp(filepath.Dir(file), "."+filepath.Base(file)+".tmp")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to create temporary key file: %w", err)
 	}
 	if _, err := f.Write(content); err != nil {
-		f.Close()
-		os.Remove(f.Name())
-		return "", err
+		return "", errors.Join(
+			fmt.Errorf("failed to write key file: %w", err),
+			utils.AnnotateIfError(f.Close(), "failed to close key file"),
+			utils.AnnotateIfError(os.Remove(f.Name()), "failed to remove temporary key file"),
+		)
 	}
-	f.Close()
-	return f.Name(), nil
+	return f.Name(), f.Close()
 }
 
 func writeKeyFile(file string, content []byte) error {
-	name, err := writeTemporaryKeyFile(file, content)
+	name, err := WriteTemporaryKeyFile(file, content)
 	if err != nil {
 		return err
 	}

@@ -23,20 +23,19 @@ import (
 	"path"
 	"time"
 
-	"github.com/unicornultrafoundation/go-u2u/utils/caution"
+	"gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/rawdb"
 	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
+	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"
+	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore/evmpruner"
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/rlp"
 	"github.com/unicornultrafoundation/go-u2u/trie"
-	"gopkg.in/urfave/cli.v1"
-
-	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"
-	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore/evmpruner"
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 )
 
 var (
@@ -73,6 +72,36 @@ u2u snapshot prune-state <state-root>
 will prune historical state data with the help of the state snapshot.
 All trie nodes and contract codes that do not belong to the specified
 version state will be deleted from the database. After pruning, only
+two version states are available: genesis and the specific one.
+
+The default pruning target is the HEAD state.
+
+WARNING: It's necessary to delete the trie clean cache after the pruning.
+If you specify another directory for the trie clean cache via "--cache.trie.journal"
+during the use of u2u, please also specify it here for correct deletion. Otherwise
+the trie clean cache with default directory will be deleted.
+`,
+			},
+			{
+				Name:      "prune-sfc-state",
+				Usage:     "Prune stale SFC state data based on the snapshot",
+				ArgsUsage: "<root> --sfc [--prune.exact] [--prune.genesis=false]",
+				Action:    utils.MigrateFlags(pruneSfcState),
+				Category:  "MISCELLANEOUS COMMANDS",
+				Flags: []cli.Flag{
+					PruneExactCommand,
+					PruneGenesisCommand,
+					DataDirFlag,
+					utils.AncientFlag,
+					utils.CacheTrieJournalFlag,
+					utils.BloomFilterSizeFlag,
+					utils.SFCFlag,
+				},
+				Description: `
+u2u snapshot prune-sfc-state --sfc <state-root>
+will prune historical SFC state data with the help of the state snapshot.
+All trie nodes and contract codes that do not belong to the specified
+version state will be deleted from the SFC database. After pruning, only
 two version states are available: genesis and the specific one.
 
 The default pruning target is the HEAD state.
@@ -208,6 +237,83 @@ func pruneState(ctx *cli.Context) (err error) {
 		log.Error("Failed to prune state", "err", err)
 		return err
 	}
+	return nil
+}
+
+func pruneSfcState(ctx *cli.Context) (err error) {
+	if !ctx.Bool(utils.SFCFlag.Name) {
+		return errors.New("--sfc flag is required for SFC state pruning")
+	}
+
+	cfg := makeAllConfigs(ctx)
+	rawDbs := makeDirectDBsProducer(cfg)
+	defer caution.CloseAndReportError(&err, rawDbs, "failed to close raw DBs")
+	gdb := makeGossipStore(rawDbs, cfg)
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
+
+	if gdb.GetGenesisID() == nil {
+		return errors.New("failed to open snapshot tree: genesis is not written")
+	}
+
+	tmpDir := path.Join(cfg.Node.DataDir, "tmp")
+	err = os.MkdirAll(tmpDir, 0700)
+	defer caution.ExecuteAndReportError(&err, func() error { return os.RemoveAll(tmpDir) },
+		"failed to remove tmp prune state dir")
+
+	genesisBlock := gdb.GetBlock(*gdb.GetGenesisBlockIndex())
+	genesisRoot := common.Hash{}
+	if !ctx.BoolT(PruneGenesisCommand.Name) && genesisBlock != nil {
+		if gdb.EvmStore().HasStateDB(genesisBlock.Root) {
+			genesisRoot = common.Hash(genesisBlock.Root)
+			log.Info("Excluding genesis state from SFC pruning", "root", genesisRoot)
+		}
+	}
+
+	if ctx.NArg() > 2 {
+		log.Error("Too many arguments given")
+		return errors.New("too many arguments")
+	}
+	var targetRoot common.Hash
+	if ctx.NArg() == 2 {
+		targetRoot, err = parseRoot(ctx.Args()[1])
+		if err != nil {
+			log.Error("Failed to resolve SFC state root", "err", err)
+			return err
+		}
+	}
+
+	sfcRoot := common.Hash(gdb.GetBlockState().SfcStateRoot)
+	var sfcBloom evmpruner.StateBloom
+	if ctx.Bool(PruneExactCommand.Name) {
+		log.Info("Initializing SFC LevelDB storage of in-use-keys")
+		sfcLset, sfcCloser, err := evmpruner.NewLevelDBSet(path.Join(tmpDir, "sfc-keys-in-use"))
+		if err != nil {
+			log.Error("Failed to create SFC state bloom", "err", err)
+			return err
+		}
+		sfcBloom = sfcLset
+		defer caution.CloseAndReportError(&err, sfcCloser, "failed to close SFC level DB set")
+	} else {
+		size := ctx.Uint64(utils.BloomFilterSizeFlag.Name)
+		log.Info("Initializing SFC bloom filter of in-use-keys", "size (MB)", size)
+		sfcBloom, err = evmpruner.NewProbabilisticSet(size)
+		if err != nil {
+			log.Error("Failed to create SFC state bloom", "err", err)
+			return err
+		}
+	}
+
+	sfcPruner, err := evmpruner.NewPruner(gdb.EvmStore().SfcDb, genesisRoot, sfcRoot, tmpDir, sfcBloom)
+	if err != nil {
+		log.Error("Failed to open SFC snapshot tree", "err", err)
+		return err
+	}
+
+	if err = sfcPruner.Prune(targetRoot); err != nil {
+		log.Error("Failed to prune SFC state", "err", err)
+		return err
+	}
+
 	return nil
 }
 

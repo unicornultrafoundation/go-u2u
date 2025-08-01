@@ -1,12 +1,13 @@
 package gossip
 
 import (
-	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/core/types"
+	"math/big"
 
 	"github.com/unicornultrafoundation/go-helios/hash"
 	"github.com/unicornultrafoundation/go-helios/native/idx"
 
+	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/eventcheck/gaspowercheck"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
@@ -40,6 +41,10 @@ func (b *GPOBackend) PendingTxs() map[common.Address]types.Transactions {
 		return map[common.Address]types.Transactions{}
 	}
 	return txs
+}
+
+func (b *GPOBackend) GasPrice() *big.Int {
+	return b.txpool.GasPrice()
 }
 
 // TotalGasPowerLeft returns a total amount of obtained gas power by the validators, according to the latest events from each validator

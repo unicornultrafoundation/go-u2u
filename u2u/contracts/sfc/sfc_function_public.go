@@ -6,6 +6,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
+	"github.com/unicornultrafoundation/go-u2u/log"
 )
 
 // Handler functions for SFC contract public and external functions
@@ -168,14 +169,11 @@ func handleUpdateLibAddress(evm *vm.EVM, caller common.Address, args []interface
 }
 
 // handleIsOwner returns whether the given address is the owner of the contract
-func handleIsOwner(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
+func handleIsOwner(evm *vm.EVM, caller common.Address, args []interface{}) ([]byte, uint64, error) {
 	var gasUsed uint64 = 0
 	// Get the arguments
-	if len(args) != 1 {
-		return nil, 0, vm.ErrExecutionReverted
-	}
-	addr, ok := args[0].(common.Address)
-	if !ok {
+	if len(args) != 0 {
+		log.Error("handleIsOwner: invalid number of arguments", "len", len(args))
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
@@ -184,11 +182,12 @@ func handleIsOwner(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	ownerAddr := common.BytesToAddress(owner.Bytes())
 
 	// Check if the address is the owner
-	isOwner := (addr.Cmp(ownerAddr) == 0)
+	isOwner := caller.Cmp(ownerAddr) == 0
 
 	// Pack the result
 	result, err := SfcAbi.Methods["isOwner"].Outputs.Pack(isOwner)
 	if err != nil {
+		log.Error("handleIsOwner: failed to pack result", "err", err)
 		return nil, 0, vm.ErrExecutionReverted
 	}
 

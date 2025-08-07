@@ -206,7 +206,7 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 		result, gasUsed, err = handleGetUnlockedStake(evm, args)
 
 	case "isOwner":
-		result, gasUsed, err = handleIsOwner(evm, args)
+		result, gasUsed, err = handleIsOwner(evm, caller, args)
 
 	// Public function handlers - State-changing methods
 	case "renounceOwnership":

@@ -1,6 +1,7 @@
 package gossip
 
 import (
+	"math/big"
 	"math/rand"
 	"sort"
 	"sync"
@@ -50,6 +51,10 @@ func (p *dummyTxPool) Nonce(addr common.Address) uint64 {
 
 func (p *dummyTxPool) Stats() (int, int) {
 	return p.Count(), 0
+}
+
+func (p *dummyTxPool) GasPrice() *big.Int {
+	return big.NewInt(0)
 }
 
 func (p *dummyTxPool) Content() (map[common.Address]types.Transactions, map[common.Address]types.Transactions) {

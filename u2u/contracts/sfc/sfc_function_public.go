@@ -108,10 +108,10 @@ func handleInitialize(evm *vm.EVM, caller common.Address, args []interface{}) ([
 // Version returns the version of the SFC contract
 func handleVersion(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	var gasUsed uint64 = 0
-	// Return the version as a string
-	version := "1.0.0"
+	// Version as a fixed array of 3 bytes (e.g. [3]byte{'3', '.', '0'})
+	version := [3]byte{'3', '0', '4'}
 
-	// Pack the version string
+	// Pack the version bytes
 	result, err := SfcAbi.Methods["version"].Outputs.Pack(version)
 	if err != nil {
 		return nil, 0, vm.ErrExecutionReverted

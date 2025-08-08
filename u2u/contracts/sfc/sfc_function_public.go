@@ -768,7 +768,7 @@ func handleGetEpochOfflineBlocks(evm *vm.EVM, args []interface{}) ([]byte, uint6
 	offlineBlocksBigInt := new(big.Int).SetBytes(offlineBlocks.Bytes())
 
 	// Pack the result
-	result, err := SfcAbi.Methods["getEpochOfflineBlocks"].Outputs.Pack(offlineBlocksBigInt)
+	result, err := SfcLibAbi.Methods["getEpochOfflineBlocks"].Outputs.Pack(offlineBlocksBigInt)
 	if err != nil {
 		return nil, gasUsed, vm.ErrExecutionReverted
 	}

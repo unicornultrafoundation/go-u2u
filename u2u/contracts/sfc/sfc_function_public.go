@@ -496,7 +496,7 @@ func handleGetEpochValidatorIDs(evm *vm.EVM, args []interface{}) ([]byte, uint64
 
 	// If no validators for this epoch, return empty array
 	if validatorIDsLength == 0 {
-		result, err := SfcAbi.Methods["getEpochValidatorIDs"].Outputs.Pack([]*big.Int{})
+		result, err := SfcLibAbi.Methods["getEpochValidatorIDs"].Outputs.Pack([]*big.Int{})
 		if err != nil {
 			return nil, gasUsed, vm.ErrExecutionReverted
 		}
@@ -519,7 +519,7 @@ func handleGetEpochValidatorIDs(evm *vm.EVM, args []interface{}) ([]byte, uint64
 	}
 
 	// Pack the result
-	result, err := SfcAbi.Methods["getEpochValidatorIDs"].Outputs.Pack(validatorIDs)
+	result, err := SfcLibAbi.Methods["getEpochValidatorIDs"].Outputs.Pack(validatorIDs)
 	if err != nil {
 		return nil, gasUsed, vm.ErrExecutionReverted
 	}
@@ -553,7 +553,7 @@ func handleGetEpochReceivedStake(evm *vm.EVM, args []interface{}) ([]byte, uint6
 	receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
 
 	// Pack the result
-	result, err := SfcAbi.Methods["getEpochReceivedStake"].Outputs.Pack(receivedStakeBigInt)
+	result, err := SfcLibAbi.Methods["getEpochReceivedStake"].Outputs.Pack(receivedStakeBigInt)
 	if err != nil {
 		return nil, gasUsed, vm.ErrExecutionReverted
 	}
@@ -596,7 +596,7 @@ func handleGetEpochAccumulatedRewardPerToken(evm *vm.EVM, args []interface{}) ([
 	accumulatedRewardPerTokenBigInt := new(big.Int).SetBytes(accumulatedRewardPerToken.Bytes())
 
 	// Pack the result
-	result, err := SfcAbi.Methods["getEpochAccumulatedRewardPerToken"].Outputs.Pack(accumulatedRewardPerTokenBigInt)
+	result, err := SfcLibAbi.Methods["getEpochAccumulatedRewardPerToken"].Outputs.Pack(accumulatedRewardPerTokenBigInt)
 	if err != nil {
 		return nil, gasUsed, vm.ErrExecutionReverted
 	}
@@ -639,7 +639,7 @@ func handleGetEpochAccumulatedUptime(evm *vm.EVM, args []interface{}) ([]byte, u
 	accumulatedUptimeBigInt := new(big.Int).SetBytes(accumulatedUptime.Bytes())
 
 	// Pack the result
-	result, err := SfcAbi.Methods["getEpochAccumulatedUptime"].Outputs.Pack(accumulatedUptimeBigInt)
+	result, err := SfcLibAbi.Methods["getEpochAccumulatedUptime"].Outputs.Pack(accumulatedUptimeBigInt)
 	if err != nil {
 		return nil, gasUsed, vm.ErrExecutionReverted
 	}
@@ -682,7 +682,7 @@ func handleGetEpochAccumulatedOriginatedTxsFee(evm *vm.EVM, args []interface{}) 
 	accumulatedTxsFeeBigInt := new(big.Int).SetBytes(accumulatedTxsFee.Bytes())
 
 	// Pack the result
-	result, err := SfcAbi.Methods["getEpochAccumulatedOriginatedTxsFee"].Outputs.Pack(accumulatedTxsFeeBigInt)
+	result, err := SfcLibAbi.Methods["getEpochAccumulatedOriginatedTxsFee"].Outputs.Pack(accumulatedTxsFeeBigInt)
 	if err != nil {
 		return nil, gasUsed, vm.ErrExecutionReverted
 	}
@@ -725,7 +725,7 @@ func handleGetEpochOfflineTime(evm *vm.EVM, args []interface{}) ([]byte, uint64,
 	offlineTimeBigInt := new(big.Int).SetBytes(offlineTime.Bytes())
 
 	// Pack the result
-	result, err := SfcAbi.Methods["getEpochOfflineTime"].Outputs.Pack(offlineTimeBigInt)
+	result, err := SfcLibAbi.Methods["getEpochOfflineTime"].Outputs.Pack(offlineTimeBigInt)
 	if err != nil {
 		return nil, gasUsed, vm.ErrExecutionReverted
 	}
@@ -813,7 +813,7 @@ func handleRewardsStash(evm *vm.EVM, args []interface{}) ([]byte, uint64, error)
 	totalRewards = new(big.Int).Add(totalRewards, rewards.UnlockedReward)
 
 	// Pack the result
-	result, err := SfcAbi.Methods["rewardsStash"].Outputs.Pack(totalRewards)
+	result, err := SfcLibAbi.Methods["rewardsStash"].Outputs.Pack(totalRewards)
 	if err != nil {
 		return nil, gasUsed, vm.ErrExecutionReverted
 	}

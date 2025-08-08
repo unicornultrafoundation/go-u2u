@@ -127,18 +127,48 @@ func handleGetValidator(evm *vm.EVM, args []interface{}) ([]byte, uint64, error)
 	if len(args) != 1 {
 		return nil, 0, vm.ErrExecutionReverted
 	}
-	validatorID := args[0].(*big.Int)
 
-	// Calculate the validator slot using our cached function
-	slotBigInt, slotGasUsed := getValidatorStatusSlot(validatorID)
+	validatorID, ok := args[0].(*big.Int)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+
+
+	// Get base slot of the mapping (struct start)
+	baseSlot, slotGasUsed := getValidatorStatusSlot(validatorID)
 	gasUsed += slotGasUsed
 
-	// Get the validator status
-	val := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slotBigInt))
-	gasUsed += SloadGasCost
+	// Helper to load storage at offset from base slot
+	loadField := func(offset int64) *big.Int {
+		slot := new(big.Int).Add(baseSlot, big.NewInt(offset))
+		gasUsed += SloadGasCost
+		return evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(slot)).Big()
+	}
 
-	// Don't use cache for ABI packing with parameters
-	result, err := SfcAbi.Methods["getValidator"].Outputs.Pack(val.Big())
+	// The Validator struct has the following fields:
+	// uint256 status;						// offset 0
+	// uint256 deactivatedTime;				// offset 1
+	// uint256 deactivatedEpoch;				// offset 2
+	// uint256 receivedStake;					// offset 3
+	// uint256 createdEpoch;					// offset 4
+	// uint256 createdTime;					// offset 5
+	// address auth;					// offset 6
+	fields := make([]*big.Int, 7)
+	for i := int64(0); i < 7; i++ {
+		fields[i] = loadField(i)
+	}
+
+	// ABI-pack the result
+	result, err := SfcAbi.Methods["getValidator"].Outputs.Pack(
+		fields[0],                      // status
+		fields[1],                      // deactivatedTime
+		fields[2],                      // deactivatedEpoch
+		fields[3],                      // receivedStake
+		fields[4],                      // createdEpoch
+		fields[5],                      // createdTime
+		common.BigToAddress(fields[6]), // auth
+	)
+
 	return result, gasUsed, err
 }
 

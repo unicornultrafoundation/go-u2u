@@ -92,23 +92,11 @@ func NewPublicEthereumAPI(b Backend) *PublicEthereumAPI {
 
 // GasPrice returns a suggestion for a gas price for legacy transactions.
 func (s *PublicEthereumAPI) GasPrice(ctx context.Context) (*hexutil.Big, error) {
-	// TODO(trinhdn97): may remove this test bumping
-	// Right now, we are not suggesting any tips since those have no real
-	// effect on the Sonic network. So the suggested gas price is a slightly
-	// increased base fee to provide a buffer for short-term price fluctuations.
-	price := s.b.CurrentBlock().Header().BaseFee
-	price = addPercentage(price, 10)
-	return (*hexutil.Big)(price), nil
-}
-
-func addPercentage(a *big.Int, percentage int) *big.Int {
-	if a == nil {
-		return big.NewInt(0)
+	tipcap := s.b.SuggestGasTipCap(ctx, gasprice.AsDefaultCertainty)
+	if head := s.b.CurrentBlock(); head.BaseFee != nil {
+		tipcap.Add(tipcap, head.BaseFee)
 	}
-	res := new(big.Int).Set(a)
-	res.Mul(res, big.NewInt(int64(percentage+100)))
-	res.Div(res, big.NewInt(100))
-	return res
+	return (*hexutil.Big)(tipcap), nil
 }
 
 // MaxPriorityFeePerGas returns a suggestion for a gas tip cap for dynamic fee transactions.

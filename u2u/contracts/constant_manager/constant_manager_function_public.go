@@ -671,8 +671,8 @@ func handleUpdateGasPriceBalancingCounterweight(evm *vm.EVM, args []interface{})
 	}
 
 	// Validate the value
-	minValue := big.NewInt(100)   // Minimum 100
-	maxValue := big.NewInt(10000) // Maximum 10,000
+	minValue := big.NewInt(100) // Minimum 100
+	maxValue := big.NewInt(10 * 86400) // Maximum 864,000
 
 	if value.Cmp(minValue) < 0 {
 		// Return ABI-encoded revert reason: "too small value"

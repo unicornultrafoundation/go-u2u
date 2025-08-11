@@ -30,6 +30,7 @@ type Store struct {
 	cfg StoreConfig
 
 	snapshotedEVMDB *switchable.Snapshot
+	snapshotedSFCDB *switchable.Snapshot
 	evm             *evmstore.Store
 	txtracer        *txtracer.Store
 	table           struct {
@@ -171,6 +172,9 @@ func (s *Store) Close() error {
 	if s.snapshotedEVMDB != nil {
 		s.snapshotedEVMDB.Release()
 	}
+	if s.snapshotedSFCDB != nil {
+		s.snapshotedSFCDB.Release()
+	}
 	if err := table.CloseTables(&s.table); err != nil {
 		return err
 	}
@@ -212,6 +216,12 @@ func (s *Store) commitEVM(flush bool) {
 	if err != nil {
 		s.Log.Crit("Failed to commit EVM storage", "err", err)
 	}
+	if s.cfg.EVM.SfcEnabled && !common.IsNilInterface(s.evm.SfcState) {
+		err = s.evm.CommitSfcState(bs.LastBlock.Idx, bs.SfcStateRoot, flush)
+		if err != nil {
+			s.Log.Crit("Failed to commit SFC storage", "err", err)
+		}
+	}
 	s.evm.Cap()
 }
 
@@ -223,19 +233,23 @@ func (s *Store) cleanCommitEVM() {
 	s.evm.Cap()
 }
 
-func (s *Store) GenerateSnapshotAt(root common.Hash, async bool) (err error) {
-	err = s.generateSnapshotAt(s.evm, root, true, async)
+func (s *Store) GenerateSnapshotAt(root common.Hash, sfcRoot common.Hash, async bool) (err error) {
+	err = s.generateSnapshotAt(s.evm, root, sfcRoot, true, async)
 	if err != nil {
 		s.Log.Error("EVM snapshot", "at", root, "err", err)
 	} else {
 		gen, _ := s.evm.Snaps.Generating()
 		s.Log.Info("EVM snapshot", "at", root, "generating", gen)
+		if s.evm.SfcSnaps != nil {
+			gen, _ = s.evm.SfcSnaps.Generating()
+			s.Log.Info("SFC snapshot", "at", sfcRoot, "generating", gen)
+		}
 	}
 	return err
 }
 
-func (s *Store) generateSnapshotAt(evmStore *evmstore.Store, root common.Hash, rebuild, async bool) (err error) {
-	return evmStore.GenerateEvmSnapshot(root, rebuild, async)
+func (s *Store) generateSnapshotAt(evmStore *evmstore.Store, root common.Hash, sfcRoot common.Hash, rebuild, async bool) (err error) {
+	return evmStore.GenerateEvmSnapshot(root, sfcRoot, rebuild, async)
 }
 
 // Commit changes.
@@ -278,12 +292,20 @@ func (s *Store) CaptureEvmKvdbSnapshot() {
 		s.Log.Error("Failed to check EVM snapshot generation", "err", err)
 		return
 	}
+	if s.evm.SfcSnaps != nil {
+		_, err = s.evm.SfcSnaps.Generating()
+		if err != nil {
+			s.Log.Error("Failed to check SFC snapshot generation", "err", err)
+			return
+		}
+	}
 	if gen {
 		return
 	}
+
 	newEvmKvdbSnap, err := s.evm.EVMDB().GetSnapshot()
 	if err != nil {
-		s.Log.Error("Failed to initialize frozen KVDB", "err", err)
+		s.Log.Error("Failed to initialize frozen EVM KVDB", "err", err)
 		return
 	}
 	if s.snapshotedEVMDB == nil {
@@ -295,10 +317,29 @@ func (s *Store) CaptureEvmKvdbSnapshot() {
 			old.Release()
 		}
 	}
-	newStore := s.evm.ResetWithEVMDB(snap2udb.Wrap(s.snapshotedEVMDB))
+	if s.cfg.EVM.SfcEnabled {
+		newSfcKvdbSnap, err := s.evm.SFCDB().GetSnapshot()
+		if err != nil {
+			s.Log.Error("Failed to initialize frozen SFC KVDB", "err", err)
+			return
+		}
+		if s.snapshotedSFCDB == nil {
+			s.snapshotedSFCDB = switchable.Wrap(newSfcKvdbSnap)
+		} else {
+			old := s.snapshotedSFCDB.SwitchTo(newSfcKvdbSnap)
+			// release only after DB is atomically switched
+			if old != nil {
+				old.Release()
+			}
+		}
+	}
+
+	newStore := s.evm.ResetWithEVMDB(snap2udb.Wrap(s.snapshotedEVMDB), snap2udb.Wrap(s.snapshotedSFCDB))
 	newStore.Snaps = nil
+	newStore.SfcSnaps = nil
 	root := s.GetBlockState().FinalizedStateRoot
-	err = s.generateSnapshotAt(newStore, common.Hash(root), false, false)
+	sfcRoot := s.GetBlockState().SfcStateRoot
+	err = s.generateSnapshotAt(newStore, common.Hash(root), common.Hash(sfcRoot), false, false)
 	if err != nil {
 		s.Log.Error("Failed to initialize EVM snapshot for frozen KVDB", "err", err)
 		return

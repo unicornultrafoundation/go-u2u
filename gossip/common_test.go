@@ -196,7 +196,11 @@ func newTestEnv(firstEpoch idx.Epoch, validatorsNum idx.Validator) *testEnv {
 		em.Start()
 	}
 
-	_ = env.store.GenerateSnapshotAt(common.Hash(store.GetBlockState().FinalizedStateRoot), false)
+	_ = env.store.GenerateSnapshotAt(
+		common.Hash(store.GetBlockState().FinalizedStateRoot),
+		common.Hash(store.GetBlockState().SfcStateRoot),
+		false,
+	)
 	env.blockProcTasks.Start(1)
 	env.verWatcher.Start()
 

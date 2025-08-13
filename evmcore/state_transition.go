@@ -18,6 +18,7 @@ package evmcore
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -343,16 +344,25 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		if metrics.EnabledExpensive {
 			totalEvmExecutionElapsed = time.Since(start)
 		}
-		if _, ok := st.evm.SfcPrecompile(st.to()); ok && st.sfcState != nil && vmerr == nil {
+		if _, ok := st.evm.SfcPrecompile(st.to()); ok && st.sfcState != nil && errors.Is(vmerr, vm.ErrOutOfGas) {
 			start = time.Now()
 			sfcRet, _, sfcErr := st.evm.CallSFC(sender, st.to(), st.data, originalGas, originalValue)
 			if sfcErr != nil {
 				log.Error("TransitionDb: CallSFC failed", "sfcErr", sfcErr, "ret", common.Bytes2Hex(ret))
 			}
-			if bytes.Compare(ret, sfcRet) != 0 {
+			if !bytes.Equal(ret, sfcRet) {
 				log.Error("TransitionDb: CallSFC result different from EVM",
 					"ret", common.Bytes2Hex(ret), "sfcRet", common.Bytes2Hex(sfcRet))
+
+				common.SendInterrupt()
 			}
+
+			if errors.Is(vmerr, sfcErr) {
+				log.Error("TransitionDb: CallSFC error matches EVM error",
+					"vmErr", vmerr, "sfcErr", sfcErr)
+				common.SendInterrupt()
+			}
+
 			if metrics.EnabledExpensive {
 				totalSfcExecutionElapsed = time.Since(start)
 			}

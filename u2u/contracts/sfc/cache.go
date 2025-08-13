@@ -13,6 +13,7 @@ import (
 
 // HashCache stores previously calculated hashes to avoid redundant calculations
 type HashCache struct {
+	// Map from input bytes to calculated hash
 	cache map[string]common.Hash // maps hex-encoded input to computed hash
 }
 
@@ -49,6 +50,7 @@ func (c *HashCache) CachedKeccak256Hash(input []byte) common.Hash {
 
 // SlotCache stores previously calculated storage slots
 type SlotCache struct {
+	// Map from string representation of inputs to calculated slots
 	cache map[string]*big.Int
 }
 

@@ -13,9 +13,7 @@ import (
 
 // HashCache stores previously calculated hashes to avoid redundant calculations
 type HashCache struct {
-	// Map from input bytes to calculated hash
-	mu    sync.RWMutex
-	cache map[string]common.Hash
+	cache map[string]common.Hash // maps hex-encoded input to computed hash
 }
 
 // NewHashCache creates a new hash cache
@@ -27,30 +25,15 @@ func NewHashCache() *HashCache {
 
 // GetOrCompute gets a hash from the cache or computes it if not found
 func (c *HashCache) GetOrCompute(input []byte) common.Hash {
-	// Convert input to string for map key
 	key := string(input)
 
-	// First check with read lock
-	c.mu.RLock()
-	if hash, found := c.cache[key]; found {
-		c.mu.RUnlock()
+	if hash, exists := c.cache[key]; exists {
 		return hash
 	}
-	c.mu.RUnlock()
 
 	// Compute hash if not in cache
 	hash := crypto.Keccak256Hash(input)
-
-	// Store in cache
-	c.mu.Lock()
-	// Double-check in case another goroutine computed it
-	if existing, found := c.cache[key]; found {
-		c.mu.Unlock()
-		return existing
-	}
 	c.cache[key] = hash
-	c.mu.Unlock()
-
 	return hash
 }
 
@@ -66,8 +49,6 @@ func (c *HashCache) CachedKeccak256Hash(input []byte) common.Hash {
 
 // SlotCache stores previously calculated storage slots
 type SlotCache struct {
-	// Map from string representation of inputs to calculated slots
-	mu    sync.RWMutex
 	cache map[string]*big.Int
 }
 
@@ -80,34 +61,27 @@ func NewSlotCache() *SlotCache {
 
 // GetOrCompute gets a slot from the cache or computes it using the provided function
 func (c *SlotCache) GetOrCompute(key string, computeFunc func() (*big.Int, uint64)) (*big.Int, uint64) {
-	// First check with read lock
-	c.mu.RLock()
-	if slot, found := c.cache[key]; found {
-		c.mu.RUnlock()
-		return slot, 0 // No gas used for cache hit
+	if slot, exists := c.cache[key]; exists {
+		return slot, 0 // cache hit - no gas consumed
 	}
-	c.mu.RUnlock()
 
-	// Compute if not found
+	// Cache miss - compute and store
 	slot, gasUsed := computeFunc()
-
-	// Store in cache
-	c.mu.Lock()
-	// Double-check in case another goroutine computed it
-	if existing, found := c.cache[key]; found {
-		c.mu.Unlock()
-		return existing, 0 // No gas used for cache hit
-	}
 	c.cache[key] = slot
-	c.mu.Unlock()
-
 	return slot, gasUsed
 }
 
 // SFCCache contains all caches used by the SFC package
 type SFCCache struct {
-	Hash *HashCache
-	Slot *SlotCache
+	Hash *HashCache // Keccak256 hash computations
+	Slot *SlotCache // Storage slot calculations
+
+	// Fine-grained mutexes for optimal concurrency
+	validatorMu sync.RWMutex // protects ValidatorSlot
+	epochMu     sync.RWMutex // protects EpochSlot  
+	hashMu      sync.RWMutex // protects Hash, HashInputs, AddressHashInputs, NestedHashInputs
+	abiMu       sync.RWMutex // protects AbiPackCache
+	slotMu      sync.RWMutex // protects Slot
 
 	// Specialized caches for common operations
 	ValidatorSlot map[string]*big.Int
@@ -150,27 +124,49 @@ func GetSFCCache() *SFCCache {
 
 // CachedKeccak256 computes the Keccak256 hash using the cache
 func CachedKeccak256(input []byte) []byte {
+	sfcCache.hashMu.Lock()
+	defer sfcCache.hashMu.Unlock()
 	return sfcCache.Hash.CachedKeccak256(input)
 }
 
 // CachedKeccak256Hash computes the Keccak256 hash using the cache
 func CachedKeccak256Hash(input []byte) common.Hash {
+	sfcCache.hashMu.Lock()
+	defer sfcCache.hashMu.Unlock()
 	return sfcCache.Hash.CachedKeccak256Hash(input)
+}
+
+// GetCachedSlot gets a slot from the cache or computes it using the provided function
+func GetCachedSlot(key string, computeFunc func() (*big.Int, uint64)) (*big.Int, uint64) {
+	sfcCache.slotMu.Lock()
+	defer sfcCache.slotMu.Unlock()
+	return sfcCache.Slot.GetOrCompute(key, computeFunc)
 }
 
 // GetCachedValidatorSlot gets or computes the validator slot
 func GetCachedValidatorSlot(validatorID *big.Int) (*big.Int, uint64) {
 	key := validatorID.String()
 
+	// Fast path: check with read lock
+	sfcCache.validatorMu.RLock()
 	if slot, found := sfcCache.ValidatorSlot[key]; found {
+		sfcCache.validatorMu.RUnlock()
 		return slot, 0 // No gas used for cache hit
 	}
+	sfcCache.validatorMu.RUnlock()
 
-	// Compute if not found
+	// Slow path: compute and store
 	slot, gasUsed := getValidatorStatusSlot(validatorID)
 
-	// Store in cache
+	// Store with write lock
+	sfcCache.validatorMu.Lock()
+	// Check again in case another goroutine computed it while we were computing
+	if existing, found := sfcCache.ValidatorSlot[key]; found {
+		sfcCache.validatorMu.Unlock()
+		return existing, 0 // Return cached result, no gas charged
+	}
 	sfcCache.ValidatorSlot[key] = slot
+	sfcCache.validatorMu.Unlock()
 
 	return slot, gasUsed
 }
@@ -179,15 +175,26 @@ func GetCachedValidatorSlot(validatorID *big.Int) (*big.Int, uint64) {
 func GetCachedEpochSnapshotSlot(epoch *big.Int) (*big.Int, uint64) {
 	key := epoch.String()
 
+	// Fast path: check with read lock
+	sfcCache.epochMu.RLock()
 	if slot, found := sfcCache.EpochSlot[key]; found {
+		sfcCache.epochMu.RUnlock()
 		return slot, 0 // No gas used for cache hit
 	}
+	sfcCache.epochMu.RUnlock()
 
-	// Compute if not found
+	// Slow path: compute and store
 	slot, gasUsed := getEpochSnapshotSlot(epoch)
 
-	// Store in cache
+	// Store with write lock
+	sfcCache.epochMu.Lock()
+	// Check again in case another goroutine computed it while we were computing
+	if existing, found := sfcCache.EpochSlot[key]; found {
+		sfcCache.epochMu.Unlock()
+		return existing, 0 // Return cached result, no gas charged
+	}
 	sfcCache.EpochSlot[key] = slot
+	sfcCache.epochMu.Unlock()
 
 	return slot, gasUsed
 }
@@ -203,9 +210,12 @@ func CreateHashInput(validatorID *big.Int, slotConstant int64) []byte {
 	cacheKey := validatorID.String() + "_" + strconv.FormatInt(slotConstant, 10)
 
 	// Check if the hash input is already cached
+	sfcCache.hashMu.RLock()
 	if hashInput, found := sfcCache.HashInputs[cacheKey]; found {
+		sfcCache.hashMu.RUnlock()
 		return hashInput
 	}
+	sfcCache.hashMu.RUnlock()
 
 	// If not in cache, create the hash input directly
 	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)
@@ -223,7 +233,14 @@ func CreateHashInput(validatorID *big.Int, slotConstant int64) []byte {
 	hashInput = append(hashInput, slotBytes...)
 
 	// Store in cache
+	sfcCache.hashMu.Lock()
+	// Double-check in case another goroutine computed it
+	if existing, found := sfcCache.HashInputs[cacheKey]; found {
+		sfcCache.hashMu.Unlock()
+		return existing
+	}
 	sfcCache.HashInputs[cacheKey] = hashInput
+	sfcCache.hashMu.Unlock()
 
 	return hashInput
 }
@@ -234,9 +251,12 @@ func CreateAddressHashInput(addr common.Address, slotConstant int64) []byte {
 	cacheKey := addr.String() + "_" + strconv.FormatInt(slotConstant, 10)
 
 	// Check if the hash input is already cached
+	sfcCache.hashMu.RLock()
 	if hashInput, found := sfcCache.AddressHashInputs[cacheKey]; found {
+		sfcCache.hashMu.RUnlock()
 		return hashInput
 	}
+	sfcCache.hashMu.RUnlock()
 
 	// If not in cache, create the hash input directly
 	addrBytes := common.LeftPadBytes(addr.Bytes(), 32)
@@ -254,7 +274,14 @@ func CreateAddressHashInput(addr common.Address, slotConstant int64) []byte {
 	hashInput = append(hashInput, slotBytes...)
 
 	// Store in cache
+	sfcCache.hashMu.Lock()
+	// Double-check in case another goroutine computed it
+	if existing, found := sfcCache.AddressHashInputs[cacheKey]; found {
+		sfcCache.hashMu.Unlock()
+		return existing
+	}
 	sfcCache.AddressHashInputs[cacheKey] = hashInput
+	sfcCache.hashMu.Unlock()
 
 	return hashInput
 }
@@ -283,9 +310,12 @@ func CreateNestedAddressHashInput(addr common.Address, hash []byte) []byte {
 	cacheKey := addr.String() + "_" + common.Bytes2Hex(hash)
 
 	// Check if the hash input is already cached
+	sfcCache.hashMu.RLock()
 	if hashInput, found := sfcCache.NestedHashInputs[cacheKey]; found {
+		sfcCache.hashMu.RUnlock()
 		return hashInput
 	}
+	sfcCache.hashMu.RUnlock()
 
 	// If not in cache, create the hash input directly
 	addrBytes := common.LeftPadBytes(addr.Bytes(), 32)
@@ -302,7 +332,14 @@ func CreateNestedAddressHashInput(addr common.Address, hash []byte) []byte {
 	hashInput = append(hashInput, hash...)
 
 	// Store in cache
+	sfcCache.hashMu.Lock()
+	// Double-check in case another goroutine computed it
+	if existing, found := sfcCache.NestedHashInputs[cacheKey]; found {
+		sfcCache.hashMu.Unlock()
+		return existing
+	}
 	sfcCache.NestedHashInputs[cacheKey] = hashInput
+	sfcCache.hashMu.Unlock()
 
 	return hashInput
 }
@@ -313,9 +350,12 @@ func CreateValidatorMappingHashInput(validatorID *big.Int, mappingSlot *big.Int)
 	cacheKey := validatorID.String() + "_mapping_" + mappingSlot.String()
 
 	// Check if the hash input is already cached
+	sfcCache.hashMu.RLock()
 	if hashInput, found := sfcCache.HashInputs[cacheKey]; found {
+		sfcCache.hashMu.RUnlock()
 		return hashInput
 	}
+	sfcCache.hashMu.RUnlock()
 
 	// If not in cache, create the hash input directly
 	validatorIDBytes := common.LeftPadBytes(validatorID.Bytes(), 32)
@@ -333,7 +373,14 @@ func CreateValidatorMappingHashInput(validatorID *big.Int, mappingSlot *big.Int)
 	hashInput = append(hashInput, mappingSlotBytes...)
 
 	// Store in cache
+	sfcCache.hashMu.Lock()
+	// Double-check in case another goroutine computed it
+	if existing, found := sfcCache.HashInputs[cacheKey]; found {
+		sfcCache.hashMu.Unlock()
+		return existing
+	}
 	sfcCache.HashInputs[cacheKey] = hashInput
+	sfcCache.hashMu.Unlock()
 
 	return hashInput
 }
@@ -344,9 +391,12 @@ func CreateAddressMethodHashInput(addr common.Address, methodID []byte) []byte {
 	cacheKey := addr.String() + "_method_" + common.Bytes2Hex(methodID)
 
 	// Check if the hash input is already cached
+	sfcCache.hashMu.RLock()
 	if hashInput, found := sfcCache.AddressHashInputs[cacheKey]; found {
+		sfcCache.hashMu.RUnlock()
 		return hashInput
 	}
+	sfcCache.hashMu.RUnlock()
 
 	// If not in cache, create the hash input directly
 	addrBytes := common.LeftPadBytes(addr.Bytes(), 32)
@@ -363,7 +413,14 @@ func CreateAddressMethodHashInput(addr common.Address, methodID []byte) []byte {
 	hashInput = append(hashInput, methodID...)
 
 	// Store in cache
+	sfcCache.hashMu.Lock()
+	// Double-check in case another goroutine computed it
+	if existing, found := sfcCache.AddressHashInputs[cacheKey]; found {
+		sfcCache.hashMu.Unlock()
+		return existing
+	}
 	sfcCache.AddressHashInputs[cacheKey] = hashInput
+	sfcCache.hashMu.Unlock()
 
 	return hashInput
 }
@@ -377,9 +434,12 @@ func CreateAddressParamsHashInput(addr common.Address, params ...[]byte) []byte 
 	}
 
 	// Check if the hash input is already cached
+	sfcCache.hashMu.RLock()
 	if hashInput, found := sfcCache.AddressHashInputs[cacheKey]; found {
+		sfcCache.hashMu.RUnlock()
 		return hashInput
 	}
+	sfcCache.hashMu.RUnlock()
 
 	// If not in cache, create the hash input directly
 	addrBytes := common.LeftPadBytes(addr.Bytes(), 32)
@@ -404,7 +464,14 @@ func CreateAddressParamsHashInput(addr common.Address, params ...[]byte) []byte 
 	}
 
 	// Store in cache
+	sfcCache.hashMu.Lock()
+	// Double-check in case another goroutine computed it
+	if existing, found := sfcCache.AddressHashInputs[cacheKey]; found {
+		sfcCache.hashMu.Unlock()
+		return existing
+	}
 	sfcCache.AddressHashInputs[cacheKey] = hashInput
+	sfcCache.hashMu.Unlock()
 
 	return hashInput
 }
@@ -415,9 +482,12 @@ func CreateOffsetSlotHashInput(offset int64, slot *big.Int) []byte {
 	cacheKey := strconv.FormatInt(offset, 10) + "_slot_" + slot.String()
 
 	// Check if the hash input is already cached
+	sfcCache.hashMu.RLock()
 	if hashInput, found := sfcCache.HashInputs[cacheKey]; found {
+		sfcCache.hashMu.RUnlock()
 		return hashInput
 	}
+	sfcCache.hashMu.RUnlock()
 
 	// If not in cache, create the hash input directly
 	offsetBytes := common.LeftPadBytes(big.NewInt(offset).Bytes(), 32)
@@ -435,7 +505,14 @@ func CreateOffsetSlotHashInput(offset int64, slot *big.Int) []byte {
 	hashInput = append(hashInput, slotBytes...)
 
 	// Store in cache
+	sfcCache.hashMu.Lock()
+	// Double-check in case another goroutine computed it
+	if existing, found := sfcCache.HashInputs[cacheKey]; found {
+		sfcCache.hashMu.Unlock()
+		return existing
+	}
 	sfcCache.HashInputs[cacheKey] = hashInput
+	sfcCache.hashMu.Unlock()
 
 	return hashInput
 }
@@ -466,9 +543,12 @@ func CachedAbiPack(abiType, method string, args ...interface{}) ([]byte, error) 
 		key := abiType + ":" + method
 
 		// Check if the result is already cached
+		sfcCache.abiMu.RLock()
 		if packed, ok := sfcCache.AbiPackCache[key]; ok {
+			sfcCache.abiMu.RUnlock()
 			return packed, nil
 		}
+		sfcCache.abiMu.RUnlock()
 
 		// Not in cache, pack it
 		var packed []byte
@@ -492,7 +572,14 @@ func CachedAbiPack(abiType, method string, args ...interface{}) ([]byte, error) 
 		}
 
 		// Store in cache
+		sfcCache.abiMu.Lock()
+		// Double-check in case another goroutine computed it
+		if existing, ok := sfcCache.AbiPackCache[key]; ok {
+			sfcCache.abiMu.Unlock()
+			return existing, nil
+		}
 		sfcCache.AbiPackCache[key] = packed
+		sfcCache.abiMu.Unlock()
 
 		return packed, nil
 	}

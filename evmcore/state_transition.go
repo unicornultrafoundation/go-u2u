@@ -344,7 +344,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		if metrics.EnabledExpensive {
 			totalEvmExecutionElapsed = time.Since(start)
 		}
-		if _, ok := st.evm.SfcPrecompile(st.to()); ok && st.sfcState != nil && errors.Is(vmerr, vm.ErrOutOfGas) {
+		if _, ok := st.evm.SfcPrecompile(st.to()); ok && st.sfcState != nil && !errors.Is(vmerr, vm.ErrOutOfGas) {
 			start = time.Now()
 			sfcRet, _, sfcErr := st.evm.CallSFC(sender, st.to(), st.data, originalGas, originalValue)
 			if sfcErr != nil {

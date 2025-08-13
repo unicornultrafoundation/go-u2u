@@ -357,8 +357,8 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 				common.SendInterrupt()
 			}
 
-			if errors.Is(vmerr, sfcErr) {
-				log.Error("TransitionDb: CallSFC error matches EVM error",
+			if !errors.Is(vmerr, sfcErr) {
+				log.Error("TransitionDb: CallSFC error mismatched EVM error",
 					"vmErr", vmerr, "sfcErr", sfcErr)
 				common.SendInterrupt()
 			}

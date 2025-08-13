@@ -147,7 +147,7 @@ func GetCachedSlot(key string, computeFunc func() (*big.Int, uint64)) (*big.Int,
 func GetCachedValidatorSlot(validatorID *big.Int) (*big.Int, uint64) {
 	key := validatorID.String()
 
-	// Fast path: check with read lock
+	// Check with read lock
 	sfcCache.validatorMu.RLock()
 	if slot, found := sfcCache.ValidatorSlot[key]; found {
 		sfcCache.validatorMu.RUnlock()
@@ -155,7 +155,7 @@ func GetCachedValidatorSlot(validatorID *big.Int) (*big.Int, uint64) {
 	}
 	sfcCache.validatorMu.RUnlock()
 
-	// Slow path: compute and store
+	// Compute and store
 	slot, gasUsed := getValidatorStatusSlot(validatorID)
 
 	// Store with write lock
@@ -175,7 +175,7 @@ func GetCachedValidatorSlot(validatorID *big.Int) (*big.Int, uint64) {
 func GetCachedEpochSnapshotSlot(epoch *big.Int) (*big.Int, uint64) {
 	key := epoch.String()
 
-	// Fast path: check with read lock
+	// Check with read lock
 	sfcCache.epochMu.RLock()
 	if slot, found := sfcCache.EpochSlot[key]; found {
 		sfcCache.epochMu.RUnlock()
@@ -183,7 +183,7 @@ func GetCachedEpochSnapshotSlot(epoch *big.Int) (*big.Int, uint64) {
 	}
 	sfcCache.epochMu.RUnlock()
 
-	// Slow path: compute and store
+	// Compute and store
 	slot, gasUsed := getEpochSnapshotSlot(epoch)
 
 	// Store with write lock

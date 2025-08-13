@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"sync"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
@@ -13,6 +14,7 @@ import (
 // HashCache stores previously calculated hashes to avoid redundant calculations
 type HashCache struct {
 	// Map from input bytes to calculated hash
+	mu    sync.RWMutex
 	cache map[string]common.Hash
 }
 
@@ -28,15 +30,26 @@ func (c *HashCache) GetOrCompute(input []byte) common.Hash {
 	// Convert input to string for map key
 	key := string(input)
 
+	// First check with read lock
+	c.mu.RLock()
 	if hash, found := c.cache[key]; found {
+		c.mu.RUnlock()
 		return hash
 	}
+	c.mu.RUnlock()
 
 	// Compute hash if not in cache
 	hash := crypto.Keccak256Hash(input)
 
 	// Store in cache
+	c.mu.Lock()
+	// Double-check in case another goroutine computed it
+	if existing, found := c.cache[key]; found {
+		c.mu.Unlock()
+		return existing
+	}
 	c.cache[key] = hash
+	c.mu.Unlock()
 
 	return hash
 }
@@ -54,6 +67,7 @@ func (c *HashCache) CachedKeccak256Hash(input []byte) common.Hash {
 // SlotCache stores previously calculated storage slots
 type SlotCache struct {
 	// Map from string representation of inputs to calculated slots
+	mu    sync.RWMutex
 	cache map[string]*big.Int
 }
 
@@ -66,15 +80,26 @@ func NewSlotCache() *SlotCache {
 
 // GetOrCompute gets a slot from the cache or computes it using the provided function
 func (c *SlotCache) GetOrCompute(key string, computeFunc func() (*big.Int, uint64)) (*big.Int, uint64) {
+	// First check with read lock
+	c.mu.RLock()
 	if slot, found := c.cache[key]; found {
+		c.mu.RUnlock()
 		return slot, 0 // No gas used for cache hit
 	}
+	c.mu.RUnlock()
 
 	// Compute if not found
 	slot, gasUsed := computeFunc()
 
 	// Store in cache
+	c.mu.Lock()
+	// Double-check in case another goroutine computed it
+	if existing, found := c.cache[key]; found {
+		c.mu.Unlock()
+		return existing, 0 // No gas used for cache hit
+	}
 	c.cache[key] = slot
+	c.mu.Unlock()
 
 	return slot, gasUsed
 }

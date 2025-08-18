@@ -925,6 +925,11 @@ func getConstantsManagerVariable(methodName string) *big.Int {
 	return constant_manager.GetCMCache().GetValue(methodName)
 }
 
+// getConstantsManagerVariableSafe returns a constant value with EVM context validation
+func getConstantsManagerVariableSafe(evm *vm.EVM, methodName string) *big.Int {
+	return constant_manager.GetCMCache().GetValueSafe(evm, methodName)
+}
+
 // getCurrentEpoch returns the current epoch value (currentSealedEpoch + 1)
 // This implements the logic from the currentEpoch() function in SFCBase.sol
 func getCurrentEpoch(evm *vm.EVM) (*big.Int, uint64, error) {

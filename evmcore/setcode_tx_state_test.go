@@ -94,6 +94,16 @@ func TestSetCodeStateTransition(t *testing.T) {
 		types.AuthorizationList{*auth},
 	)
 
+	// Create signer
+	signer := types.NewLondonSigner(chainID)
+
+	// Sign the transaction
+	signedTx, err := types.SignTx(tx, signer, key)
+	if err != nil {
+		t.Fatalf("Failed to sign transaction: %v", err)
+	}
+	tx = signedTx
+
 	// Create mock state
 	statedb := state.NewDatabase(nil)
 	stateDB, _ := state.New(common.Hash{}, statedb, nil)
@@ -117,9 +127,6 @@ func TestSetCodeStateTransition(t *testing.T) {
 
 	// Create state transition processor
 	st := NewSetCodeStateTransition(gp, stateDB, header, chainConfig, chainID)
-
-	// Create signer
-	signer := types.NewEIP155Signer(chainID)
 
 	// Apply transaction
 	receipt, err := st.ApplySetCodeTransaction(tx, signer)
@@ -332,6 +339,22 @@ func TestSetCodeTransitionApplier(t *testing.T) {
 		[]byte("legacy data"),
 	)
 
+	// Create signer
+	signer := types.NewLondonSigner(chainID)
+
+	// Sign both transactions
+	signedSetCodeTx, err := types.SignTx(setCodeTx, signer, key)
+	if err != nil {
+		t.Fatalf("Failed to sign SetCode transaction: %v", err)
+	}
+	setCodeTx = signedSetCodeTx
+
+	signedLegacyTx, err := types.SignTx(legacyTx, signer, key)
+	if err != nil {
+		t.Fatalf("Failed to sign legacy transaction: %v", err)
+	}
+	legacyTx = signedLegacyTx
+
 	statedb := state.NewDatabase(nil)
 	stateDB, _ := state.New(common.Hash{}, statedb, nil)
 	
@@ -349,7 +372,6 @@ func TestSetCodeTransitionApplier(t *testing.T) {
 	chainConfig := &params.ChainConfig{}
 
 	applier := NewSetCodeTransitionApplier(gp, stateDB, header, chainConfig, chainID)
-	signer := types.NewEIP155Signer(chainID)
 
 	// Mock default applier for legacy transactions
 	defaultApplierCalled := false
@@ -374,6 +396,9 @@ func TestSetCodeTransitionApplier(t *testing.T) {
 
 	// Reset flag
 	defaultApplierCalled = false
+	
+	// Update account nonce for second transaction
+	stateDB.SetNonce(from, 43)
 
 	// Test legacy transaction
 	receipt, err = applier.ApplyTransaction(legacyTx, signer, defaultApplier)

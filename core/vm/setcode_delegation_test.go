@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/params"
 )
@@ -108,6 +107,10 @@ func (m *mockStateDB) Snapshot() int                                            
 func (m *mockStateDB) RevertToSnapshot(int)                                               {}
 func (m *mockStateDB) AddLog(*types.Log)                                                  {}
 func (m *mockStateDB) GetLogs(common.Hash, uint64, common.Hash) []*types.Log             { return nil }
+func (m *mockStateDB) AddPreimage(common.Hash, []byte)                                   {}
+func (m *mockStateDB) ForEachStorage(common.Address, func(common.Hash, common.Hash) bool) error { return nil }
+func (m *mockStateDB) GetStorageRoot(common.Address) common.Hash                         { return common.Hash{} }
+func (m *mockStateDB) PrepareAccessList(sender common.Address, dest *common.Address, precompiles []common.Address, txAccesses types.AccessList) {}
 
 func TestDelegationResolver(t *testing.T) {
 	stateDB := newMockStateDB()
@@ -206,7 +209,7 @@ func TestDelegationResolverChain(t *testing.T) {
 
 func TestEnhancedEVM(t *testing.T) {
 	stateDB := newMockStateDB()
-	chainConfig := params.AllEthashProtocolChanges
+	chainConfig := params.TestChainConfig
 	
 	// Create EVM context
 	blockCtx := BlockContext{
@@ -289,7 +292,7 @@ func TestSetCodeEVMContext(t *testing.T) {
 
 func TestEnhancedEVMCallMethods(t *testing.T) {
 	stateDB := newMockStateDB()
-	chainConfig := params.AllEthashProtocolChanges
+	chainConfig := params.TestChainConfig
 	
 	caller := common.HexToAddress("0x1111111111111111111111111111111111111111")
 	target := common.HexToAddress("0x2222222222222222222222222222222222222222")
@@ -385,7 +388,7 @@ func BenchmarkDelegationResolution(b *testing.B) {
 
 func BenchmarkEnhancedEVMCodeRetrieval(b *testing.B) {
 	stateDB := newMockStateDB()
-	chainConfig := params.AllEthashProtocolChanges
+	chainConfig := params.TestChainConfig
 	
 	blockCtx := BlockContext{
 		CanTransfer: func(StateDB, common.Address, *big.Int) bool { return true },

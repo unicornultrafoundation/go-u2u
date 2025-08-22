@@ -24,7 +24,6 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/log"
-	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
 // SetCodeTxPoolValidator provides validation logic for SetCode transactions in the transaction pool
@@ -50,6 +49,11 @@ func (v *SetCodeTxPoolValidator) ValidateSetCodeTransaction(
 	signer types.Signer,
 	opts *ValidationOptions,
 ) error {
+	// Ensure transaction type is accepted
+	if opts.Accept&(1<<tx.Type()) == 0 {
+		return fmt.Errorf("%w: tx type %v not supported by this pool", ErrTxTypeNotSupported, tx.Type())
+	}
+
 	// Ensure transaction is actually a SetCode transaction
 	if tx.Type() != types.SetCodeTxType {
 		return fmt.Errorf("not a SetCode transaction: type %d", tx.Type())
@@ -60,6 +64,11 @@ func (v *SetCodeTxPoolValidator) ValidateSetCodeTransaction(
 	setCodeTx, ok := inner.(*types.SetCodeTx)
 	if !ok {
 		return fmt.Errorf("failed to extract SetCode transaction data")
+	}
+
+	// Ensure the transaction doesn't exceed the current block limit gas
+	if head.GasLimit < tx.Gas() {
+		return ErrGasLimit
 	}
 
 	// Validate for pool inclusion
@@ -144,7 +153,7 @@ func (v *SetCodeTxPoolValidator) ValidateSetCodeTransactionWithState(
 // validateAuthorizationListWithState validates authorization list against current state
 func (v *SetCodeTxPoolValidator) validateAuthorizationListWithState(
 	setCodeTx *types.SetCodeTx,
-	statedb StateReader,
+	statedb *state.StateDB,
 	head *EvmHeader,
 ) error {
 	// Create nonce getter function
@@ -204,13 +213,14 @@ func NewSetCodeTxPoolManager(chainID *big.Int) *SetCodeTxPoolManager {
 // ProcessSetCodeTransaction processes a SetCode transaction for pool inclusion
 func (m *SetCodeTxPoolManager) ProcessSetCodeTransaction(
 	tx *types.Transaction,
-	statedb StateReader,
+	statedb *state.StateDB,
 	head *EvmHeader,
 	signer types.Signer,
-	opts *ValidationOptionsWithState,
+	basicOpts *ValidationOptions,
+	stateOpts *ValidationOptionsWithState,
 ) error {
 	// Validate the transaction
-	if err := m.validator.ValidateSetCodeTransactionWithState(tx, statedb, head, signer, opts); err != nil {
+	if err := m.validator.ValidateSetCodeTransactionWithState(tx, statedb, head, signer, basicOpts, stateOpts); err != nil {
 		return err
 	}
 
@@ -230,7 +240,7 @@ func (m *SetCodeTxPoolManager) ProcessSetCodeTransaction(
 // updateDelegationMappings updates the internal delegation mapping cache
 func (m *SetCodeTxPoolManager) updateDelegationMappings(
 	setCodeTx *types.SetCodeTx,
-	statedb StateReader,
+	statedb *state.StateDB,
 	head *EvmHeader,
 ) {
 	getAccountNonce := func(addr common.Address) uint64 {

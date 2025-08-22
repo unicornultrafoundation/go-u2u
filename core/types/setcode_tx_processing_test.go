@@ -273,7 +273,7 @@ func TestSetCodeTxProcessor(t *testing.T) {
 		AuthorizationList: AuthorizationList{*auth},
 	}
 
-	err := processor.ValidateForPool(setCodeTx, big.NewInt(1000))
+	err := processor.ValidateForPool(setCodeTx, big.NewInt(1))
 	if err != nil {
 		t.Errorf("ValidateForPool() error = %v", err)
 	}

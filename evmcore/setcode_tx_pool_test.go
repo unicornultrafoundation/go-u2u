@@ -143,7 +143,11 @@ func TestSetCodeTxPoolValidatorInsufficientBalance(t *testing.T) {
 		PoolGasPrice: big.NewInt(1000000000),
 	}
 
-	err := validator.ValidateSetCodeTransaction(tx, head, signer, opts)
+	// Need to use stateful validation for balance checks
+	stateOpts := &ValidationOptionsWithState{
+		State: state,
+	}
+	err := validator.ValidateSetCodeTransactionWithState(tx, state, head, signer, opts, stateOpts)
 	if err == nil {
 		t.Errorf("expected validation error for insufficient balance but got none")
 	}
@@ -201,7 +205,11 @@ func TestSetCodeTxPoolValidatorInvalidNonce(t *testing.T) {
 		PoolGasPrice: big.NewInt(1000000000),
 	}
 
-	err := validator.ValidateSetCodeTransaction(tx, head, signer, opts)
+	// Need to use stateful validation for nonce checks
+	stateOpts := &ValidationOptionsWithState{
+		State: state,
+	}
+	err := validator.ValidateSetCodeTransactionWithState(tx, state, head, signer, opts, stateOpts)
 	if err == nil {
 		t.Errorf("expected validation error for invalid nonce but got none")
 	}

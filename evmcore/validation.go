@@ -63,6 +63,14 @@ func ValidateTransaction(tx *types.Transaction, head *EvmHeader, signer types.Si
 	if !opts.Config.IsLondon(head.Number) && tx.Type() == types.DynamicFeeTxType {
 		return fmt.Errorf("%w: type %d rejected, pool not yet in London", ErrTxTypeNotSupported, tx.Type())
 	}
+	// Check EIP-7702 SetCode transaction support (assuming it's enabled after a future fork)
+	if tx.Type() == types.SetCodeTxType {
+		// For now, allow SetCode transactions if they're explicitly accepted
+		// In the future, this should check for the appropriate fork (e.g., Prague/Electra)
+		// if !opts.Config.IsPrague(head.Number) {
+		//     return fmt.Errorf("%w: type %d rejected, pool not yet in Prague", ErrTxTypeNotSupported, tx.Type())
+		// }
+	}
 	// Transactions can't be negative. This may never happen using RLP decoded
 	// transactions but may occur for transactions created using the RPC.
 	if tx.Value().Sign() < 0 {

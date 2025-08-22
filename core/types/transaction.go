@@ -276,6 +276,11 @@ func (tx *Transaction) AuthorizationList() AuthorizationList {
 	return nil
 }
 
+// Inner returns the inner transaction data for advanced processing.
+func (tx *Transaction) Inner() TxData {
+	return tx.inner
+}
+
 // Gas returns the gas limit of the transaction.
 func (tx *Transaction) Gas() uint64 { return tx.inner.gas() }
 

@@ -45,6 +45,7 @@ const (
 	LegacyTxType = iota
 	AccessListTxType
 	DynamicFeeTxType
+	SetCodeTxType // EIP-7702 transaction type for code delegation
 )
 
 // Transaction is an Ethereum transaction.
@@ -186,6 +187,10 @@ func (tx *Transaction) decodeTyped(b []byte) (TxData, error) {
 		var inner DynamicFeeTx
 		err := rlp.DecodeBytes(b[1:], &inner)
 		return &inner, err
+	case SetCodeTxType:
+		var inner SetCodeTx
+		err := rlp.DecodeBytes(b[1:], &inner)
+		return &inner, err
 	default:
 		return nil, ErrTxTypeNotSupported
 	}
@@ -262,6 +267,14 @@ func (tx *Transaction) Data() []byte { return tx.inner.data() }
 
 // AccessList returns the access list of the transaction.
 func (tx *Transaction) AccessList() AccessList { return tx.inner.accessList() }
+
+// AuthorizationList returns the authorization list of the transaction (EIP-7702).
+func (tx *Transaction) AuthorizationList() AuthorizationList {
+	if setCodeTx, ok := tx.inner.(*SetCodeTx); ok {
+		return setCodeTx.authorizationList()
+	}
+	return nil
+}
 
 // Gas returns the gas limit of the transaction.
 func (tx *Transaction) Gas() uint64 { return tx.inner.gas() }

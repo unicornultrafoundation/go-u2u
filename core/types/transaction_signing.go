@@ -40,6 +40,8 @@ type sigCache struct {
 func MakeSigner(config *params.ChainConfig, blockNumber *big.Int) Signer {
 	var signer Signer
 	switch {
+	case config.IsPhaethon(blockNumber):
+		signer = NewPhaethonSigner(config.ChainID)
 	case config.IsLondon(blockNumber):
 		signer = NewLondonSigner(config.ChainID)
 	case config.IsBerlin(blockNumber):
@@ -63,6 +65,9 @@ func MakeSigner(config *params.ChainConfig, blockNumber *big.Int) Signer {
 // have the current block number available, use MakeSigner instead.
 func LatestSigner(config *params.ChainConfig) Signer {
 	if config.ChainID != nil {
+		if config.PhaethonBlock != nil {
+			return NewPhaethonSigner(config.ChainID)
+		}
 		if config.LondonBlock != nil {
 			return NewLondonSigner(config.ChainID)
 		}
@@ -182,11 +187,11 @@ func NewLondonSigner(chainId *big.Int) Signer {
 }
 
 func (s londonSigner) Sender(tx *Transaction) (common.Address, error) {
-	if tx.Type() != DynamicFeeTxType && tx.Type() != SetCodeTxType {
+	if tx.Type() != DynamicFeeTxType {
 		return s.eip2930Signer.Sender(tx)
 	}
 	V, R, S := tx.RawSignatureValues()
-	// DynamicFee and SetCode txs are defined to use 0 and 1 as their recovery
+	// DynamicFee txs are defined to use 0 and 1 as their recovery
 	// id, add 27 to become equivalent to unprotected Homestead signatures.
 	V = new(big.Int).Add(V, big.NewInt(27))
 	if tx.ChainId().Cmp(s.chainId) != 0 {
@@ -201,66 +206,39 @@ func (s londonSigner) Equal(s2 Signer) bool {
 }
 
 func (s londonSigner) SignatureValues(tx *Transaction, sig []byte) (R, S, V *big.Int, err error) {
-	switch txdata := tx.inner.(type) {
-	case *DynamicFeeTx:
-		// Check that chain ID of tx matches the signer. We also accept ID zero here,
-		// because it indicates that the chain ID was not specified in the tx.
-		if txdata.ChainID.Sign() != 0 && txdata.ChainID.Cmp(s.chainId) != 0 {
-			return nil, nil, nil, ErrInvalidChainId
-		}
-		R, S, _ = decodeSignature(sig)
-		V = big.NewInt(int64(sig[64]))
-		return R, S, V, nil
-	case *SetCodeTx:
-		// Check that chain ID of tx matches the signer. We also accept ID zero here,
-		// because it indicates that the chain ID was not specified in the tx.
-		if txdata.ChainID.Sign() != 0 && txdata.ChainID.Cmp(s.chainId) != 0 {
-			return nil, nil, nil, ErrInvalidChainId
-		}
-		R, S, _ = decodeSignature(sig)
-		V = big.NewInt(int64(sig[64]))
-		return R, S, V, nil
-	default:
+	txdata, ok := tx.inner.(*DynamicFeeTx)
+	if !ok {
 		return s.eip2930Signer.SignatureValues(tx, sig)
 	}
+	// Check that chain ID of tx matches the signer. We also accept ID zero here,
+	// because it indicates that the chain ID was not specified in the tx.
+	if txdata.ChainID.Sign() != 0 && txdata.ChainID.Cmp(s.chainId) != 0 {
+		return nil, nil, nil, ErrInvalidChainId
+	}
+	R, S, _ = decodeSignature(sig)
+	V = big.NewInt(int64(sig[64]))
+	return R, S, V, nil
 }
 
 // Hash returns the hash to be signed by the sender.
 // It does not uniquely identify the transaction.
 func (s londonSigner) Hash(tx *Transaction) common.Hash {
-	switch tx.Type() {
-	case DynamicFeeTxType:
-		return prefixedRlpHash(
-			tx.Type(),
-			[]interface{}{
-				s.chainId,
-				tx.Nonce(),
-				tx.GasTipCap(),
-				tx.GasFeeCap(),
-				tx.Gas(),
-				tx.To(),
-				tx.Value(),
-				tx.Data(),
-				tx.AccessList(),
-			})
-	case SetCodeTxType:
-		return prefixedRlpHash(
-			tx.Type(),
-			[]interface{}{
-				s.chainId,
-				tx.Nonce(),
-				tx.GasTipCap(),
-				tx.GasFeeCap(),
-				tx.Gas(),
-				tx.To(),
-				tx.Value(),
-				tx.Data(),
-				tx.AccessList(),
-				tx.AuthorizationList(),
-			})
-	default:
+	if tx.Type() != DynamicFeeTxType {
 		return s.eip2930Signer.Hash(tx)
 	}
+	return prefixedRlpHash(
+		tx.Type(),
+		[]interface{}{
+			s.chainId,
+			tx.Nonce(),
+			tx.GasTipCap(),
+			tx.GasFeeCap(),
+			tx.Gas(),
+			tx.To(),
+			tx.Value(),
+			tx.Data(),
+			tx.AccessList(),
+		})
 }
 
 type eip2930Signer struct{ EIP155Signer }
@@ -289,8 +267,8 @@ func (s eip2930Signer) Sender(tx *Transaction) (common.Address, error) {
 		}
 		V = new(big.Int).Sub(V, s.chainIdMul)
 		V.Sub(V, big8)
-	case AccessListTxType, SetCodeTxType:
-		// AL and SetCode txs are defined to use 0 and 1 as their recovery
+	case AccessListTxType:
+		// AL txs are defined to use 0 and 1 as their recovery
 		// id, add 27 to become equivalent to unprotected Homestead signatures.
 		V = new(big.Int).Add(V, big.NewInt(27))
 	default:
@@ -307,14 +285,6 @@ func (s eip2930Signer) SignatureValues(tx *Transaction, sig []byte) (R, S, V *bi
 	case *LegacyTx:
 		return s.EIP155Signer.SignatureValues(tx, sig)
 	case *AccessListTx:
-		// Check that chain ID of tx matches the signer. We also accept ID zero here,
-		// because it indicates that the chain ID was not specified in the tx.
-		if txdata.ChainID.Sign() != 0 && txdata.ChainID.Cmp(s.chainId) != 0 {
-			return nil, nil, nil, ErrInvalidChainId
-		}
-		R, S, _ = decodeSignature(sig)
-		V = big.NewInt(int64(sig[64]))
-	case *SetCodeTx:
 		// Check that chain ID of tx matches the signer. We also accept ID zero here,
 		// because it indicates that the chain ID was not specified in the tx.
 		if txdata.ChainID.Sign() != 0 && txdata.ChainID.Cmp(s.chainId) != 0 {
@@ -354,21 +324,6 @@ func (s eip2930Signer) Hash(tx *Transaction) common.Hash {
 				tx.Value(),
 				tx.Data(),
 				tx.AccessList(),
-			})
-	case SetCodeTxType:
-		return prefixedRlpHash(
-			tx.Type(),
-			[]interface{}{
-				s.chainId,
-				tx.Nonce(),
-				tx.GasTipCap(),
-				tx.GasFeeCap(),
-				tx.Gas(),
-				tx.To(),
-				tx.Value(),
-				tx.Data(),
-				tx.AccessList(),
-				tx.AuthorizationList(),
 			})
 	default:
 		// This _should_ not happen, but in case someone sends in a bad
@@ -567,6 +522,93 @@ func deriveChainId(v *big.Int) *big.Int {
 	}
 	v = new(big.Int).Sub(v, big.NewInt(35))
 	return v.Div(v, big.NewInt(2))
+}
+
+// phaethonSigner implements Signer interface and supports:
+// - EIP-7702 SetCode transactions (0x04)
+// - EIP-1559 dynamic fee transactions (0x02)
+// - EIP-2930 access list transactions (0x01)
+// - EIP-155 replay protected transactions
+// - legacy Homestead transactions
+type phaethonSigner struct {
+	londonSigner
+}
+
+// NewPhaethonSigner returns a new Phaethon signer that supports all transaction types
+// including EIP-7702 SetCode transactions.
+func NewPhaethonSigner(chainId *big.Int) Signer {
+	return phaethonSigner{londonSigner{eip2930Signer{NewEIP155Signer(chainId)}}}
+}
+
+// Equal returns true if the given signer is equivalent to this PhaethonSigner.
+func (s phaethonSigner) Equal(s2 Signer) bool {
+	x, ok := s2.(phaethonSigner)
+	return ok && x.chainId.Cmp(s.chainId) == 0
+}
+
+// Sender returns the sender address of the transaction.
+// For SetCode transactions, it handles the EIP-7702 specific signature format.
+func (s phaethonSigner) Sender(tx *Transaction) (common.Address, error) {
+	if tx.Type() != SetCodeTxType {
+		return s.londonSigner.Sender(tx)
+	}
+
+	// SetCode transactions use the same signature format as DynamicFee transactions
+	V, R, S := tx.RawSignatureValues()
+	// SetCode txs use 0 and 1 as their recovery id, add 27 to become equivalent
+	// to unprotected Homestead signatures.
+	if V.BitLen() <= 8 {
+		V = new(big.Int).Add(V, big.NewInt(27))
+	}
+	if s.chainId.Sign() != 0 {
+		V = new(big.Int).Sub(V, new(big.Int).Mul(s.chainId, big.NewInt(2)))
+		V.Sub(V, big.NewInt(8))
+	}
+	return recoverPlain(s.Hash(tx), R, S, V, true)
+}
+
+// SignatureValues returns the raw R, S, V values corresponding to the given signature.
+func (s phaethonSigner) SignatureValues(tx *Transaction, sig []byte) (R, S, V *big.Int, err error) {
+	txType := tx.Type()
+	if txType != SetCodeTxType {
+		return s.londonSigner.SignatureValues(tx, sig)
+	}
+
+	// SetCode transactions use the same signature format as DynamicFee transactions
+	R, S, V = decodeSignature(sig)
+	if s.chainId.Sign() != 0 {
+		V = big.NewInt(int64(sig[64]))
+	}
+	return R, S, V, nil
+}
+
+// Hash returns the hash to be signed by the sender.
+// For SetCode transactions, it includes the authorization list in the hash calculation.
+func (s phaethonSigner) Hash(tx *Transaction) common.Hash {
+	if tx.Type() != SetCodeTxType {
+		return s.londonSigner.Hash(tx)
+	}
+
+	// SetCode transactions hash includes all transaction data including authorization list
+	return prefixedRlpHash(
+		tx.Type(),
+		[]interface{}{
+			s.chainId,
+			tx.Nonce(),
+			tx.GasTipCap(),
+			tx.GasFeeCap(),
+			tx.Gas(),
+			tx.To(),
+			tx.Value(),
+			tx.Data(),
+			tx.AccessList(),
+			tx.AuthorizationList(), // Include authorization list in hash
+		})
+}
+
+// ChainID returns the chain ID for this signer.
+func (s phaethonSigner) ChainID() *big.Int {
+	return s.chainId
 }
 
 type CachedSender struct {

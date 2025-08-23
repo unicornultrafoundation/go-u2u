@@ -92,3 +92,27 @@ var (
 	// ErrInvalidPaymasterParams is returned if the paymaster params is malformed.
 	ErrInvalidPaymasterParams = errors.New("invalid paymaster params")
 )
+
+// EIP-7702 SetCode transaction validation errors
+var (
+	// ErrEmptyAuthList is returned if a SetCode transaction has an empty authorization list
+	ErrEmptyAuthList = errors.New("EIP-7702 transaction with empty authorization list")
+
+	// ErrSetCodeTxCreate is returned if a SetCode transaction is used for contract creation
+	ErrSetCodeTxCreate = errors.New("EIP-7702 transaction cannot be used to create contract")
+
+	// ErrAuthorizationWrongChainID is returned if authorization chain ID doesn't match
+	ErrAuthorizationWrongChainID = errors.New("EIP-7702 authorization chain ID mismatch")
+
+	// ErrAuthorizationNonceOverflow is returned if authorization nonce exceeds 64-bit limit
+	ErrAuthorizationNonceOverflow = errors.New("EIP-7702 authorization nonce > 64 bit")
+
+	// ErrAuthorizationInvalidSignature is returned if authorization signature is invalid
+	ErrAuthorizationInvalidSignature = errors.New("EIP-7702 authorization has invalid signature")
+
+	// ErrAuthorizationDestinationHasCode is returned if authorization destination has code
+	ErrAuthorizationDestinationHasCode = errors.New("EIP-7702 authorization destination is a contract")
+
+	// ErrAuthorizationNonceMismatch is returned if authorization nonce doesn't match account nonce
+	ErrAuthorizationNonceMismatch = errors.New("EIP-7702 authorization nonce does not match current account nonce")
+)

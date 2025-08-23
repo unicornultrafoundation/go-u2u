@@ -193,7 +193,7 @@ func (v *SetCodeTxPoolValidator) validateAuthorizationListWithState(
 
 // Constants for SetCode transaction validation
 const (
-	MaxAuthorizationListSize = 32 // Maximum number of authorizations per transaction
+	MaxAuthorizationListSize = 256 // Maximum number of authorizations per transaction (EIP-7702 standard)
 )
 
 // SetCodeTxPoolManager manages SetCode transactions in the transaction pool

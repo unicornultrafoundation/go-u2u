@@ -63,13 +63,18 @@ func ValidateTransaction(tx *types.Transaction, head *EvmHeader, signer types.Si
 	if !opts.Config.IsLondon(head.Number) && tx.Type() == types.DynamicFeeTxType {
 		return fmt.Errorf("%w: type %d rejected, pool not yet in London", ErrTxTypeNotSupported, tx.Type())
 	}
-	// Check EIP-7702 SetCode transaction support (assuming it's enabled after a future fork)
+	// Check EIP-7702 SetCode transaction support and validation
 	if tx.Type() == types.SetCodeTxType {
 		// For now, allow SetCode transactions if they're explicitly accepted
 		// In the future, this should check for the appropriate fork (e.g., Prague/Electra)
 		// if !opts.Config.IsPrague(head.Number) {
 		//     return fmt.Errorf("%w: type %d rejected, pool not yet in Prague", ErrTxTypeNotSupported, tx.Type())
 		// }
+		
+		// Perform EIP-7702 specific validation
+		if err := validateSetCodeTransaction(tx, head, signer, opts); err != nil {
+			return err
+		}
 	}
 	// Transactions can't be negative. This may never happen using RLP decoded
 	// transactions but may occur for transactions created using the RPC.
@@ -105,13 +110,58 @@ func ValidateTransaction(tx *types.Transaction, head *EvmHeader, signer types.Si
 	}
 	// Ensure the transaction has more gas than the bare minimum needed to cover
 	// the transaction metadata
-	intrGas, err := IntrinsicGas(tx.Data(), tx.AccessList(), tx.To() == nil)
+	intrGas, err := IntrinsicGas(tx.Data(), tx.AccessList(), tx.AuthorizationList(), tx.To() == nil)
 	if err != nil {
 		return err
 	}
 	if tx.Gas() < intrGas {
 		return fmt.Errorf("%w: gas %v, minimum needed %v", ErrIntrinsicGas, tx.Gas(), intrGas)
 	}
+	return nil
+}
+
+// validateSetCodeTransaction performs EIP-7702 specific validation for SetCode transactions
+func validateSetCodeTransaction(tx *types.Transaction, head *EvmHeader, signer types.Signer, opts *ValidationOptions) error {
+	// Extract SetCodeTx inner data
+	inner := tx.Inner()
+	setCodeTx, ok := inner.(*types.SetCodeTx)
+	if !ok {
+		return fmt.Errorf("invalid SetCode transaction inner type")
+	}
+
+	// Validate authorization list size limits (using the proper limit of 256)
+	if len(setCodeTx.AuthorizationList) > 256 {
+		return ErrAuthorizationListTooLarge
+	}
+
+	// Check for duplicate authorizations by authority address
+	seen := make(map[common.Address]bool)
+	for i, auth := range setCodeTx.AuthorizationList {
+		// Recover authority address for duplicate checking
+		authority, err := auth.RecoverAuthority()
+		if err != nil {
+			return fmt.Errorf("authorization %d: failed to recover authority: %w", i, err)
+		}
+
+		if seen[authority] {
+			return fmt.Errorf("authorization %d: duplicate authorization for authority %s", i, authority.Hex())
+		}
+		seen[authority] = true
+	}
+
+	// Basic signature validation for each authorization
+	for i, auth := range setCodeTx.AuthorizationList {
+		// Validate signature components exist
+		if auth.V == nil || auth.R == nil || auth.S == nil {
+			return fmt.Errorf("authorization %d: missing signature components", i)
+		}
+
+		// Check for zero R or S values
+		if auth.R.Sign() == 0 || auth.S.Sign() == 0 {
+			return fmt.Errorf("authorization %d: signature R or S value is zero", i)
+		}
+	}
+
 	return nil
 }
 

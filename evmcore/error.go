@@ -115,4 +115,7 @@ var (
 
 	// ErrAuthorizationNonceMismatch is returned if authorization nonce doesn't match account nonce
 	ErrAuthorizationNonceMismatch = errors.New("EIP-7702 authorization nonce does not match current account nonce")
+
+	// ErrAuthorizationListTooLarge is returned if authorization list exceeds maximum size
+	ErrAuthorizationListTooLarge = errors.New("EIP-7702 authorization list exceeds maximum size of 256")
 )

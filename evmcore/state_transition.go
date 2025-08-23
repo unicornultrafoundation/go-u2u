@@ -118,7 +118,7 @@ func (result *ExecutionResult) Revert() []byte {
 }
 
 // IntrinsicGas computes the 'intrinsic gas' for a message with the given data.
-func IntrinsicGas(data []byte, accessList types.AccessList, isContractCreation bool) (uint64, error) {
+func IntrinsicGas(data []byte, accessList types.AccessList, authList types.AuthorizationList, isContractCreation bool) (uint64, error) {
 	// Set the starting gas for the raw transaction
 	var gas uint64
 	if isContractCreation {
@@ -150,6 +150,9 @@ func IntrinsicGas(data []byte, accessList types.AccessList, isContractCreation b
 	if accessList != nil {
 		gas += uint64(len(accessList)) * params.TxAccessListAddressGas
 		gas += uint64(accessList.StorageKeys()) * params.TxAccessListStorageKeyGas
+	}
+	if authList != nil {
+		gas += uint64(len(authList)) * params.TxAuthTupleGas
 	}
 	return gas, nil
 }
@@ -224,6 +227,11 @@ func (st *StateTransition) preCheck() error {
 			return fmt.Errorf("%w: address %v, codehash: %s", ErrSenderNoEOA,
 				st.msg.From().Hex(), codeHash)
 		}
+		
+		// EIP-7702: Validate authorization list size limit
+		if auths := st.msg.SetCodeAuthorizations(); auths != nil && len(auths) > 256 {
+			return ErrAuthorizationListTooLarge
+		}
 	}
 	// Note: U2U doesn't need to check gasFeeCap >= BaseFee, because it's already checked by epochcheck
 	return st.buyGas()
@@ -271,7 +279,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	london := st.evm.ChainConfig().IsLondon(st.evm.Context.BlockNumber)
 
 	// Check clauses 4-5, subtract intrinsic gas if everything is correct
-	gas, err := IntrinsicGas(st.data, st.msg.AccessList(), contractCreation)
+	gas, err := IntrinsicGas(st.data, st.msg.AccessList(), st.msg.SetCodeAuthorizations(), contractCreation)
 	if err != nil {
 		return nil, err
 	}
@@ -284,6 +292,9 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	if rules := st.evm.ChainConfig().Rules(st.evm.Context.BlockNumber); rules.IsBerlin {
 		st.state.PrepareAccessList(msg.From(), msg.To(), vm.ActivePrecompiles(rules), msg.AccessList())
 	}
+
+	// Process EIP-7702 authorizations
+	st.processAuthorizations(msg)
 
 	var (
 		ret   []byte

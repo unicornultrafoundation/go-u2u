@@ -341,3 +341,79 @@ func (st *StateTransition) refundGas(refundQuotient uint64) uint64 {
 func (st *StateTransition) gasUsed() uint64 {
 	return st.initialGas - st.gas
 }
+
+// EIP-7702 Authorization Processing Functions
+
+// validateAuthorization validates an EIP-7702 authorization against the state.
+// Returns the authority address if valid, or an error describing the validation failure.
+func (st *StateTransition) validateAuthorization(auth *types.AuthorizationTuple) (common.Address, error) {
+	// Verify chain ID is null or equal to current chain ID
+	if auth.ChainID != nil && auth.ChainID.Cmp(st.evm.ChainConfig().ChainID) != 0 {
+		return common.Address{}, ErrAuthorizationWrongChainID
+	}
+	
+	// Limit nonce to 2^64-1 per EIP-2681
+	if auth.Nonce+1 < auth.Nonce {
+		return common.Address{}, ErrAuthorizationNonceOverflow
+	}
+	
+	// Validate signature values and recover authority
+	authority, err := auth.RecoverAuthority()
+	if err != nil {
+		return common.Address{}, fmt.Errorf("%w: %v", ErrAuthorizationInvalidSignature, err)
+	}
+	
+	// Check the authority account:
+	// 1) doesn't have code or has existing delegation
+	// 2) matches the auth's nonce
+	code := st.state.GetCode(authority)
+	if _, ok := types.ParseDelegation(code); len(code) != 0 && !ok {
+		return authority, ErrAuthorizationDestinationHasCode
+	}
+	
+	if have := st.state.GetNonce(authority); have != auth.Nonce {
+		return authority, ErrAuthorizationNonceMismatch
+	}
+	
+	return authority, nil
+}
+
+// applyAuthorization applies an EIP-7702 code delegation to the state.
+// This function should only be called after successful validation.
+func (st *StateTransition) applyAuthorization(auth *types.AuthorizationTuple) error {
+	// Validate authorization first
+	authority, err := st.validateAuthorization(auth)
+	if err != nil {
+		// Note: Per EIP-7702, validation errors don't abort execution
+		// Invalid authorizations are simply skipped
+		return err
+	}
+	
+	// Update nonce and account code
+	st.state.SetNonce(authority, auth.Nonce+1)
+	
+	if auth.Address == (common.Address{}) {
+		// Delegation to zero address means clear existing delegation
+		st.state.SetCode(authority, nil)
+		return nil
+	}
+	
+	// Otherwise install delegation to auth.Address
+	st.state.SetCode(authority, types.AddressToDelegation(auth.Address))
+	return nil
+}
+
+// processAuthorizations processes all authorizations in the message.
+// This function will be integrated into TransitionDb in Step 3.2.
+func (st *StateTransition) processAuthorizations(msg Message) {
+	auths := msg.SetCodeAuthorizations()
+	if auths == nil || len(auths) == 0 {
+		return // No authorizations to process
+	}
+	
+	for _, auth := range auths {
+		// Note: errors are ignored per EIP-7702 spec
+		// Invalid authorizations are simply skipped
+		_ = st.applyAuthorization(&auth)
+	}
+}

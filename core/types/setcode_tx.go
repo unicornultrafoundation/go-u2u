@@ -346,3 +346,29 @@ type setCodeTxMarshaling struct {
 	R                 *hexutil.Big
 	S                 *hexutil.Big
 }
+// EIP-7702 delegation constants and helper functions
+
+// DelegationPrefix is used by code to denote the account is delegating to another account.
+var DelegationPrefix = []byte{0xef, 0x01, 0x00}
+
+// ParseDelegation tries to parse the address from a delegation slice.
+// Returns the delegated address and true if the code is a valid delegation, false otherwise.
+func ParseDelegation(code []byte) (common.Address, bool) {
+	if len(code) != 23 {
+		return common.Address{}, false
+	}
+	// Check delegation prefix
+	if code[0] != 0xef || code[1] != 0x01 || code[2] != 0x00 {
+		return common.Address{}, false
+	}
+	return common.BytesToAddress(code[3:]), true
+}
+
+// AddressToDelegation adds the delegation prefix to the specified address.
+// This creates the delegation code that should be stored at the authority's address.
+func AddressToDelegation(addr common.Address) []byte {
+	result := make([]byte, 23)
+	copy(result[:3], DelegationPrefix)
+	copy(result[3:], addr.Bytes())
+	return result
+}

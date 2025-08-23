@@ -78,6 +78,7 @@ type Message interface {
 	IsFake() bool
 	Data() []byte
 	AccessList() types.AccessList
+	SetCodeAuthorizations() types.AuthorizationList
 }
 
 // ExecutionResult includes all output after executing given an evm

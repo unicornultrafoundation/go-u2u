@@ -89,6 +89,7 @@ const (
 	TxAccessListAddressGas    uint64 = 2400 // Per address specified in EIP 2930 access list
 	TxAccessListStorageKeyGas uint64 = 1900 // Per storage key specified in EIP 2930 access list
 	TxAuthTupleGas              uint64 = 12500 // Per authorization tuple in EIP-7702 transactions
+	DelegationResolutionGas     uint64 = 100   // Per delegation resolution step in EIP-7702
 
 	// These have been changed during the course of the chain
 	CallGasFrontier              uint64 = 40  // Once per CALL operation & message call transaction.

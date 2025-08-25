@@ -17,6 +17,7 @@
 package vm
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -125,7 +126,7 @@ func TestDelegationResolver(t *testing.T) {
 	stateDB.SetCode(codeAddr, testCode)
 
 	// Test no delegation
-	finalAddr, code, err := resolver.ResolveDelegatedCode(addr1)
+	finalAddr, code, gasUsed, err := resolver.ResolveDelegatedCode(addr1)
 	if err != nil {
 		t.Errorf("ResolveDelegatedCode() error = %v", err)
 	}
@@ -135,13 +136,16 @@ func TestDelegationResolver(t *testing.T) {
 	if len(code) != 0 {
 		t.Errorf("expected no code, got %v", code)
 	}
+	if gasUsed != 0 {
+		t.Errorf("expected no gas used for non-delegation, got %v", gasUsed)
+	}
 
-	// Set delegation from addr1 to codeAddr
-	delegationKey := common.BytesToHash(append([]byte("EIP7702_DELEGATION_"), addr1.Bytes()...))
-	stateDB.SetState(common.HexToAddress("0x7702"), delegationKey, codeAddr.Hash())
+	// Set delegation from addr1 to codeAddr using EIP-7702 delegation prefix
+	delegationCode := types.AddressToDelegation(codeAddr)
+	stateDB.SetCode(addr1, delegationCode)
 
 	// Test delegation resolution
-	finalAddr, code, err = resolver.ResolveDelegatedCode(addr1)
+	finalAddr, code, gasUsed, err = resolver.ResolveDelegatedCode(addr1)
 	if err != nil {
 		t.Errorf("ResolveDelegatedCode() error = %v", err)
 	}
@@ -150,6 +154,9 @@ func TestDelegationResolver(t *testing.T) {
 	}
 	if len(code) != len(testCode) {
 		t.Errorf("expected code length %d, got %d", len(testCode), len(code))
+	}
+	if gasUsed == 0 {
+		t.Errorf("expected gas used for delegation resolution, got 0")
 	}
 
 	// Test delegation check
@@ -187,15 +194,15 @@ func TestDelegationResolverChain(t *testing.T) {
 	testCode := []byte{0x60, 0x00, 0x60, 0x00, 0xf3}
 	stateDB.SetCode(codeAddr, testCode)
 
-	// Set delegation chain: addr1 -> addr2 -> codeAddr
-	delegationKey1 := common.BytesToHash(append([]byte("EIP7702_DELEGATION_"), addr1.Bytes()...))
-	stateDB.SetState(common.HexToAddress("0x7702"), delegationKey1, addr2.Hash())
+	// Set delegation chain: addr1 -> addr2 -> codeAddr using EIP-7702 delegation prefixes
+	delegationCode1 := types.AddressToDelegation(addr2)
+	stateDB.SetCode(addr1, delegationCode1)
 
-	delegationKey2 := common.BytesToHash(append([]byte("EIP7702_DELEGATION_"), addr2.Bytes()...))
-	stateDB.SetState(common.HexToAddress("0x7702"), delegationKey2, codeAddr.Hash())
+	delegationCode2 := types.AddressToDelegation(codeAddr)
+	stateDB.SetCode(addr2, delegationCode2)
 
 	// Test chain resolution
-	finalAddr, code, err := resolver.ResolveDelegatedCode(addr1)
+	finalAddr, code, gasUsed, err := resolver.ResolveDelegatedCode(addr1)
 	if err != nil {
 		t.Errorf("ResolveDelegatedCode() error = %v", err)
 	}
@@ -205,9 +212,14 @@ func TestDelegationResolverChain(t *testing.T) {
 	if len(code) != len(testCode) {
 		t.Errorf("expected code length %d, got %d", len(testCode), len(code))
 	}
+	// Should have used gas for resolving 2 delegations
+	expectedGas := uint64(200) // 2 * 100 gas per delegation
+	if gasUsed != expectedGas {
+		t.Errorf("expected gas used %d, got %d", expectedGas, gasUsed)
+	}
 }
 
-func TestEnhancedEVM(t *testing.T) {
+func TestEVMWithDelegation(t *testing.T) {
 	stateDB := newMockStateDB()
 	chainConfig := params.TestChainConfig
 	
@@ -231,8 +243,8 @@ func TestEnhancedEVM(t *testing.T) {
 
 	vmConfig := Config{}
 
-	// Create enhanced EVM
-	evm := NewEnhancedEVM(blockCtx, txCtx, stateDB, chainConfig, vmConfig)
+	// Create standard EVM with delegation support
+	evm := NewEVM(blockCtx, txCtx, stateDB, nil, chainConfig, vmConfig)
 
 	addr1 := common.HexToAddress("0x1111111111111111111111111111111111111111")
 	codeAddr := common.HexToAddress("0x1234567890123456789012345678901234567890")
@@ -242,125 +254,122 @@ func TestEnhancedEVM(t *testing.T) {
 	stateDB.SetCode(codeAddr, testCode)
 
 	// Test getting code without delegation
-	code := evm.GetCodeWithDelegation(addr1)
+	code := evm.StateDB.GetCode(addr1)
 	if len(code) != 0 {
 		t.Errorf("expected no code without delegation, got %v", code)
 	}
 
-	// Set delegation
-	delegationKey := common.BytesToHash(append([]byte("EIP7702_DELEGATION_"), addr1.Bytes()...))
-	stateDB.SetState(common.HexToAddress("0x7702"), delegationKey, codeAddr.Hash())
+	// Set delegation using EIP-7702 delegation prefix
+	delegationCode := types.AddressToDelegation(codeAddr)
+	stateDB.SetCode(addr1, delegationCode)
 
-	// Test getting code with delegation
-	code = evm.GetCodeWithDelegation(addr1)
-	if len(code) != len(testCode) {
-		t.Errorf("expected code length %d with delegation, got %d", len(testCode), len(code))
+	// Test delegation resolution
+	finalAddr, resolvedCode, gasUsed, err := evm.resolveDelegation(addr1)
+	if err != nil {
+		t.Errorf("resolveDelegation() error = %v", err)
+	}
+	if finalAddr != codeAddr {
+		t.Errorf("expected final address %v, got %v", codeAddr, finalAddr)
+	}
+	if len(resolvedCode) != len(testCode) {
+		t.Errorf("expected code length %d with delegation, got %d", len(testCode), len(resolvedCode))
+	}
+	if gasUsed == 0 {
+		t.Errorf("expected gas used for delegation resolution, got 0")
 	}
 
-	// Test delegation resolver access
-	resolver := evm.GetDelegationResolver()
-	if resolver == nil {
-		t.Errorf("expected delegation resolver, got nil")
+	// Test delegation caching - second call should use cache
+	finalAddr2, resolvedCode2, gasUsed2, err2 := evm.resolveDelegation(addr1)
+	if err2 != nil {
+		t.Errorf("cached resolveDelegation() error = %v", err2)
 	}
-}
-
-func TestSetCodeEVMContext(t *testing.T) {
-	chainID := big.NewInt(1)
-	ctx := NewSetCodeEVMContext(chainID)
-
-	// Test initial state
-	if !ctx.IsDelegationEnabled() {
-		t.Errorf("expected delegation to be enabled by default")
+	if finalAddr2 != codeAddr {
+		t.Errorf("cached: expected final address %v, got %v", codeAddr, finalAddr2)
 	}
-
-	if ctx.GetChainID().Cmp(chainID) != 0 {
-		t.Errorf("expected chain ID %v, got %v", chainID, ctx.GetChainID())
+	if len(resolvedCode2) != len(testCode) {
+		t.Errorf("cached: expected code length %d with delegation, got %d", len(testCode), len(resolvedCode2))
 	}
-
-	// Test disabling delegation
-	ctx.SetDelegationEnabled(false)
-	if ctx.IsDelegationEnabled() {
-		t.Errorf("expected delegation to be disabled")
-	}
-
-	// Test re-enabling delegation
-	ctx.SetDelegationEnabled(true)
-	if !ctx.IsDelegationEnabled() {
-		t.Errorf("expected delegation to be enabled again")
+	if gasUsed2 != 0 {
+		t.Errorf("expected no gas used for cached resolution, got %d", gasUsed2)
 	}
 }
 
-func TestEnhancedEVMCallMethods(t *testing.T) {
+func TestCircularDelegationDetection(t *testing.T) {
 	stateDB := newMockStateDB()
-	chainConfig := params.TestChainConfig
+	resolver := NewDelegationResolver(stateDB)
+
+	addr1 := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	addr2 := common.HexToAddress("0x2222222222222222222222222222222222222222")
+
+	// Create circular delegation: addr1 -> addr2 -> addr1
+	delegationCode1 := types.AddressToDelegation(addr2)
+	stateDB.SetCode(addr1, delegationCode1)
+
+	delegationCode2 := types.AddressToDelegation(addr1)
+	stateDB.SetCode(addr2, delegationCode2)
+
+	// Test circular delegation detection
+	finalAddr, code, gasUsed, err := resolver.ResolveDelegatedCode(addr1)
+	if err != nil {
+		t.Errorf("ResolveDelegatedCode() error = %v", err)
+	}
+	// Should break the loop and return one of the addresses
+	if finalAddr != addr1 && finalAddr != addr2 {
+		t.Errorf("expected final address to be one of the circular addresses, got %v", finalAddr)
+	}
+	// Code should be delegation code since we stopped at a delegating address
+	if len(code) == 0 {
+		t.Errorf("expected delegation code for circular delegation, got empty code")
+	}
+	// Verify it's actually delegation code
+	if _, isDelegation := types.ParseDelegation(code); !isDelegation {
+		t.Errorf("expected delegation code for circular delegation resolution")
+	}
+	// Should have used some gas for delegation attempts
+	if gasUsed == 0 {
+		t.Errorf("expected gas used for circular delegation attempts, got 0")
+	}
+}
+
+func TestMaxDelegationDepth(t *testing.T) {
+	stateDB := newMockStateDB()
+	resolver := NewDelegationResolver(stateDB)
+
+	// Create a chain longer than max depth
+	addresses := make([]common.Address, 15) // Longer than maxDelegationDepth (10)
+	for i := 0; i < 15; i++ {
+		addresses[i] = common.HexToAddress(fmt.Sprintf("0x%040d", i+1))
+	}
+
+	// Set up delegation chain
+	for i := 0; i < 14; i++ {
+		delegationCode := types.AddressToDelegation(addresses[i+1])
+		stateDB.SetCode(addresses[i], delegationCode)
+	}
+
+	// Set actual code at the end
+	testCode := []byte{0x60, 0x00, 0x60, 0x00, 0xf3}
+	stateDB.SetCode(addresses[14], testCode)
+
+	// Test delegation resolution stops at max depth
+	finalAddr, code, gasUsed, err := resolver.ResolveDelegatedCode(addresses[0])
+	if err != nil {
+		t.Errorf("ResolveDelegatedCode() error = %v", err)
+	}
 	
-	caller := common.HexToAddress("0x1111111111111111111111111111111111111111")
-	target := common.HexToAddress("0x2222222222222222222222222222222222222222")
-	codeAddr := common.HexToAddress("0x1234567890123456789012345678901234567890")
-
-	// Set up balances
-	stateDB.SetBalance(caller, big.NewInt(1000000000000000000))
-	stateDB.SetBalance(target, big.NewInt(1000000000000000000))
-
-	blockCtx := BlockContext{
-		CanTransfer: func(db StateDB, addr common.Address, amount *big.Int) bool {
-			return db.GetBalance(addr).Cmp(amount) >= 0
-		},
-		Transfer: func(db StateDB, from, to common.Address, amount *big.Int) {
-			db.SubBalance(from, amount)
-			db.AddBalance(to, amount)
-		},
-		GetHash:     func(uint64) common.Hash { return common.Hash{} },
-		Coinbase:    common.Address{},
-		GasLimit:    8000000,
-		BlockNumber: big.NewInt(1),
-		Time:        big.NewInt(1),
-		Difficulty:  big.NewInt(1),
-		BaseFee:     big.NewInt(1000000000),
+	// Should have stopped at max depth, not reached the final address
+	if finalAddr == addresses[14] {
+		t.Errorf("delegation chain should have been limited by max depth")
 	}
-
-	txCtx := TxContext{
-		Origin:   caller,
-		GasPrice: big.NewInt(1000000000),
+	// Code should be delegation code since we stopped at max depth
+	if len(code) == 0 {
+		t.Errorf("expected delegation code at max depth, got empty code")
 	}
-
-	vmConfig := Config{}
-
-	evm := NewEnhancedEVM(blockCtx, txCtx, stateDB, chainConfig, vmConfig)
-
-	// Set simple return bytecode at codeAddr
-	testCode := []byte{0x60, 0x00, 0x60, 0x00, 0xf3} // PUSH1 0x00 PUSH1 0x00 RETURN
-	stateDB.SetCode(codeAddr, testCode)
-
-	// Test call without delegation
-	callerRef := AccountRef(caller)
-	ret, leftOverGas, err := evm.CallWithDelegation(callerRef, target, []byte{}, 21000, big.NewInt(0))
-	if err != nil {
-		t.Errorf("CallWithDelegation() without delegation error = %v", err)
-	}
-	_ = ret
-	_ = leftOverGas
-
-	// Set delegation from target to codeAddr
-	delegationKey := common.BytesToHash(append([]byte("EIP7702_DELEGATION_"), target.Bytes()...))
-	stateDB.SetState(common.HexToAddress("0x7702"), delegationKey, codeAddr.Hash())
-
-	// Test call with delegation
-	ret, leftOverGas, err = evm.CallWithDelegation(callerRef, target, []byte{}, 21000, big.NewInt(0))
-	if err != nil {
-		t.Errorf("CallWithDelegation() with delegation error = %v", err)
-	}
-
-	// Test DELEGATECALL with delegation
-	ret, leftOverGas, err = evm.DelegateCallWithDelegation(callerRef, target, []byte{}, 21000)
-	if err != nil {
-		t.Errorf("DelegateCallWithDelegation() with delegation error = %v", err)
-	}
-
-	// Test STATICCALL with delegation
-	ret, leftOverGas, err = evm.StaticCallWithDelegation(callerRef, target, []byte{}, 21000)
-	if err != nil {
-		t.Errorf("StaticCallWithDelegation() with delegation error = %v", err)
+	
+	// Should have used gas for up to max depth delegations
+	maxExpectedGas := uint64(10 * 100) // maxDelegationDepth * delegationGas
+	if gasUsed > maxExpectedGas {
+		t.Errorf("gas used %d exceeds maximum expected %d", gasUsed, maxExpectedGas)
 	}
 }
 
@@ -372,9 +381,9 @@ func BenchmarkDelegationResolution(b *testing.B) {
 	addr1 := common.HexToAddress("0x1111111111111111111111111111111111111111")
 	codeAddr := common.HexToAddress("0x1234567890123456789012345678901234567890")
 
-	// Set delegation
-	delegationKey := common.BytesToHash(append([]byte("EIP7702_DELEGATION_"), addr1.Bytes()...))
-	stateDB.SetState(common.HexToAddress("0x7702"), delegationKey, codeAddr.Hash())
+	// Set delegation using EIP-7702 delegation prefix
+	delegationCode := types.AddressToDelegation(codeAddr)
+	stateDB.SetCode(addr1, delegationCode)
 
 	// Set some code
 	testCode := []byte{0x60, 0x00, 0x60, 0x00, 0xf3}
@@ -386,7 +395,7 @@ func BenchmarkDelegationResolution(b *testing.B) {
 	}
 }
 
-func BenchmarkEnhancedEVMCodeRetrieval(b *testing.B) {
+func BenchmarkEVMDelegationResolution(b *testing.B) {
 	stateDB := newMockStateDB()
 	chainConfig := params.TestChainConfig
 	
@@ -409,20 +418,20 @@ func BenchmarkEnhancedEVMCodeRetrieval(b *testing.B) {
 
 	vmConfig := Config{}
 
-	evm := NewEnhancedEVM(blockCtx, txCtx, stateDB, chainConfig, vmConfig)
+	evm := NewEVM(blockCtx, txCtx, stateDB, nil, chainConfig, vmConfig)
 
 	addr1 := common.HexToAddress("0x1111111111111111111111111111111111111111")
 	codeAddr := common.HexToAddress("0x1234567890123456789012345678901234567890")
 
-	// Set delegation and code
-	delegationKey := common.BytesToHash(append([]byte("EIP7702_DELEGATION_"), addr1.Bytes()...))
-	stateDB.SetState(common.HexToAddress("0x7702"), delegationKey, codeAddr.Hash())
+	// Set delegation and code using EIP-7702 delegation prefix
+	delegationCode := types.AddressToDelegation(codeAddr)
+	stateDB.SetCode(addr1, delegationCode)
 
 	testCode := []byte{0x60, 0x00, 0x60, 0x00, 0xf3}
 	stateDB.SetCode(codeAddr, testCode)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		evm.GetCodeWithDelegation(addr1)
+		evm.resolveDelegation(addr1)
 	}
 }

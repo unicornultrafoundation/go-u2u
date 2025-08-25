@@ -26,6 +26,7 @@ import (
 	"github.com/holiman/uint256"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
+	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/params"
@@ -146,18 +147,40 @@ type EVM struct {
 	// available gas is calculated in gasCall* according to the 63/64 rule and later
 	// applied in opCall*.
 	callGasTemp uint64
+	// delegationCache caches delegation resolution results for performance
+	delegationCache map[common.Address]common.Address
+}
+
+// resolveDelegation resolves delegation chain with caching for performance
+func (evm *EVM) resolveDelegation(addr common.Address) (common.Address, []byte, uint64, error) {
+	// Check cache first
+	if finalAddr, cached := evm.delegationCache[addr]; cached {
+		return finalAddr, evm.StateDB.GetCode(finalAddr), 0, nil // No gas for cached resolution
+	}
+	
+	// Perform delegation resolution
+	resolver := NewDelegationResolver(evm.StateDB)
+	finalAddr, code, gasUsed, err := resolver.ResolveDelegatedCode(addr)
+	
+	if err == nil {
+		// Cache the result
+		evm.delegationCache[addr] = finalAddr
+	}
+	
+	return finalAddr, code, gasUsed, err
 }
 
 // NewEVM returns a new EVM. The returned EVM is not thread safe and should
 // only ever be used *once*.
 func NewEVM(blockCtx BlockContext, txCtx TxContext, statedb StateDB, sfcStatedb StateDB, chainConfig *params.ChainConfig, config Config) *EVM {
 	evm := &EVM{
-		Context:     blockCtx,
-		TxContext:   txCtx,
-		StateDB:     statedb,
-		Config:      config,
-		chainConfig: chainConfig,
-		chainRules:  chainConfig.Rules(blockCtx.BlockNumber),
+		Context:         blockCtx,
+		TxContext:       txCtx,
+		StateDB:         statedb,
+		Config:          config,
+		chainConfig:     chainConfig,
+		chainRules:      chainConfig.Rules(blockCtx.BlockNumber),
+		delegationCache: make(map[common.Address]common.Address),
 	}
 	if !isNilInterface(sfcStatedb) {
 		evm.SfcStateDB = sfcStatedb
@@ -276,15 +299,43 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		}
 		// Initialise a new contract and set the code that is to be used by the EVM.
 		// The contract is a scoped environment for this execution context only.
+		
+		// EIP-7702: Resolve delegation chain if present
+		codeAddr := addr
 		code := evm.StateDB.GetCode(addr)
+		delegationGas := uint64(0)
+		
+		// Check if the code is a delegation and resolve the chain
+		if len(code) > 0 {
+			if _, isDelegation := types.ParseDelegation(code); isDelegation {
+				resolvedAddr, resolvedCode, gasUsed, err := evm.resolveDelegation(addr)
+				if err != nil {
+					log.Error("Delegation resolution failed in EVM call", "address", addr.Hex(), "error", err)
+					// Fall back to original code
+				} else {
+					codeAddr = resolvedAddr
+					code = resolvedCode
+					delegationGas = gasUsed
+				}
+			}
+		}
+		
+		// Deduct delegation resolution gas
+		if delegationGas > 0 {
+			if gas < delegationGas {
+				return nil, 0, ErrOutOfGas
+			}
+			gas -= delegationGas
+		}
+		
 		if len(code) == 0 {
 			ret, err = nil, nil // gas is unchanged
 		} else {
-			addrCopy := addr
+			addrCopy := addr  // Still use original address for contract context
 			// If the account has no code, we can abort here
 			// The depth-check is already done, and precompiles handled above
 			contract := NewContract(caller, AccountRef(addrCopy), value, gas)
-			contract.SetCallCode(&addrCopy, evm.StateDB.GetCodeHash(addrCopy), code)
+			contract.SetCallCode(&codeAddr, evm.StateDB.GetCodeHash(codeAddr), code)
 			start := time.Now()
 			ret, err = evm.interpreter.Run(contract, input, false)
 			evmExecutionElapsed = time.Since(start)
@@ -365,11 +416,38 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 				}
 			}
 		}
-		addrCopy := addr
+		// EIP-7702: Resolve delegation chain if present
+		codeAddr := addr
+		code := evm.StateDB.GetCode(addr)
+		delegationGas := uint64(0)
+		
+		// Check if the code is a delegation and resolve the chain
+		if len(code) > 0 {
+			if _, isDelegation := types.ParseDelegation(code); isDelegation {
+				resolvedAddr, resolvedCode, gasUsed, err := evm.resolveDelegation(addr)
+				if err != nil {
+					log.Error("Delegation resolution failed in EVM callcode", "address", addr.Hex(), "error", err)
+					// Fall back to original code
+				} else {
+					codeAddr = resolvedAddr
+					code = resolvedCode
+					delegationGas = gasUsed
+				}
+			}
+		}
+		
+		// Deduct delegation resolution gas
+		if delegationGas > 0 {
+			if gas < delegationGas {
+				return nil, 0, ErrOutOfGas
+			}
+			gas -= delegationGas
+		}
+		
 		// Initialise a new contract and set the code that is to be used by the EVM.
 		// The contract is a scoped environment for this execution context only.
 		contract := NewContract(caller, AccountRef(caller.Address()), value, gas)
-		contract.SetCallCode(&addrCopy, evm.StateDB.GetCodeHash(addrCopy), evm.StateDB.GetCode(addrCopy))
+		contract.SetCallCode(&codeAddr, evm.StateDB.GetCodeHash(codeAddr), code)
 		start := time.Now()
 		ret, err = evm.interpreter.Run(contract, input, false)
 		evmExecutionElapsed = time.Since(start)
@@ -434,10 +512,37 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 				}
 			}
 		}
-		addrCopy := addr
+		// EIP-7702: Resolve delegation chain if present
+		codeAddr := addr
+		code := evm.StateDB.GetCode(addr)
+		delegationGas := uint64(0)
+		
+		// Check if the code is a delegation and resolve the chain
+		if len(code) > 0 {
+			if _, isDelegation := types.ParseDelegation(code); isDelegation {
+				resolvedAddr, resolvedCode, gasUsed, err := evm.resolveDelegation(addr)
+				if err != nil {
+					log.Error("Delegation resolution failed in EVM delegatecall", "address", addr.Hex(), "error", err)
+					// Fall back to original code
+				} else {
+					codeAddr = resolvedAddr
+					code = resolvedCode
+					delegationGas = gasUsed
+				}
+			}
+		}
+		
+		// Deduct delegation resolution gas
+		if delegationGas > 0 {
+			if gas < delegationGas {
+				return nil, 0, ErrOutOfGas
+			}
+			gas -= delegationGas
+		}
+		
 		// Initialise a new contract and make initialise the delegate values
 		contract := NewContract(caller, AccountRef(caller.Address()), nil, gas).AsDelegate()
-		contract.SetCallCode(&addrCopy, evm.StateDB.GetCodeHash(addrCopy), evm.StateDB.GetCode(addrCopy))
+		contract.SetCallCode(&codeAddr, evm.StateDB.GetCodeHash(codeAddr), code)
 		start := time.Now()
 		ret, err = evm.interpreter.Run(contract, input, false)
 		evmExecutionElapsed = time.Since(start)
@@ -512,6 +617,34 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 				}
 			}
 		}
+		// EIP-7702: Resolve delegation chain if present
+		codeAddr := addr
+		code := evm.StateDB.GetCode(addr)
+		delegationGas := uint64(0)
+		
+		// Check if the code is a delegation and resolve the chain
+		if len(code) > 0 {
+			if _, isDelegation := types.ParseDelegation(code); isDelegation {
+				resolvedAddr, resolvedCode, gasUsed, err := evm.resolveDelegation(addr)
+				if err != nil {
+					log.Error("Delegation resolution failed in EVM staticcall", "address", addr.Hex(), "error", err)
+					// Fall back to original code
+				} else {
+					codeAddr = resolvedAddr
+					code = resolvedCode
+					delegationGas = gasUsed
+				}
+			}
+		}
+		
+		// Deduct delegation resolution gas
+		if delegationGas > 0 {
+			if gas < delegationGas {
+				return nil, 0, ErrOutOfGas
+			}
+			gas -= delegationGas
+		}
+		
 		// At this point, we use a copy of the address.
 		// If we don't, the go compiler will
 		// leak the 'contract' to the outer scope, and make allocation for 'contract'
@@ -520,7 +653,7 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 		// Initialise a new contract and set the code that is to be used by the EVM.
 		// The contract is a scoped environment for this execution context only.
 		contract := NewContract(caller, AccountRef(addrCopy), new(big.Int), gas)
-		contract.SetCallCode(&addrCopy, evm.StateDB.GetCodeHash(addrCopy), evm.StateDB.GetCode(addrCopy))
+		contract.SetCallCode(&codeAddr, evm.StateDB.GetCodeHash(codeAddr), code)
 		// When an error was returned by the EVM or when setting the creation code
 		// above, we revert to the snapshot and consume any gas remaining.
 		// Additionally, when we're in Homestead this also counts for code storage gas errors.

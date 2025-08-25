@@ -17,7 +17,6 @@
 package vm
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
@@ -29,64 +28,81 @@ import (
 // DelegationResolver handles EIP-7702 delegation resolution for the EVM
 type DelegationResolver struct {
 	stateDB StateDB
-	resolver *types.DelegationChainResolver
 }
 
 // NewDelegationResolver creates a new delegation resolver for the EVM
 func NewDelegationResolver(stateDB StateDB) *DelegationResolver {
 	return &DelegationResolver{
-		stateDB:  stateDB,
-		resolver: types.NewDelegationChainResolver(),
+		stateDB: stateDB,
 	}
 }
 
 // ResolveDelegatedCode resolves the actual code address through EIP-7702 delegation chain
-func (dr *DelegationResolver) ResolveDelegatedCode(address common.Address) (common.Address, []byte, error) {
-	// Get delegation mapping function
-	getDelegation := func(addr common.Address) *common.Address {
-		return dr.getDelegationFromState(addr)
+func (dr *DelegationResolver) ResolveDelegatedCode(address common.Address) (common.Address, []byte, uint64, error) {
+	const maxDelegationDepth = 10
+	gasUsed := uint64(0)
+	visited := make(map[common.Address]bool)
+	currentAddr := address
+
+	for depth := 0; depth < maxDelegationDepth; depth++ {
+		// Prevent circular delegation
+		if visited[currentAddr] {
+			log.Warn("Circular delegation detected", "address", currentAddr.Hex())
+			break
+		}
+		visited[currentAddr] = true
+
+		// Get code from current address
+		code := dr.stateDB.GetCode(currentAddr)
+		if len(code) == 0 {
+			// No code at this address, use it as final address
+			break
+		}
+
+		// Check if code is a delegation
+		if delegatedAddr, isDelegation := types.ParseDelegation(code); isDelegation {
+			// This is a delegation, follow the chain
+			currentAddr = delegatedAddr
+			gasUsed += params.DelegationResolutionGas
+			log.Debug("Following delegation", "from", currentAddr.Hex(), "to", delegatedAddr.Hex())
+		} else {
+			// This is actual code, not a delegation
+			break
+		}
 	}
 
-	// Resolve delegation chain
-	finalAddress, err := dr.resolver.ResolveDelegationChain(address, getDelegation)
-	if err != nil {
-		return address, nil, fmt.Errorf("delegation resolution failed: %w", err)
-	}
-
-	// Get code from final address
-	code := dr.stateDB.GetCode(finalAddress)
+	// Get final code
+	finalCode := dr.stateDB.GetCode(currentAddr)
 	
 	log.Debug("Delegation resolved", 
 		"original", address.Hex(), 
-		"final", finalAddress.Hex(), 
-		"codeSize", len(code))
+		"final", currentAddr.Hex(), 
+		"gasUsed", gasUsed,
+		"codeSize", len(finalCode))
 
-	return finalAddress, code, nil
-}
-
-// getDelegationFromState retrieves delegation mapping from state
-func (dr *DelegationResolver) getDelegationFromState(authority common.Address) *common.Address {
-	// Read delegation from special storage location
-	delegationKey := common.BytesToHash(append([]byte("EIP7702_DELEGATION_"), authority.Bytes()...))
-	codeHash := dr.stateDB.GetState(common.HexToAddress("0x7702"), delegationKey)
-	
-	if codeHash == (common.Hash{}) {
-		return nil
-	}
-	
-	codeAddr := common.BytesToAddress(codeHash.Bytes())
-	return &codeAddr
+	return currentAddr, finalCode, gasUsed, nil
 }
 
 // CheckDelegation checks if an address has a delegation
 func (dr *DelegationResolver) CheckDelegation(address common.Address) bool {
-	delegation := dr.getDelegationFromState(address)
-	return delegation != nil
+	code := dr.stateDB.GetCode(address)
+	if len(code) == 0 {
+		return false
+	}
+	_, isDelegation := types.ParseDelegation(code)
+	return isDelegation
 }
 
 // GetDirectDelegation returns the direct delegation for an address (without chain resolution)
 func (dr *DelegationResolver) GetDirectDelegation(address common.Address) *common.Address {
-	return dr.getDelegationFromState(address)
+	code := dr.stateDB.GetCode(address)
+	if len(code) == 0 {
+		return nil
+	}
+	if delegatedAddr, isDelegation := types.ParseDelegation(code); isDelegation {
+		return &delegatedAddr
+	}
+	return nil
 }
 
 // EnhancedEVM extends the standard EVM with EIP-7702 delegation support
@@ -108,12 +124,14 @@ func NewEnhancedEVM(blockCtx BlockContext, txCtx TxContext, stateDB StateDB, cha
 func (evm *EnhancedEVM) GetCodeWithDelegation(addr common.Address) []byte {
 	// First check for delegation
 	if evm.delegationResolver.CheckDelegation(addr) {
-		_, code, err := evm.delegationResolver.ResolveDelegatedCode(addr)
+		_, code, gasUsed, err := evm.delegationResolver.ResolveDelegatedCode(addr)
 		if err != nil {
 			log.Error("Delegation resolution failed", "address", addr.Hex(), "error", err)
 			// Fall back to normal code lookup
 			return evm.StateDB.GetCode(addr)
 		}
+		// Note: Gas accounting is handled at the opcode level, not here
+		_ = gasUsed
 		return code
 	}
 	
@@ -125,13 +143,23 @@ func (evm *EnhancedEVM) GetCodeWithDelegation(addr common.Address) []byte {
 func (evm *EnhancedEVM) CallWithDelegation(caller ContractRef, addr common.Address, input []byte, gas uint64, value *big.Int) (ret []byte, leftOverGas uint64, err error) {
 	// Resolve delegation if present
 	codeAddr := addr
+	delegationGas := uint64(0)
 	if evm.delegationResolver.CheckDelegation(addr) {
-		resolvedAddr, _, err := evm.delegationResolver.ResolveDelegatedCode(addr)
+		resolvedAddr, _, gasUsed, err := evm.delegationResolver.ResolveDelegatedCode(addr)
 		if err != nil {
 			log.Error("Delegation resolution failed in call", "address", addr.Hex(), "error", err)
 		} else {
 			codeAddr = resolvedAddr
+			delegationGas = gasUsed
 		}
+	}
+
+	// Deduct delegation resolution gas
+	if delegationGas > 0 {
+		if gas < delegationGas {
+			return nil, 0, ErrOutOfGas
+		}
+		gas -= delegationGas
 	}
 
 	// If delegation changed the code address, we need to get the code from the resolved address
@@ -197,13 +225,23 @@ func (evm *EnhancedEVM) CallWithDelegatedCode(caller ContractRef, contextAddr, c
 func (evm *EnhancedEVM) DelegateCallWithDelegation(caller ContractRef, addr common.Address, input []byte, gas uint64) (ret []byte, leftOverGas uint64, err error) {
 	// Resolve delegation if present
 	codeAddr := addr
+	delegationGas := uint64(0)
 	if evm.delegationResolver.CheckDelegation(addr) {
-		resolvedAddr, _, err := evm.delegationResolver.ResolveDelegatedCode(addr)
+		resolvedAddr, _, gasUsed, err := evm.delegationResolver.ResolveDelegatedCode(addr)
 		if err != nil {
 			log.Error("Delegation resolution failed in delegatecall", "address", addr.Hex(), "error", err)
 		} else {
 			codeAddr = resolvedAddr
+			delegationGas = gasUsed
 		}
+	}
+
+	// Deduct delegation resolution gas
+	if delegationGas > 0 {
+		if gas < delegationGas {
+			return nil, 0, ErrOutOfGas
+		}
+		gas -= delegationGas
 	}
 
 	// If delegation resolved to a different address, get code from there
@@ -220,13 +258,23 @@ func (evm *EnhancedEVM) DelegateCallWithDelegation(caller ContractRef, addr comm
 func (evm *EnhancedEVM) StaticCallWithDelegation(caller ContractRef, addr common.Address, input []byte, gas uint64) (ret []byte, leftOverGas uint64, err error) {
 	// Resolve delegation if present
 	codeAddr := addr
+	delegationGas := uint64(0)
 	if evm.delegationResolver.CheckDelegation(addr) {
-		resolvedAddr, _, err := evm.delegationResolver.ResolveDelegatedCode(addr)
+		resolvedAddr, _, gasUsed, err := evm.delegationResolver.ResolveDelegatedCode(addr)
 		if err != nil {
 			log.Error("Delegation resolution failed in staticcall", "address", addr.Hex(), "error", err)
 		} else {
 			codeAddr = resolvedAddr
+			delegationGas = gasUsed
 		}
+	}
+
+	// Deduct delegation resolution gas
+	if delegationGas > 0 {
+		if gas < delegationGas {
+			return nil, 0, ErrOutOfGas
+		}
+		gas -= delegationGas
 	}
 
 	// If delegation resolved to a different address, get code from there

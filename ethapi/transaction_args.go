@@ -31,6 +31,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/rpc"
 
 	"github.com/unicornultrafoundation/go-u2u/gossip/gasprice"
+	"github.com/unicornultrafoundation/go-u2u/crypto"
 )
 
 // TransactionArgs represents the arguments to construct a new transaction
@@ -54,6 +55,9 @@ type TransactionArgs struct {
 	// Introduced by AccessListTxType transaction.
 	AccessList *types.AccessList `json:"accessList,omitempty"`
 	ChainID    *hexutil.Big      `json:"chainId,omitempty"`
+	
+	// Introduced by EIP-7702 SetCodeTxType transaction.
+	AuthorizationList *types.AuthorizationList `json:"authorizationList,omitempty"`
 }
 
 // from retrieves the transaction sender address.
@@ -133,6 +137,46 @@ func (args *TransactionArgs) setDefaults(ctx context.Context, b Backend) error {
 	if args.To == nil && len(args.data()) == 0 {
 		return errors.New(`contract creation without any data provided`)
 	}
+	
+	// EIP-7702 authorization list validation
+	if args.AuthorizationList != nil {
+		// EIP-7702 transactions cannot create contracts
+		if args.To == nil {
+			return errors.New("EIP-7702 transactions cannot create contracts")
+		}
+		
+		// Authorization list cannot be empty
+		if len(*args.AuthorizationList) == 0 {
+			return errors.New("EIP-7702 transactions cannot have empty authorization list")
+		}
+		
+		// EIP-7702 transactions require EIP-1559 fee structure
+		if args.MaxFeePerGas == nil || args.MaxPriorityFeePerGas == nil {
+			if b.ChainConfig().IsLondon(b.CurrentBlock().Header().Number) {
+				if args.MaxPriorityFeePerGas == nil {
+					tip := b.SuggestGasTipCap(ctx, gasprice.AsDefaultCertainty)
+					args.MaxPriorityFeePerGas = (*hexutil.Big)(tip)
+				}
+				if args.MaxFeePerGas == nil {
+					gasFeeCap := new(big.Int).Add(
+						(*big.Int)(args.MaxPriorityFeePerGas),
+						b.MinGasPrice(),
+					)
+					args.MaxFeePerGas = (*hexutil.Big)(gasFeeCap)
+				}
+			} else {
+				return errors.New("EIP-7702 transactions require EIP-1559 fees (maxFeePerGas and maxPriorityFeePerGas)")
+			}
+		}
+		
+		// Validate each authorization in the list
+		chainID := b.ChainConfig().ChainID
+		for i, auth := range *args.AuthorizationList {
+			if err := validateAuthorization(&auth, chainID); err != nil {
+				return fmt.Errorf("invalid authorization at index %d: %v", i, err)
+			}
+		}
+	}
 	// Estimate the gas usage if necessary.
 	if args.Gas == nil {
 		// These fields are immutable during the estimation, safe to
@@ -146,6 +190,7 @@ func (args *TransactionArgs) setDefaults(ctx context.Context, b Backend) error {
 			Value:                args.Value,
 			Data:                 args.Data,
 			AccessList:           args.AccessList,
+			AuthorizationList:    args.AuthorizationList,
 		}
 		pendingBlockNr := rpc.BlockNumberOrHashWithNumber(rpc.PendingBlockNumber)
 		estimated, err := DoEstimateGas(ctx, b, callArgs, pendingBlockNr, nil, b.RPCGasCap())
@@ -275,7 +320,11 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (t
 	if args.AccessList != nil {
 		accessList = *args.AccessList
 	}
-	msg := types.NewMessage(addr, args.To, 0, value, gas, gasPrice, gasFeeCap, gasTipCap, data, accessList, nil, true)
+	var authorizationList types.AuthorizationList
+	if args.AuthorizationList != nil {
+		authorizationList = *args.AuthorizationList
+	}
+	msg := types.NewMessage(addr, args.To, 0, value, gas, gasPrice, gasFeeCap, gasTipCap, data, accessList, authorizationList, true)
 	return msg, nil
 }
 
@@ -284,6 +333,24 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (t
 func (args *TransactionArgs) toTransaction() *types.Transaction {
 	var data types.TxData
 	switch {
+	case args.AuthorizationList != nil:
+		// EIP-7702 SetCode transaction
+		al := types.AccessList{}
+		if args.AccessList != nil {
+			al = *args.AccessList
+		}
+		data = &types.SetCodeTx{
+			ChainID:           (*big.Int)(args.ChainID),
+			Nonce:             uint64(*args.Nonce),
+			GasTipCap:         (*big.Int)(args.MaxPriorityFeePerGas),
+			GasFeeCap:         (*big.Int)(args.MaxFeePerGas),
+			Gas:               uint64(*args.Gas),
+			To:                args.To,
+			Value:             (*big.Int)(args.Value),
+			Data:              args.data(),
+			AccessList:        al,
+			AuthorizationList: *args.AuthorizationList,
+		}
 	case args.MaxFeePerGas != nil:
 		al := types.AccessList{}
 		if args.AccessList != nil {
@@ -328,4 +395,25 @@ func (args *TransactionArgs) toTransaction() *types.Transaction {
 // This assumes that setDefaults has been called.
 func (args *TransactionArgs) ToTransaction() *types.Transaction {
 	return args.toTransaction()
+}
+
+// validateAuthorization validates a single EIP-7702 authorization tuple
+func validateAuthorization(auth *types.AuthorizationTuple, chainID *big.Int) error {
+	// Validate chain ID matches signer chain ID (if not nil)
+	if auth.ChainID != nil && auth.ChainID.Cmp(chainID) != 0 {
+		return fmt.Errorf("authorization chain ID %d does not match expected chain ID %d", 
+			auth.ChainID, chainID)
+	}
+	
+	// Validate signature values
+	if !crypto.ValidateSignatureValues(byte(auth.V.Uint64()), auth.R, auth.S, true) {
+		return errors.New("invalid signature values in authorization")
+	}
+	
+	// Check nonce bounds (EIP-2681: nonce must be < 2^64-1)
+	if auth.Nonce >= ^uint64(0) {
+		return errors.New("authorization nonce overflow")
+	}
+	
+	return nil
 }

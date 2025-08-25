@@ -1834,7 +1834,20 @@ func (s *PublicTransactionPoolAPI) SendTransaction(ctx context.Context, args Tra
 	// Assemble the transaction and sign with the wallet
 	tx := args.toTransaction()
 
-	signed, err := wallet.SignTx(account, tx, s.b.ChainConfig().ChainID)
+	// Use appropriate signer for EIP-7702 transactions
+	var chainID *big.Int
+	if tx.Type() == types.SetCodeTxType {
+		// EIP-7702 transactions require Phaethon hardfork activation
+		currentBlock := s.b.CurrentBlock().Header().Number
+		if !s.b.ChainConfig().IsPhaethon(currentBlock) {
+			return common.Hash{}, errors.New("EIP-7702 transactions not supported before Phaethon hardfork")
+		}
+		chainID = s.b.ChainConfig().ChainID
+	} else {
+		chainID = s.b.ChainConfig().ChainID
+	}
+
+	signed, err := wallet.SignTx(account, tx, chainID)
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -1865,6 +1878,15 @@ func (s *PublicTransactionPoolAPI) SendRawTransaction(ctx context.Context, encod
 	if err := tx.UnmarshalBinary(encodedTx); err != nil {
 		return common.Hash{}, err
 	}
+	
+	// Validate EIP-7702 transactions against hardfork activation
+	if tx.Type() == types.SetCodeTxType {
+		currentBlock := s.b.CurrentBlock().Header().Number
+		if !s.b.ChainConfig().IsPhaethon(currentBlock) {
+			return common.Hash{}, errors.New("EIP-7702 transactions not supported before Phaethon hardfork")
+		}
+	}
+	
 	return SubmitTransaction(ctx, s.b, tx)
 }
 

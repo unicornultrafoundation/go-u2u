@@ -65,11 +65,10 @@ func ValidateTransaction(tx *types.Transaction, head *EvmHeader, signer types.Si
 	}
 	// Check EIP-7702 SetCode transaction support and validation
 	if tx.Type() == types.SetCodeTxType {
-		// For now, allow SetCode transactions if they're explicitly accepted
-		// In the future, this should check for the appropriate fork (e.g., Prague/Electra)
-		// if !opts.Config.IsPrague(head.Number) {
-		//     return fmt.Errorf("%w: type %d rejected, pool not yet in Prague", ErrTxTypeNotSupported, tx.Type())
-		// }
+		// EIP-7702 requires Phaethon hardfork activation
+		if !opts.Config.IsPhaethon(head.Number) {
+			return fmt.Errorf("%w: type %d rejected, pool not yet in Phaethon hardfork", ErrTxTypeNotSupported, tx.Type())
+		}
 		
 		// Perform EIP-7702 specific validation
 		if err := validateSetCodeTransaction(tx, head, signer, opts); err != nil {

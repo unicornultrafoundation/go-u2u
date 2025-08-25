@@ -30,7 +30,7 @@ func handleCreateValidator(evm *vm.EVM, caller common.Address, args []interface{
 	}
 
 	// Call the minSelfStake method on the ConstantsManager contract
-	minSelfStake := getConstantsManagerVariable("minSelfStake")
+	minSelfStake := getConstantsManagerVariable(evm.SfcStateDB, "minSelfStake")
 	// Check that the value is at least the minimum self-stake
 	if value.Cmp(minSelfStake) < 0 {
 		revertData, err := encodeRevertReason("createValidator", "insufficient self-stake")

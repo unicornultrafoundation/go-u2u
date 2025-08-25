@@ -921,8 +921,8 @@ func callConstantManagerMethod(evm *vm.EVM, methodName string, args ...interface
 	return values, gasUsed, nil
 }
 
-func getConstantsManagerVariable(methodName string) *big.Int {
-	return constant_manager.GetCMCache().GetValue(methodName)
+func getConstantsManagerVariable(stateDb vm.StateDB, methodName string) *big.Int {
+	return stateDb.GetState(CMAddr, common.BigToHash(constant_manager.ConstantManagerSlots[methodName])).Big()
 }
 
 // getCurrentEpoch returns the current epoch value (currentSealedEpoch + 1)
@@ -1704,7 +1704,7 @@ func handleInternalScaleLockupReward(evm *vm.EVM, fullReward *big.Int, lockupDur
 	}
 
 	// Get the unlockedRewardRatio from the constants manager
-	unlockedRewardRatioBigInt := getConstantsManagerVariable("unlockedRewardRatio")
+	unlockedRewardRatioBigInt := getConstantsManagerVariable(evm.SfcStateDB, "unlockedRewardRatio")
 
 	// Check if lockupDuration is not zero
 	if lockupDuration.Cmp(big.NewInt(0)) != 0 {
@@ -1715,7 +1715,7 @@ func handleInternalScaleLockupReward(evm *vm.EVM, fullReward *big.Int, lockupDur
 		maxLockupExtraRatio := new(big.Int).Sub(decimalUnit, unlockedRewardRatioBigInt)
 
 		// Get the maxLockupDuration from the constants manager
-		maxLockupDurationBigInt := getConstantsManagerVariable("maxLockupDuration")
+		maxLockupDurationBigInt := getConstantsManagerVariable(evm.SfcStateDB, "maxLockupDuration")
 
 		// Calculate lockupExtraRatio = maxLockupExtraRatio * lockupDuration / maxLockupDuration
 		lockupExtraRatio := new(big.Int).Mul(maxLockupExtraRatio, lockupDuration)
@@ -1788,7 +1788,7 @@ func handleInternalCalcRawValidatorEpochBaseReward(epochDuration *big.Int, baseR
 
 // handleInternalCalcRawValidatorEpochTxReward calculates the raw transaction reward for a validator in an epoch
 // This is a port of the _calcRawValidatorEpochTxReward function from SFCBase.sol
-func handleInternalCalcRawValidatorEpochTxReward(epochFee *big.Int, txRewardWeight *big.Int, totalTxRewardWeight *big.Int) *big.Int {
+func handleInternalCalcRawValidatorEpochTxReward(stateDb vm.StateDB, epochFee *big.Int, txRewardWeight *big.Int, totalTxRewardWeight *big.Int) *big.Int {
 	if txRewardWeight.Cmp(big.NewInt(0)) == 0 {
 		return big.NewInt(0)
 	}
@@ -1797,8 +1797,8 @@ func handleInternalCalcRawValidatorEpochTxReward(epochFee *big.Int, txRewardWeig
 	}
 	txReward := new(big.Int).Div(new(big.Int).Mul(epochFee, txRewardWeight), totalTxRewardWeight)
 	// fee reward except burntFeeShare and treasuryFeeShare
-	burntFeeShare := getConstantsManagerVariable("burntFeeShare")
-	treasuryFeeShare := getConstantsManagerVariable("treasuryFeeShare")
+	burntFeeShare := getConstantsManagerVariable(stateDb, "burntFeeShare")
+	treasuryFeeShare := getConstantsManagerVariable(stateDb, "treasuryFeeShare")
 	shareToSubtract := new(big.Int).Add(burntFeeShare, treasuryFeeShare)
 	shareToKeep := new(big.Int).Sub(getDecimalUnit(), shareToSubtract)
 	return new(big.Int).Div(new(big.Int).Mul(txReward, shareToKeep), getDecimalUnit())

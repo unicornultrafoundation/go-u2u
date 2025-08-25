@@ -354,7 +354,7 @@ func handleRawUndelegate(evm *vm.EVM, delegator common.Address, toValidatorID *b
 		gasUsed += deactivateGasUsed
 	} else if validatorStatusBigInt.Cmp(big.NewInt(0)) == 0 { // OK_STATUS
 		// Check that the self-stake is at least the minimum self-stake
-		minSelfStakeBigInt := getConstantsManagerVariable("minSelfStake")
+		minSelfStakeBigInt := getConstantsManagerVariable(evm.SfcStateDB, "minSelfStake")
 		if selfStake.Cmp(minSelfStakeBigInt) < 0 {
 			revertData, err := encodeRevertReason("_rawDelegate", "insufficient self-stake")
 			if err != nil {
@@ -675,8 +675,8 @@ func handleLockStake(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	}
 
 	// Check that the lockup duration is valid
-	minLockupDurationBigInt := getConstantsManagerVariable("minLockupDuration")
-	maxLockupDurationBigInt := getConstantsManagerVariable("maxLockupDuration")
+	minLockupDurationBigInt := getConstantsManagerVariable(evm.SfcStateDB, "minLockupDuration")
+	maxLockupDurationBigInt := getConstantsManagerVariable(evm.SfcStateDB, "maxLockupDuration")
 
 	if lockupDuration.Cmp(minLockupDurationBigInt) < 0 || lockupDuration.Cmp(maxLockupDurationBigInt) > 0 {
 		revertData, err := encodeRevertReason("lockStake", "incorrect duration")
@@ -1032,7 +1032,7 @@ func handleWithdraw(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 	}
 
 	// Check that enough time has passed
-	withdrawalPeriodTimeBigInt := getConstantsManagerVariable("withdrawalPeriodTime")
+	withdrawalPeriodTimeBigInt := getConstantsManagerVariable(evm.SfcStateDB, "withdrawalPeriodTime")
 
 	if evm.Context.Time.Cmp(new(big.Int).Add(requestTime, withdrawalPeriodTimeBigInt)) < 0 {
 		revertData, err := encodeRevertReason("withdraw", "not enough time passed")
@@ -1043,7 +1043,7 @@ func handleWithdraw(evm *vm.EVM, caller common.Address, args []interface{}) ([]b
 	}
 
 	// Check that enough epochs have passed
-	withdrawalPeriodEpochsBigInt := getConstantsManagerVariable("withdrawalPeriodEpochs")
+	withdrawalPeriodEpochsBigInt := getConstantsManagerVariable(evm.SfcStateDB, "withdrawalPeriodEpochs")
 
 	currentEpochBigInt, _, err := getCurrentEpoch(evm)
 	if err != nil {

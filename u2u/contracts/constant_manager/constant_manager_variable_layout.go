@@ -1,5 +1,7 @@
 package constant_manager
 
+import "math/big"
+
 // Storage slots for ConstantManager contract variables
 const (
 	isInitialized                        int64 = 0x0
@@ -22,6 +24,27 @@ const (
 	gasPriceBalancingCounterweightSlot         = offset + 14
 	// address private secondaryOwner_erased		- slot 15
 )
+
+// Storage slots for ConstantManager contract variables
+var ConstantManagerSlots = map[string]*big.Int{
+	"isInitialized":                  big.NewInt(isInitialized),
+	"owner":                          big.NewInt(ownerSlot),
+	"minSelfStake":                   big.NewInt(minSelfStakeSlot),
+	"maxDelegatedRatio":              big.NewInt(maxDelegatedRatioSlot),
+	"validatorCommission":            big.NewInt(validatorCommissionSlot),
+	"burntFeeShare":                  big.NewInt(burntFeeShareSlot),
+	"treasuryFeeShare":               big.NewInt(treasuryFeeShareSlot),
+	"unlockedRewardRatio":            big.NewInt(unlockedRewardRatioSlot),
+	"minLockupDuration":              big.NewInt(minLockupDurationSlot),
+	"maxLockupDuration":              big.NewInt(maxLockupDurationSlot),
+	"withdrawalPeriodEpochs":         big.NewInt(withdrawalPeriodEpochsSlot),
+	"withdrawalPeriodTime":           big.NewInt(withdrawalPeriodTimeSlot),
+	"baseRewardPerSecond":            big.NewInt(baseRewardPerSecondSlot),
+	"offlinePenaltyThresholdBlocksNum": big.NewInt(offlinePenaltyThresholdBlocksNumSlot),
+	"offlinePenaltyThresholdTime":    big.NewInt(offlinePenaltyThresholdTimeSlot),
+	"targetGasPowerPerSecond":        big.NewInt(targetGasPowerPerSecondSlot),
+	"gasPriceBalancingCounterweight": big.NewInt(gasPriceBalancingCounterweightSlot),
+}
 
 // Variable name constants for cache keys
 const (

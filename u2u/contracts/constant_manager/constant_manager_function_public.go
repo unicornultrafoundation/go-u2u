@@ -51,9 +51,6 @@ func handleUpdateMinSelfStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, 
 	// Update the minSelfStake value
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(minSelfStakeSlot)), common.BigToHash(value))
 
-	// Update the cache
-	UpdateCacheValue(minSelfStakeSlot, value)
-
 	return nil, 0, nil
 }
 
@@ -100,9 +97,6 @@ func handleUpdateMaxDelegatedRatio(evm *vm.EVM, args []interface{}) ([]byte, uin
 	// Update the maxDelegatedRatio value
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(maxDelegatedRatioSlot)), common.BigToHash(value))
 
-	// Update the cache
-	UpdateCacheValue(maxDelegatedRatioSlot, value)
-
 	return nil, 0, nil
 }
 
@@ -139,9 +133,6 @@ func handleUpdateValidatorCommission(evm *vm.EVM, args []interface{}) ([]byte, u
 
 	// Update the validatorCommission value
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(validatorCommissionSlot)), common.BigToHash(value))
-
-	// Update the cache
-	UpdateCacheValue(validatorCommissionSlot, value)
 
 	return nil, 0, nil
 }
@@ -180,9 +171,6 @@ func handleUpdateBurntFeeShare(evm *vm.EVM, args []interface{}) ([]byte, uint64,
 	// Update the burntFeeShare value
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(burntFeeShareSlot)), common.BigToHash(value))
 
-	// Update the cache
-	UpdateCacheValue(burntFeeShareSlot, value)
-
 	return nil, 0, nil
 }
 
@@ -219,9 +207,6 @@ func handleUpdateTreasuryFeeShare(evm *vm.EVM, args []interface{}) ([]byte, uint
 
 	// Update the treasuryFeeShare value
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(treasuryFeeShareSlot)), common.BigToHash(value))
-
-	// Update the cache
-	UpdateCacheValue(treasuryFeeShareSlot, value)
 
 	return nil, 0, nil
 }
@@ -269,9 +254,6 @@ func handleUpdateUnlockedRewardRatio(evm *vm.EVM, args []interface{}) ([]byte, u
 	// Update the unlockedRewardRatio value
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(unlockedRewardRatioSlot)), common.BigToHash(value))
 
-	// Update the cache
-	UpdateCacheValue(unlockedRewardRatioSlot, value)
-
 	return nil, 0, nil
 }
 
@@ -315,9 +297,6 @@ func handleUpdateMinLockupDuration(evm *vm.EVM, args []interface{}) ([]byte, uin
 
 	// Update the minLockupDuration value
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(minLockupDurationSlot)), common.BigToHash(value))
-
-	// Update the cache
-	UpdateCacheValue(minLockupDurationSlot, value)
 
 	return nil, 0, nil
 }
@@ -363,9 +342,6 @@ func handleUpdateMaxLockupDuration(evm *vm.EVM, args []interface{}) ([]byte, uin
 	// Update the maxLockupDuration value
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(maxLockupDurationSlot)), common.BigToHash(value))
 
-	// Update the cache
-	UpdateCacheValue(maxLockupDurationSlot, value)
-
 	return nil, 0, nil
 }
 
@@ -410,9 +386,6 @@ func handleUpdateWithdrawalPeriodEpochs(evm *vm.EVM, args []interface{}) ([]byte
 	// Update the withdrawalPeriodEpochs value
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(withdrawalPeriodEpochsSlot)), common.BigToHash(value))
 
-	// Update the cache
-	UpdateCacheValue(withdrawalPeriodEpochsSlot, value)
-
 	return nil, 0, nil
 }
 
@@ -456,9 +429,6 @@ func handleUpdateWithdrawalPeriodTime(evm *vm.EVM, args []interface{}) ([]byte, 
 
 	// Update the withdrawalPeriodTime value
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(withdrawalPeriodTimeSlot)), common.BigToHash(value))
-
-	// Update the cache
-	UpdateCacheValue(withdrawalPeriodTimeSlot, value)
 
 	return nil, 0, nil
 }
@@ -506,9 +476,6 @@ func handleUpdateBaseRewardPerSecond(evm *vm.EVM, args []interface{}) ([]byte, u
 	// Update the baseRewardPerSecond value
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(baseRewardPerSecondSlot)), common.BigToHash(value))
 
-	// Update the cache
-	UpdateCacheValue(baseRewardPerSecondSlot, value)
-
 	return nil, 0, nil
 }
 
@@ -552,9 +519,6 @@ func handleUpdateOfflinePenaltyThresholdTime(evm *vm.EVM, args []interface{}) ([
 
 	// Update the offlinePenaltyThresholdTime value
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(offlinePenaltyThresholdTimeSlot)), common.BigToHash(value))
-
-	// Update the cache
-	UpdateCacheValue(offlinePenaltyThresholdTimeSlot, value)
 
 	return nil, 0, nil
 }
@@ -600,9 +564,6 @@ func handleUpdateOfflinePenaltyThresholdBlocksNum(evm *vm.EVM, args []interface{
 	// Update the offlinePenaltyThresholdBlocksNum value
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(offlinePenaltyThresholdBlocksNumSlot)), common.BigToHash(value))
 
-	// Update the cache
-	UpdateCacheValue(offlinePenaltyThresholdBlocksNumSlot, value)
-
 	return nil, 0, nil
 }
 
@@ -647,9 +608,6 @@ func handleUpdateTargetGasPowerPerSecond(evm *vm.EVM, args []interface{}) ([]byt
 	// Update the targetGasPowerPerSecond value
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(targetGasPowerPerSecondSlot)), common.BigToHash(value))
 
-	// Update the cache
-	UpdateCacheValue(targetGasPowerPerSecondSlot, value)
-
 	return nil, 0, nil
 }
 
@@ -693,9 +651,6 @@ func handleUpdateGasPriceBalancingCounterweight(evm *vm.EVM, args []interface{})
 
 	// Update the gasPriceBalancingCounterweight value
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(gasPriceBalancingCounterweightSlot)), common.BigToHash(value))
-
-	// Update the cache
-	UpdateCacheValue(gasPriceBalancingCounterweightSlot, value)
 
 	return nil, 0, nil
 }

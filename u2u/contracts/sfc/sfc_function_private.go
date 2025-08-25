@@ -234,7 +234,7 @@ func handleCheckDelegatedStakeLimit(evm *vm.EVM, validatorID *big.Int) (bool, er
 	receivedStakeBigInt := new(big.Int).SetBytes(receivedStake.Bytes())
 
 	// Get the max delegated ratio
-	maxDelegatedRatioBigInt := getConstantsManagerVariable("maxDelegatedRatio")
+	maxDelegatedRatioBigInt := getConstantsManagerVariable(evm.SfcStateDB, "maxDelegatedRatio")
 
 	// Calculate the delegated stake
 	delegatedStake := new(big.Int).Sub(receivedStakeBigInt, selfStake)
@@ -554,7 +554,7 @@ func checkDelegatedStakeLimit(evm *vm.EVM, validatorID *big.Int) (bool, uint64, 
 	selfStakeBigInt := new(big.Int).SetBytes(selfStake.Bytes())
 
 	// Get the max delegated ratio
-	maxDelegatedRatioBigInt := getConstantsManagerVariable("maxDelegatedRatio")
+	maxDelegatedRatioBigInt := getConstantsManagerVariable(evm.SfcStateDB, "maxDelegatedRatio")
 
 	// Calculate the maximum allowed stake (selfStake * maxDelegatedRatio / Decimal.unit())
 	maxAllowedStake := new(big.Int).Mul(selfStakeBigInt, maxDelegatedRatioBigInt)

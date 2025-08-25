@@ -116,52 +116,64 @@ func (c *ConstantManagerPrecompile) Run(evm *vm.EVM, caller common.Address, inpu
 	case "owner":
 		result, gasUsed, err = handleOwner(evm)
 
-	// Setter functions (to be implemented in constant_manager_function_public.go)
-	case "updateMinSelfStake":
-		result, gasUsed, err = handleUpdateMinSelfStake(evm, args)
-	case "updateMaxDelegatedRatio":
-		result, gasUsed, err = handleUpdateMaxDelegatedRatio(evm, args)
-	case "updateValidatorCommission":
-		result, gasUsed, err = handleUpdateValidatorCommission(evm, args)
-	case "updateBurntFeeShare":
-		result, gasUsed, err = handleUpdateBurntFeeShare(evm, args)
-	case "updateTreasuryFeeShare":
-		result, gasUsed, err = handleUpdateTreasuryFeeShare(evm, args)
-	case "updateUnlockedRewardRatio":
-		result, gasUsed, err = handleUpdateUnlockedRewardRatio(evm, args)
-	case "updateMinLockupDuration":
-		result, gasUsed, err = handleUpdateMinLockupDuration(evm, args)
-	case "updateMaxLockupDuration":
-		result, gasUsed, err = handleUpdateMaxLockupDuration(evm, args)
-	case "updateWithdrawalPeriodEpochs":
-		result, gasUsed, err = handleUpdateWithdrawalPeriodEpochs(evm, args)
-	case "updateWithdrawalPeriodTime":
-		result, gasUsed, err = handleUpdateWithdrawalPeriodTime(evm, args)
-	case "updateBaseRewardPerSecond":
-		result, gasUsed, err = handleUpdateBaseRewardPerSecond(evm, args)
-	case "updateOfflinePenaltyThresholdTime":
-		result, gasUsed, err = handleUpdateOfflinePenaltyThresholdTime(evm, args)
-	case "updateOfflinePenaltyThresholdBlocksNum":
-		result, gasUsed, err = handleUpdateOfflinePenaltyThresholdBlocksNum(evm, args)
-	case "updateTargetGasPowerPerSecond":
-		result, gasUsed, err = handleUpdateTargetGasPowerPerSecond(evm, args)
-	case "updateGasPriceBalancingCounterweight":
-		result, gasUsed, err = handleUpdateGasPriceBalancingCounterweight(evm, args)
-	case "initialize":
-		result, gasUsed, err = handleInitialize(evm, args)
-	case "transferOwnership":
-		result, gasUsed, err = handleTransferOwnership(evm, args)
-	case "renounceOwnership":
-		result, gasUsed, err = handleRenounceOwnership(evm, args)
-
-	// Fallback function
-	case "":
-		result, gasUsed, err = handleFallback(evm, args, input)
-
+	// Setter functions and others
 	default:
-		log.Error("CM Precompiled: Unknown function", "function", method.Name)
-		return nil, 0, vm.ErrExecutionReverted
+		{
+			switch method.Name {
+			// Setter functions (to be implemented in constant_manager_function_public.go)
+			case "updateMinSelfStake":
+				result, gasUsed, err = handleUpdateMinSelfStake(evm, args)
+			case "updateMaxDelegatedRatio":
+				result, gasUsed, err = handleUpdateMaxDelegatedRatio(evm, args)
+			case "updateValidatorCommission":
+				result, gasUsed, err = handleUpdateValidatorCommission(evm, args)
+			case "updateBurntFeeShare":
+				result, gasUsed, err = handleUpdateBurntFeeShare(evm, args)
+			case "updateTreasuryFeeShare":
+				result, gasUsed, err = handleUpdateTreasuryFeeShare(evm, args)
+			case "updateUnlockedRewardRatio":
+				result, gasUsed, err = handleUpdateUnlockedRewardRatio(evm, args)
+			case "updateMinLockupDuration":
+				result, gasUsed, err = handleUpdateMinLockupDuration(evm, args)
+			case "updateMaxLockupDuration":
+				result, gasUsed, err = handleUpdateMaxLockupDuration(evm, args)
+			case "updateWithdrawalPeriodEpochs":
+				result, gasUsed, err = handleUpdateWithdrawalPeriodEpochs(evm, args)
+			case "updateWithdrawalPeriodTime":
+				result, gasUsed, err = handleUpdateWithdrawalPeriodTime(evm, args)
+			case "updateBaseRewardPerSecond":
+				result, gasUsed, err = handleUpdateBaseRewardPerSecond(evm, args)
+			case "updateOfflinePenaltyThresholdTime":
+				result, gasUsed, err = handleUpdateOfflinePenaltyThresholdTime(evm, args)
+			case "updateOfflinePenaltyThresholdBlocksNum":
+				result, gasUsed, err = handleUpdateOfflinePenaltyThresholdBlocksNum(evm, args)
+			case "updateTargetGasPowerPerSecond":
+				result, gasUsed, err = handleUpdateTargetGasPowerPerSecond(evm, args)
+			case "updateGasPriceBalancingCounterweight":
+				result, gasUsed, err = handleUpdateGasPriceBalancingCounterweight(evm, args)
+			case "initialize":
+				result, gasUsed, err = handleInitialize(evm, args)
+			case "transferOwnership":
+				result, gasUsed, err = handleTransferOwnership(evm, args)
+			case "renounceOwnership":
+				result, gasUsed, err = handleRenounceOwnership(evm, args)
+
+			// Fallback function
+			case "":
+				result, gasUsed, err = handleFallback(evm, args, input)
+			default:
+				log.Error("CM Precompiled: Unknown function", "function", method.Name)
+				return nil, 0, vm.ErrExecutionReverted
+			}
+
+			// Invalidate cache after any state-changing operation
+			// except during gas estimation or debug mode
+			if !evm.Config.NoBaseFee && !evm.Config.Debug && err == nil {
+				InvalidateCmCache(evm)
+			}
+		}
 	}
+
 	if err != nil {
 		reason, _ := abi.UnpackRevert(result)
 		log.Error("CM Precompiled: Revert", "function", method.Name, "err", err, "reason", reason, "result", common.Bytes2Hex(result))

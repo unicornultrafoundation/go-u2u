@@ -155,8 +155,8 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	PutBigInt(endTimeOffsetBig)
 	PutBigInt(endTimeSlot)
 
-	// Get the base reward per second from the constants manager
-	baseRewardPerSecond := getConstantsManagerVariable("baseRewardPerSecond")
+	// Get the base reward per second from the constants manager using safe validation
+	baseRewardPerSecond := getConstantsManagerVariableSafe(evm, "baseRewardPerSecond")
 
 	// Update epoch snapshot base reward per second (snapshot.baseRewardPerSecond = c.baseRewardPerSecond() in Solidity)
 	baseRewardPerSecondOffsetBig := GetBigInt().SetInt64(baseRewardPerSecondOffset)
@@ -835,8 +835,8 @@ func handleInternalSealEpochMinGasPrice(evm *vm.EVM, epochDuration *big.Int, epo
 	// Initialize gas used
 	var gasUsed uint64 = 0
 
-	// Get the target gas power per second from the constants manager
-	targetGasPowerPerSecond := getConstantsManagerVariable("targetGasPowerPerSecond")
+	// Get the target gas power per second from the constants manager using safe validation
+	targetGasPowerPerSecond := getConstantsManagerVariableSafe(evm, "targetGasPowerPerSecond")
 
 	// Calculate target epoch gas
 	targetEpochGas := new(big.Int).Mul(epochDuration, targetGasPowerPerSecond)
@@ -850,7 +850,7 @@ func handleInternalSealEpochMinGasPrice(evm *vm.EVM, epochDuration *big.Int, epo
 	gasPriceDeltaRatio.Div(gasPriceDeltaRatio, targetEpochGas)
 
 	// Get the gas price balancing counterweight from the constants manager
-	counterweight := getConstantsManagerVariable("gasPriceBalancingCounterweight")
+	counterweight := getConstantsManagerVariableSafe(evm, "gasPriceBalancingCounterweight")
 
 	// Scale down the change speed
 	// gasPriceDeltaRatio = (epochDuration * gasPriceDeltaRatio + counterweight * Decimal.unit()) / (epochDuration + counterweight)

@@ -6,20 +6,24 @@ import (
 	"math/big"
 	"strconv"
 
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
 )
 
 // HashCache stores previously calculated hashes to avoid redundant calculations
 type HashCache struct {
-	// Map from input bytes to calculated hash
-	cache map[string]common.Hash
+	cache *lru.Cache
 }
 
-// NewHashCache creates a new hash cache
-func NewHashCache() *HashCache {
+// NewHashCache creates a new hash cache with LRU eviction
+func NewHashCache(capacity int) *HashCache {
+	if capacity <= 0 {
+		capacity = 1000 // Default capacity
+	}
+	cache, _ := lru.New(capacity)
 	return &HashCache{
-		cache: make(map[string]common.Hash),
+		cache: cache,
 	}
 }
 
@@ -28,15 +32,15 @@ func (c *HashCache) GetOrCompute(input []byte) common.Hash {
 	// Convert input to string for map key
 	key := string(input)
 
-	if hash, found := c.cache[key]; found {
-		return hash
+	if value, found := c.cache.Get(key); found {
+		return value.(common.Hash)
 	}
 
 	// Compute hash if not in cache
 	hash := crypto.Keccak256Hash(input)
 
 	// Store in cache
-	c.cache[key] = hash
+	c.cache.Add(key, hash)
 
 	return hash
 }
@@ -53,28 +57,31 @@ func (c *HashCache) CachedKeccak256Hash(input []byte) common.Hash {
 
 // SlotCache stores previously calculated storage slots
 type SlotCache struct {
-	// Map from string representation of inputs to calculated slots
-	cache map[string]*big.Int
+	cache *lru.Cache
 }
 
-// NewSlotCache creates a new slot cache
-func NewSlotCache() *SlotCache {
+// NewSlotCache creates a new slot cache with LRU eviction
+func NewSlotCache(capacity int) *SlotCache {
+	if capacity <= 0 {
+		capacity = 1000 // Default capacity
+	}
+	cache, _ := lru.New(capacity)
 	return &SlotCache{
-		cache: make(map[string]*big.Int),
+		cache: cache,
 	}
 }
 
 // GetOrCompute gets a slot from the cache or computes it using the provided function
 func (c *SlotCache) GetOrCompute(key string, computeFunc func() (*big.Int, uint64)) (*big.Int, uint64) {
-	if slot, found := c.cache[key]; found {
-		return slot, 0 // No gas used for cache hit
+	if value, found := c.cache.Get(key); found {
+		return value.(*big.Int), 0 // No gas used for cache hit
 	}
 
 	// Compute if not found
 	slot, gasUsed := computeFunc()
 
 	// Store in cache
-	c.cache[key] = slot
+	c.cache.Add(key, slot)
 
 	return slot, gasUsed
 }
@@ -85,29 +92,58 @@ type SFCCache struct {
 	Slot *SlotCache
 
 	// Specialized caches for common operations
-	ValidatorSlot map[string]*big.Int
-	EpochSlot     map[string]*big.Int
+	ValidatorSlot *lru.Cache
+	EpochSlot     *lru.Cache
 
 	// Hash input caches
-	HashInputs        map[string][]byte // Cache for hash inputs (validatorID + slot)
-	AddressHashInputs map[string][]byte // Cache for address hash inputs (address + slot)
-	NestedHashInputs  map[string][]byte // Cache for nested hash inputs
+	HashInputs        *lru.Cache // Cache for hash inputs (validatorID + slot)
+	AddressHashInputs *lru.Cache // Cache for address hash inputs (address + slot)
+	NestedHashInputs  *lru.Cache // Cache for nested hash inputs
 
 	// Unified ABI encoding cache
-	AbiPackCache map[string][]byte // Cache for all ABI packed results
+	AbiPackCache *lru.Cache // Cache for all ABI packed results
 }
 
-// NewSFCCache creates a new SFC cache
+// Cache capacity constants
+const (
+	DefaultHashCacheSize          = 2000
+	DefaultSlotCacheSize          = 1000
+	DefaultValidatorSlotCacheSize = 1000
+	DefaultEpochSlotCacheSize     = 200
+	DefaultHashInputCacheSize     = 1500
+	DefaultAbiPackCacheSize       = 300
+)
+
+// NewSFCCache creates a new SFC cache with default capacities
 func NewSFCCache() *SFCCache {
+	return NewSFCCacheWithCapacities(
+		DefaultHashCacheSize,
+		DefaultSlotCacheSize,
+		DefaultValidatorSlotCacheSize,
+		DefaultEpochSlotCacheSize,
+		DefaultHashInputCacheSize,
+		DefaultAbiPackCacheSize,
+	)
+}
+
+// NewSFCCacheWithCapacities creates a new SFC cache with custom capacities
+func NewSFCCacheWithCapacities(hashCap, slotCap, validatorSlotCap, epochSlotCap, hashInputCap, abiPackCap int) *SFCCache {
+	validatorSlotCache, _ := lru.New(validatorSlotCap)
+	epochSlotCache, _ := lru.New(epochSlotCap)
+	hashInputsCache, _ := lru.New(hashInputCap)
+	addressHashInputsCache, _ := lru.New(hashInputCap)
+	nestedHashInputsCache, _ := lru.New(hashInputCap)
+	abiPackCache, _ := lru.New(abiPackCap)
+	
 	cache := &SFCCache{
-		Hash:              NewHashCache(),
-		Slot:              NewSlotCache(),
-		ValidatorSlot:     make(map[string]*big.Int),
-		EpochSlot:         make(map[string]*big.Int),
-		HashInputs:        make(map[string][]byte),
-		AddressHashInputs: make(map[string][]byte),
-		NestedHashInputs:  make(map[string][]byte),
-		AbiPackCache:      make(map[string][]byte),
+		Hash:              NewHashCache(hashCap),
+		Slot:              NewSlotCache(slotCap),
+		ValidatorSlot:     validatorSlotCache,
+		EpochSlot:         epochSlotCache,
+		HashInputs:        hashInputsCache,
+		AddressHashInputs: addressHashInputsCache,
+		NestedHashInputs:  nestedHashInputsCache,
+		AbiPackCache:      abiPackCache,
 	}
 
 	return cache
@@ -137,15 +173,15 @@ func CachedKeccak256Hash(input []byte) common.Hash {
 func GetCachedValidatorSlot(validatorID *big.Int) (*big.Int, uint64) {
 	key := validatorID.String()
 
-	if slot, found := sfcCache.ValidatorSlot[key]; found {
-		return slot, 0 // No gas used for cache hit
+	if value, found := sfcCache.ValidatorSlot.Get(key); found {
+		return value.(*big.Int), 0 // No gas used for cache hit
 	}
 
 	// Compute if not found
 	slot, gasUsed := getValidatorStatusSlot(validatorID)
 
 	// Store in cache
-	sfcCache.ValidatorSlot[key] = slot
+	sfcCache.ValidatorSlot.Add(key, slot)
 
 	return slot, gasUsed
 }
@@ -154,22 +190,29 @@ func GetCachedValidatorSlot(validatorID *big.Int) (*big.Int, uint64) {
 func GetCachedEpochSnapshotSlot(epoch *big.Int) (*big.Int, uint64) {
 	key := epoch.String()
 
-	if slot, found := sfcCache.EpochSlot[key]; found {
-		return slot, 0 // No gas used for cache hit
+	if value, found := sfcCache.EpochSlot.Get(key); found {
+		return value.(*big.Int), 0 // No gas used for cache hit
 	}
 
 	// Compute if not found
 	slot, gasUsed := getEpochSnapshotSlot(epoch)
 
 	// Store in cache
-	sfcCache.EpochSlot[key] = slot
+	sfcCache.EpochSlot.Add(key, slot)
 
 	return slot, gasUsed
 }
 
 // ClearCache clears all caches
 func ClearCache() {
-	sfcCache = NewSFCCache()
+	sfcCache.Hash.cache.Purge()
+	sfcCache.Slot.cache.Purge()
+	sfcCache.ValidatorSlot.Purge()
+	sfcCache.EpochSlot.Purge()
+	sfcCache.HashInputs.Purge()
+	sfcCache.AddressHashInputs.Purge()
+	sfcCache.NestedHashInputs.Purge()
+	sfcCache.AbiPackCache.Purge()
 }
 
 // CreateHashInput creates a hash input from a validator ID and slot constant
@@ -178,8 +221,8 @@ func CreateHashInput(validatorID *big.Int, slotConstant int64) []byte {
 	cacheKey := validatorID.String() + "_" + strconv.FormatInt(slotConstant, 10)
 
 	// Check if the hash input is already cached
-	if hashInput, found := sfcCache.HashInputs[cacheKey]; found {
-		return hashInput
+	if value, found := sfcCache.HashInputs.Get(cacheKey); found {
+		return value.([]byte)
 	}
 
 	// If not in cache, create the hash input directly
@@ -198,7 +241,7 @@ func CreateHashInput(validatorID *big.Int, slotConstant int64) []byte {
 	hashInput = append(hashInput, slotBytes...)
 
 	// Store in cache
-	sfcCache.HashInputs[cacheKey] = hashInput
+	sfcCache.HashInputs.Add(cacheKey, hashInput)
 
 	return hashInput
 }
@@ -209,8 +252,8 @@ func CreateAddressHashInput(addr common.Address, slotConstant int64) []byte {
 	cacheKey := addr.String() + "_" + strconv.FormatInt(slotConstant, 10)
 
 	// Check if the hash input is already cached
-	if hashInput, found := sfcCache.AddressHashInputs[cacheKey]; found {
-		return hashInput
+	if value, found := sfcCache.AddressHashInputs.Get(cacheKey); found {
+		return value.([]byte)
 	}
 
 	// If not in cache, create the hash input directly
@@ -229,7 +272,7 @@ func CreateAddressHashInput(addr common.Address, slotConstant int64) []byte {
 	hashInput = append(hashInput, slotBytes...)
 
 	// Store in cache
-	sfcCache.AddressHashInputs[cacheKey] = hashInput
+	sfcCache.AddressHashInputs.Add(cacheKey, hashInput)
 
 	return hashInput
 }
@@ -258,8 +301,8 @@ func CreateNestedAddressHashInput(addr common.Address, hash []byte) []byte {
 	cacheKey := addr.String() + "_" + common.Bytes2Hex(hash)
 
 	// Check if the hash input is already cached
-	if hashInput, found := sfcCache.NestedHashInputs[cacheKey]; found {
-		return hashInput
+	if value, found := sfcCache.NestedHashInputs.Get(cacheKey); found {
+		return value.([]byte)
 	}
 
 	// If not in cache, create the hash input directly
@@ -277,7 +320,7 @@ func CreateNestedAddressHashInput(addr common.Address, hash []byte) []byte {
 	hashInput = append(hashInput, hash...)
 
 	// Store in cache
-	sfcCache.NestedHashInputs[cacheKey] = hashInput
+	sfcCache.NestedHashInputs.Add(cacheKey, hashInput)
 
 	return hashInput
 }
@@ -288,8 +331,8 @@ func CreateValidatorMappingHashInput(validatorID *big.Int, mappingSlot *big.Int)
 	cacheKey := validatorID.String() + "_mapping_" + mappingSlot.String()
 
 	// Check if the hash input is already cached
-	if hashInput, found := sfcCache.HashInputs[cacheKey]; found {
-		return hashInput
+	if value, found := sfcCache.HashInputs.Get(cacheKey); found {
+		return value.([]byte)
 	}
 
 	// If not in cache, create the hash input directly
@@ -308,7 +351,7 @@ func CreateValidatorMappingHashInput(validatorID *big.Int, mappingSlot *big.Int)
 	hashInput = append(hashInput, mappingSlotBytes...)
 
 	// Store in cache
-	sfcCache.HashInputs[cacheKey] = hashInput
+	sfcCache.HashInputs.Add(cacheKey, hashInput)
 
 	return hashInput
 }
@@ -319,8 +362,8 @@ func CreateAddressMethodHashInput(addr common.Address, methodID []byte) []byte {
 	cacheKey := addr.String() + "_method_" + common.Bytes2Hex(methodID)
 
 	// Check if the hash input is already cached
-	if hashInput, found := sfcCache.AddressHashInputs[cacheKey]; found {
-		return hashInput
+	if value, found := sfcCache.AddressHashInputs.Get(cacheKey); found {
+		return value.([]byte)
 	}
 
 	// If not in cache, create the hash input directly
@@ -338,7 +381,7 @@ func CreateAddressMethodHashInput(addr common.Address, methodID []byte) []byte {
 	hashInput = append(hashInput, methodID...)
 
 	// Store in cache
-	sfcCache.AddressHashInputs[cacheKey] = hashInput
+	sfcCache.AddressHashInputs.Add(cacheKey, hashInput)
 
 	return hashInput
 }
@@ -352,8 +395,8 @@ func CreateAddressParamsHashInput(addr common.Address, params ...[]byte) []byte 
 	}
 
 	// Check if the hash input is already cached
-	if hashInput, found := sfcCache.AddressHashInputs[cacheKey]; found {
-		return hashInput
+	if value, found := sfcCache.AddressHashInputs.Get(cacheKey); found {
+		return value.([]byte)
 	}
 
 	// If not in cache, create the hash input directly
@@ -379,7 +422,7 @@ func CreateAddressParamsHashInput(addr common.Address, params ...[]byte) []byte 
 	}
 
 	// Store in cache
-	sfcCache.AddressHashInputs[cacheKey] = hashInput
+	sfcCache.AddressHashInputs.Add(cacheKey, hashInput)
 
 	return hashInput
 }
@@ -390,8 +433,8 @@ func CreateOffsetSlotHashInput(offset int64, slot *big.Int) []byte {
 	cacheKey := strconv.FormatInt(offset, 10) + "_slot_" + slot.String()
 
 	// Check if the hash input is already cached
-	if hashInput, found := sfcCache.HashInputs[cacheKey]; found {
-		return hashInput
+	if value, found := sfcCache.HashInputs.Get(cacheKey); found {
+		return value.([]byte)
 	}
 
 	// If not in cache, create the hash input directly
@@ -410,7 +453,7 @@ func CreateOffsetSlotHashInput(offset int64, slot *big.Int) []byte {
 	hashInput = append(hashInput, slotBytes...)
 
 	// Store in cache
-	sfcCache.HashInputs[cacheKey] = hashInput
+	sfcCache.HashInputs.Add(cacheKey, hashInput)
 
 	return hashInput
 }
@@ -441,8 +484,8 @@ func CachedAbiPack(abiType, method string, args ...interface{}) ([]byte, error) 
 		key := abiType + ":" + method
 
 		// Check if the result is already cached
-		if packed, ok := sfcCache.AbiPackCache[key]; ok {
-			return packed, nil
+		if value, ok := sfcCache.AbiPackCache.Get(key); ok {
+			return value.([]byte), nil
 		}
 
 		// Not in cache, pack it
@@ -467,7 +510,7 @@ func CachedAbiPack(abiType, method string, args ...interface{}) ([]byte, error) 
 		}
 
 		// Store in cache
-		sfcCache.AbiPackCache[key] = packed
+		sfcCache.AbiPackCache.Add(key, packed)
 
 		return packed, nil
 	}

@@ -288,9 +288,9 @@ func encodeRevertReason(methodName string, reason string) ([]byte, error) {
 	cacheKey := "Error:" + errorMessage
 
 	// Check if we have this error message cached
-	if cachedData, ok := sfcCache.AbiPackCache[cacheKey]; ok {
+	if cachedValue, ok := sfcCache.AbiPackCache.Get(cacheKey); ok {
 		log.Info("SFC: Revert", "message", errorMessage)
-		return cachedData, nil
+		return cachedValue.([]byte), nil
 	}
 
 	// Prepend the error signature: bytes4(keccak256("Error(string)"))
@@ -314,7 +314,7 @@ func encodeRevertReason(methodName string, reason string) ([]byte, error) {
 	result = append(result, packedReason...)
 
 	// Cache the result
-	sfcCache.AbiPackCache[cacheKey] = result
+	sfcCache.AbiPackCache.Add(cacheKey, result)
 	log.Info("SFC: Revert", "message", errorMessage)
 	return result, nil
 }

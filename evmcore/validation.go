@@ -110,7 +110,10 @@ func ValidateTransaction(tx *types.Transaction, head *EvmHeader, signer types.Si
 	}
 	// Ensure the transaction has more gas than the bare minimum needed to cover
 	// the transaction metadata
-	intrGas, err := IntrinsicGas(tx.Data(), tx.AccessList(), tx.AuthorizationList(), tx.To() == nil)
+	homestead := opts.Config.IsHomestead(head.Number)
+	istanbul := opts.Config.IsIstanbul(head.Number)
+	london := opts.Config.IsLondon(head.Number)
+	intrGas, err := IntrinsicGas(tx.Data(), tx.AccessList(), tx.AuthorizationList(), tx.To() == nil, homestead, istanbul, london)
 	if err != nil {
 		return err
 	}

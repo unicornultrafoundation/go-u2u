@@ -60,7 +60,8 @@ func validateTx(tx *types.Transaction) error {
 		return ErrNegativeValue
 	}
 	// Ensure the transaction has more gas than the basic tx fee.
-	intrGas, err := evmcore.IntrinsicGas(tx.Data(), tx.AccessList(), tx.AuthorizationList(), tx.To() == nil)
+	// Use default EIP flags (all enabled for basic validation)
+	intrGas, err := evmcore.IntrinsicGas(tx.Data(), tx.AccessList(), tx.AuthorizationList(), tx.To() == nil, true, true, true)
 	if err != nil {
 		return err
 	}

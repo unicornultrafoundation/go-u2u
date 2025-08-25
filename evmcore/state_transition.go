@@ -117,17 +117,28 @@ func (result *ExecutionResult) Revert() []byte {
 	return common.CopyBytes(result.ReturnData)
 }
 
-// IntrinsicGas computes the 'intrinsic gas' for a message with the given data.
-func IntrinsicGas(data []byte, accessList types.AccessList, authList types.AuthorizationList, isContractCreation bool) (uint64, error) {
+// toWordSize returns the ceiled word size required for memory expansion.
+func toWordSize(size uint64) uint64 {
+	if size > math.MaxUint64-31 {
+		return math.MaxUint64/32 + 1
+	}
+	return (size + 31) / 32
+}
+
+// IntrinsicGas computes the 'intrinsic gas' for a message with the given data,
+// access list, and authorization list.
+func IntrinsicGas(data []byte, accessList types.AccessList, authList types.AuthorizationList, isContractCreation, isHomestead, isEIP2028, isEIP3860 bool) (uint64, error) {
 	// Set the starting gas for the raw transaction
 	var gas uint64
-	if isContractCreation {
+	if isContractCreation && isHomestead {
 		gas = params.TxGasContractCreation
 	} else {
 		gas = params.TxGas
 	}
+	
 	// Bump the required gas by the amount of transactional data
-	if len(data) > 0 {
+	dataLen := uint64(len(data))
+	if dataLen > 0 {
 		// Zero and non-zero bytes are priced differently
 		var nz uint64
 		for _, byt := range data {
@@ -135,25 +146,64 @@ func IntrinsicGas(data []byte, accessList types.AccessList, authList types.Autho
 				nz++
 			}
 		}
+		
 		// Make sure we don't exceed uint64 for all data combinations
-		if (math.MaxUint64-gas)/params.TxDataNonZeroGasEIP2028 < nz {
-			return 0, vm.ErrOutOfGas
+		var nonZeroGas uint64
+		if isEIP2028 {
+			nonZeroGas = params.TxDataNonZeroGasEIP2028
+		} else {
+			nonZeroGas = params.TxDataNonZeroGasFrontier
 		}
-		gas += nz * params.TxDataNonZeroGasEIP2028
-
-		z := uint64(len(data)) - nz
+		
+		if (math.MaxUint64-gas)/nonZeroGas < nz {
+			return 0, ErrGasUintOverflow
+		}
+		gas += nz * nonZeroGas
+		
+		z := dataLen - nz
 		if (math.MaxUint64-gas)/params.TxDataZeroGas < z {
 			return 0, ErrGasUintOverflow
 		}
 		gas += z * params.TxDataZeroGas
+		
+		// EIP-3860: Limit and meter initcode
+		if isEIP3860 && isContractCreation {
+			if dataLen > params.MaxInitCodeSize {
+				return 0, fmt.Errorf("max initcode size exceeded: %v > %v", dataLen, params.MaxInitCodeSize)
+			}
+			// Calculate initcode word cost
+			lenWords := toWordSize(dataLen)
+			if (math.MaxUint64-gas)/params.InitCodeWordGas < lenWords {
+				return 0, ErrGasUintOverflow
+			}
+			gas += lenWords * params.InitCodeWordGas
+		}
 	}
+	
+	// Calculate access list gas
 	if accessList != nil {
-		gas += uint64(len(accessList)) * params.TxAccessListAddressGas
-		gas += uint64(accessList.StorageKeys()) * params.TxAccessListStorageKeyGas
+		accessListAddressGas := uint64(len(accessList)) * params.TxAccessListAddressGas
+		if gas > math.MaxUint64-accessListAddressGas {
+			return 0, ErrGasUintOverflow
+		}
+		gas += accessListAddressGas
+		
+		accessListStorageGas := uint64(accessList.StorageKeys()) * params.TxAccessListStorageKeyGas
+		if gas > math.MaxUint64-accessListStorageGas {
+			return 0, ErrGasUintOverflow
+		}
+		gas += accessListStorageGas
 	}
+	
+	// Calculate authorization list gas
 	if authList != nil {
-		gas += uint64(len(authList)) * params.TxAuthTupleGas
+		authGas := uint64(len(authList)) * params.TxAuthTupleGas
+		if gas > math.MaxUint64-authGas {
+			return 0, ErrGasUintOverflow
+		}
+		gas += authGas
 	}
+	
 	return gas, nil
 }
 
@@ -276,10 +326,12 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	sender := vm.AccountRef(msg.From())
 	contractCreation := msg.To() == nil
 
+	homestead := st.evm.ChainConfig().IsHomestead(st.evm.Context.BlockNumber)
+	istanbul := st.evm.ChainConfig().IsIstanbul(st.evm.Context.BlockNumber)
 	london := st.evm.ChainConfig().IsLondon(st.evm.Context.BlockNumber)
 
 	// Check clauses 4-5, subtract intrinsic gas if everything is correct
-	gas, err := IntrinsicGas(st.data, st.msg.AccessList(), st.msg.SetCodeAuthorizations(), contractCreation)
+	gas, err := IntrinsicGas(st.data, st.msg.AccessList(), st.msg.SetCodeAuthorizations(), contractCreation, homestead, istanbul, london)
 	if err != nil {
 		return nil, err
 	}

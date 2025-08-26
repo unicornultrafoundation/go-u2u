@@ -99,7 +99,13 @@ func InvalidateCmCache(evm *vm.EVM) {
 }
 
 // UpdateCacheValue updates a specific value in the cache
-func UpdateCacheValue(slot int64, value *big.Int) {
+// Only updates during real transactions, not during API calls (gas estimation, etc.)
+func UpdateCacheValue(evm *vm.EVM, slot int64, value *big.Int) {
+	// Skip cache updates for API calls (NoBaseFee indicates API call/simulation)
+	if evm != nil && evm.Config.NoBaseFee {
+		return
+	}
+
 	cmCache.mutex.Lock()
 	defer cmCache.mutex.Unlock()
 
@@ -140,12 +146,16 @@ func UpdateCacheValue(slot int64, value *big.Int) {
 	case gasPriceBalancingCounterweightSlot:
 		cmCache.Values[GasPriceBalancingCounterweightKey] = new(big.Int).Set(value)
 	}
-
-	cmCache.NeedInvalidating = true
 }
 
 // UpdateOwner updates the owner address in the cache
-func UpdateOwner(owner common.Address) {
+// Only updates during real transactions, not during API calls (gas estimation, etc.)
+func UpdateOwner(evm *vm.EVM, owner common.Address) {
+	// Skip cache updates for API calls (NoBaseFee indicates API call/simulation)
+	if evm != nil && evm.Config.NoBaseFee {
+		return
+	}
+
 	cmCache.mutex.Lock()
 	defer cmCache.mutex.Unlock()
 

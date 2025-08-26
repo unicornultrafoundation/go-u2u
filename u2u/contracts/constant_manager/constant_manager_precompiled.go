@@ -63,8 +63,9 @@ type ConstantManagerPrecompile struct{}
 
 // Run runs the precompiled contract
 func (c *ConstantManagerPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, suppliedGas uint64, value *big.Int) ([]byte, uint64, error) {
-	// Initialize/Invalidate the cache
-	if cmCache.NeedInvalidating || cmCache.Values == nil || len(cmCache.Values) == 0 {
+	// Initialize/Invalidate the cache only for real transactions, not for API calls
+	// NoBaseFee flag indicates this is an API call/simulation, not a real transaction
+	if !evm.Config.NoBaseFee && (cmCache.NeedInvalidating || cmCache.Values == nil || len(cmCache.Values) == 0) {
 		InvalidateCmCache(evm)
 	}
 	// Parse the input to get method and arguments

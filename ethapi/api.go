@@ -2416,7 +2416,10 @@ func (api *PublicDebugAPI) traceBlock(ctx context.Context, block *evmcore.EvmBlo
 		// Generate the next state snapshot fast without tracing
 		msg, _ := tx.AsMessage(signer, block.BaseFee)
 		statedb.Prepare(tx.Hash(), i)
-		vmenv := vm.NewEVM(blockCtx, evmcore.NewEVMTxContext(msg), statedb, sfcStatedb, api.b.ChainConfig(), u2u.DefaultVMConfig)
+		// Use NoBaseFee=true for replay operations to prevent cache modifications
+		replayVMConfig := u2u.DefaultVMConfig
+		replayVMConfig.NoBaseFee = true
+		vmenv := vm.NewEVM(blockCtx, evmcore.NewEVMTxContext(msg), statedb, sfcStatedb, api.b.ChainConfig(), replayVMConfig)
 		if _, err := evmcore.ApplyMessage(vmenv, msg, new(evmcore.GasPool).AddGas(msg.Gas())); err != nil {
 			failed = err
 			break
@@ -2464,7 +2467,10 @@ func (api *PublicDebugAPI) stateAtTransaction(ctx context.Context, block *evmcor
 			return msg, context, statedb, sfcStatedb, nil
 		}
 		// Not yet the searched for transaction, execute on top of the current state
-		vmenv := vm.NewEVM(context, txContext, statedb, sfcStatedb, api.b.ChainConfig(), u2u.DefaultVMConfig)
+		// Use NoBaseFee=true for replay operations to prevent cache modifications
+		replayVMConfig := u2u.DefaultVMConfig
+		replayVMConfig.NoBaseFee = true
+		vmenv := vm.NewEVM(context, txContext, statedb, sfcStatedb, api.b.ChainConfig(), replayVMConfig)
 		statedb.Prepare(tx.Hash(), idx)
 		if _, err := evmcore.ApplyMessage(vmenv, msg, new(evmcore.GasPool).AddGas(tx.Gas())); err != nil {
 			return nil, vm.BlockContext{}, nil, nil, fmt.Errorf("transaction %#x failed: %v", tx.Hash(), err)

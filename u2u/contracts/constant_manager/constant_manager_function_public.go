@@ -692,9 +692,6 @@ func handleInitialize(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
 	// Set the owner
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(ownerSlot)), ownerAddr.Hash())
 
-	// Update the cache
-	UpdateOwner(ownerAddr)
-
 	// Emit OwnershipTransferred event
 	topics := []common.Hash{
 		ConstantManagerAbi.Events["OwnershipTransferred"].ID,
@@ -747,9 +744,6 @@ func handleTransferOwnership(evm *vm.EVM, args []interface{}) ([]byte, uint64, e
 	// Set the new owner
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(ownerSlot)), newOwner.Hash())
 
-	// Update the cache
-	UpdateOwner(newOwner)
-
 	// Emit OwnershipTransferred event
 	topics := []common.Hash{
 		ConstantManagerAbi.Events["OwnershipTransferred"].ID,
@@ -782,9 +776,6 @@ func handleRenounceOwnership(evm *vm.EVM, args []interface{}) ([]byte, uint64, e
 	// Set the owner to the zero address
 	emptyHash := common.Hash{}
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(ownerSlot)), emptyHash)
-
-	// Update the cache
-	UpdateOwner(common.Address{})
 
 	// Emit OwnershipTransferred event
 	topics := []common.Hash{

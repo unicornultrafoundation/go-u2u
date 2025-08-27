@@ -7,6 +7,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/log"
+	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
 // CMCache stores cached values from the ConstantManager contract
@@ -184,4 +185,43 @@ func (c *CMCache) GetOwner() common.Address {
 	defer c.mutex.RUnlock()
 
 	return c.Owner
+}
+
+// InitializeCMCacheAtStartup initializes the CM cache once at node startup
+// This function creates a temporary EVM instance to call InvalidateCmCache
+func InitializeCMCacheAtStartup(statedb vm.StateDB, sfcStatedb vm.StateDB, chainConfig *params.ChainConfig) {
+	if !cmCache.NeedInvalidating {
+		log.Info("CM cache already initialized, skipping")
+		return
+	}
+	
+	log.Info("Initializing CM cache at node startup...")
+	
+	// Create a temporary block context for initialization
+	blockCtx := vm.BlockContext{
+		CanTransfer: func(vm.StateDB, common.Address, *big.Int) bool { return true },
+		Transfer:    func(vm.StateDB, common.Address, common.Address, *big.Int) {},
+		GetHash:     func(uint64) common.Hash { return common.Hash{} },
+		Coinbase:    common.Address{},
+		BlockNumber: big.NewInt(0),
+		Time:        big.NewInt(0),
+		Difficulty:  big.NewInt(0),
+		GasLimit:    0,
+		BaseFee:     big.NewInt(0),
+	}
+	
+	// Create a temporary transaction context for initialization
+	txCtx := vm.TxContext{
+		Origin:   common.HexToAddress("0xfc00face00000000000000000000000000000000"),
+		GasPrice: big.NewInt(0),
+	}
+	
+	// Create temporary EVM config for initialization (NoBaseFee = false for real transaction)
+	config := vm.Config{NoBaseFee: false}
+	
+	// Create temporary EVM instance
+	evm := vm.NewEVM(blockCtx, txCtx, statedb, sfcStatedb, chainConfig, config)
+	
+	// Initialize the cache
+	InvalidateCmCache(evm)
 }

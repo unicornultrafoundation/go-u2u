@@ -49,6 +49,7 @@ import (
 	snapsync "github.com/unicornultrafoundation/go-u2u/gossip/protocols/snap"
 	"github.com/unicornultrafoundation/go-u2u/logger"
 	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/u2u/contracts/constant_manager"
 	"github.com/unicornultrafoundation/go-u2u/utils/signers/gsignercache"
 	"github.com/unicornultrafoundation/go-u2u/utils/txtime"
 	"github.com/unicornultrafoundation/go-u2u/utils/wgmutex"
@@ -452,6 +453,19 @@ func (s *Service) Start() error {
 		root = hash.Zero
 	}
 	_ = s.store.GenerateSnapshotAt(common.Hash(root), common.Hash(sfcRoot), true)
+
+	// Initialize CM cache once at node startup
+	statedb, err := s.store.evm.StateDB(root)
+	if err != nil {
+		log.Warn("Failed to get stateDB for CM cache initialization", "error", err)
+	} else {
+		sfcStatedb, err := s.store.evm.SfcStateDB(sfcRoot)
+		if err != nil {
+			log.Warn("Failed to get sfcStateDB for CM cache initialization", "error", err)
+		} else {
+			constant_manager.InitializeCMCacheAtStartup(statedb, sfcStatedb, s.store.GetEvmChainConfig())
+		}
+	}
 
 	// start blocks processor
 	s.blockProcTasks.Start(1)

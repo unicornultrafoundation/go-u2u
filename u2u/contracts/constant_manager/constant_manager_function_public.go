@@ -208,7 +208,7 @@ func handleUpdateTreasuryFeeShare(evm *vm.EVM, args []interface{}) ([]byte, uint
 	decimalUnit := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
 	maxValue := new(big.Int).Div(decimalUnit, big.NewInt(2)) // Decimal.unit() / 2
 
-	if value.Cmp(maxValue) >= 0 {
+	if value.Cmp(maxValue) > 0 {
 		// Return ABI-encoded revert reason: "too large value"
 		revertData, err := encodeRevertReason("updateTreasuryFeeShare", "too large value")
 		if err != nil {

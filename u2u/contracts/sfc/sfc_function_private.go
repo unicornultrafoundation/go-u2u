@@ -570,7 +570,7 @@ func checkDelegatedStakeLimit(evm *vm.EVM, validatorID *big.Int) (bool, uint64, 
 
 // handleInternalRawCreateValidator implements the _rawCreateValidator function logic
 // This is equivalent to the Solidity _rawCreateValidator(address auth, uint256 validatorID, bytes memory pubkey, uint256 status, uint256 createdEpoch, uint256 createdTime, uint256 deactivatedEpoch, uint256 deactivatedTime) internal function
-func handleInternalRawCreateValidator(evm *vm.EVM, auth common.Address, validatorID *big.Int, pubkey []byte, status *big.Int, createdEpoch *big.Int, createdTime *big.Int, deactivatedEpoch *big.Int, deactivatedTime *big.Int) (uint64, error) {
+func handleInternalRawCreateValidator(evm *vm.EVM, auth common.Address, validatorID *big.Int, pubkey []byte, status *big.Int, createdEpoch *big.Int, createdTime *big.Int, deactivatedEpoch *big.Int, deactivatedTime *big.Int) ([]byte, uint64, error) {
 	var gasUsed uint64 = 0
 
 	// Check that the validator doesn't already exist (getValidatorID[auth] == 0)
@@ -580,8 +580,11 @@ func handleInternalRawCreateValidator(evm *vm.EVM, auth common.Address, validato
 	gasUsed += SloadGasCost
 	existingValidatorIDBigInt := new(big.Int).SetBytes(existingValidatorID.Bytes())
 	if existingValidatorIDBigInt.Cmp(big.NewInt(0)) != 0 {
-		// For internal functions that don't return revert data, just return the error directly
-		return gasUsed, vm.ErrExecutionReverted
+		revertData, err := encodeRevertReason("_rawCreateValidator", "validator already exists")
+		if err != nil {
+			return nil, gasUsed, vm.ErrExecutionReverted
+		}
+		return revertData, gasUsed, vm.ErrExecutionReverted
 	}
 
 	// Set getValidatorID[auth] = validatorID
@@ -629,7 +632,7 @@ func handleInternalRawCreateValidator(evm *vm.EVM, auth common.Address, validato
 	gasUsed += slotGasUsed
 	writeBytesGasUsed, err := writeDynamicBytes(evm, validatorPubkeySlot, pubkey)
 	if err != nil {
-		return gasUsed, err
+		return nil, gasUsed, vm.ErrExecutionReverted
 	}
 	gasUsed += writeBytesGasUsed
 
@@ -644,7 +647,7 @@ func handleInternalRawCreateValidator(evm *vm.EVM, auth common.Address, validato
 		createdTime,
 	)
 	if err != nil {
-		return gasUsed, vm.ErrExecutionReverted
+		return nil, gasUsed, vm.ErrExecutionReverted
 	}
 	evm.SfcStateDB.AddLog(&types.Log{
 		BlockNumber: evm.Context.BlockNumber.Uint64(),
@@ -664,7 +667,7 @@ func handleInternalRawCreateValidator(evm *vm.EVM, auth common.Address, validato
 			deactivatedTime,
 		)
 		if err != nil {
-			return gasUsed, vm.ErrExecutionReverted
+			return nil, gasUsed, vm.ErrExecutionReverted
 		}
 		evm.SfcStateDB.AddLog(&types.Log{
 			BlockNumber: evm.Context.BlockNumber.Uint64(),
@@ -684,7 +687,7 @@ func handleInternalRawCreateValidator(evm *vm.EVM, auth common.Address, validato
 			status,
 		)
 		if err != nil {
-			return gasUsed, vm.ErrExecutionReverted
+			return nil, gasUsed, vm.ErrExecutionReverted
 		}
 		evm.SfcStateDB.AddLog(&types.Log{
 			BlockNumber: evm.Context.BlockNumber.Uint64(),
@@ -694,12 +697,12 @@ func handleInternalRawCreateValidator(evm *vm.EVM, auth common.Address, validato
 		})
 	}
 
-	return gasUsed, nil
+	return nil, gasUsed, nil
 }
 
 // handleInternalCreateValidator implements the _createValidator function logic
 // This is equivalent to the Solidity _createValidator(address auth, bytes calldata pubkey) internal function
-func handleInternalCreateValidator(evm *vm.EVM, auth common.Address, pubkey []byte) (*big.Int, uint64, error) {
+func handleInternalCreateValidator(evm *vm.EVM, auth common.Address, pubkey []byte) ([]byte, uint64, error) {
 	var gasUsed uint64 = 0
 
 	// Get the last validator ID and increment it (uint256 validatorID = ++lastValidatorID)
@@ -722,7 +725,7 @@ func handleInternalCreateValidator(evm *vm.EVM, auth common.Address, pubkey []by
 	gasUsed += epochGasUsed
 
 	// Call _rawCreateValidator(auth, validatorID, pubkey, OK_STATUS, currentEpoch(), _now(), 0, 0)
-	rawCreateGasUsed, err := handleInternalRawCreateValidator(
+	revertData, rawCreateGasUsed, err := handleInternalRawCreateValidator(
 		evm,
 		auth,
 		newValidatorID,
@@ -735,10 +738,10 @@ func handleInternalCreateValidator(evm *vm.EVM, auth common.Address, pubkey []by
 	)
 	gasUsed += rawCreateGasUsed
 	if err != nil {
-		return nil, gasUsed, err
+		return revertData, gasUsed, err
 	}
 
-	return newValidatorID, gasUsed, nil
+	return newValidatorID.Bytes(), gasUsed, nil
 }
 
 // handleInternalPendingRewards implements the _pendingRewards function logic

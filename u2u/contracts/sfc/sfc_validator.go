@@ -41,11 +41,14 @@ func handleCreateValidator(evm *vm.EVM, caller common.Address, args []interface{
 	}
 
 	// Call the internal _createValidator function
-	newValidatorID, createValidatorGasUsed, err := handleInternalCreateValidator(evm, caller, pubkey)
+	validatorIDBytes, createValidatorGasUsed, err := handleInternalCreateValidator(evm, caller, pubkey)
 	gasUsed += createValidatorGasUsed
 	if err != nil {
-		return nil, gasUsed, err
+		return validatorIDBytes, gasUsed, err
 	}
+
+	// Convert validator ID bytes back to *big.Int for delegate call
+	newValidatorID := new(big.Int).SetBytes(validatorIDBytes)
 
 	// Delegate the value to the validator
 	// This is equivalent to _delegate(msg.sender, lastValidatorID, msg.value)
@@ -195,7 +198,7 @@ func handleSetGenesisValidator(evm *vm.EVM, caller common.Address, args []interf
 	}
 
 	// Call _rawCreateValidator(auth, validatorID, pubkey, status, createdEpoch, createdTime, deactivatedEpoch, deactivatedTime)
-	rawCreateGasUsed, err := handleInternalRawCreateValidator(
+	revertData, rawCreateGasUsed, err := handleInternalRawCreateValidator(
 		evm,
 		auth,
 		validatorID,
@@ -208,7 +211,7 @@ func handleSetGenesisValidator(evm *vm.EVM, caller common.Address, args []interf
 	)
 	gasUsed += rawCreateGasUsed
 	if err != nil {
-		return nil, gasUsed, err
+		return revertData, gasUsed, err
 	}
 
 	// Update lastValidatorID if validatorID > lastValidatorID

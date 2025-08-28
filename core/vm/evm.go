@@ -156,16 +156,6 @@ func NewEVM(blockCtx BlockContext, txCtx TxContext, statedb StateDB, sfcStatedb 
 		chainRules:  chainConfig.Rules(blockCtx.BlockNumber),
 	}
 	evm.interpreter = NewEVMInterpreter(evm, config)
-	if !common.IsNilInterface(sfcStatedb) {
-		evm.SfcStateDB = sfcStatedb
-		// TODO(trinhdn97): init this CM cache only once after starting node, not every NewEVM call.
-		// Make a dummy call to CM to init CM cache.
-		// This cache require a vm.EVM instance (or at least a SFC vm.StateDB instance) to be initialized.
-		// The initialization is done in the constant_manager.InvalidateCmCache function.
-		evm.CallSFC(AccountRef(common.HexToAddress("0xfc00face00000000000000000000000000000000")),
-			common.HexToAddress("0x6CA548f6DF5B540E72262E935b6Fe3e72cDd68C9"), []byte{},
-			50000, big.NewInt(0))
-	}
 	return evm
 }
 

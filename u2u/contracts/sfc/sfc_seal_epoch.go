@@ -156,7 +156,7 @@ func handleSealEpoch(evm *vm.EVM, caller common.Address, args []interface{}) ([]
 	PutBigInt(endTimeSlot)
 
 	// Get the base reward per second from the constants manager
-	baseRewardPerSecond := getConstantsManagerVariable("baseRewardPerSecond")
+	baseRewardPerSecond := getConstantsManagerVariable(evm.SfcStateDB, "baseRewardPerSecond")
 
 	// Update epoch snapshot base reward per second (snapshot.baseRewardPerSecond = c.baseRewardPerSecond() in Solidity)
 	baseRewardPerSecondOffsetBig := GetBigInt().SetInt64(baseRewardPerSecondOffset)
@@ -317,8 +317,8 @@ func handleInternalSealEpochOffline(evm *vm.EVM, validatorIDs []*big.Int, offlin
 	var gasUsed uint64 = 0
 
 	// Get the offline penalty thresholds from the constants manager
-	offlinePenaltyThresholdBlocksNum := getConstantsManagerVariable("offlinePenaltyThresholdBlocksNum")
-	offlinePenaltyThresholdTime := getConstantsManagerVariable("offlinePenaltyThresholdTime")
+	offlinePenaltyThresholdBlocksNum := getConstantsManagerVariable(evm.SfcStateDB, "offlinePenaltyThresholdBlocksNum")
+	offlinePenaltyThresholdTime := getConstantsManagerVariable(evm.SfcStateDB, "offlinePenaltyThresholdTime")
 
 	// Iterate through validators
 	for i, validatorID := range validatorIDs {
@@ -480,9 +480,9 @@ func handleInternalSealEpochRewards(evm *vm.EVM, epochDuration *big.Int, current
 	log.Debug("handleInternalSealEpochRewards: Calculating totalBaseRewardWeight",
 		"totalBaseRewardWeight", common.Bytes2Hex(totalBaseRewardWeight.Bytes()))
 
-	baseRewardPerSecond := getConstantsManagerVariable("baseRewardPerSecond")
-	validatorCommission := getConstantsManagerVariable("validatorCommission")
-	treasuryFeeShare := getConstantsManagerVariable("treasuryFeeShare")
+	baseRewardPerSecond := getConstantsManagerVariable(evm.SfcStateDB, "baseRewardPerSecond")
+	validatorCommission := getConstantsManagerVariable(evm.SfcStateDB, "validatorCommission")
+	treasuryFeeShare := getConstantsManagerVariable(evm.SfcStateDB, "treasuryFeeShare")
 
 	// Calculate rewards for each validator
 	for i, validatorID := range validatorIDs {
@@ -490,7 +490,7 @@ func handleInternalSealEpochRewards(evm *vm.EVM, epochDuration *big.Int, current
 		rawBaseReward := handleInternalCalcRawValidatorEpochBaseReward(epochDuration, baseRewardPerSecond, baseRewardWeights[i], totalBaseRewardWeight)
 
 		// Calculate raw tx reward using helper function
-		rawTxReward := handleInternalCalcRawValidatorEpochTxReward(epochFee, txRewardWeights[i], totalTxRewardWeight)
+		rawTxReward := handleInternalCalcRawValidatorEpochTxReward(evm.SfcStateDB, epochFee, txRewardWeights[i], totalTxRewardWeight)
 
 		// Calculate total raw reward
 		rawReward := new(big.Int).Add(rawBaseReward, rawTxReward)
@@ -836,7 +836,7 @@ func handleInternalSealEpochMinGasPrice(evm *vm.EVM, epochDuration *big.Int, epo
 	var gasUsed uint64 = 0
 
 	// Get the target gas power per second from the constants manager
-	targetGasPowerPerSecond := getConstantsManagerVariable("targetGasPowerPerSecond")
+	targetGasPowerPerSecond := getConstantsManagerVariable(evm.SfcStateDB, "targetGasPowerPerSecond")
 
 	// Calculate target epoch gas
 	targetEpochGas := new(big.Int).Mul(epochDuration, targetGasPowerPerSecond)
@@ -850,7 +850,7 @@ func handleInternalSealEpochMinGasPrice(evm *vm.EVM, epochDuration *big.Int, epo
 	gasPriceDeltaRatio.Div(gasPriceDeltaRatio, targetEpochGas)
 
 	// Get the gas price balancing counterweight from the constants manager
-	counterweight := getConstantsManagerVariable("gasPriceBalancingCounterweight")
+	counterweight := getConstantsManagerVariable(evm.SfcStateDB, "gasPriceBalancingCounterweight")
 
 	// Scale down the change speed
 	// gasPriceDeltaRatio = (epochDuration * gasPriceDeltaRatio + counterweight * Decimal.unit()) / (epochDuration + counterweight)

@@ -45,6 +45,7 @@ const (
 	LegacyTxType = iota
 	AccessListTxType
 	DynamicFeeTxType
+	BlobTxType    // EIP-4844 blob transaction type for L2 data availability
 	SetCodeTxType // EIP-7702 transaction type for code delegation
 )
 
@@ -187,6 +188,10 @@ func (tx *Transaction) decodeTyped(b []byte) (TxData, error) {
 		var inner DynamicFeeTx
 		err := rlp.DecodeBytes(b[1:], &inner)
 		return &inner, err
+	case BlobTxType:
+		var inner BlobTx
+		err := rlp.DecodeBytes(b[1:], &inner)
+		return &inner, err
 	case SetCodeTxType:
 		var inner SetCodeTx
 		err := rlp.DecodeBytes(b[1:], &inner)
@@ -272,6 +277,22 @@ func (tx *Transaction) AccessList() AccessList { return tx.inner.accessList() }
 func (tx *Transaction) AuthorizationList() AuthorizationList {
 	if setCodeTx, ok := tx.inner.(*SetCodeTx); ok {
 		return setCodeTx.authorizationList()
+	}
+	return nil
+}
+
+// BlobFeeCap returns the blob fee cap of the transaction (EIP-4844).
+func (tx *Transaction) BlobFeeCap() *big.Int {
+	if blobTx, ok := tx.inner.(*BlobTx); ok {
+		return blobTx.blobFeeCap()
+	}
+	return nil
+}
+
+// BlobHashes returns the blob hashes of the transaction (EIP-4844).
+func (tx *Transaction) BlobHashes() []common.Hash {
+	if blobTx, ok := tx.inner.(*BlobTx); ok {
+		return blobTx.blobHashes()
 	}
 	return nil
 }
@@ -615,6 +636,8 @@ type Message struct {
 	data       []byte
 	accessList AccessList
 	authorizationList AuthorizationList
+tblobFeeCap       *big.Int
+	blobHashes       []common.Hash
 	isFake     bool
 }
 

@@ -88,6 +88,12 @@ type Header struct {
 
 	// SfcStateRoot is the root hash of dump SFC state trie
 	SfcStateRoot common.Hash `json:"sfcStateRoot" rlp:"optional"`
+	// Blob gas fields added by EIP-4844 and are ignored in legacy headers.
+	BlobGasUsed   *uint64 `json:"blobGasUsed" rlp:"optional"`
+	ExcessBlobGas *uint64 `json:"excessBlobGas" rlp:"optional"`
+
+	// L2 rollup commitments for settlement layer functionality.
+	L2Commitments L2StateCommitmentList `json:"l2Commitments" rlp:"optional"`
 
 	// caches
 	externalHash atomic.Value `rlp:"-"`
@@ -95,14 +101,16 @@ type Header struct {
 
 // field type overrides for gencodec
 type headerMarshaling struct {
-	Difficulty *hexutil.Big
-	Number     *hexutil.Big
-	GasLimit   hexutil.Uint64
-	GasUsed    hexutil.Uint64
-	Time       hexutil.Uint64
-	Extra      hexutil.Bytes
-	BaseFee    *hexutil.Big
-	Hash       common.Hash `json:"hash"` // adds call to Hash() in MarshalJSON
+	Difficulty    *hexutil.Big
+	Number        *hexutil.Big
+	GasLimit      hexutil.Uint64
+	GasUsed       hexutil.Uint64
+	Time          hexutil.Uint64
+	Extra         hexutil.Bytes
+	BaseFee       *hexutil.Big
+	BlobGasUsed   *hexutil.Uint64
+	ExcessBlobGas *hexutil.Uint64
+	Hash          common.Hash `json:"hash"` // adds call to Hash() in MarshalJSON
 }
 
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
@@ -324,6 +332,22 @@ func (b *Block) ReceiptHash() common.Hash  { return b.header.ReceiptHash }
 func (b *Block) UncleHash() common.Hash    { return b.header.UncleHash }
 func (b *Block) Extra() []byte             { return common.CopyBytes(b.header.Extra) }
 func (b *Block) SfcStateRoot() common.Hash { return b.header.SfcStateRoot }
+
+func (b *Block) BlobGasUsed() *uint64 {
+	if b.header.BlobGasUsed == nil {
+		return nil
+	}
+	return b.header.BlobGasUsed
+}
+
+func (b *Block) ExcessBlobGas() *uint64 {
+	if b.header.ExcessBlobGas == nil {
+		return nil
+	}
+	return b.header.ExcessBlobGas
+}
+
+func (b *Block) L2Commitments() L2StateCommitmentList { return b.header.L2Commitments }
 
 func (b *Block) BaseFee() *big.Int {
 	if b.header.BaseFee == nil {

@@ -89,6 +89,10 @@ const (
 	TxAccessListAddressGas    uint64 = 2400 // Per address specified in EIP 2930 access list
 	TxAccessListStorageKeyGas uint64 = 1900 // Per storage key specified in EIP 2930 access list
 	TxAuthTupleGas              uint64 = 12500 // Per authorization tuple in EIP-7702 transactions
+	BlobTxBlobGasPerBlob    uint64 = 131072 // Gas per blob in EIP-4844 blob transactions (2^17)
+	BlobTxMinBlobGasprice   uint64 = 1      // Minimum gas price per blob
+	BlobTxMaxBlobs          uint64 = 6      // Maximum number of blobs per transaction
+	BlobTxTargetBlobs       uint64 = 3      // Target number of blobs for gas price calculation
 	DelegationResolutionGas     uint64 = 100   // Per delegation resolution step in EIP-7702
 
 	// These have been changed during the course of the chain

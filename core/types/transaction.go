@@ -636,7 +636,7 @@ type Message struct {
 	data       []byte
 	accessList AccessList
 	authorizationList AuthorizationList
-tblobFeeCap       *big.Int
+	blobFeeCap       *big.Int
 	blobHashes       []common.Hash
 	isFake     bool
 }
@@ -671,6 +671,8 @@ func (tx *Transaction) AsMessage(s Signer, baseFee *big.Int) (Message, error) {
 		data:       tx.Data(),
 		accessList: tx.AccessList(),
 		authorizationList: tx.AuthorizationList(),
+		blobFeeCap:        tx.BlobFeeCap(),
+		blobHashes:        tx.BlobHashes(),
 		isFake:     false,
 	}
 	// If baseFee provided, set gasPrice to effectiveGasPrice.
@@ -695,3 +697,6 @@ func (m Message) AccessList() AccessList       { return m.accessList }
 func (m Message) SetCodeAuthorizations() AuthorizationList { return m.authorizationList }
 func (m Message) IsFake() bool                 { return m.isFake }
 func (m *Message) SetGasLimit(gasLimit uint64) { m.gasLimit = gasLimit }
+
+func (m Message) BlobFeeCap() *big.Int      { return m.blobFeeCap }
+func (m Message) BlobHashes() []common.Hash { return m.blobHashes }

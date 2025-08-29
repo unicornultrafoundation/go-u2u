@@ -1,6 +1,7 @@
 package sfc
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
@@ -21,7 +22,7 @@ func handleInternalClaimRewards(evm *vm.EVM, delegator common.Address, toValidat
 	}
 	if !allowed {
 		log.Error("handleInternalClaimRewards: not allowed to withdraw")
-		return Rewards{}, 0, vm.ErrExecutionReverted
+		return Rewards{}, 0, fmt.Errorf("outstanding sU2U balance")
 	}
 
 	// Stash the rewards
@@ -55,7 +56,7 @@ func handleInternalClaimRewards(evm *vm.EVM, delegator common.Address, toValidat
 	// Check that the rewards are not zero
 	if totalReward.Cmp(big.NewInt(0)) == 0 {
 		log.Error("handleInternalClaimRewards: zero rewards")
-		return Rewards{}, gasUsed, vm.ErrExecutionReverted
+		return Rewards{}, gasUsed, fmt.Errorf("zero rewards")
 	}
 
 	// Clear the rewards stash
@@ -105,7 +106,11 @@ func handleClaimRewards(evm *vm.EVM, caller common.Address, args []interface{}) 
 	rewards, claimGasUsed, err := handleInternalClaimRewards(evm, caller, toValidatorID)
 	gasUsed += claimGasUsed
 	if err != nil {
-		return nil, gasUsed, err
+		revertData, encodeErr := encodeRevertReason("claimRewards", "zero rewards")
+		if encodeErr != nil {
+			return nil, gasUsed, vm.ErrExecutionReverted
+		}
+		return revertData, gasUsed, vm.ErrExecutionReverted
 	}
 
 	// Calculate total reward
@@ -157,7 +162,8 @@ func handleRestakeRewards(evm *vm.EVM, caller common.Address, args []interface{}
 	rewards, claimGasUsed, err := handleInternalClaimRewards(evm, caller, toValidatorID)
 	gasUsed += claimGasUsed
 	if err != nil {
-		return nil, gasUsed, err
+		resultData, _ := encodeRevertReason("restakeRewards", err.Error())
+		return resultData, gasUsed, err
 	}
 
 	// Calculate lockup reward and total reward

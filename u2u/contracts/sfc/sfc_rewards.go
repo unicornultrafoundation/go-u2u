@@ -106,7 +106,7 @@ func handleClaimRewards(evm *vm.EVM, caller common.Address, args []interface{}) 
 	rewards, claimGasUsed, err := handleInternalClaimRewards(evm, caller, toValidatorID)
 	gasUsed += claimGasUsed
 	if err != nil {
-		revertData, encodeErr := encodeRevertReason("claimRewards", "zero rewards")
+		revertData, encodeErr := encodeRevertReason("claimRewards", err.Error())
 		if encodeErr != nil {
 			return nil, gasUsed, vm.ErrExecutionReverted
 		}

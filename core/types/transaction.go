@@ -45,6 +45,7 @@ const (
 	LegacyTxType = iota
 	AccessListTxType
 	DynamicFeeTxType
+	BlobTxType    // EIP-4844 blob transaction type for L2 data availability
 	SetCodeTxType // EIP-7702 transaction type for code delegation
 )
 

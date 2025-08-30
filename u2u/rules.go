@@ -28,17 +28,32 @@ const (
 	llrBit                 = 1 << 2
 )
 
-var DefaultVMConfig = vm.Config{
-	StatePrecompiles: map[common.Address]vm.PrecompiledStateContract{
-		evmwriter.ContractAddress: &evmwriter.PreCompiledContract{},
-	},
-	SfcPrecompiles: map[common.Address]vm.PrecompiledStateContract{
-		common.HexToAddress("0xFC00FACE00000000000000000000000000000000"): &sfc.SfcPrecompile{},
-		common.HexToAddress("0xD100ae0000000000000000000000000000000000"): &driverauth.DriverAuthPrecompile{},
-		common.HexToAddress("0xd100A01E00000000000000000000000000000000"): &driver.DriverPrecompile{},
-		common.HexToAddress("0x6CA548f6DF5B540E72262E935b6Fe3e72cDd68C9"): &constant_manager.ConstantManagerPrecompile{},
-	},
-}
+var (
+	OriginalDefaultVMConfig = vm.Config{
+		StatePrecompiles: map[common.Address]vm.PrecompiledStateContract{
+			evmwriter.ContractAddress: &evmwriter.PreCompiledContract{},
+		},
+		SfcPrecompiles: map[common.Address]vm.PrecompiledSfcContract{
+			common.HexToAddress("0xFC00FACE00000000000000000000000000000000"): &sfc.SfcPrecompile{},
+			common.HexToAddress("0xD100ae0000000000000000000000000000000000"): &driverauth.DriverAuthPrecompile{},
+			common.HexToAddress("0xd100A01E00000000000000000000000000000000"): &driver.DriverPrecompile{},
+			common.HexToAddress("0x6CA548f6DF5B540E72262E935b6Fe3e72cDd68C9"): &constant_manager.ConstantManagerPrecompile{},
+			common.HexToAddress("0xFC01fACE00000000000000000000000000000000"): &sfc.SfcPrecompile{}, // SFCLib
+		},
+	}
+	DefaultVMConfig = vm.Config{
+		StatePrecompiles: map[common.Address]vm.PrecompiledStateContract{
+			evmwriter.ContractAddress: &evmwriter.PreCompiledContract{},
+		},
+		SfcPrecompiles: map[common.Address]vm.PrecompiledSfcContract{
+			common.HexToAddress("0xFC00FACE00000000000000000000000000000000"): &sfc.SfcPrecompile{},
+			common.HexToAddress("0xD100ae0000000000000000000000000000000000"): &driverauth.DriverAuthPrecompile{},
+			common.HexToAddress("0xd100A01E00000000000000000000000000000000"): &driver.DriverPrecompile{},
+			common.HexToAddress("0x6CA548f6DF5B540E72262E935b6Fe3e72cDd68C9"): &constant_manager.ConstantManagerPrecompile{},
+			common.HexToAddress("0xFC01fACE00000000000000000000000000000000"): &sfc.SfcPrecompile{}, // SFCLib
+		},
+	}
+)
 
 type RulesRLP struct {
 	Name      string

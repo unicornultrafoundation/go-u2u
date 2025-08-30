@@ -30,6 +30,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/node"
 	"github.com/unicornultrafoundation/go-u2u/p2p/enode"
 	"github.com/unicornultrafoundation/go-u2u/params"
+	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesis"
 	"github.com/unicornultrafoundation/go-u2u/u2u/genesisstore"
 	futils "github.com/unicornultrafoundation/go-u2u/utils"
@@ -508,6 +509,10 @@ func mayMakeAllConfigs(ctx *cli.Context) (*config, error) {
 	}
 
 	cfg.U2UStore.EVM.SfcEnabled = ctx.GlobalBool(utils.SFCFlag.Name)
+	u2u.DefaultVMConfig = u2u.OriginalDefaultVMConfig
+	if !cfg.U2UStore.EVM.SfcEnabled {
+		u2u.DefaultVMConfig.SfcPrecompiles = nil
+	}
 
 	if ctx.GlobalIsSet(FakeNetFlag.Name) {
 		_, num, _ := parseFakeGen(ctx.GlobalString(FakeNetFlag.Name))

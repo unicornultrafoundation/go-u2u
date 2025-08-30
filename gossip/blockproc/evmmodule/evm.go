@@ -3,21 +3,27 @@ package evmmodule
 import (
 	"math"
 	"math/big"
-	"reflect"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
-	"github.com/unicornultrafoundation/go-u2u/log"
-	"github.com/unicornultrafoundation/go-u2u/params"
-
 	"github.com/unicornultrafoundation/go-u2u/evmcore"
 	"github.com/unicornultrafoundation/go-u2u/gossip/blockproc"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/native"
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/params"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 	"github.com/unicornultrafoundation/go-u2u/utils"
 )
+
+var SfcPrecompiles = []common.Address{
+	common.HexToAddress("0xFC00FACE00000000000000000000000000000000"),
+	common.HexToAddress("0xD100ae0000000000000000000000000000000000"),
+	common.HexToAddress("0xd100A01E00000000000000000000000000000000"),
+	common.HexToAddress("0x6CA548f6DF5B540E72262E935b6Fe3e72cDd68C9"),
+	common.HexToAddress("0xFC01fACE00000000000000000000000000000000"), // SFCLib
+}
 
 type EVMModule struct{}
 
@@ -41,7 +47,7 @@ func (p *EVMModule) Start(block iblockproc.BlockCtx, statedb *state.StateDB, sfc
 		blockIdx:      utils.U64toBig(uint64(block.Idx)),
 		prevBlockHash: prevBlockHash,
 	}
-	if !isNilInterface(sfcStatedb) {
+	if !common.IsNilInterface(sfcStatedb) {
 		processor.sfcStateDb = sfcStatedb
 	}
 	return processor
@@ -93,10 +99,12 @@ func (p *U2UEVMProcessor) Execute(txs types.Transactions) types.Receipts {
 
 	// Process txs
 	evmBlock := p.evmBlockWith(txs)
-	receipts, _, skipped, err := evmProcessor.Process(evmBlock, p.statedb, p.sfcStateDb, u2u.DefaultVMConfig, &p.gasUsed, func(l *types.Log, _ *state.StateDB) {
+	receipts, _, skipped, err := evmProcessor.Process(evmBlock, p.statedb, p.sfcStateDb, u2u.DefaultVMConfig, &p.gasUsed, func(l *types.Log, s *state.StateDB) {
 		// Note: l.Index is properly set before
 		l.TxIndex += txsOffset
-		p.onNewLog(l)
+		if s != nil {
+			p.onNewLog(l)
+		}
 	})
 	if err != nil {
 		log.Crit("EVM internal error", "err", err)
@@ -135,18 +143,23 @@ func (p *U2UEVMProcessor) Finalize() (evmBlock *evmcore.EvmBlock, skippedTxs []u
 	if p.sfcStateDb != nil {
 		newSfcStateHash, err := p.sfcStateDb.Commit(true)
 		if err != nil {
-			log.Crit("Failed to commit sfc state", "err", err)
+			log.Crit("Failed to commit SFC state", "err", err)
 		}
 		evmBlock.SfcStateRoot = newSfcStateHash
+
+		// extra dual-state verification
+		if newSfcStateHash.Cmp(types.EmptyRootHash) == 0 {
+			log.Error("SFC state is empty after finalizing block", "block", p.block.Idx)
+		}
+		for _, addr := range SfcPrecompiles {
+			original := p.statedb.GetOrNewStateObject(addr).Account()
+			sfc := p.sfcStateDb.GetOrNewStateObject(addr).Account()
+			if !p.statedb.GetOrNewStateObject(addr).Account().Cmp(p.sfcStateDb.GetOrNewStateObject(addr).Account()) {
+				log.Error("U2UEVMProcessor.Finalize: SFC account mismatched after applying block",
+					"height", p.block.Idx, "addr", addr, "original", original, "sfc", sfc)
+				// common.SendInterrupt()
+			}
+		}
 	}
 	return
-}
-
-func isNilInterface(i interface{}) bool {
-	if i == nil {
-		return true
-	}
-	// Check if the concrete value stored in the interface is nil
-	v := reflect.ValueOf(i)
-	return (v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface) && v.IsNil()
 }

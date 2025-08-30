@@ -9,10 +9,9 @@ import (
 	"time"
 
 	"github.com/unicornultrafoundation/go-u2u/crypto"
-	"github.com/unicornultrafoundation/go-u2u/params"
-
 	"github.com/unicornultrafoundation/go-u2u/integration/makefakegenesis"
 	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"
+	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
 func TestFakeNetFlag_NonValidator(t *testing.T) {

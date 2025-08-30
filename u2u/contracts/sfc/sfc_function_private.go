@@ -7,7 +7,6 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/core/vm"
 	"github.com/unicornultrafoundation/go-u2u/log"
-	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
 // Handler functions for SFC contract internal and private functions
@@ -139,33 +138,60 @@ func handleGetUnlockedStake(evm *vm.EVM, args []interface{}) ([]byte, uint64, er
 		return nil, 0, vm.ErrExecutionReverted
 	}
 
-	// Get the delegation stake
+	// First check if locked up (matching Solidity: if (!isLockedUp(delegator, toValidatorID)))
+	isLockedResult, lockedGasUsed, err := handleIsLockedUp(evm, []interface{}{delegator, toValidatorID})
+	if err != nil {
+		return nil, gasUsed + lockedGasUsed, err
+	}
+	gasUsed += lockedGasUsed
+
+	// Unpack isLocked result
+	isLockedValues, err := SfcAbi.Methods["isLockedUp"].Outputs.Unpack(isLockedResult)
+	if err != nil {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+	if len(isLockedValues) != 1 {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+	isLocked, ok := isLockedValues[0].(bool)
+	if !ok {
+		return nil, gasUsed, vm.ErrExecutionReverted
+	}
+
+	// Get the delegation stake (getStake[delegator][toValidatorID])
 	stakeSlot, slotGasUsed := getStakeSlot(delegator, toValidatorID)
 	gasUsed += slotGasUsed
 	stake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(stakeSlot))
-	gasUsed += params.ColdSloadCostEIP2929 // Add gas for SLOAD
+	gasUsed += SloadGasCost
 	stakeBigInt := new(big.Int).SetBytes(stake.Bytes())
 
-	// Get the delegation locked stake
-	lockedStakeSlot, slotGasUsed := getLockedStakeSlot(delegator, toValidatorID)
-	gasUsed += slotGasUsed
-	lockedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockedStakeSlot))
-	gasUsed += params.ColdSloadCostEIP2929 // Add gas for SLOAD
-	lockedStakeBigInt := new(big.Int).SetBytes(lockedStake.Bytes())
+	var unlockedStake *big.Int
+	if !isLocked {
+		// If not locked up, return full stake (matching Solidity: return getStake[delegator][toValidatorID])
+		unlockedStake = stakeBigInt
+	} else {
+		// If locked up, subtract locked stake (matching Solidity: return getStake[delegator][toValidatorID].sub(getLockupInfo[delegator][toValidatorID].lockedStake))
+		lockedStakeSlot, slotGasUsed := getLockedStakeSlot(delegator, toValidatorID)
+		gasUsed += slotGasUsed
+		lockedStake := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(lockedStakeSlot))
+		gasUsed += SloadGasCost
+		lockedStakeBigInt := new(big.Int).SetBytes(lockedStake.Bytes())
 
-	// Calculate the unlocked stake
-	unlockedStake := new(big.Int).Sub(stakeBigInt, lockedStakeBigInt)
-	if unlockedStake.Cmp(big.NewInt(0)) < 0 {
-		unlockedStake = big.NewInt(0)
+		// Calculate the unlocked stake
+		unlockedStake = new(big.Int).Sub(stakeBigInt, lockedStakeBigInt)
+		// Note: Solidity .sub() would revert on underflow, but we add safety check
+		if unlockedStake.Cmp(big.NewInt(0)) < 0 {
+			unlockedStake = big.NewInt(0)
+		}
 	}
 
-	// Don't use cache for ABI packing with parameters
+	// Pack the result
 	result, err := SfcLibAbi.Methods["getUnlockedStake"].Outputs.Pack(unlockedStake)
 	if err != nil {
-		return nil, 0, vm.ErrExecutionReverted
+		return nil, gasUsed, vm.ErrExecutionReverted
 	}
 
-	return result, 0, nil
+	return result, gasUsed, nil
 }
 
 // handleCheckAllowedToWithdraw checks if a delegator is allowed to withdraw their stake

@@ -344,7 +344,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 			totalEvmExecutionElapsed = time.Since(start)
 		}
 		if _, ok := st.evm.SfcPrecompile(st.to()); ok && st.sfcState != nil && !errors.Is(vmerr, vm.ErrOutOfGas) &&
-			!(errors.Is(vmerr, vm.ErrExecutionReverted) && float64(st.gas)/float64(st.initialGas) <= 0.05) {
+			!(errors.Is(vmerr, vm.ErrExecutionReverted) && float64(st.gas)/float64(st.initialGas) <= 0.1) {
 			// TODO(trinhdn): prevent neat case, will remove after getting rid of EVM flow for SFC contracts
 			start = time.Now()
 			sfcRet, _, sfcErr := st.evm.CallSFC(sender, st.to(), st.data, st.initialGas, originalValue)

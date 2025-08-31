@@ -328,8 +328,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		}
 
 		var (
-			// Backup the original gas and value for SFC precompiled calls.
-			originalGas   = st.gas
+			// Backup the original value for SFC precompiled calls.
 			originalValue = st.value
 
 			// Total execution time of the EVM calls per transaction.
@@ -345,10 +344,10 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 			totalEvmExecutionElapsed = time.Since(start)
 		}
 		if _, ok := st.evm.SfcPrecompile(st.to()); ok && st.sfcState != nil && !errors.Is(vmerr, vm.ErrOutOfGas) &&
-			!(errors.Is(vmerr, vm.ErrExecutionReverted) && st.gas <= 1000) {
+			!(errors.Is(vmerr, vm.ErrExecutionReverted) && float64(st.gas)/float64(st.initialGas) <= 0.05) {
 			// TODO(trinhdn): prevent neat case, will remove after getting rid of EVM flow for SFC contracts
 			start = time.Now()
-			sfcRet, _, sfcErr := st.evm.CallSFC(sender, st.to(), st.data, originalGas, originalValue)
+			sfcRet, _, sfcErr := st.evm.CallSFC(sender, st.to(), st.data, st.initialGas, originalValue)
 			if sfcErr != nil {
 				log.Error("TransitionDb: CallSFC failed", "sfcErr", sfcErr, "ret", common.Bytes2Hex(ret))
 			}

@@ -42,9 +42,13 @@ func (evm *EVM) CallSFC(caller ContractRef, addr common.Address, input []byte, g
 				"caller", caller.Address().Hex(), "to", addr.Hex(), "value", value.String())
 			return nil, gas, ErrInsufficientBalance
 		}
+		log.Debug("CallSFC: SubBalance", "height", evm.Context.BlockNumber,
+			"caller", caller.Address().Hex(), "value", value.String())
 		evm.SfcStateDB.SubBalance(caller.Address(), value)
 	}
 	if _, isSfcPrecompile := evm.SfcPrecompile(addr); isSfcPrecompile && value.Sign() != 0 {
+		log.Debug("CallSFC: AddBalance", "height", evm.Context.BlockNumber,
+			"to", addr.Hex(), "value", value.String())
 		evm.SfcStateDB.AddBalance(addr, value)
 	}
 
@@ -52,7 +56,8 @@ func (evm *EVM) CallSFC(caller ContractRef, addr common.Address, input []byte, g
 	if sp, isStatePrecompile := evm.statePrecompile(addr); isStatePrecompile {
 		log.Debug("EvmWriter precompiled calling", "height", evm.Context.BlockNumber,
 			"caller", caller.Address().Hex(),
-			"to", addr.Hex())
+			"to", addr.Hex(),
+			"input", common.Bytes2Hex(input))
 		ret, gas, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
 		if err != nil {
 			log.Error("EvmWriter precompiled calling failed", "height", evm.Context.BlockNumber,

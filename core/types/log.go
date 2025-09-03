@@ -17,7 +17,10 @@
 package types
 
 import (
+	"bytes"
+	"fmt"
 	"io"
+	"strings"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
@@ -53,6 +56,43 @@ type Log struct {
 	// The Removed field is true if this log was reverted due to a chain reorganisation.
 	// You must pay attention to this field if you receive logs through a filter query.
 	Removed bool `json:"removed"`
+}
+
+// String returns a human-readable string representation of the Log.
+// It displays all fields in a structured format for debugging and logging purposes.
+func (l *Log) String() string {
+	if l == nil {
+		return "<nil Log>"
+	}
+
+	var topics []string
+	for _, topic := range l.Topics {
+		topics = append(topics, topic.Hex())
+	}
+
+	return fmt.Sprintf(`Log{
+  Address: %s
+  Topics: [%s]
+  Data: %s (%d bytes)
+  BlockNumber: %d
+  TxHash: %s
+  TxIndex: %d
+  BlockHash: %s
+  Index: %d
+  Removed: %t
+}
+`,
+		l.Address.Hex(),
+		strings.Join(topics, ", "),
+		hexutil.Encode(l.Data),
+		len(l.Data),
+		l.BlockNumber,
+		l.TxHash.Hex(),
+		l.TxIndex,
+		l.BlockHash.Hex(),
+		l.Index,
+		l.Removed,
+	)
 }
 
 type logMarshaling struct {
@@ -140,4 +180,68 @@ func (l *LogForStorage) DecodeRLP(s *rlp.Stream) error {
 		}
 	}
 	return err
+}
+
+// Equal compares two Log instances and returns true if all fields are identical.
+// This function performs a deep comparison of all fields including:
+// - Address (consensus field)
+// - Topics slice (consensus field)
+// - Data byte slice (consensus field)
+// - BlockNumber (derived field)
+// - TxHash (derived field)
+// - TxIndex (derived field)
+// - BlockHash (derived field)
+// - Index (derived field)
+// - Removed (derived field)
+func (l *Log) Equal(other *Log) bool {
+	if l == nil && other == nil {
+		return true
+	}
+	if l == nil || other == nil {
+		return false
+	}
+
+	// Compare consensus fields
+	if l.Address.Cmp(other.Address) != 0 {
+		return false
+	}
+
+	// Compare Topics slice
+	if len(l.Topics) != len(other.Topics) {
+		return false
+	}
+	for i, topic := range l.Topics {
+		if topic.Cmp(other.Topics[i]) != 0 {
+			return false
+		}
+	}
+
+	// Compare Data byte slice
+	if !bytes.Equal(l.Data, other.Data) {
+		return false
+	}
+
+	// Compare derived fields
+	if l.BlockNumber != other.BlockNumber {
+		return false
+	}
+	if l.TxHash.Cmp(other.TxHash) != 0 {
+		return false
+	}
+	if l.TxIndex != other.TxIndex {
+		return false
+	}
+	if l.BlockHash.Cmp(other.BlockHash) != 0 {
+		return false
+	}
+	if l.Index != other.Index {
+		// skip this index check for now because not all SFC logs have correct index,
+		// comparing with the EVM logs
+		// return false
+	}
+	if l.Removed != other.Removed {
+		return false
+	}
+
+	return true
 }

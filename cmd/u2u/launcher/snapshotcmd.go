@@ -19,23 +19,23 @@ package launcher
 import (
 	"bytes"
 	"errors"
-	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 	"os"
 	"path"
 	"time"
+
+	"gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/rawdb"
 	"github.com/unicornultrafoundation/go-u2u/core/state"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
+	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"
+	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore/evmpruner"
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/rlp"
 	"github.com/unicornultrafoundation/go-u2u/trie"
-	"gopkg.in/urfave/cli.v1"
-
-	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"
-	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore/evmpruner"
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 )
 
 var (
@@ -72,6 +72,36 @@ u2u snapshot prune-state <state-root>
 will prune historical state data with the help of the state snapshot.
 All trie nodes and contract codes that do not belong to the specified
 version state will be deleted from the database. After pruning, only
+two version states are available: genesis and the specific one.
+
+The default pruning target is the HEAD state.
+
+WARNING: It's necessary to delete the trie clean cache after the pruning.
+If you specify another directory for the trie clean cache via "--cache.trie.journal"
+during the use of u2u, please also specify it here for correct deletion. Otherwise
+the trie clean cache with default directory will be deleted.
+`,
+			},
+			{
+				Name:      "prune-sfc-state",
+				Usage:     "Prune stale SFC state data based on the snapshot",
+				ArgsUsage: "--sfc <root> [--prune.exact] [--prune.genesis=false]",
+				Action:    utils.MigrateFlags(pruneSfcState),
+				Category:  "MISCELLANEOUS COMMANDS",
+				Flags: []cli.Flag{
+					PruneExactCommand,
+					PruneGenesisCommand,
+					DataDirFlag,
+					utils.AncientFlag,
+					utils.CacheTrieJournalFlag,
+					utils.BloomFilterSizeFlag,
+					utils.SFCFlag,
+				},
+				Description: `
+u2u snapshot prune-sfc-state --sfc <state-root>
+will prune historical SFC state data with the help of the state snapshot.
+All trie nodes and contract codes that do not belong to the specified
+version state will be deleted from the SFC database. After pruning, only
 two version states are available: genesis and the specific one.
 
 The default pruning target is the HEAD state.
@@ -134,6 +164,68 @@ will traverse the whole state from the given root and will abort if any referenc
 trie node or contract code is missing. This command can be used for state integrity
 verification. The default checking target is the HEAD state. It's basically identical
 to traverse-state, but the check granularity is smaller. 
+
+It's also usable without snapshot enabled.
+`,
+			},
+			{
+				Name:      "verify-sfc-state",
+				Usage:     "Recalculate SFC state hash based on the snapshot for verification",
+				ArgsUsage: "--sfc [<root>]",
+				Action:    utils.MigrateFlags(verifySfcState),
+				Category:  "MISCELLANEOUS COMMANDS",
+				Flags: []cli.Flag{
+					DataDirFlag,
+					utils.AncientFlag,
+					utils.SFCFlag,
+				},
+				Description: `
+u2u snapshot verify-sfc-state --sfc [<state-root>]
+will traverse the whole SFC accounts and storages set based on the specified
+snapshot and recalculate the root hash of SFC state for verification.
+In other words, this command does the SFC snapshot to trie conversion.
+The --sfc flag is required for SFC state verification.
+`,
+			},
+			{
+				Name:      "traverse-sfc-state",
+				Usage:     "Traverse the SFC state with given root hash for verification",
+				ArgsUsage: "--sfc [<root>]",
+				Action:    utils.MigrateFlags(traverseSfcState),
+				Category:  "MISCELLANEOUS COMMANDS",
+				Flags: []cli.Flag{
+					DataDirFlag,
+					utils.AncientFlag,
+					utils.SFCFlag,
+				},
+				Description: `
+u2u snapshot traverse-sfc-state --sfc [<state-root>]
+will traverse the whole SFC state from the given state root and will abort if any
+referenced trie node or contract code is missing. This command can be used for
+SFC state integrity verification. The default checking target is the HEAD SFC state.
+The --sfc flag is required for SFC state traversal.
+
+It's also usable without snapshot enabled.
+`,
+			},
+			{
+				Name:      "traverse-sfc-rawstate",
+				Usage:     "Traverse the SFC state with given root hash for verification",
+				ArgsUsage: "--sfc [<root>]",
+				Action:    utils.MigrateFlags(traverseSfcRawState),
+				Category:  "MISCELLANEOUS COMMANDS",
+				Flags: []cli.Flag{
+					DataDirFlag,
+					utils.AncientFlag,
+					utils.SFCFlag,
+				},
+				Description: `
+u2u snapshot traverse-sfc-rawstate --sfc [<state-root>]
+will traverse the whole SFC state from the given root and will abort if any referenced
+trie node or contract code is missing. This command can be used for SFC state integrity
+verification. The default checking target is the HEAD SFC state. It's basically identical
+to traverse-sfc-state, but the check granularity is smaller.
+The --sfc flag is required for SFC raw state traversal.
 
 It's also usable without snapshot enabled.
 `,
@@ -210,6 +302,83 @@ func pruneState(ctx *cli.Context) (err error) {
 	return nil
 }
 
+func pruneSfcState(ctx *cli.Context) (err error) {
+	if !ctx.Bool(utils.SFCFlag.Name) {
+		return errors.New("--sfc flag is required for SFC state pruning")
+	}
+
+	cfg := makeAllConfigs(ctx)
+	rawDbs := makeDirectDBsProducer(cfg)
+	defer caution.CloseAndReportError(&err, rawDbs, "failed to close raw DBs")
+	gdb := makeGossipStore(rawDbs, cfg)
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
+
+	if gdb.GetGenesisID() == nil {
+		return errors.New("failed to open snapshot tree: genesis is not written")
+	}
+
+	tmpDir := path.Join(cfg.Node.DataDir, "tmp")
+	err = os.MkdirAll(tmpDir, 0700)
+	defer caution.ExecuteAndReportError(&err, func() error { return os.RemoveAll(tmpDir) },
+		"failed to remove tmp prune state dir")
+
+	genesisBlock := gdb.GetBlock(*gdb.GetGenesisBlockIndex())
+	genesisRoot := common.Hash{}
+	if !ctx.BoolT(PruneGenesisCommand.Name) && genesisBlock != nil {
+		if gdb.EvmStore().HasStateDB(genesisBlock.Root) {
+			genesisRoot = common.Hash(genesisBlock.Root)
+			log.Info("Excluding genesis state from SFC pruning", "root", genesisRoot)
+		}
+	}
+
+	if ctx.NArg() > 2 {
+		log.Error("Too many arguments given")
+		return errors.New("too many arguments")
+	}
+	var targetRoot common.Hash
+	if ctx.NArg() == 2 {
+		targetRoot, err = parseRoot(ctx.Args()[1])
+		if err != nil {
+			log.Error("Failed to resolve SFC state root", "err", err)
+			return err
+		}
+	}
+
+	sfcRoot := common.Hash(gdb.GetBlockState().SfcStateRoot)
+	var sfcBloom evmpruner.StateBloom
+	if ctx.Bool(PruneExactCommand.Name) {
+		log.Info("Initializing SFC LevelDB storage of in-use-keys")
+		sfcLset, sfcCloser, err := evmpruner.NewLevelDBSet(path.Join(tmpDir, "sfc-keys-in-use"))
+		if err != nil {
+			log.Error("Failed to create SFC state bloom", "err", err)
+			return err
+		}
+		sfcBloom = sfcLset
+		defer caution.CloseAndReportError(&err, sfcCloser, "failed to close SFC level DB set")
+	} else {
+		size := ctx.Uint64(utils.BloomFilterSizeFlag.Name)
+		log.Info("Initializing SFC bloom filter of in-use-keys", "size (MB)", size)
+		sfcBloom, err = evmpruner.NewProbabilisticSet(size)
+		if err != nil {
+			log.Error("Failed to create SFC state bloom", "err", err)
+			return err
+		}
+	}
+
+	sfcPruner, err := evmpruner.NewPruner(gdb.EvmStore().SfcDb, genesisRoot, sfcRoot, tmpDir, sfcBloom)
+	if err != nil {
+		log.Error("Failed to open SFC snapshot tree", "err", err)
+		return err
+	}
+
+	if err = sfcPruner.Prune(targetRoot); err != nil {
+		log.Error("Failed to prune SFC state", "err", err)
+		return err
+	}
+
+	return nil
+}
+
 func verifyState(ctx *cli.Context) (err error) {
 	cfg := makeAllConfigs(ctx)
 	rawDbs := makeDirectDBsProducer(cfg)
@@ -224,8 +393,9 @@ func verifyState(ctx *cli.Context) (err error) {
 
 	evmStore := gdb.EvmStore()
 	root := common.Hash(gdb.GetBlockState().FinalizedStateRoot)
+	sfcRoot := common.Hash(gdb.GetBlockState().SfcStateRoot)
 
-	err = evmStore.GenerateEvmSnapshot(root, false, false)
+	err = evmStore.GenerateEvmSnapshot(root, sfcRoot, false, false)
 	if err != nil {
 		log.Error("Failed to open snapshot tree", "err", err)
 		return err
@@ -456,6 +626,270 @@ func traverseRawState(ctx *cli.Context) (err error) {
 		return accIter.Error()
 	}
 	log.Info("State is complete", "nodes", nodes, "accounts", accounts, "slots", slots, "codes", codes, "elapsed", common.PrettyDuration(time.Since(start)))
+	return nil
+}
+
+// verifySfcState recalculates the SFC state hash based on the snapshot for verification.
+// This is the SFC equivalent of verifyState, using SfcSnapshots() instead of Snapshots().
+func verifySfcState(ctx *cli.Context) (err error) {
+	if !ctx.Bool(utils.SFCFlag.Name) {
+		return errors.New("--sfc flag is required for SFC state verification")
+	}
+
+	cfg := makeAllConfigs(ctx)
+	rawDbs := makeDirectDBsProducer(cfg)
+	defer caution.CloseAndReportError(&err, rawDbs, "failed to close raw DBs")
+	gdb := makeGossipStore(rawDbs, cfg)
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
+
+	genesis := gdb.GetGenesisID()
+	if genesis == nil {
+		return errors.New("failed to open snapshot tree: genesis is not written")
+	}
+
+	evmStore := gdb.EvmStore()
+	root := common.Hash(gdb.GetBlockState().FinalizedStateRoot)
+	sfcRoot := common.Hash(gdb.GetBlockState().SfcStateRoot)
+
+	err = evmStore.GenerateEvmSnapshot(root, sfcRoot, false, false)
+	if err != nil {
+		log.Error("Failed to open SFC snapshot tree", "err", err)
+		return err
+	}
+	if ctx.NArg() > 1 {
+		log.Error("Too many arguments given")
+		return errors.New("too many arguments")
+	}
+
+	if ctx.NArg() == 1 {
+		sfcRoot, err = parseRoot(ctx.Args()[0])
+		if err != nil {
+			log.Error("Failed to resolve SFC state root", "err", err)
+			return err
+		}
+	}
+	if err := evmStore.SfcSnapshots().Verify(sfcRoot); err != nil {
+		log.Error("Failed to verfiy SFC state", "root", sfcRoot, "err", err)
+		return err
+	}
+	log.Info("Verified the SFC state", "root", sfcRoot)
+	return nil
+}
+
+// traverseSfcState is a helper function used for SFC state verification.
+// Basically it just iterates the SFC trie, ensure all nodes and associated
+// contract codes are present. This is the SFC equivalent of traverseState.
+func traverseSfcState(ctx *cli.Context) (err error) {
+	if !ctx.Bool(utils.SFCFlag.Name) {
+		return errors.New("--sfc flag is required for SFC state traversal")
+	}
+
+	cfg := makeAllConfigs(ctx)
+	rawDbs := makeDirectDBsProducer(cfg)
+	defer caution.CloseAndReportError(&err, rawDbs, "failed to close raw DBs")
+	gdb := makeGossipStore(rawDbs, cfg)
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
+
+	if gdb.GetGenesisID() == nil {
+		return errors.New("failed to open snapshot tree: genesis is not written")
+	}
+	chaindb := gdb.EvmStore().SfcDb
+
+	if ctx.NArg() > 1 {
+		log.Error("Too many arguments given")
+		return errors.New("too many arguments")
+	}
+	var root common.Hash
+	if ctx.NArg() == 1 {
+		root, err = parseRoot(ctx.Args()[0])
+		if err != nil {
+			log.Error("Failed to resolve SFC state root", "err", err)
+			return err
+		}
+		log.Info("Start traversing the SFC state", "root", root)
+	} else {
+		root = common.Hash(gdb.GetBlockState().SfcStateRoot)
+		log.Info("Start traversing the SFC state", "root", root, "number", gdb.GetBlockState().LastBlock.Idx)
+	}
+	triedb := trie.NewDatabase(chaindb)
+	t, err := trie.NewSecure(root, triedb)
+	if err != nil {
+		log.Error("Failed to open SFC trie", "root", root, "err", err)
+		return err
+	}
+	var (
+		accounts   int
+		slots      int
+		codes      int
+		lastReport time.Time
+		start      = time.Now()
+	)
+	accIter := trie.NewIterator(t.NodeIterator(nil))
+	for accIter.Next() {
+		accounts += 1
+		var acc state.Account
+		if err := rlp.DecodeBytes(accIter.Value, &acc); err != nil {
+			log.Error("Invalid SFC account encountered during traversal", "err", err)
+			return err
+		}
+		if acc.Root != types.EmptyRootHash {
+			storageTrie, err := trie.NewSecure(acc.Root, triedb)
+			if err != nil {
+				log.Error("Failed to open SFC storage trie", "root", acc.Root, "err", err)
+				return err
+			}
+			storageIter := trie.NewIterator(storageTrie.NodeIterator(nil))
+			for storageIter.Next() {
+				slots += 1
+			}
+			if storageIter.Err != nil {
+				log.Error("Failed to traverse SFC storage trie", "root", acc.Root, "err", storageIter.Err)
+				return storageIter.Err
+			}
+		}
+		if !bytes.Equal(acc.CodeHash, evmstore.EmptyCode) {
+			code := rawdb.ReadCode(chaindb, common.BytesToHash(acc.CodeHash))
+			if len(code) == 0 {
+				log.Error("SFC code is missing", "hash", common.BytesToHash(acc.CodeHash))
+				return errors.New("missing SFC code")
+			}
+			codes += 1
+		}
+		if time.Since(lastReport) > time.Second*8 {
+			log.Info("Traversing SFC state", "accounts", accounts, "slots", slots, "codes", codes, "elapsed", common.PrettyDuration(time.Since(start)))
+			lastReport = time.Now()
+		}
+	}
+	if accIter.Err != nil {
+		log.Error("Failed to traverse SFC state trie", "root", root, "err", accIter.Err)
+		return accIter.Err
+	}
+	log.Info("SFC state is complete", "accounts", accounts, "slots", slots, "codes", codes, "elapsed", common.PrettyDuration(time.Since(start)))
+	return nil
+}
+
+// traverseSfcRawState is a helper function used for SFC state verification.
+// Basically it just iterates the SFC trie, ensure all nodes and associated
+// contract codes are present. It's basically identical to traverseSfcState
+// but it will check each trie node. This is the SFC equivalent of traverseRawState.
+func traverseSfcRawState(ctx *cli.Context) (err error) {
+	if !ctx.Bool(utils.SFCFlag.Name) {
+		return errors.New("--sfc flag is required for SFC raw state traversal")
+	}
+
+	cfg := makeAllConfigs(ctx)
+	rawDbs := makeDirectDBsProducer(cfg)
+	defer caution.CloseAndReportError(&err, rawDbs, "failed to close raw DBs")
+	gdb := makeGossipStore(rawDbs, cfg)
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
+
+	if gdb.GetGenesisID() == nil {
+		return errors.New("failed to open snapshot tree: genesis is not written")
+	}
+	chaindb := gdb.EvmStore().SfcDb
+
+	if ctx.NArg() > 1 {
+		log.Error("Too many arguments given")
+		return errors.New("too many arguments")
+	}
+	var root common.Hash
+	if ctx.NArg() == 1 {
+		root, err = parseRoot(ctx.Args()[0])
+		if err != nil {
+			log.Error("Failed to resolve SFC state root", "err", err)
+			return err
+		}
+		log.Info("Start traversing the SFC state", "root", root)
+	} else {
+		root = common.Hash(gdb.GetBlockState().SfcStateRoot)
+		log.Info("Start traversing the SFC state", "root", root, "number", gdb.GetBlockState().LastBlock.Idx)
+	}
+	triedb := trie.NewDatabase(chaindb)
+	t, err := trie.NewSecure(root, triedb)
+	if err != nil {
+		log.Error("Failed to open SFC trie", "root", root, "err", err)
+		return err
+	}
+	var (
+		nodes      int
+		accounts   int
+		slots      int
+		codes      int
+		lastReport time.Time
+		start      = time.Now()
+	)
+	accIter := t.NodeIterator(nil)
+	for accIter.Next(true) {
+		nodes += 1
+		node := accIter.Hash()
+
+		if node != (common.Hash{}) {
+			// Check the present for non-empty hash node(embedded node doesn't
+			// have their own hash).
+			blob := rawdb.ReadTrieNode(chaindb, node)
+			if len(blob) == 0 {
+				log.Error("Missing SFC trie node(account)", "hash", node)
+				return errors.New("missing SFC account")
+			}
+		}
+		// If it's a leaf node, yes we are touching an account,
+		// dig into the storage trie further.
+		if accIter.Leaf() {
+			accounts += 1
+			var acc state.Account
+			if err := rlp.DecodeBytes(accIter.LeafBlob(), &acc); err != nil {
+				log.Error("Invalid SFC account encountered during traversal", "err", err)
+				return errors.New("invalid SFC account")
+			}
+			if acc.Root != types.EmptyRootHash {
+				storageTrie, err := trie.NewSecure(acc.Root, triedb)
+				if err != nil {
+					log.Error("Failed to open SFC storage trie", "root", acc.Root, "err", err)
+					return errors.New("missing SFC storage trie")
+				}
+				storageIter := storageTrie.NodeIterator(nil)
+				for storageIter.Next(true) {
+					nodes += 1
+					node := storageIter.Hash()
+
+					// Check the present for non-empty hash node(embedded node doesn't
+					// have their own hash).
+					if node != (common.Hash{}) {
+						blob := rawdb.ReadTrieNode(chaindb, node)
+						if len(blob) == 0 {
+							log.Error("Missing SFC trie node(storage)", "hash", node)
+							return errors.New("missing SFC storage")
+						}
+					}
+					// Bump the counter if it's leaf node.
+					if storageIter.Leaf() {
+						slots += 1
+					}
+				}
+				if storageIter.Error() != nil {
+					log.Error("Failed to traverse SFC storage trie", "root", acc.Root, "err", storageIter.Error())
+					return storageIter.Error()
+				}
+			}
+			if !bytes.Equal(acc.CodeHash, evmstore.EmptyCode) {
+				code := rawdb.ReadCode(chaindb, common.BytesToHash(acc.CodeHash))
+				if len(code) == 0 {
+					log.Error("SFC code is missing", "account", common.BytesToHash(accIter.LeafKey()))
+					return errors.New("missing SFC code")
+				}
+				codes += 1
+			}
+			if time.Since(lastReport) > time.Second*8 {
+				log.Info("Traversing SFC state", "nodes", nodes, "accounts", accounts, "slots", slots, "codes", codes, "elapsed", common.PrettyDuration(time.Since(start)))
+				lastReport = time.Now()
+			}
+		}
+	}
+	if accIter.Error() != nil {
+		log.Error("Failed to traverse SFC state trie", "root", root, "err", accIter.Error())
+		return accIter.Error()
+	}
+	log.Info("SFC state is complete", "nodes", nodes, "accounts", accounts, "slots", slots, "codes", codes, "elapsed", common.PrettyDuration(time.Since(start)))
 	return nil
 }
 

@@ -568,11 +568,6 @@ var (
 		Usage: "Enable expensive metrics collection and reporting",
 	}
 
-	SFCFlag = cli.BoolFlag{
-		Name:  "sfc",
-		Usage: "Enable SFC consensus storage (dumped from SFC contract's storage)",
-	}
-
 	// MetricsHTTPFlag defines the endpoint for a stand-alone metrics HTTP endpoint.
 	// Since the pprof service enables sensitive/vulnerable behavior, this allows a user
 	// to enable a public-OK metrics endpoint without having to worry about ALSO exposing
@@ -653,6 +648,11 @@ var (
 	CatalystFlag = cli.BoolFlag{
 		Name:  "catalyst",
 		Usage: "Catalyst mode (eth2 integration testing)",
+	}
+
+	SFCFlag = cli.BoolFlag{
+		Name:  "sfc",
+		Usage: "Enable SFC consensus storage (dumped from SFC contract's storage)",
 	}
 )
 

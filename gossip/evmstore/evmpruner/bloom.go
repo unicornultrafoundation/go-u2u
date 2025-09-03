@@ -20,6 +20,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"os"
+	"runtime"
 
 	bloomfilter "github.com/holiman/bloomfilter/v2"
 	"github.com/unicornultrafoundation/go-u2u/common"
@@ -94,11 +95,18 @@ func (bloom *stateBloom) Commit(filename, tempname string) error {
 	if err != nil {
 		return err
 	}
+	// On Windows, file sync can fail with "Access denied" due to antivirus or file system issues
+	// We'll attempt sync but continue if it fails on Windows
 	if err := f.Sync(); err != nil {
 		f.Close()
-		return err
+		if runtime.GOOS == "windows" {
+			log.Warn("File sync failed on Windows, continuing anyway", "error", err, "file", tempname)
+		} else {
+			return err
+		}
+	} else {
+		f.Close()
 	}
-	f.Close()
 
 	log.Info("State bloom filter committed", "name", filename)
 	// Move the teporary file into it's final location

@@ -20,3 +20,7 @@ func NewAccount() *Account {
 func (a *Account) Address() common.Address {
 	return crypto.PubkeyToAddress(a.PrivateKey.PublicKey)
 }
+
+func (a *Account) PublicKeyBytes() []byte {
+	return crypto.FromECDSAPub(&a.PrivateKey.PublicKey)
+}

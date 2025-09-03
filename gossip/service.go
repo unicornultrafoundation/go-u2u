@@ -444,13 +444,14 @@ func (s *Service) Start() error {
 	}
 	s.RecoverEVM()
 	root := s.store.GetBlockState().FinalizedStateRoot
+	sfcRoot := s.store.GetBlockState().SfcStateRoot
 	if !s.store.evm.HasStateDB(root) {
 		if !s.config.AllowSnapsync {
 			return errors.New("fullsync isn't possible because state root is missing")
 		}
 		root = hash.Zero
 	}
-	_ = s.store.GenerateSnapshotAt(common.Hash(root), true)
+	_ = s.store.GenerateSnapshotAt(common.Hash(root), common.Hash(sfcRoot), true)
 
 	// start blocks processor
 	s.blockProcTasks.Start(1)

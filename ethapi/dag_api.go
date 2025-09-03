@@ -5,9 +5,8 @@ import (
 	"fmt"
 
 	"github.com/unicornultrafoundation/go-u2u/common/hexutil"
-	"github.com/unicornultrafoundation/go-u2u/rpc"
-
 	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/rpc"
 )
 
 // PublicDAGChainAPI provides an API to access the directed acyclic graph chain.

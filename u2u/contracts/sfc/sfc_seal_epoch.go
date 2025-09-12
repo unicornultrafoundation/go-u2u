@@ -811,19 +811,37 @@ func handleInternalSealEpochRewards(evm *vm.EVM, epochDuration *big.Int, current
 			return gasUsed, err
 		}
 
-		// Then make a call to transfer the tokens to the treasury address
-		// This simulates the Solidity code: treasuryAddress.CallSFC.value(feeShare)("");
-		callData := []byte{} // Empty call data
-		_, _, err = evm.CallSFC(
-			vm.AccountRef(ContractAddress), // Caller
-			treasuryAddr,                   // Target address
-			callData,                       // Call data (empty)
-			21000,                          // Gas limit for a simple transfer
-			feeShare,                       // Value to transfer
-		)
-		if err != nil {
-			return gasUsed, err
-		}
+		// Simply transfer the tokens to the treasury address
+		evm.Context.Transfer(evm.SfcStateDB, ContractAddress, treasuryAddr, feeShare)
+		
+		// oldBalance := evm.SfcStateDB.GetBalance(treasuryAddr);
+		// log.Debug("handleInternalSealEpochRewards: transferring fee share to treasury",
+		// 	"treasuryAddr", treasuryAddr,
+		// 	"feeShare", common.Bytes2Hex(feeShare.Bytes()),
+		// 	"oldBalance", oldBalance.String(),
+		// )
+		// // Then make a call to transfer the tokens to the treasury address
+		// // This simulates the Solidity code: treasuryAddress.CallSFC.value(feeShare)("");
+		// callData := []byte{} // Empty call data
+		// _, _, err = evm.CallSFC(
+		// 	vm.AccountRef(ContractAddress), // Caller
+		// 	treasuryAddr,                   // Target address
+		// 	callData,                       // Call data (empty)
+		// 	21000,                          // Gas limit for a simple transfer
+		// 	feeShare,                       // Value to transfer
+		// )
+		// log.Debug("Fee share transfered", "amount", feeShare.String())
+		// // expected treasury address balance to increase
+		// newBalance := evm.SfcStateDB.GetBalance(treasuryAddr);
+		// log.Debug("handleInternalSealEpochRewards: transferred fee share to treasury",
+		// 	"treasuryAddr", treasuryAddr,
+		// 	"feeShare", common.Bytes2Hex(feeShare.Bytes()),
+		// 	"newBalance", newBalance.String(),
+		// 	"balanceDiff", newBalance.Sub(newBalance, oldBalance).String(),
+		// )
+		// if err != nil {
+		// 	return gasUsed, err
+		// }
 		gasUsed += 21000 // Add gas for the transfer
 	}
 

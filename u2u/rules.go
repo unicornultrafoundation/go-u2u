@@ -281,7 +281,7 @@ func DefaultGasRules() GasRules {
 
 func FakeNetEpochsRules() EpochsRules {
 	cfg := DefaultEpochsRules()
-	cfg.MaxEpochGas /= 5
+	cfg.MaxEpochGas = 1000_000_000
 	cfg.MaxEpochDuration = native.Timestamp(5 * time.Second)
 	return cfg
 }

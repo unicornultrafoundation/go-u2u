@@ -78,7 +78,7 @@ func handleInitialize(evm *vm.EVM, caller common.Address, args []interface{}) ([
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(totalSupplySlot)), common.BigToHash(_totalSupply))
 
 	// Set the min gas price
-	initialMinGasPrice := big.NewInt(1000000000) // 1 gwei
+	initialMinGasPrice := big.NewInt(100 * 1e9)
 	evm.SfcStateDB.SetState(ContractAddress, common.BigToHash(big.NewInt(minGasPriceSlot)), common.BigToHash(initialMinGasPrice))
 
 	// Set the epoch snapshot end time

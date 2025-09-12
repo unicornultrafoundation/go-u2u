@@ -74,6 +74,12 @@ func FakeGenesisStoreWithRulesAndStart(num idx.Validator, balance, stake *big.In
 		})
 	}
 
+	for i := 1; i < 100; i++ {
+		var key = FakeKey(idx.ValidatorID(i))
+		addr := crypto.PubkeyToAddress(key.PublicKey)
+		builder.AddBalance(addr, balance)
+	}
+
 	// deploy essential contracts
 	// pre deploy NetworkInitializer
 	builder.SetCode(netinit.ContractAddress, netinit.GetContractBin())

@@ -812,7 +812,9 @@ func handleInternalSealEpochRewards(evm *vm.EVM, epochDuration *big.Int, current
 		}
 
 		// Simply transfer the tokens to the treasury address
-		evm.Context.Transfer(evm.SfcStateDB, ContractAddress, treasuryAddr, feeShare)
+		log.Info("handleInternalSealEpochRewards: transferring fee share to treasury", "treasuryAddr", treasuryAddr, "feeShare", feeShare.String())
+		evm.SfcStateDB.AddBalance(treasuryAddr, feeShare)
+		evm.SfcStateDB.SubBalance(ContractAddress, feeShare)
 		
 		// oldBalance := evm.SfcStateDB.GetBalance(treasuryAddr);
 		// log.Debug("handleInternalSealEpochRewards: transferring fee share to treasury",

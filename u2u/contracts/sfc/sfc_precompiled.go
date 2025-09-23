@@ -296,6 +296,9 @@ func (p *SfcPrecompile) Run(evm *vm.EVM, caller common.Address, input []byte, su
 	case "getSlashingPenalty":
 		result, gasUsed, err = handleGetSlashingPenalty(evm, args)
 
+	case "recountVotes":
+		result, gasUsed, err = handleRecountVotes(evm, args)
+
 	default:
 		log.Error("SFC Precompiled: Unknown function", "function", method.Name)
 		return nil, 0, vm.ErrExecutionReverted

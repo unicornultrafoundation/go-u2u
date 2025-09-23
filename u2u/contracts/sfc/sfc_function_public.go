@@ -1479,3 +1479,30 @@ func handleSumRewards0(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) 
 
 	return packedResult, gasUsed, nil
 }
+
+// handleRecountVotes implements the public recountVotes function
+func handleRecountVotes(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
+	// Get the arguments
+	if len(args) != 4 {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	delegator, ok := args[0].(common.Address)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	validatorAuth, ok := args[1].(common.Address)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	strict, ok := args[2].(bool)
+	if !ok {
+		return nil, 0, vm.ErrExecutionReverted
+	}
+	//gasLimit, ok := args[3].(*big.Int)
+	//if !ok {
+	//	return nil, 0, vm.ErrExecutionReverted
+	//}
+
+	// Call the reusable handleInternalRecountVotes function with custom gas limit
+	return handleInternalRecountVotes(evm, delegator, validatorAuth, strict)
+}

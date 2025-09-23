@@ -124,7 +124,7 @@ func handleDeactivateValidator(evm *vm.EVM, caller common.Address, args []interf
 	validatorAuth := common.BytesToAddress(validatorAuthHash.Bytes())
 
 	// Call _recountVotes(validatorAddr, validatorAddr, false)
-	_, recountVotesGasUsed, err := handleRecountVotes(evm, validatorAuth, validatorAuth, false)
+	_, recountVotesGasUsed, err := handleInternalRecountVotes(evm, validatorAuth, validatorAuth, false)
 	gasUsed += recountVotesGasUsed
 	if err != nil {
 		return nil, gasUsed, err

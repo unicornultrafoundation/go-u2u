@@ -276,10 +276,13 @@ func handleCheckDelegatedStakeLimit(evm *vm.EVM, validatorID *big.Int) (bool, er
 	return delegatedStake.Cmp(maxDelegatedStake) <= 0, nil
 }
 
-// handleRecountVotes implements the _recountVotes function logic
-func handleRecountVotes(evm *vm.EVM, delegator common.Address, validatorAuth common.Address, strict bool) ([]byte, uint64, error) {
+// handleInternalRecountVotes implements the _recountVotes function logic
+func handleInternalRecountVotes(evm *vm.EVM, delegator common.Address, validatorAuth common.Address, strict bool) ([]byte, uint64, error) {
+	var gasUsed uint64 = 0
+
 	// Get the voteBookAddress
 	voteBookAddress := evm.SfcStateDB.GetState(ContractAddress, common.BigToHash(big.NewInt(voteBookAddressSlot)))
+	gasUsed += SloadGasCost
 	voteBookAddressBytes := voteBookAddress.Bytes()
 
 	// Check if voteBookAddress is not zero
@@ -311,17 +314,22 @@ func handleRecountVotes(evm *vm.EVM, delegator common.Address, validatorAuth com
 		data = append(data, delegatorBytes...)
 		data = append(data, validatorAuthBytes...)
 
-		// Make the call to the voteBook contract with gas limit of 8000000
+		// Make the call to the voteBook contract with the safe gas limit
 		voteBookAddr := common.BytesToAddress(voteBookAddressBytes)
-		_, leftOverGas, err := evm.CallSFC(vm.AccountRef(ContractAddress), voteBookAddr, data, 8000000, big.NewInt(0))
+		_, _, err := evm.CallSFC(vm.AccountRef(ContractAddress), voteBookAddr, data, defaultGasLimit, big.NewInt(0))
 
 		// Check if the call was successful
 		if err != nil && strict {
-			return nil, 8000000 - leftOverGas, err
+			return nil, gasUsed, err
 		}
+
+		// Return the byte slice to the pool
+		PutByteSlice(data)
+
+		return nil, gasUsed, nil
 	}
 
-	return nil, 0, nil
+	return nil, gasUsed, nil
 }
 
 // callSFCLibDelegate calls the _delegate function in the SFCLib contract

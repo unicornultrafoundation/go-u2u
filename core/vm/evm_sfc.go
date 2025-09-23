@@ -54,13 +54,13 @@ func (evm *EVM) CallSFC(caller ContractRef, addr common.Address, input []byte, g
 
 	// Handle evmWriter calls from NodeDriver contract
 	if sp, isStatePrecompile := evm.statePrecompile(addr); isStatePrecompile {
-		log.Debug("EvmWriter precompiled calling", "height", evm.Context.BlockNumber,
+		log.Debug("SFC: EvmWriter precompiled calling", "height", evm.Context.BlockNumber,
 			"caller", caller.Address().Hex(),
 			"to", addr.Hex(),
 			"input", common.Bytes2Hex(input))
 		ret, gas, err = sp.Run(evm.SfcStateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
 		if err != nil {
-			log.Error("EvmWriter precompiled calling failed", "height", evm.Context.BlockNumber,
+			log.Error("SFC: EvmWriter precompiled calling failed", "height", evm.Context.BlockNumber,
 				"caller", caller.Address().Hex(),
 				"to", addr.Hex(), "err", err)
 		}

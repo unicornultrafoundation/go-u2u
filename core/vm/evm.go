@@ -26,6 +26,7 @@ import (
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/params"
 )
 
@@ -237,7 +238,16 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	if isPrecompile {
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else if isStatePrecompile {
+		log.Debug("EVM: EvmWriter precompiled calling", "height", evm.Context.BlockNumber,
+			"caller", caller.Address().Hex(),
+			"to", addr.Hex(),
+			"input", common.Bytes2Hex(input))
 		ret, gas, err = sp.Run(evm.StateDB, evm.Context, evm.TxContext, caller.Address(), input, gas)
+		if err != nil {
+			log.Error("EVM: EvmWriter precompiled calling failed", "height", evm.Context.BlockNumber,
+				"caller", caller.Address().Hex(),
+				"to", addr.Hex(), "err", err)
+		}
 	} else {
 		// Initialise a new contract and set the code that is to be used by the EVM.
 		// The contract is a scoped environment for this execution context only.

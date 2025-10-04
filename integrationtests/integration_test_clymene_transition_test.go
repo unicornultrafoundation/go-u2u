@@ -109,7 +109,7 @@ func TestClymeneTransition_CanUpgradeNetworkRulesToClymene(t *testing.T) {
 	}
 	assert.Equal(receipt.Status, uint64(1), "transaction to advance epoch must succeed")
 	// trigger new block to persist previous network changes
-	if err := net.EndowAccount(net.validator.Address(), 1); err != nil {
+	if err := net.EndowAccount(net.validator.Address(), big.NewInt(1)); err != nil {
 		t.Fatalf("Failed to endow account: %v", err)
 	}
 	// done upgrading to Clymene
@@ -120,7 +120,7 @@ func TestClymeneTransition_CanUpgradeNetworkRulesToClymene(t *testing.T) {
 func testPrevRandaoMustBeSet(t *testing.T, net *IntegrationTestNet, client *ethclient.Client) {
 	assert := require.New(t)
 	// trigger new block for the latest block to have prevrandao value
-	if err := net.EndowAccount(net.validator.Address(), 1); err != nil {
+	if err := net.EndowAccount(net.validator.Address(), big.NewInt(1)); err != nil {
 		t.Fatalf("Failed to endow account: %v", err)
 	}
 	block, err := client.BlockByNumber(context.Background(), nil)

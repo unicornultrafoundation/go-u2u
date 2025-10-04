@@ -34,7 +34,7 @@ type Config struct {
 	InfluxDBBucket       string `toml:",omitempty"`
 	InfluxDBOrganization string `toml:",omitempty"`
 
-	PrometheusEndpointPort string  `toml:",omitempty"`
+	PrometheusEndpointPort string `toml:",omitempty"`
 }
 
 // DefaultConfig is the default config for metrics used in go-ethereum.
@@ -45,7 +45,7 @@ var DefaultConfig = Config{
 	Port:             6060,
 	EnableInfluxDB:   false,
 	InfluxDBEndpoint: "http://localhost:8086",
-	InfluxDBDatabase: "geth",
+	InfluxDBDatabase: "u2u",
 	InfluxDBUsername: "test",
 	InfluxDBPassword: "test",
 	InfluxDBTags:     "host=localhost",
@@ -53,8 +53,8 @@ var DefaultConfig = Config{
 	// influxdbv2-specific flags
 	EnableInfluxDBV2:     false,
 	InfluxDBToken:        "test",
-	InfluxDBBucket:       "geth",
-	InfluxDBOrganization: "geth",
+	InfluxDBBucket:       "u2u",
+	InfluxDBOrganization: "u2u",
 
 	// prometheus flag
 	PrometheusEndpointPort: ":19090",

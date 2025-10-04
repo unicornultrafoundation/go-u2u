@@ -12,17 +12,17 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"github.com/unicornultrafoundation/go-helios/u2udb"
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/common"
-	"github.com/unicornultrafoundation/go-u2u/log"
-	"github.com/unicornultrafoundation/go-u2u/rlp"
-
-	"github.com/unicornultrafoundation/go-helios/native/idx"
-	"github.com/unicornultrafoundation/go-helios/u2udb"
 	"github.com/unicornultrafoundation/go-u2u/gossip"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/rlp"
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 )
 
 type TracePayload struct {
@@ -31,7 +31,7 @@ type TracePayload struct {
 }
 
 // importTxTracer imports transaction traces from a specified file
-func importTxTracer(ctx *cli.Context) error {
+func importTxTracer(ctx *cli.Context) (err error) {
 	if len(ctx.Args()) < 1 {
 		utils.Fatalf("This command requires an argument.")
 	}
@@ -45,33 +45,35 @@ func importTxTracer(ctx *cli.Context) error {
 	cfg := makeAllConfigs(ctx)
 
 	rawDbs := makeDirectDBsProducer(cfg)
+	defer caution.CloseAndReportError(&err, rawDbs, "failed to close raw DBs")
 	gdb, err := makeRawGossipStoreTrace(rawDbs, cfg)
 	if err != nil {
 		log.Crit("DB opening error", "datadir", cfg.Node.DataDir, "err", err)
 	}
-	defer gdb.Close()
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
 
-	fn := ctx.Args().First()
+	fileName := ctx.Args().First()
 
 	// Open the file handle and potentially unwrap the gzip stream
-	fh, err := os.Open(fn)
+	fileHandler, err := os.Open(fileName)
 	if err != nil {
 		return err
 	}
-	defer fh.Close()
+	defer caution.CloseAndReportError(&err, fileHandler, fmt.Sprintf("failed to close file %v", fileName))
 
 	var (
-		reader  io.Reader = fh
+		reader  io.Reader = fileHandler
 		counter int
 	)
-	if strings.HasSuffix(fn, ".gz") {
+	if strings.HasSuffix(fileName, ".gz") {
 		if reader, err = gzip.NewReader(reader); err != nil {
 			return err
 		}
-		defer reader.(*gzip.Reader).Close()
+		defer caution.CloseAndReportError(&err, reader.(*gzip.Reader),
+			fmt.Sprintf("failed to close gzip reader file %v", fileName))
 	}
 
-	log.Info("Importing transaction traces from file", "file", fn)
+	log.Info("Importing transaction traces from file", "file", fileName)
 	start, reported := time.Now(), time.Now()
 
 	stream := rlp.NewStream(reader, 0)
@@ -103,16 +105,16 @@ func importTxTracer(ctx *cli.Context) error {
 }
 
 // deleteTxTracer removes transaction traces for specified block range
-func deleteTxTracer(ctx *cli.Context) error {
-
+func deleteTxTracer(ctx *cli.Context) (err error) {
 	cfg := makeAllConfigs(ctx)
 
 	rawDbs := makeDirectDBsProducer(cfg)
+	defer caution.CloseAndReportError(&err, rawDbs, "failed to close raw DBs")
 	gdb, err := makeRawGossipStoreTrace(rawDbs, cfg)
 	if err != nil {
 		log.Crit("DB opening error", "datadir", cfg.Node.DataDir, "err", err)
 	}
-	defer gdb.Close()
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
 
 	from := idx.Block(1)
 	if len(ctx.Args()) > 0 {
@@ -142,7 +144,7 @@ func deleteTxTracer(ctx *cli.Context) error {
 }
 
 // exportTxTracer exports transaction traces from specified block range
-func exportTxTracer(ctx *cli.Context) error {
+func exportTxTracer(ctx *cli.Context) (err error) {
 	if len(ctx.Args()) < 1 {
 		utils.Fatalf("This command requires an argument.")
 	}
@@ -150,25 +152,27 @@ func exportTxTracer(ctx *cli.Context) error {
 	cfg := makeAllConfigs(ctx)
 
 	rawDbs := makeDirectDBsProducer(cfg)
+	defer caution.CloseAndReportError(&err, rawDbs, "failed to close raw DBs")
 	gdb, err := makeRawGossipStoreTrace(rawDbs, cfg)
 	if err != nil {
 		log.Crit("DB opening error", "datadir", cfg.Node.DataDir, "err", err)
 	}
-	defer gdb.Close()
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
 
-	fn := ctx.Args().First()
+	fileName := ctx.Args().First()
 
 	// Open the file handle and potentially wrap with a gzip stream
-	fh, err := os.OpenFile(fn, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
+	fileHandler, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
 	if err != nil {
 		return err
 	}
-	defer fh.Close()
+	defer caution.CloseAndReportError(&err, fileHandler, fmt.Sprintf("failed to close file %v", fileName))
 
-	var writer io.Writer = fh
-	if strings.HasSuffix(fn, ".gz") {
+	var writer io.Writer = fileHandler
+	if strings.HasSuffix(fileName, ".gz") {
 		writer = gzip.NewWriter(writer)
-		defer writer.(*gzip.Writer).Close()
+		defer caution.CloseAndReportError(&err, writer.(*gzip.Writer),
+			fmt.Sprintf("failed to close gzip writer file %v", fileName))
 	}
 
 	from := idx.Block(1)
@@ -188,7 +192,7 @@ func exportTxTracer(ctx *cli.Context) error {
 		to = idx.Block(n)
 	}
 
-	log.Info("Exporting transaction traces to file", "file", fn)
+	log.Info("Exporting transaction traces to file", "file", fileName)
 
 	err = exportTraceTo(writer, gdb, from, to)
 	if err != nil {
@@ -200,17 +204,14 @@ func exportTxTracer(ctx *cli.Context) error {
 
 func makeRawGossipStoreTrace(producer u2udb.FlushableDBProducer, cfg *config) (*gossip.Store, error) {
 	gdb := makeGossipStore(producer, cfg)
-
 	if gdb.TxTraceStore() == nil {
 		return nil, errors.New("transaction traces db store is not initialized")
 	}
-
 	return gdb, nil
 }
 
 // exportTraceTo writes the active chain
 func exportTraceTo(w io.Writer, gdb *gossip.Store, from, to idx.Block) (err error) {
-
 	if from == 1 && to == gdb.GetLatestBlockIndex() {
 		exportAllTraceTo(w, gdb)
 		return
@@ -267,10 +268,7 @@ func exportAllTraceTo(w io.Writer, gdb *gossip.Store) (err error) {
 func deleteTraces(gdb *gossip.Store, from, to idx.Block) (err error) {
 	start, reported := time.Now(), time.Now()
 
-	var (
-		counter int
-	)
-
+	var counter int
 	for i := from; i <= to; i++ {
 		for _, tx := range gdb.GetBlockTxs(i, gdb.GetBlock(i)) {
 			ok, err := gdb.TxTraceStore().HasTxTrace(tx.Hash())

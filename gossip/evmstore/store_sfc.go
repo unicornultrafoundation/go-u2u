@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 
 	"github.com/unicornultrafoundation/go-helios/native/idx"
-	
+
 	"github.com/unicornultrafoundation/go-u2u/common"
 )
 
@@ -20,6 +20,17 @@ func (s *Store) SetSfcStateRoot(n idx.Block, hash []byte, root common.Hash) {
 // GetSfcStateRoot returns stored SFC state root hash
 func (s *Store) GetSfcStateRoot(n idx.Block, hash []byte) *common.Hash {
 	root, _ := s.rlp.Get(s.table.StateRoots, SfcStateRootKey(n, hash), &common.Hash{}).(*common.Hash)
+	return root
+}
+
+// SetLatestSfcStateRoot stores the latest SFC state root hash
+func (s *Store) SetLatestSfcStateRoot(root common.Hash) {
+	s.rlp.Set(s.table.StateRoots, sfcStateRootPrefix, root)
+}
+
+// GetLatestSfcStateRoot returns the latest stored SFC state root hash
+func (s *Store) GetLatestSfcStateRoot() *common.Hash {
+	root, _ := s.rlp.Get(s.table.StateRoots, sfcStateRootPrefix, &common.Hash{}).(*common.Hash)
 	return root
 }
 

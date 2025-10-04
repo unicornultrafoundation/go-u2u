@@ -56,6 +56,8 @@ var (
 	blockExecutionTimer = metrics.GetOrRegisterTimer("chain/execution", nil)
 	blockWriteTimer     = metrics.GetOrRegisterTimer("chain/write", nil)
 	blockAgeGauge       = metrics.GetOrRegisterGauge("chain/block/age", nil)
+
+	processedTxsMeter = metrics.GetOrRegisterMeter("chain/txs/processed", nil)
 )
 
 type ExtendedTxPosition struct {
@@ -122,11 +124,7 @@ func consensusCallbackBeginBlockFn(
 		if err != nil {
 			log.Crit("Failed to open StateDB", "err", err)
 		}
-		sfcStatedb, err := store.evm.SfcStateDB(bs.SfcStateRoot)
-		if err != nil {
-			log.Warn("Failed to get SFC state", "height", bs.LastBlock.Idx,
-				"event hash", bs.LastBlock.Atropos.Hex(), "err", err)
-		}
+		sfcStatedb, _ := store.evm.SfcStateDB(bs.SfcStateRoot)
 
 		evmStateReader := &EvmStateReader{
 			ServiceFeed: feed,
@@ -469,6 +467,7 @@ func consensusCallbackBeginBlockFn(
 						evmBlock.GasUsed, "txs", fmt.Sprintf("%d/%d", len(evmBlock.Transactions), len(block.SkippedTxs)),
 						"age", utils.PrettyDuration(blockAge), "t", utils.PrettyDuration(now.Sub(start)))
 					blockAgeGauge.Update(int64(blockAge.Nanoseconds()))
+					processedTxsMeter.Mark(int64(len(evmBlock.Transactions)))
 				}
 				if confirmedEvents.Len() != 0 {
 					atomic.StoreUint32(blockBusyFlag, 1)
@@ -508,9 +507,9 @@ func (s *Service) ReexecuteBlocks(from, to idx.Block) {
 			log.Crit("Failue to re-execute blocks", "err", err)
 		}
 		sfcStatedb, err := s.store.evm.SfcStateDB(prev.SfcStateRoot)
-		if err != nil {
-			log.Warn("Failed to get SFC state", "event hash", prev.Atropos.Hex(), "err", err)
-		}
+		//if err != nil {
+		//	log.Warn("Failed to get SFC state", "event hash", prev.Atropos.Hex(), "err", err)
+		//}
 		es := s.store.GetHistoryEpochState(s.store.FindBlockEpoch(b))
 		// Providing default config
 		// In case of trace transaction node, this config is changed
@@ -525,6 +524,7 @@ func (s *Service) ReexecuteBlocks(from, to idx.Block) {
 		evmProcessor.Execute(txs)
 		evmProcessor.Finalize()
 		_ = s.store.evm.Commit(b, block.Root, false)
+		_ = s.store.evm.CommitSfcState(b, block.SfcStateRoot, false)
 		s.store.evm.Cap()
 		s.mayCommit(false)
 		prev = block

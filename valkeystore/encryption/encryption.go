@@ -12,7 +12,6 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/accounts/keystore"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/crypto"
-
 	"github.com/unicornultrafoundation/go-u2u/native/validatorpk"
 )
 
@@ -69,7 +68,7 @@ func (ks Keystore) StoreKey(filename string, pubkey validatorpk.PubKey, key []by
 		return err
 	}
 	// Write into temporary file
-	tmpName, err := writeTemporaryKeyFile(filename, keyjson)
+	tmpName, err := keystore.WriteTemporaryKeyFile(filename, keyjson)
 	if err != nil {
 		return err
 	}

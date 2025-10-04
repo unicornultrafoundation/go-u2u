@@ -1,0 +1,98 @@
+# U2U PrecompiledSfcContract Implementation Rules
+
+## Target Files
+These rules apply to Go files implementing `vm.PrecompiledSfcContract` interface in:
+- `u2u/contracts/**`
+
+## Code Style
+- Tab width: 4 spaces
+- Use tabs: true
+- Max line length: 120 characters
+- Format on save: true
+- Organize imports on save: true
+
+## Function Rules
+### Naming Patterns
+- Handler functions: `^handle[A-Z][a-zA-Z0-9]*$`
+  Example: `handleUpdateValidator`, `handleOwner`
+- Interface methods: `^(Run|RequiredGas)$`
+- Parser functions: `^parse[A-Z][a-zA-Z0-9]*$`
+  Example: `parseABIInput`, `parseValidatorID`
+- Allowed exceptions: `init`
+
+### Handler Function Template
+```go
+// handle{MethodName} implements the {methodName} method from the {contractName} contract.
+// It {brief description}.
+// Parameters:
+//   - evm: {description}
+//   - args: {description}
+// Returns:
+//   - []byte: {description}
+//   - uint64: {description}
+//   - error: {description}
+func handle{MethodName}(evm *vm.EVM, args []interface{}) ([]byte, uint64, error) {
+    // 1. Gas checking
+    // 2. Input validation
+    // 3. Business logic
+    // 4. Error handling
+    // 5. Return values
+}
+```
+
+## Import Organization
+Order imports in groups:
+1. Standard libraries imports
+2. Other external imports of foreign repositories
+3. Packages belong to this go-u2u repository imports
+
+## Error Handling
+### Standard Error Types
+- `vm.ErrExecutionReverted`: Contract reverts
+- `vm.ErrOutOfGas`: Gas exhaustion
+- `vm.ErrSfcFunctionNotImplemented`: Unimplemented functions
+
+### Error Pattern
+```go
+if err != nil {
+    log.Error("{ContractName} Precompiled: {Description}", 
+        "function", methodName,
+        "err", err)
+    return nil, 0, vm.ErrExecutionReverted
+}
+```
+
+## Documentation Requirements
+### Package Level
+```go
+// package {name} implements the precompiled contract that ports 
+// the {ContractName} Solidity contract functionality.
+package {name}
+```
+
+### Function Level
+- All exported functions must have comments
+- Handler functions must follow template above
+- Gas calculation logic must be documented
+
+## Complexity Limits
+- Maximum function length: 50 lines
+- Maximum nesting depth: 3 levels
+- Maximum cyclomatic complexity: 15
+
+## Testing Requirements
+Each precompiled contract must have tests for:
+- Normal operation cases
+- Error cases
+- Gas calculation
+- Input validation
+- Edge cases
+
+## Ignored Paths
+- **/node_modules/**
+- **/build/**
+- **/dist/**
+- **/artifacts/**
+- **/cache/**
+- **/*.test.go
+- **/*_test.go 

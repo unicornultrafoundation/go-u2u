@@ -4,15 +4,16 @@ import (
 	"time"
 
 	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"gopkg.in/urfave/cli.v1"
+
 	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/log"
-	"gopkg.in/urfave/cli.v1"
-
 	"github.com/unicornultrafoundation/go-u2u/native"
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 )
 
-func checkEvm(ctx *cli.Context) error {
+func checkEvm(ctx *cli.Context) (err error) {
 	if len(ctx.Args()) != 0 {
 		utils.Fatalf("This command doesn't require an argument.")
 	}
@@ -21,8 +22,9 @@ func checkEvm(ctx *cli.Context) error {
 
 	rawDbs := makeDirectDBsProducer(cfg)
 	gdb := makeGossipStore(rawDbs, cfg)
-	defer gdb.Close()
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
 	evms := gdb.EvmStore()
+	defer caution.CloseAndReportError(&err, evms, "failed to close EVM store")
 
 	start, reported := time.Now(), time.Now()
 

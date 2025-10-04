@@ -18,6 +18,7 @@ package evmcore
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 
@@ -25,6 +26,8 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/rlp"
+	"github.com/unicornultrafoundation/go-u2u/utils"
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 )
 
 // errNoActiveJournal is returned if a transaction is attempted to be inserted
@@ -64,9 +67,9 @@ func (journal *txJournal) load(add func([]*types.Transaction) []error) error {
 	// Open the journal for loading any past transactions
 	input, err := os.Open(journal.path)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open transaction journal: %w", err)
 	}
-	defer input.Close()
+	defer caution.CloseAndReportError(&err, input, "failed to close transaction journal")
 
 	// Temporarily discard any journal additions (don't double add on load)
 	journal.writer = new(devNull)
@@ -146,13 +149,16 @@ func (journal *txJournal) rotate(all map[common.Address]types.Transactions) erro
 	for _, txs := range all {
 		for _, tx := range txs {
 			if err = rlp.Encode(replacement, tx); err != nil {
-				replacement.Close()
-				return err
+				return errors.Join(
+					fmt.Errorf("failed to encode transaction: %w", err),
+					utils.AnnotateIfError(replacement.Close(), "failed to close journal file:"))
 			}
 		}
 		journaled += len(txs)
 	}
-	replacement.Close()
+	if err := replacement.Close(); err != nil {
+		return fmt.Errorf("failed to close journal file: %w", err)
+	}
 
 	// Replace the live journal with the newly generated one
 	if err = os.Rename(journal.path+".new", journal.path); err != nil {

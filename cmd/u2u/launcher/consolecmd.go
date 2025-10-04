@@ -26,6 +26,7 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/console"
 	"github.com/unicornultrafoundation/go-u2u/node"
 	"github.com/unicornultrafoundation/go-u2u/rpc"
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 )
 
 var (
@@ -96,7 +97,9 @@ func localConsole(ctx *cli.Context) error {
 	if err != nil {
 		utils.Fatalf("Failed to start the JavaScript console: %v", err)
 	}
-	defer console.Stop(false)
+	defer caution.ExecuteAndReportError(&err,
+		func() error { return console.Stop(false) },
+		"failed to stop the JavaScript console")
 
 	// If only a short execution was requested, evaluate and return
 	if script := ctx.GlobalString(utils.ExecFlag.Name); script != "" {
@@ -112,7 +115,7 @@ func localConsole(ctx *cli.Context) error {
 
 // remoteConsole will connect to a remote u2u instance, attaching a JavaScript
 // console to it.
-func remoteConsole(ctx *cli.Context) error {
+func remoteConsole(ctx *cli.Context) (err error) {
 	// Attach to a remotely running u2u instance and start the JavaScript console
 	endpoint := ctx.Args().First()
 	if endpoint == "" {
@@ -137,7 +140,9 @@ func remoteConsole(ctx *cli.Context) error {
 	if err != nil {
 		utils.Fatalf("Failed to start the JavaScript console: %v", err)
 	}
-	defer console.Stop(false)
+	defer caution.ExecuteAndReportError(&err,
+		func() error { return console.Stop(false) },
+		"failed to stop the JavaScript console")
 
 	if script := ctx.GlobalString(utils.ExecFlag.Name); script != "" {
 		console.Evaluate(script)

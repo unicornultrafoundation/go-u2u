@@ -4,12 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"gopkg.in/urfave/cli.v1"
-
-	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
-	"github.com/unicornultrafoundation/go-u2u/log"
-	"github.com/unicornultrafoundation/go-u2u/rlp"
-
 	"github.com/unicornultrafoundation/go-helios/common/bigendian"
 	"github.com/unicornultrafoundation/go-helios/consensus"
 	"github.com/unicornultrafoundation/go-helios/hash"
@@ -17,10 +11,15 @@ import (
 	"github.com/unicornultrafoundation/go-helios/u2udb"
 	"github.com/unicornultrafoundation/go-helios/u2udb/batched"
 	"github.com/unicornultrafoundation/go-helios/u2udb/flushable"
+	"gopkg.in/urfave/cli.v1"
 
+	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
 	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/integration"
+	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/native/iblockproc"
+	"github.com/unicornultrafoundation/go-u2u/rlp"
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 )
 
 // maxEpochsToTry represents amount of last closed epochs to try (in case that the last one has the state unavailable)
@@ -92,7 +91,7 @@ func healDirty(ctx *cli.Context) error {
 func fixDirtyGossipDb(producer u2udb.FlushableDBProducer, cfg *config) (
 	epochState *iblockproc.EpochState, topEpoch idx.Epoch, err error) {
 	gdb := makeGossipStore(producer, cfg) // requires FlushIDKey present (not clean) in all dbs
-	defer gdb.Close()
+	defer caution.CloseAndReportError(&err, gdb, "failed to close Gossip DB")
 	topEpoch = gdb.GetEpoch()
 
 	// find the last closed epoch with the state available
@@ -152,7 +151,7 @@ func eraseTable(name string, producer u2udb.IterableDBProducer) error {
 		return fmt.Errorf("unable to open DB %s; %s", name, err)
 	}
 	db = batched.Wrap(db)
-	defer db.Close()
+	defer caution.CloseAndReportError(&err, db, fmt.Sprintf("failed to close table %v", name))
 	it := db.NewIterator(nil, nil)
 	defer it.Release()
 	for it.Next() {

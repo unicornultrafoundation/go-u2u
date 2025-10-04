@@ -33,11 +33,10 @@ import (
 	"github.com/unicornultrafoundation/go-u2u/core/state/snapshot"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
 	"github.com/unicornultrafoundation/go-u2u/ethdb"
+	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/rlp"
 	"github.com/unicornultrafoundation/go-u2u/trie"
-
-	"github.com/unicornultrafoundation/go-u2u/gossip/evmstore"
 )
 
 const (

@@ -5,12 +5,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/unicornultrafoundation/go-helios/native/idx"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/common/math"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
-
-	"github.com/unicornultrafoundation/go-helios/native/idx"
 	"github.com/unicornultrafoundation/go-u2u/u2u"
 )
 
@@ -57,6 +56,10 @@ func (t TestBackend) PendingTxs() map[common.Address]types.Transactions {
 		}
 	}
 	return txs
+}
+
+func (t TestBackend) GasPrice() *big.Int {
+	return big.NewInt(0)
 }
 
 func TestOracle_EffectiveMinGasPrice(t *testing.T) {

@@ -16,11 +16,12 @@ import (
 	"github.com/unicornultrafoundation/go-helios/u2udb/multidb"
 	"github.com/unicornultrafoundation/go-helios/u2udb/pebble"
 	"github.com/unicornultrafoundation/go-helios/utils/fmtfilter"
+
 	"github.com/unicornultrafoundation/go-u2u/cmd/utils"
+	"github.com/unicornultrafoundation/go-u2u/gossip"
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/metrics"
-
-	"github.com/unicornultrafoundation/go-u2u/gossip"
+	"github.com/unicornultrafoundation/go-u2u/utils/caution"
 	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/asyncflushproducer"
 	"github.com/unicornultrafoundation/go-u2u/utils/dbutil/dbcounter"
 )
@@ -121,7 +122,7 @@ func isEmpty(dir string) bool {
 	if err != nil {
 		return true
 	}
-	defer f.Close()
+	defer caution.CloseAndReportError(&err, f, "failed to close dir")
 	_, err = f.Readdirnames(1)
 	return err == io.EOF
 }

@@ -1,5 +1,5 @@
 .PHONY: all
-all: u2u
+all: u2u makegenesis setup_validator_node
 
 GOPROXY ?= "https://proxy.golang.org,direct"
 .PHONY: u2u
@@ -12,6 +12,25 @@ u2u:
 	    -o build/u2u \
 	    ./cmd/u2u
 
+.PHONY: makegenesis
+makegenesis:
+	GIT_COMMIT=`git rev-list -1 HEAD 2>/dev/null || echo ""` && \
+	GIT_DATE=`git log -1 --date=short --pretty=format:%ct 2>/dev/null || echo ""` && \
+	GOPROXY=$(GOPROXY) \
+	go build \
+	    -ldflags "-s -w" \
+	    -o build/makegenesis \
+	    ./cmd/makegenesis
+
+.PHONY: setup_validator_node
+setup_validator_node:
+	GIT_COMMIT=`git rev-list -1 HEAD 2>/dev/null || echo ""` && \
+	GIT_DATE=`git log -1 --date=short --pretty=format:%ct 2>/dev/null || echo ""` && \
+	GOPROXY=$(GOPROXY) \
+	go build \
+	    -ldflags "-s -w" \
+	    -o build/setup_validator_node \
+	    ./cmd/setup_validator_node
 
 TAG ?= "latest"
 NET ?= "mainnet"

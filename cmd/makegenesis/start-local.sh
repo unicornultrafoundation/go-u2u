@@ -113,7 +113,7 @@ echo "📜 Creating start scripts..."
 for i in $(seq 1 $NUM_VALIDATORS); do
     PORT=$((30302 + $i))
     HTTP_PORT=$((8544 + $i))
-    WS_PORT=$((8546 + $i))
+    WS_PORT=$((8546 + ($i * 2)))
 
     # Get validator info
     if [ -n "$MNEMONIC" ]; then

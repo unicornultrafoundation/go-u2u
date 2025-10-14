@@ -2,6 +2,7 @@ package makefakegenesis
 
 import (
 	"crypto/ecdsa"
+	"fmt"
 	"math/big"
 	"time"
 
@@ -53,9 +54,13 @@ func FakeGenesisStoreWithRules(num idx.Validator, balance, stake *big.Int, rules
 }
 
 func FakeGenesisStoreWithRulesAndStart(num idx.Validator, balance, stake *big.Int, rules u2u.Rules, epoch idx.Epoch, block idx.Block) *genesisstore.Store {
+	return FakeGenesisStoreWithRulesAndStartAndMnemonic(num, balance, stake, rules, epoch, block, "")
+}
+
+func FakeGenesisStoreWithRulesAndStartAndMnemonic(num idx.Validator, balance, stake *big.Int, rules u2u.Rules, epoch idx.Epoch, block idx.Block, mnemonic string) *genesisstore.Store {
 	builder := makegenesis.NewGenesisBuilder(memorydb.NewProducer(""))
 
-	validators := GetFakeValidators(num)
+	validators := GetFakeValidatorsWithMnemonic(num, mnemonic)
 
 	// add balances to validators
 	var delegations []drivercall.Delegation
@@ -75,7 +80,12 @@ func FakeGenesisStoreWithRulesAndStart(num idx.Validator, balance, stake *big.In
 	}
 
 	for i := 1; i < 100; i++ {
-		var key = FakeKey(idx.ValidatorID(i))
+		var key *ecdsa.PrivateKey
+		if mnemonic != "" {
+			key, _ = DeriveKeyFromMnemonic(mnemonic, idx.ValidatorID(i))
+		} else {
+			key = FakeKey(idx.ValidatorID(i))
+		}
 		addr := crypto.PubkeyToAddress(key.PublicKey)
 		builder.AddBalance(addr, balance)
 	}
@@ -174,10 +184,24 @@ func GetGenesisTxs(sealedEpoch idx.Epoch, validators gpos.Validators, totalSuppl
 }
 
 func GetFakeValidators(num idx.Validator) gpos.Validators {
+	return GetFakeValidatorsWithMnemonic(num, "")
+}
+
+func GetFakeValidatorsWithMnemonic(num idx.Validator, mnemonic string) gpos.Validators {
 	validators := make(gpos.Validators, 0, num)
 
 	for i := idx.ValidatorID(1); i <= idx.ValidatorID(num); i++ {
-		key := FakeKey(i)
+		var key *ecdsa.PrivateKey
+		var err error
+		if mnemonic != "" {
+			key, err = DeriveKeyFromMnemonic(mnemonic, i)
+			if err != nil {
+				panic(fmt.Sprintf("failed to derive key for validator %d: %v", i, err))
+			}
+		} else {
+			key = FakeKey(i)
+		}
+
 		addr := crypto.PubkeyToAddress(key.PublicKey)
 		pubkeyraw := crypto.FromECDSAPub(&key.PublicKey)
 		validators = append(validators, gpos.Validator{

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/ecdsa"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,21 +16,41 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 3 {
-		fmt.Println("Usage: go run main.go <validator_id> <datadir>")
+	var mnemonic string
+	flag.StringVar(&mnemonic, "mnemonic", "", "BIP39 mnemonic for deterministic validator key generation (optional)")
+	flag.Parse()
+
+	if len(flag.Args()) < 2 {
+		fmt.Println("Usage: setup_validator_node [--mnemonic \"MNEMONIC\"] <validator_id> <datadir>")
 		os.Exit(1)
 	}
 
-	validatorID := os.Args[1]
-	dataDir := os.Args[2]
+	validatorID := flag.Args()[0]
+	dataDir := flag.Args()[1]
 
 	var id int
 	fmt.Sscanf(validatorID, "%d", &id)
 
+	if mnemonic != "" {
+		fmt.Printf("Using mnemonic for validator %d key generation\n", id)
+	} else {
+		fmt.Printf("Using deterministic hardcoded key for validator %d\n", id)
+	}
 	fmt.Printf("Setting up validator node %d in %s\n", id, dataDir)
 
 	// Get the validator private key
-	key := makefakegenesis.FakeKey(idx.ValidatorID(id))
+	var key *ecdsa.PrivateKey
+	var err error
+	if mnemonic != "" {
+		key, err = makefakegenesis.DeriveKeyFromMnemonic(mnemonic, idx.ValidatorID(id))
+		if err != nil {
+			fmt.Printf("Failed to derive key from mnemonic: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		key = makefakegenesis.FakeKey(idx.ValidatorID(id))
+	}
+
 	address := crypto.PubkeyToAddress(key.PublicKey)
 	pubkeyraw := crypto.FromECDSAPub(&key.PublicKey)
 	pubkey := validatorpk.PubKey{
@@ -44,6 +66,7 @@ func main() {
 	fmt.Printf("Address: %s\n", address.Hex())
 	fmt.Printf("PubKey: 0x%x\n", pubkeyraw)
 	fmt.Printf("U2U PubKey: %s\n", pubkey.String())
+	fmt.Printf("Private Key: 0x%x\n", crypto.FromECDSA(key))
 
 	// 1. Setup regular account keystore (like integration.SetAccountKey)
 	regularKeystore := keystore.NewKeyStore(keystoreDir, keystore.StandardScryptN, keystore.StandardScryptP)

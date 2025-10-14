@@ -2,6 +2,7 @@ package main
 
 import (
 	"compress/gzip"
+	"crypto/ecdsa"
 	"flag"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"github.com/unicornultrafoundation/go-helios/common/bigendian"
 	"github.com/unicornultrafoundation/go-helios/hash"
 	"github.com/unicornultrafoundation/go-helios/native/idx"
+	"github.com/unicornultrafoundation/go-u2u/crypto"
 	"github.com/unicornultrafoundation/go-u2u/integration/makefakegenesis"
 	"github.com/unicornultrafoundation/go-u2u/log"
 	"github.com/unicornultrafoundation/go-u2u/native/ibr"
@@ -32,6 +34,7 @@ var (
 	stake         = flag.String("stake", "1000000000000000000", "Initial stake per validator (in wei)")
 	startEpoch    = flag.Uint64("epoch", 2, "Starting epoch number")
 	startBlock    = flag.Uint64("block", 1, "Starting block number")
+	mnemonic      = flag.String("mnemonic", "", "BIP39 mnemonic for deterministic validator key generation (optional, uses hardcoded keys if empty)")
 )
 
 func main() {
@@ -45,6 +48,13 @@ func main() {
 	stakeBig, ok := new(big.Int).SetString(*stake, 10)
 	if !ok {
 		log.Crit("Invalid stake value", "stake", *stake)
+	}
+
+	mnemonicStr := *mnemonic
+	if mnemonicStr != "" {
+		log.Info("Using mnemonic for validator key generation")
+	} else {
+		log.Info("Using deterministic hardcoded keys (no mnemonic provided)")
 	}
 
 	log.Info("Creating genesis file",
@@ -68,13 +78,14 @@ func main() {
 	rules.NetworkID = *networkID
 
 	// Generate genesis store
-	store := makefakegenesis.FakeGenesisStoreWithRulesAndStart(
+	store := makefakegenesis.FakeGenesisStoreWithRulesAndStartAndMnemonic(
 		idx.Validator(*numValidators),
 		balanceBig,
 		stakeBig,
 		rules,
 		idx.Epoch(*startEpoch),
 		idx.Block(*startBlock),
+		mnemonicStr,
 	)
 
 	// Export genesis to file using proper U2U format
@@ -86,14 +97,28 @@ func main() {
 	log.Info("Genesis file created successfully", "file", *outputFile)
 
 	// Print validator info
-	validators := makefakegenesis.GetFakeValidators(idx.Validator(*numValidators))
+	validators := makefakegenesis.GetFakeValidatorsWithMnemonic(idx.Validator(*numValidators), mnemonicStr)
 	fmt.Println("\n=== Validator Information ===")
 	for _, v := range validators {
+		// Generate the private key for this validator
+		var key *ecdsa.PrivateKey
+		var err error
+		if mnemonicStr != "" {
+			key, err = makefakegenesis.DeriveKeyFromMnemonic(mnemonicStr, v.ID)
+			if err != nil {
+				fmt.Printf("Failed to derive key for validator %d: %v\n", v.ID, err)
+				continue
+			}
+		} else {
+			key = makefakegenesis.FakeKey(v.ID)
+		}
+
 		fmt.Printf("Validator %d:\n", v.ID)
-		fmt.Printf("  Address: %s\n", v.Address.Hex())
-		fmt.Printf("  PubKey:  %s\n", v.PubKey.String())
-		fmt.Printf("  Balance: %s wei\n", balanceBig.String())
-		fmt.Printf("  Stake:   %s wei\n\n", stakeBig.String())
+		fmt.Printf("  Address:     %s\n", v.Address.Hex())
+		fmt.Printf("  PubKey:      %s\n", v.PubKey.String())
+		fmt.Printf("  Private Key: 0x%x\n", crypto.FromECDSA(key))
+		fmt.Printf("  Balance:     %s wei\n", balanceBig.String())
+		fmt.Printf("  Stake:       %s wei\n\n", stakeBig.String())
 	}
 }
 

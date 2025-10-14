@@ -1,12 +1,14 @@
 #!/bin/bash
 
 # Quick start script for local U2U network
-# Usage: ./start-local.sh [number_of_validators]
+# Usage: ./start-local.sh [number_of_validators] [mnemonic]
+# Example with mnemonic: ./start-local.sh 3 "sorry tiger basic shield clip battle mechanic music sheriff people mirror fish"
 
 set -e
 
 # Configuration
 NUM_VALIDATORS=${1:-3}
+MNEMONIC=${2:-""}
 NETWORK_NAME="Local U2U Network"
 NETWORK_ID=4439
 BALANCE="1000000000000000000000000"  # 1M tokens
@@ -24,6 +26,11 @@ echo "=================================================="
 echo "Validators: $NUM_VALIDATORS"
 echo "Network ID: $NETWORK_ID"
 echo "Data Dir:   $BASE_DIR"
+if [ -n "$MNEMONIC" ]; then
+    echo "Mnemonic:   <provided for HD wallet key derivation>"
+else
+    echo "Mnemonic:   <not provided, using hardcoded deterministic keys>"
+fi
 echo "=================================================="
 echo ""
 
@@ -45,13 +52,24 @@ fi
 # Generate genesis file
 echo ""
 echo "📝 Generating genesis file..."
-"$MAKEGENESIS_BINARY" \
-    -output "$GENESIS_FILE" \
-    -validators "$NUM_VALIDATORS" \
-    -network "$NETWORK_NAME" \
-    -networkid "$NETWORK_ID" \
-    -balance "$BALANCE" \
-    -stake "$STAKE"
+if [ -n "$MNEMONIC" ]; then
+    "$MAKEGENESIS_BINARY" \
+        -output "$GENESIS_FILE" \
+        -validators "$NUM_VALIDATORS" \
+        -network "$NETWORK_NAME" \
+        -networkid "$NETWORK_ID" \
+        -balance "$BALANCE" \
+        -stake "$STAKE" \
+        -mnemonic "$MNEMONIC"
+else
+    "$MAKEGENESIS_BINARY" \
+        -output "$GENESIS_FILE" \
+        -validators "$NUM_VALIDATORS" \
+        -network "$NETWORK_NAME" \
+        -networkid "$NETWORK_ID" \
+        -balance "$BALANCE" \
+        -stake "$STAKE"
+fi
 echo "✅ Genesis file created: $GENESIS_FILE"
 
 # Get validator keys
@@ -76,7 +94,11 @@ for i in $(seq 1 $NUM_VALIDATORS); do
 
     # Setup keystore for this validator
     echo "  Setting up keystore for validator $i..."
-    "$SETUP_VALIDATOR_BINARY" $i "$BASE_DIR/node$i" > /dev/null 2>&1
+    if [ -n "$MNEMONIC" ]; then
+        "$SETUP_VALIDATOR_BINARY" --mnemonic "$MNEMONIC" $i "$BASE_DIR/node$i" > /dev/null 2>&1
+    else
+        "$SETUP_VALIDATOR_BINARY" $i "$BASE_DIR/node$i" > /dev/null 2>&1
+    fi
     echo "  ✅ Keystore setup complete for validator $i"
 done
 
@@ -94,28 +116,52 @@ for i in $(seq 1 $NUM_VALIDATORS); do
     WS_PORT=$((8546 + $i))
 
     # Get validator info
-    case $i in
-        1)
-            VALIDATOR_ADDR="0x239fA7623354eC26520dE878B52f13Fe84b06971"
-            VALIDATOR_PUBKEY="0xc0048d505c351f4837cec72bce6f4254f5e4bc3f2c9a4816841db64319eee8b714ef9173fbf66d039b782624713791840846b2788d4b65a425adeba85a4b57efe0cd"
-            ;;
-        2)
-            VALIDATOR_ADDR="0x02AFf1D0a9ed566E644f06FcFE7eFe00A3261D03"
-            VALIDATOR_PUBKEY="0xc0043b4060fe18b3ae3a639e7e7b65a1ad01fb236a0dcf4ff4c8d7dd7e3ed4c4ef7a8c52e690a864ca953802f6f5b8e2e37adcfe97e1b740111a6ca782fc54efef11"
-            ;;
-        3)
-            VALIDATOR_ADDR="0x83e573ad09147fc15dac762653a8EDaC9B2516d6"
-            VALIDATOR_PUBKEY="0xc0045a463b88e6df3edad80dd667b80dcd9d4685706cbcc5879e3cfbfe27ebab3318b0ace95f2d7ae943748d4c6aa7970882a77d0e044196ac777f7a5202582778d2"
-            ;;
-        4)
-            VALIDATOR_ADDR="0xFcF06fbf5505dF52E28fC907A0ec531E3bA06d18"
-            VALIDATOR_PUBKEY="0xc0046636a452064bb2eaea645a705645b44646e6b3d5f8496821254952b98ea388c973290807ca2cedd8a39eea464678d1a0c5f5ff9bb2cfadee3b5a6131ef92cdea"
-            ;;
-        5)
-            VALIDATOR_ADDR="0x0e1341A86EC53BefB038184ed7fa593A1b0bCE03"
-            VALIDATOR_PUBKEY="0xc004719fd50e8b4efaab4e3b18f5a38bf635cdd5cb09434f0a319587fafc5774ce3a5762b0ded0c0525064dd07c0b8a9bb0102b3de66340044ffed2abd287b615849"
-            ;;
-    esac
+    if [ -n "$MNEMONIC" ]; then
+        # When using mnemonic, extract addresses/pubkeys from keystores
+        KEYSTORE_FILE=$(ls "$BASE_DIR/node$i/keystore"/UTC-* 2>/dev/null | head -n 1)
+        if [ -n "$KEYSTORE_FILE" ]; then
+            # Extract address from UTC keystore filename: UTC--timestamp--address
+            VALIDATOR_ADDR="0x$(basename "$KEYSTORE_FILE" | sed 's/.*--//')"
+        fi
+
+        VAL_KEYSTORE_FILE=$(ls "$BASE_DIR/node$i/keystore/validator"/* 2>/dev/null | head -n 1)
+        if [ -n "$VAL_KEYSTORE_FILE" ]; then
+            # The validator pubkey is the filename itself (without path)
+            VALIDATOR_PUBKEY="0x$(basename "$VAL_KEYSTORE_FILE")"
+        fi
+
+        # Fallback: if extraction failed, get from setup_validator_node output
+        if [ -z "$VALIDATOR_ADDR" ] || [ -z "$VALIDATOR_PUBKEY" ]; then
+            echo "  ⚠️  Could not extract keys from keystore, regenerating for validator $i..."
+            VAL_INFO=$("$SETUP_VALIDATOR_BINARY" --mnemonic "$MNEMONIC" $i "$BASE_DIR/node$i" 2>/dev/null)
+            VALIDATOR_ADDR=$(echo "$VAL_INFO" | grep "Address:" | cut -d' ' -f2)
+            VALIDATOR_PUBKEY=$(echo "$VAL_INFO" | grep "U2U PubKey:" | cut -d' ' -f3)
+        fi
+    else
+        # Hardcoded deterministic addresses for default keys
+        case $i in
+            1)
+                VALIDATOR_ADDR="0x239fA7623354eC26520dE878B52f13Fe84b06971"
+                VALIDATOR_PUBKEY="0xc0048d505c351f4837cec72bce6f4254f5e4bc3f2c9a4816841db64319eee8b714ef9173fbf66d039b782624713791840846b2788d4b65a425adeba85a4b57efe0cd"
+                ;;
+            2)
+                VALIDATOR_ADDR="0x02AFf1D0a9ed566E644f06FcFE7eFe00A3261D03"
+                VALIDATOR_PUBKEY="0xc0043b4060fe18b3ae3a639e7e7b65a1ad01fb236a0dcf4ff4c8d7dd7e3ed4c4ef7a8c52e690a864ca953802f6f5b8e2e37adcfe97e1b740111a6ca782fc54efef11"
+                ;;
+            3)
+                VALIDATOR_ADDR="0x83e573ad09147fc15dac762653a8EDaC9B2516d6"
+                VALIDATOR_PUBKEY="0xc0045a463b88e6df3edad80dd667b80dcd9d4685706cbcc5879e3cfbfe27ebab3318b0ace95f2d7ae943748d4c6aa7970882a77d0e044196ac777f7a5202582778d2"
+                ;;
+            4)
+                VALIDATOR_ADDR="0xFcF06fbf5505dF52E28fC907A0ec531E3bA06d18"
+                VALIDATOR_PUBKEY="0xc0046636a452064bb2eaea645a705645b44646e6b3d5f8496821254952b98ea388c973290807ca2cedd8a39eea464678d1a0c5f5ff9bb2cfadee3b5a6131ef92cdea"
+                ;;
+            5)
+                VALIDATOR_ADDR="0x0e1341A86EC53BefB038184ed7fa593A1b0bCE03"
+                VALIDATOR_PUBKEY="0xc004719fd50e8b4efaab4e3b18f5a38bf635cdd5cb09434f0a319587fafc5774ce3a5762b0ded0c0525064dd07c0b8a9bb0102b3de66340044ffed2abd287b615849"
+                ;;
+        esac
+    fi
 
     # Create bootnode configuration for nodes 2 and above
     if [ $i -eq 1 ]; then

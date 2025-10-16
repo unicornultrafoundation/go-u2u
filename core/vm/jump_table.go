@@ -59,10 +59,18 @@ var (
 	berlinInstructionSet           = newBerlinInstructionSet()
 	londonInstructionSet           = newLondonInstructionSet()
 	clymeneInstructionSet          = newClymeneInstructionSet()
+	phaethonInstructionSet         = newPhaethonInstructionSet()
 )
 
 // JumpTable contains the EVM opcodes supported at a given fork.
 type JumpTable [256]*operation
+
+func newPhaethonInstructionSet() JumpTable {
+	instructionSet := newClymeneInstructionSet()
+	// Phaethon builds on Clymene
+	// Future EIPs can be added here
+	return instructionSet
+}
 
 func newClymeneInstructionSet() JumpTable {
 	instructionSet := newLondonInstructionSet()

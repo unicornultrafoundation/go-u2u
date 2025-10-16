@@ -121,8 +121,10 @@ func StartIntegrationTestNetWithFakeGenesis(
 		upgrades = "solaris"
 	} else if *effectiveOptions.Upgrades == u2u.GetClymeneUpgrades() {
 		upgrades = "clymene"
+	} else if *effectiveOptions.Upgrades == u2u.GetPhaethonUpgrades() {
+		upgrades = "phaethon"
 	} else {
-		t.Fatal("fake genesis only supports sonic and allegro feature sets")
+		t.Fatal("fake genesis only supports solaris, clymene, and phaethon feature sets")
 	}
 
 	extraArgs := []string{"--fakenet", "1/1", "--upgrades", upgrades}

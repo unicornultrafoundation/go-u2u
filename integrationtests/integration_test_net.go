@@ -72,9 +72,11 @@ func AsPointer[T any](v T) *T {
 // regression tests for client code.
 type IntegrationTestNet struct {
 	options        IntegrationTestNetOptions
-	done           <-chan struct{}
+	shutdown       chan<- struct{} // Channel to signal shutdown
+	done           <-chan struct{} // Channel to wait for completion
 	validator      Account
 	httpClientPort int
+	tempDir        string // Temporary directory created for this test
 }
 
 func isPortFree(host string, port int) bool {
@@ -165,11 +167,18 @@ func startIntegrationTestNet(
 	if err != nil {
 		return nil, err
 	}
-	done := make(chan struct{})
+
+	// Create channels for coordinating shutdown using AppControl pattern
+	shutdownChan := make(chan struct{})
+	doneChan := make(chan struct{})
+	nodeIDChan := make(chan string, 1)
+	httpPortChan := make(chan string, 1)
+
 	go func() {
-		defer close(done)
+		defer close(doneChan)
 		originalArgs := os.Args
 		defer func() { os.Args = originalArgs }()
+
 		// start the fakenet u2u node
 		// equivalent to running `u2u ...` but in this local process
 		os.Args = append([]string{
@@ -194,29 +203,68 @@ func startIntegrationTestNet(
 			"--ipcpath", getIPCPath(),
 			"--cache", "8192",
 		}, fakenetArgs...)
-		err := launcher.Run()
+
+		// Create AppControl for channel-based communication with the launcher
+		control := &launcher.AppControl{
+			NodeIdAnnouncement:   nodeIDChan,
+			HttpPortAnnouncement: httpPortChan,
+			Shutdown:             shutdownChan,
+		}
+
+		// Run the launcher with AppControl
+		err := launcher.RunWithControl(control)
 		if err != nil {
-			panic(fmt.Sprint("Failed to start the fake network:", err))
+			fmt.Printf("Node exited with error: %v\n", err)
 		}
 	}()
+
+	// Wait for node announcements with timeout
+	const startupTimeout = 30 * time.Second
+	timer := time.NewTimer(startupTimeout)
+	defer timer.Stop()
+
+	select {
+	case nodeID, ok := <-nodeIDChan:
+		if ok && nodeID != "" {
+			// Node ID received successfully
+		}
+	case <-timer.C:
+		return nil, fmt.Errorf("timeout waiting for node ID announcement")
+	}
+
+	// Reset timer for HTTP port announcement
+	timer.Reset(startupTimeout)
+	select {
+	case httpEndpoint, ok := <-httpPortChan:
+		if ok && httpEndpoint != "" {
+			// HTTP endpoint received, we can use it
+			// Note: We already have the port from getFreePort, but this confirms it's running
+		}
+	case <-timer.C:
+		return nil, fmt.Errorf("timeout waiting for HTTP port announcement")
+	}
+
 	net := &IntegrationTestNet{
 		options:        options,
-		done:           done,
+		shutdown:       shutdownChan,
+		done:           doneChan,
 		validator:      Account{evmcore.FakeKey(1)},
 		httpClientPort: httpClientPort,
+		tempDir:        options.Directory,
 	}
+
 	// connect to blockchain network
 	client, err := net.GetClient()
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to the U2U client: %w", err)
 	}
 	defer client.Close()
-	const timeout = 300 * time.Second
-	start := time.Now()
+
 	// wait for the node to be ready to serve requests
 	const maxDelay = 100 * time.Millisecond
 	delay := time.Millisecond
-	for time.Since(start) < timeout {
+	start := time.Now()
+	for time.Since(start) < startupTimeout {
 		_, err := client.ChainID(context.Background())
 		if err != nil {
 			time.Sleep(delay)
@@ -229,7 +277,7 @@ func startIntegrationTestNet(
 		t.Cleanup(net.Stop)
 		return net, nil
 	}
-	return nil, fmt.Errorf("failed to successfully start up a test network within %d", timeout)
+	return nil, fmt.Errorf("failed to successfully start up a test network within %v", startupTimeout)
 }
 
 // EndowAccount sends a requested amount of tokens to the given account. This is

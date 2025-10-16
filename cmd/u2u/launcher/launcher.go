@@ -264,7 +264,51 @@ func heliosMain(ctx *cli.Context) error {
 	node, _, nodeClose := makeNode(ctx, cfg, genesisStore)
 	defer nodeClose()
 	startNode(ctx, node)
-	node.Wait()
+
+	// If we have AppControl, announce node information and listen for shutdown
+	if appControl != nil {
+		// Announce node ID (enode URL)
+		if appControl.NodeIdAnnouncement != nil {
+			server := node.Server()
+			if server != nil {
+				nodeID := server.NodeInfo().Enode
+				appControl.NodeIdAnnouncement <- nodeID
+			}
+			close(appControl.NodeIdAnnouncement)
+		}
+
+		// Announce HTTP port
+		if appControl.HttpPortAnnouncement != nil {
+			httpEndpoint := node.HTTPEndpoint()
+			appControl.HttpPortAnnouncement <- httpEndpoint
+			close(appControl.HttpPortAnnouncement)
+		}
+
+		// Wait for either shutdown signal or normal node termination
+		if appControl.Shutdown != nil {
+			done := make(chan struct{})
+			go func() {
+				node.Wait()
+				close(done)
+			}()
+
+			select {
+			case <-appControl.Shutdown:
+				// Shutdown requested via channel - close the node gracefully
+				log.Info("Shutdown requested via control channel")
+				_ = node.Close()
+				// Wait for node to actually stop
+				<-done
+			case <-done:
+				// Node stopped on its own
+			}
+		} else {
+			node.Wait()
+		}
+	} else {
+		node.Wait()
+	}
+
 	return nil
 }
 

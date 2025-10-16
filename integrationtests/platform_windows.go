@@ -15,13 +15,34 @@ func getIPCPath() string {
 	return fmt.Sprintf("\\\\.\\pipe\\u2u-%d", trulyRandInt(100000, 999999))
 }
 
-// Stop shuts the underlying network down.
+// Stop shuts down the underlying network gracefully using pure channel communication.
+// This implementation follows the Sonic network pattern - no OS signals needed!
+// The launcher listens to the shutdown channel via AppControl and closes gracefully.
+// It is safe to call this method multiple times (idempotent).
 func (n *IntegrationTestNet) Stop() {
-	// Wait for the done channel to be closed
-	// This ensures we don't return until the network is fully shut down
-	if n.done != nil {
-		<-n.done
-		n.done = nil
+	// Step 1: Idempotency check - if already stopped, return early
+	if n.done == nil {
+		return
+	}
+
+	// Step 2: Signal shutdown via channel (no OS signals needed!)
+	// Closing the shutdown channel signals the launcher to stop gracefully
+	if n.shutdown != nil {
+		close(n.shutdown)
+	}
+
+	// Step 3: Wait for the node goroutine to complete shutdown
+	// The done channel will be closed when the launcher exits cleanly
+	<-n.done
+
+	// Step 4: Resource cleanup
+	// Mark channels as nil to prevent double-close and indicate stopped state
+	n.done = nil
+	n.shutdown = nil
+
+	// Step 5: Debug logging
+	if n.tempDir != "" {
+		fmt.Printf("Integration test network stopped. Data directory: %s\n", n.tempDir)
 	}
 }
 

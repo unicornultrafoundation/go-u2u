@@ -666,7 +666,13 @@ func opCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byt
 	// Get the arguments from the memory.
 	args := scope.Memory.GetPtr(int64(inOffset.Uint64()), int64(inSize.Uint64()))
 
-	var bigVal = big0
+	var (
+		bigVal = big0
+
+		ret       []byte
+		returnGas uint64
+		err       error
+	)
 	//TODO: use uint256.Int instead of converting with toBig()
 	// By using big0 here, we save an alloc for the most common case (non-ether-transferring contract calls),
 	// but it would make more sense to extend the usage of uint256.Int
@@ -675,25 +681,23 @@ func opCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byt
 		bigVal = value.ToBig()
 	}
 
-	originalGas := gas
-	originalValue := bigVal
-	ret, returnGas, err := interpreter.evm.Call(scope.Contract, toAddr, args, gas, bigVal)
-
+	if _, ok := interpreter.evm.SfcPrecompile(toAddr); ok && interpreter.evm.chainRules.IsPhaethon {
+		if _, ok := interpreter.evm.SfcPrecompile(scope.Contract.Address()); !ok &&
+			scope.Contract.Address().Cmp(common.HexToAddress("0x0000000000000000000000000000000000000000")) != 0 {
+			log.Debug("opCall: CallSFC", "args", common.Bytes2Hex(args),
+				"gas", gas, "value", common.Bytes2Hex(bigVal.Bytes()))
+			ret, returnGas, err = interpreter.evm.CallSFC(scope.Contract, toAddr, args, gas, bigVal)
+			if err != nil {
+				log.Error("opCall: CallSFC failed", "sfcErr", err, "sfcRet", common.Bytes2Hex(ret))
+			}
+		}
+	} else {
+		ret, returnGas, err = interpreter.evm.Call(scope.Contract, toAddr, args, gas, bigVal)
+	}
 	if err != nil {
 		temp.Clear()
 	} else {
 		temp.SetOne()
-		if _, ok := interpreter.evm.SfcPrecompile(toAddr); ok {
-			if _, ok := interpreter.evm.SfcPrecompile(scope.Contract.Address()); !ok &&
-				scope.Contract.Address().Cmp(common.HexToAddress("0x0000000000000000000000000000000000000000")) != 0 {
-				log.Debug("opCall: CallSFC", "args", common.Bytes2Hex(args),
-					"gas", originalGas, "value", common.Bytes2Hex(originalValue.Bytes()))
-				sfcRet, _, sfcErr := interpreter.evm.CallSFC(scope.Contract, toAddr, args, originalGas, originalValue)
-				if sfcErr != nil {
-					log.Error("opCall: CallSFC failed", "sfcErr", sfcErr, "sfcRet", common.Bytes2Hex(sfcRet))
-				}
-			}
-		}
 	}
 	stack.push(&temp)
 	if err == nil || err == ErrExecutionReverted {
@@ -718,13 +722,31 @@ func opCallCode(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([
 	args := scope.Memory.GetPtr(int64(inOffset.Uint64()), int64(inSize.Uint64()))
 
 	//TODO: use uint256.Int instead of converting with toBig()
-	var bigVal = big0
+	var (
+		bigVal = big0
+
+		ret       []byte
+		returnGas uint64
+		err       error
+	)
 	if !value.IsZero() {
 		gas += params.CallStipend
 		bigVal = value.ToBig()
 	}
 
-	ret, returnGas, err := interpreter.evm.CallCode(scope.Contract, toAddr, args, gas, bigVal)
+	if _, ok := interpreter.evm.SfcPrecompile(toAddr); ok && interpreter.evm.chainRules.IsPhaethon {
+		if _, ok := interpreter.evm.SfcPrecompile(scope.Contract.Address()); !ok &&
+			scope.Contract.Address().Cmp(common.HexToAddress("0x0000000000000000000000000000000000000000")) != 0 {
+			log.Debug("opCallCode: CallCodeSFC", "args", common.Bytes2Hex(args),
+				"gas", gas, "value", common.Bytes2Hex(bigVal.Bytes()))
+			ret, returnGas, err = interpreter.evm.CallCodeSFC(scope.Contract, toAddr, args, gas, bigVal)
+			if err != nil {
+				log.Error("opCallCode: CallCodeSFC failed", "sfcErr", err, "sfcRet", common.Bytes2Hex(ret))
+			}
+		}
+	} else {
+		ret, returnGas, err = interpreter.evm.CallCode(scope.Contract, toAddr, args, gas, bigVal)
+	}
 	if err != nil {
 		temp.Clear()
 	} else {
@@ -752,7 +774,24 @@ func opDelegateCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext
 	// Get arguments from the memory.
 	args := scope.Memory.GetPtr(int64(inOffset.Uint64()), int64(inSize.Uint64()))
 
-	ret, returnGas, err := interpreter.evm.DelegateCall(scope.Contract, toAddr, args, gas)
+	var (
+		ret       []byte
+		returnGas uint64
+		err       error
+	)
+	if _, ok := interpreter.evm.SfcPrecompile(toAddr); ok && interpreter.evm.chainRules.IsPhaethon {
+		if _, ok := interpreter.evm.SfcPrecompile(scope.Contract.Address()); !ok &&
+			scope.Contract.Address().Cmp(common.HexToAddress("0x0000000000000000000000000000000000000000")) != 0 {
+			log.Debug("opDelegateCall: DelegateCallSFC", "args", common.Bytes2Hex(args),
+				"gas", gas)
+			ret, returnGas, err = interpreter.evm.DelegateCallSFC(scope.Contract, toAddr, args, gas)
+			if err != nil {
+				log.Error("opDelegateCall: DelegateCallSFC failed", "sfcErr", err, "sfcRet", common.Bytes2Hex(ret))
+			}
+		}
+	} else {
+		ret, returnGas, err = interpreter.evm.DelegateCall(scope.Contract, toAddr, args, gas)
+	}
 	if err != nil {
 		temp.Clear()
 	} else {
@@ -780,7 +819,25 @@ func opStaticCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) 
 	// Get arguments from the memory.
 	args := scope.Memory.GetPtr(int64(inOffset.Uint64()), int64(inSize.Uint64()))
 
-	ret, returnGas, err := interpreter.evm.StaticCall(scope.Contract, toAddr, args, gas)
+	var (
+		ret       []byte
+		returnGas uint64
+		err       error
+	)
+	if _, ok := interpreter.evm.SfcPrecompile(toAddr); ok && interpreter.evm.chainRules.IsPhaethon {
+		if _, ok := interpreter.evm.SfcPrecompile(scope.Contract.Address()); !ok &&
+			scope.Contract.Address().Cmp(common.HexToAddress("0x0000000000000000000000000000000000000000")) != 0 {
+			log.Debug("opStaticCall: StaticCallSFC", "args", common.Bytes2Hex(args),
+				"gas", gas)
+			ret, returnGas, err = interpreter.evm.StaticCallSFC(scope.Contract, toAddr, args, gas)
+			if err != nil {
+				log.Error("opStaticCall: StaticCallSFC failed", "sfcErr", err, "sfcRet", common.Bytes2Hex(ret))
+			}
+		}
+	} else {
+		ret, returnGas, err = interpreter.evm.StaticCall(scope.Contract, toAddr, args, gas)
+	}
+
 	if err != nil {
 		temp.Clear()
 	} else {

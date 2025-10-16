@@ -17,12 +17,9 @@
 package evmcore
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
 	"math"
 	"math/big"
-	"time"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
@@ -313,7 +310,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 
 	var (
 		ret   []byte
-		vmerr error // vm errors do not effect consensus and are therefore not assigned to err
+		vmerr error // vm errors do not affect consensus and are therefore not assigned to err
 	)
 	if contractCreation {
 		ret, _, st.gas, vmerr = st.evm.Create(sender, st.data, st.gas, st.value)
@@ -326,58 +323,13 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 				st.sfcState.SetNonce(msg.From(), nonce)
 			}
 		}
-
-		var (
-			// Backup the original value for SFC precompiled calls.
-			originalValue = st.value
-
-			// Total execution time of the EVM calls per transaction.
-			// We must measure the total time of the EVM call here, because nested
-			// EVM and SFC calls cause duplicated measurements.
-			totalEvmExecutionElapsed = time.Duration(0)
-			totalSfcExecutionElapsed = time.Duration(0)
-		)
-
-		start := time.Now()
-		ret, st.gas, vmerr = st.evm.Call(sender, st.to(), st.data, st.gas, st.value)
-		if metrics.EnabledExpensive {
-			totalEvmExecutionElapsed = time.Since(start)
-		}
-		if _, ok := st.evm.SfcPrecompile(st.to()); ok && st.sfcState != nil && !errors.Is(vmerr, vm.ErrOutOfGas) &&
-			!(errors.Is(vmerr, vm.ErrExecutionReverted) && float64(st.gas)/float64(st.initialGas) <= 0.1) {
-			// TODO(trinhdn): prevent neat case, will remove after getting rid of EVM flow for SFC contracts
-			start = time.Now()
-			sfcRet, _, sfcErr := st.evm.CallSFC(sender, st.to(), st.data, st.initialGas, originalValue)
-			if sfcErr != nil {
-				log.Error("TransitionDb: CallSFC failed", "sfcErr", sfcErr, "ret", common.Bytes2Hex(ret))
+		if st.sfcState == nil {
+			ret, st.gas, vmerr = st.evm.Call(sender, st.to(), st.data, st.gas, st.value)
+		} else if _, ok := st.evm.SfcPrecompile(st.to()); ok {
+			ret, st.gas, vmerr = st.evm.CallSFC(sender, st.to(), st.data, st.initialGas, st.value)
+			if vmerr != nil {
+				log.Error("TransitionDb: CallSFC failed", "sfcErr", vmerr, "sfcRet", common.Bytes2Hex(ret))
 			}
-			if !bytes.Equal(ret, sfcRet) {
-				log.Error("TransitionDb: CallSFC result different from EVM",
-					"ret", common.Bytes2Hex(ret), "sfcRet", common.Bytes2Hex(sfcRet))
-			}
-			if metrics.EnabledExpensive {
-				totalSfcExecutionElapsed = time.Since(start)
-			}
-		}
-
-		// Benchmark execution time difference of SFC precompiled related txs
-		if totalSfcExecutionElapsed > time.Duration(0) && totalEvmExecutionElapsed > time.Duration(0) {
-			// Calculate performance improvement: ((evm - sfc) / evm) * 100
-			// Positive = SFC faster (good), Negative = SFC slower (bad)
-			percentDiff := (float64(totalEvmExecutionElapsed-totalSfcExecutionElapsed) / float64(totalEvmExecutionElapsed)) * 100
-			log.Info("SFC execution time comparison",
-				"improvement", fmt.Sprintf("%.2f%%", percentDiff),
-				"evm", totalEvmExecutionElapsed,
-				"sfc", totalSfcExecutionElapsed)
-			// Reset the total execution time of SFC precompiled calls after each transaction.
-			vm.TotalSfcExecutionElapsed = time.Duration(0)
-
-			// Record comprehensive metrics
-			sfcDiffCallHist.Update(int64(percentDiff))                       // Histogram (existing)
-			sfcDiffAvgGauge.Update(percentDiff)                              // Current percentage difference
-			sfcExecutionGauge.Update(totalSfcExecutionElapsed.Nanoseconds()) // SFC execution time
-			evmExecutionGauge.Update(totalEvmExecutionElapsed.Nanoseconds()) // EVM execution time
-			sfcCallMeter.Mark(1)                                             // Count SFC calls
 		}
 	}
 	// use 10% of not used gas

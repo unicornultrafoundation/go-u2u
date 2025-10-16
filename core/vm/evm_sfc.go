@@ -119,7 +119,7 @@ func (evm *EVM) CallCodeSFC(caller ContractRef, addr common.Address, input []byt
 	return nil, gas, nil
 }
 
-func (evm *EVM) DelegateCallSFC(caller ContractRef, addr common.Address, input []byte, gas uint64, value *big.Int) (ret []byte, leftOverGas uint64, err error) {
+func (evm *EVM) DelegateCallSFC(caller ContractRef, addr common.Address, input []byte, gas uint64) (ret []byte, leftOverGas uint64, err error) {
 	sp, isSfcPrecompile := evm.SfcPrecompile(addr)
 	if isSfcPrecompile && evm.SfcStateDB != nil {
 		if metrics.EnabledExpensive && !evm.Config.NoBaseFee {
@@ -137,7 +137,7 @@ func (evm *EVM) DelegateCallSFC(caller ContractRef, addr common.Address, input [
 		// but execute in the context of the caller
 		// Run the precompiled contract with the caller's address
 		// This simulates executing the code in the caller's context
-		ret, remainingGas, err := sp.Run(evm, caller.Address(), input, gas, value)
+		ret, remainingGas, err := sp.Run(evm, caller.Address(), input, gas, nil)
 
 		// Handle errors and revert if needed
 		if err != nil {
@@ -157,7 +157,7 @@ func (evm *EVM) DelegateCallSFC(caller ContractRef, addr common.Address, input [
 	return nil, gas, nil
 }
 
-func (evm *EVM) StaticCallSFC(caller ContractRef, addr common.Address, input []byte, gas uint64, value *big.Int) (ret []byte, leftOverGas uint64, err error) {
+func (evm *EVM) StaticCallSFC(caller ContractRef, addr common.Address, input []byte, gas uint64) (ret []byte, leftOverGas uint64, err error) {
 	sp, isSfcPrecompile := evm.SfcPrecompile(addr)
 	if isSfcPrecompile && evm.SfcStateDB != nil {
 		if metrics.EnabledExpensive && !evm.Config.NoBaseFee {
@@ -172,7 +172,7 @@ func (evm *EVM) StaticCallSFC(caller ContractRef, addr common.Address, input []b
 
 		// Run the precompiled contract with the caller's address
 		// For static calls, we should ensure no state modifications
-		ret, remainingGas, err := sp.Run(evm, caller.Address(), input, gas, value)
+		ret, remainingGas, err := sp.Run(evm, caller.Address(), input, gas, nil)
 		// Handle errors and revert if needed
 		if err != nil {
 			evm.SfcStateDB.RevertToSnapshot(snapshot)

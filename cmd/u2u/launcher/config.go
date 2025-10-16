@@ -235,6 +235,8 @@ func mayGetGenesisStore(ctx *cli.Context) *genesisstore.Store {
 			upgrades = u2u.GetSolarisUpgrades()
 		case "clymene":
 			upgrades = u2u.GetClymeneUpgrades()
+		case "phaethon":
+			upgrades = u2u.GetPhaethonUpgrades()
 		default:
 			upgrades = u2u.GetSolarisUpgrades()
 		}

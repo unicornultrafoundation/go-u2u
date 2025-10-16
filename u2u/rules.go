@@ -28,6 +28,7 @@ const (
 	londonBit              = 1 << 1
 	llrBit                 = 1 << 2
 	clymeneBit             = 1 << 3
+	phaethonBit            = 1 << 4
 
 	MinimumMaxBlockGas = 20500000      // < must be large enough to allow internal transactions to seal blocks
 	MaximumMaxBlockGas = math.MaxInt64 // < should fit into 64-bit signed integers to avoid parsing errors in third-party libraries
@@ -142,10 +143,11 @@ type BlocksRules struct {
 }
 
 type Upgrades struct {
-	Berlin  bool
-	London  bool
-	Llr     bool
-	Clymene bool
+	Berlin   bool
+	London   bool
+	Llr      bool
+	Clymene  bool
+	Phaethon bool
 }
 
 type UpgradeHeight struct {
@@ -161,6 +163,7 @@ func (r Rules) EvmChainConfig(hh []UpgradeHeight) *ethparams.ChainConfig {
 	cfg.BerlinBlock = nil
 	cfg.LondonBlock = nil
 	cfg.ClymeneBlock = nil
+	cfg.PhaethonBlock = nil
 	for i, h := range hh {
 		height := new(big.Int)
 		if i > 0 {
@@ -187,27 +190,48 @@ func (r Rules) EvmChainConfig(hh []UpgradeHeight) *ethparams.ChainConfig {
 			// should be never used
 			cfg.ClymeneBlock = nil
 		}
+		if cfg.PhaethonBlock == nil && h.Upgrades.Phaethon {
+			cfg.PhaethonBlock = height
+		}
+		if !h.Upgrades.Phaethon {
+			// disabling upgrade like this will break the history replay
+			// should be never used
+			cfg.PhaethonBlock = nil
+		}
 	}
 	return &cfg
+}
+
+// GetPhaethonUpgrades contains the feature flags for the Phaethon upgrade.
+func GetPhaethonUpgrades() Upgrades {
+	return Upgrades{
+		Berlin:   true,
+		London:   true,
+		Llr:      true,
+		Clymene:  true,
+		Phaethon: true,
+	}
 }
 
 // GetClymeneUpgrades contains the feature flags for the Clymene upgrade.
 func GetClymeneUpgrades() Upgrades {
 	return Upgrades{
-		Berlin:  true,
-		London:  true,
-		Llr:     true,
-		Clymene: true,
+		Berlin:   true,
+		London:   true,
+		Llr:      true,
+		Clymene:  true,
+		Phaethon: false,
 	}
 }
 
 // GetSolarisUpgrades contains the feature flags for the U2U Solaris upgrade.
 func GetSolarisUpgrades() Upgrades {
 	return Upgrades{
-		Berlin:  true,
-		London:  true,
-		Llr:     true,
-		Clymene: false,
+		Berlin:   true,
+		London:   true,
+		Llr:      true,
+		Clymene:  false,
+		Phaethon: false,
 	}
 }
 

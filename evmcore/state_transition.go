@@ -323,10 +323,18 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 				st.sfcState.SetNonce(msg.From(), nonce)
 			}
 		}
-		if st.sfcState == nil {
+
+		var (
+			originalGas   = st.gas
+			originalValue = st.value
+		)
+		_, ok := st.evm.SfcPrecompile(st.to())
+
+		if !(ok && st.evm.ChainConfig().IsPhaethon(st.evm.Context.BlockNumber)) {
 			ret, st.gas, vmerr = st.evm.Call(sender, st.to(), st.data, st.gas, st.value)
-		} else if _, ok := st.evm.SfcPrecompile(st.to()); ok {
-			ret, st.gas, vmerr = st.evm.CallSFC(sender, st.to(), st.data, st.initialGas, st.value)
+		}
+		if ok && st.sfcState != nil {
+			ret, _, vmerr = st.evm.CallSFC(sender, st.to(), st.data, originalGas, originalValue)
 			if vmerr != nil {
 				log.Error("TransitionDb: CallSFC failed", "sfcErr", vmerr, "sfcRet", common.Bytes2Hex(ret))
 			}

@@ -670,7 +670,7 @@ func opCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byt
 		bigVal = big0
 
 		ret       []byte
-		returnGas uint64
+		returnGas = gas
 		err       error
 	)
 	//TODO: use uint256.Int instead of converting with toBig()
@@ -686,7 +686,7 @@ func opCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byt
 			scope.Contract.Address().Cmp(common.HexToAddress("0x0000000000000000000000000000000000000000")) != 0 {
 			log.Debug("opCall: CallSFC", "args", common.Bytes2Hex(args),
 				"gas", gas, "value", common.Bytes2Hex(bigVal.Bytes()))
-			ret, returnGas, err = interpreter.evm.CallSFC(scope.Contract, toAddr, args, gas, bigVal)
+			ret, _, err = interpreter.evm.CallSFC(scope.Contract, toAddr, args, gas, bigVal)
 			if err != nil {
 				log.Error("opCall: CallSFC failed", "sfcErr", err, "sfcRet", common.Bytes2Hex(ret))
 			}
@@ -726,7 +726,7 @@ func opCallCode(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([
 		bigVal = big0
 
 		ret       []byte
-		returnGas uint64
+		returnGas = gas
 		err       error
 	)
 	if !value.IsZero() {
@@ -739,7 +739,7 @@ func opCallCode(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([
 			scope.Contract.Address().Cmp(common.HexToAddress("0x0000000000000000000000000000000000000000")) != 0 {
 			log.Debug("opCallCode: CallCodeSFC", "args", common.Bytes2Hex(args),
 				"gas", gas, "value", common.Bytes2Hex(bigVal.Bytes()))
-			ret, returnGas, err = interpreter.evm.CallCodeSFC(scope.Contract, toAddr, args, gas, bigVal)
+			ret, _, err = interpreter.evm.CallCodeSFC(scope.Contract, toAddr, args, gas, bigVal)
 			if err != nil {
 				log.Error("opCallCode: CallCodeSFC failed", "sfcErr", err, "sfcRet", common.Bytes2Hex(ret))
 			}
@@ -776,7 +776,7 @@ func opDelegateCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext
 
 	var (
 		ret       []byte
-		returnGas uint64
+		returnGas = gas
 		err       error
 	)
 	if _, ok := interpreter.evm.SfcPrecompile(toAddr); ok && interpreter.evm.chainRules.IsPhaethon {
@@ -784,7 +784,7 @@ func opDelegateCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext
 			scope.Contract.Address().Cmp(common.HexToAddress("0x0000000000000000000000000000000000000000")) != 0 {
 			log.Debug("opDelegateCall: DelegateCallSFC", "args", common.Bytes2Hex(args),
 				"gas", gas)
-			ret, returnGas, err = interpreter.evm.DelegateCallSFC(scope.Contract, toAddr, args, gas)
+			ret, _, err = interpreter.evm.DelegateCallSFC(scope.Contract, toAddr, args, gas)
 			if err != nil {
 				log.Error("opDelegateCall: DelegateCallSFC failed", "sfcErr", err, "sfcRet", common.Bytes2Hex(ret))
 			}
@@ -821,7 +821,7 @@ func opStaticCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) 
 
 	var (
 		ret       []byte
-		returnGas uint64
+		returnGas = gas
 		err       error
 	)
 	if _, ok := interpreter.evm.SfcPrecompile(toAddr); ok && interpreter.evm.chainRules.IsPhaethon {
@@ -829,7 +829,7 @@ func opStaticCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) 
 			scope.Contract.Address().Cmp(common.HexToAddress("0x0000000000000000000000000000000000000000")) != 0 {
 			log.Debug("opStaticCall: StaticCallSFC", "args", common.Bytes2Hex(args),
 				"gas", gas)
-			ret, returnGas, err = interpreter.evm.StaticCallSFC(scope.Contract, toAddr, args, gas)
+			ret, _, err = interpreter.evm.StaticCallSFC(scope.Contract, toAddr, args, gas)
 			if err != nil {
 				log.Error("opStaticCall: StaticCallSFC failed", "sfcErr", err, "sfcRet", common.Bytes2Hex(ret))
 			}

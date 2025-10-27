@@ -17,9 +17,12 @@
 package evmcore
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
+	"time"
 
 	"github.com/unicornultrafoundation/go-u2u/common"
 	"github.com/unicornultrafoundation/go-u2u/core/types"
@@ -325,19 +328,70 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		}
 
 		var (
-			originalGas   = st.gas
-			originalValue = st.value
-		)
-		_, ok := st.evm.SfcPrecompile(st.to())
+			ret   []byte
+			vmerr error
 
+			// Backup the original value for SFC precompiled calls.
+			originalValue            = st.value
+			originalGas              = st.gas
+			totalEvmExecutionElapsed = time.Duration(0)
+			totalSfcExecutionElapsed = time.Duration(0)
+		)
+
+		// First execute the EVM call as usual if the destination is not an SFC-precompile
+		// or the SFC state is not available yet, or the chain is not yet switched to Phaethon.
+		_, ok := st.evm.SfcPrecompile(st.to())
+		ok = ok && st.sfcState != nil
 		if !(ok && st.evm.ChainConfig().IsPhaethon(st.evm.Context.BlockNumber)) {
-			ret, st.gas, vmerr = st.evm.Call(sender, st.to(), st.data, st.gas, st.value)
-		}
-		if ok && st.sfcState != nil {
-			ret, _, vmerr = st.evm.CallSFC(sender, st.to(), st.data, originalGas, originalValue)
-			if vmerr != nil {
-				log.Error("TransitionDb: CallSFC failed", "sfcErr", vmerr, "sfcRet", common.Bytes2Hex(ret))
+			start := time.Now()
+			ret, st.gas, vmerr = st.evm.Call(sender, st.to(), st.data, originalGas, originalValue)
+			if metrics.EnabledExpensive {
+				totalEvmExecutionElapsed = time.Since(start)
 			}
+		}
+
+		// If the destination is an SFC-precompile, call the SFC implementation for
+		// comparison as long as the EVM call didn't run out of gas and didn't revert
+		// with very little gas left (heuristic preserved from original logic).
+		if ok {
+			if !st.evm.ChainConfig().IsPhaethon(st.evm.Context.BlockNumber) && !errors.Is(vmerr, vm.ErrOutOfGas) &&
+				!(errors.Is(vmerr, vm.ErrExecutionReverted) && float64(st.gas)/float64(st.initialGas) <= 0.1) ||
+				st.evm.ChainConfig().IsPhaethon(st.evm.Context.BlockNumber) {
+				log.Info("TransitionDb: CallSFC", "to", st.to().Hex(), "from", st.msg.From().Hex(),
+					"data", common.Bytes2Hex(st.data), "value", originalValue)
+				start := time.Now()
+				sfcRet, _, sfcErr := st.evm.CallSFC(sender, st.to(), st.data, originalGas, originalValue)
+				if sfcErr != nil {
+					log.Error("TransitionDb: CallSFC failed", "sfcErr", sfcErr, "ret", common.Bytes2Hex(ret))
+				}
+				if !bytes.Equal(ret, sfcRet) {
+					log.Error("TransitionDb: CallSFC result different from EVM",
+						"ret", common.Bytes2Hex(ret), "sfcRet", common.Bytes2Hex(sfcRet))
+				}
+				if metrics.EnabledExpensive {
+					totalSfcExecutionElapsed = time.Since(start)
+				}
+			}
+		}
+
+		// Benchmark execution time difference of SFC precompiled related txs before Phaethon
+		if totalSfcExecutionElapsed > time.Duration(0) && totalEvmExecutionElapsed > time.Duration(0) {
+			// Calculate performance improvement: ((evm - sfc) / evm) * 100
+			// Positive = SFC faster (good), Negative = SFC slower (bad)
+			percentDiff := (float64(totalEvmExecutionElapsed-totalSfcExecutionElapsed) / float64(totalEvmExecutionElapsed)) * 100
+			log.Info("SFC execution time comparison",
+				"improvement", fmt.Sprintf("%.2f%%", percentDiff),
+				"evm", totalEvmExecutionElapsed,
+				"sfc", totalSfcExecutionElapsed)
+			// Reset the total execution time of SFC precompiled calls after each transaction.
+			vm.TotalSfcExecutionElapsed = time.Duration(0)
+
+			// Record comprehensive metrics
+			sfcDiffCallHist.Update(int64(percentDiff))                       // Histogram (existing)
+			sfcDiffAvgGauge.Update(percentDiff)                              // Current percentage difference
+			sfcExecutionGauge.Update(totalSfcExecutionElapsed.Nanoseconds()) // SFC execution time
+			evmExecutionGauge.Update(totalEvmExecutionElapsed.Nanoseconds()) // EVM execution time
+			sfcCallMeter.Mark(1)                                             // Count SFC calls
 		}
 	}
 	// use 10% of not used gas

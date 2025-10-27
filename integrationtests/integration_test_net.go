@@ -480,7 +480,7 @@ func validateAndSanitizeOptions(t *testing.T, options ...IntegrationTestNetOptio
 		options[0].NumNodes = 1
 	}
 	if options[0].Upgrades == nil {
-		options[0].Upgrades = AsPointer(u2u.GetClymeneUpgrades())
+		options[0].Upgrades = AsPointer(u2u.GetSolarisUpgrades())
 	}
 	if options[0].Directory == "" {
 		dir, err := nettest.LocalPath()

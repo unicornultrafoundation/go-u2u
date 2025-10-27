@@ -166,31 +166,42 @@ func ApplyTransaction(
 		return nil, 0, result == nil, err
 	}
 
-	// Notify about logs with potential state changes
-	evmLogsFromSfcPrecompiles := make([]*types.Log, 0)
 	logs := statedb.GetLogs(tx.Hash(), blockHash)
-	for _, l := range logs {
-		if _, ok := evm.SfcPrecompile(l.Address); ok {
-			evmLogsFromSfcPrecompiles = append(evmLogsFromSfcPrecompiles, l)
+	if !config.IsPhaethon(blockNumber) {
+		// Notify about logs with potential state changes
+		evmLogsFromSfcPrecompiles := make([]*types.Log, 0)
+		for _, l := range logs {
+			if _, ok := evm.SfcPrecompile(l.Address); ok {
+				evmLogsFromSfcPrecompiles = append(evmLogsFromSfcPrecompiles, l)
+			}
+			onNewLog(l, statedb)
 		}
-		onNewLog(l, statedb)
-	}
-	if sfcStatedb != nil && len(evmLogsFromSfcPrecompiles) > 0 {
-		sfcLogs := sfcStatedb.GetLogs(tx.Hash(), blockHash)
-		if len(evmLogsFromSfcPrecompiles) != len(sfcLogs) {
-			log.Error("SFC log mismatch", "txHash", tx.Hash().Hex(), "evm", len(evmLogsFromSfcPrecompiles), "sfc", len(sfcLogs))
-			fmt.Println("EVM logs", evmLogsFromSfcPrecompiles)
-			fmt.Println("SFC logs", sfcLogs)
-		} else {
-			for i, l := range sfcLogs {
-				onNewLog(l, nil)
-				if !evmLogsFromSfcPrecompiles[i].Equal(sfcLogs[i]) {
-					log.Error("SFC log mismatch", "index", i, "txHash", tx.Hash().Hex())
-					fmt.Println("EVM log", evmLogsFromSfcPrecompiles[i])
-					fmt.Println("SFC log", sfcLogs[i])
+		if sfcStatedb != nil && len(evmLogsFromSfcPrecompiles) > 0 {
+			sfcLogs := sfcStatedb.GetLogs(tx.Hash(), blockHash)
+			if len(evmLogsFromSfcPrecompiles) != len(sfcLogs) {
+				log.Error("SFC log mismatch", "txHash", tx.Hash().Hex(), "evm", len(evmLogsFromSfcPrecompiles), "sfc", len(sfcLogs))
+				fmt.Println("EVM logs", evmLogsFromSfcPrecompiles)
+				fmt.Println("SFC logs", sfcLogs)
+			} else {
+				for i, l := range sfcLogs {
+					onNewLog(l, nil)
+					if !evmLogsFromSfcPrecompiles[i].Equal(sfcLogs[i]) {
+						log.Error("SFC log mismatch", "index", i, "txHash", tx.Hash().Hex())
+						fmt.Println("EVM log", evmLogsFromSfcPrecompiles[i])
+						fmt.Println("SFC log", sfcLogs[i])
+					}
 				}
 			}
 		}
+	} else {
+		// TODO(trinhdn97): merge logs from SFC native flow after Phaethon hardfork
+		sfcLogs := sfcStatedb.GetLogs(tx.Hash(), blockHash)
+		for _, l := range sfcLogs {
+			onNewLog(l, statedb)
+			statedb.AddLog(l)
+		}
+		// Re-add SFC native logs to statedb to maintain order
+		logs = statedb.GetLogs(tx.Hash(), blockHash)
 	}
 
 	// Update the state with pending changes.
@@ -227,7 +238,8 @@ func ApplyTransaction(
 	}
 
 	// Set the receipt logs.
-	receipt.Logs = logs
+	receipt.Logs = logs // SFC native logs are already merged above
+	log.Info("@@@@@@ ApplyTransaction: receipt logs", "tx", tx.Hash().Hex(), "numLogs", len(receipt.Logs), "logs", receipt.Logs)
 	// TODO(trinhdn97): include logs and root of SfcStateDB here
 	receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
 	receipt.BlockHash = blockHash
